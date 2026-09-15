@@ -20,6 +20,106 @@
 
 [OpenEMR](https://open-emr.org) is a Free and Open Source electronic health records and medical practice management application. It features fully integrated electronic health records, practice management, scheduling, electronic billing, internationalization, free support, a vibrant community, and a whole lot more. It runs on Windows, Linux, Mac OS X, and many other platforms.
 
+### Running the App Locally
+
+OpenEMR is a server-rendered PHP app (not a separate frontend/backend split), so
+"running the app" means two independent, long-running processes side by side:
+the Docker stack (PHP/Apache backend + MySQL + supporting services), and a
+webpack watcher on the host that compiles theme assets the backend serves.
+
+**Prerequisites (one-time):**
+- [Docker Desktop](https://docs.docker.com/desktop/) installed, with WSL2
+  integration enabled for your distro if on Windows/WSL2
+- [`openemr-cmd`](https://github.com/openemr/openemr-devops/tree/master/utilities/openemr-cmd)
+  installed and on your `PATH` — the canonical CLI for the dev Docker stack:
+  ```bash
+  curl -L https://raw.githubusercontent.com/openemr/openemr-devops/master/utilities/openemr-cmd/openemr-cmd -o ~/.local/bin/openemr-cmd
+  curl -L https://raw.githubusercontent.com/openemr/openemr-devops/master/utilities/openemr-cmd/openemr-cmd-h -o ~/.local/bin/openemr-cmd-h
+  chmod +x ~/.local/bin/openemr-cmd ~/.local/bin/openemr-cmd-h
+  ```
+
+**Run first — the Docker stack** (backend, database, phpMyAdmin, etc.). This
+builds/pulls images on first run, which takes a few minutes; on later runs
+it's fast:
+
+```bash
+cd docker/development-easy
+openemr-cmd up
+```
+
+Wait for it to finish starting (watch progress with
+`docker compose logs -f openemr` in a separate terminal), then the app is
+reachable at:
+- App: http://localhost:8300/ or https://localhost:9300/ — login `admin` / `pass`
+- phpMyAdmin: http://localhost:8310/
+
+**Run second (optional, in a separate terminal) — the asset watcher.** Only
+needed if you're editing SASS/JS themes and want them rebuilt automatically:
+
+```bash
+npm install
+npm run dev
+```
+
+This does not require or block on the Docker stack, but the app won't show
+your latest frontend changes until this has rebuilt them, so start the
+Docker stack first, then this, if you're actively editing styles/JS.
+
+**Stopping and resuming** (preserves data, faster than `up`/`down`):
+
+```bash
+openemr-cmd stop     # pause all containers
+openemr-cmd start    # resume all containers
+```
+
+`openemr-cmd stop`/`start` only affects the Docker-managed services above —
+`npm run dev` is a separate host process you start/stop independently.
+
+**Loading sample patient data.** The database (MariaDB) lives on a named
+Docker volume (`databasevolume` in
+[docker-compose.yml](docker/development-easy/docker-compose.yml)), so any
+data you load persists across `stop`/`start` and `down`/`up`. Only
+`docker compose down -v` or an explicit `dev-reset*` wipes it. To seed a
+realistic dataset once, then snapshot it so you can reset to it any time:
+
+```bash
+openemr-cmd dev-reset-install-demodata   # alias: drid — curated demo patients,
+                                         # provider users with ACLs, portal logins
+openemr-cmd import-random-patients 30    # alias: irp — Synthea-generated patients
+                                         # with full clinical histories (~secs each)
+openemr-cmd backup-snapshot baseline     # alias: bs — snapshot DB + sites/ files
+```
+
+Later, after a test run dirties the data:
+
+```bash
+openemr-cmd restore-snapshot baseline    # alias: rs — back to the seeded state
+openemr-cmd list-snapshots
+```
+
+To share the seeded state with a teammate or another machine:
+
+```bash
+openemr-cmd get-capsule baseline.tgz     # copy the snapshot out of the container
+openemr-cmd put-capsule baseline.tgz     # ...and on the other machine, load it
+openemr-cmd restore-snapshot baseline
+```
+
+Notes: `drid` is destructive (it resets the DB first), so run it on a fresh
+stack. `irp` disables the audit log during import — dev stack only, never on
+real data. Demo credentials are listed on the
+[Development Demo wiki page](https://www.open-emr.org/wiki/index.php/Development_Demo#Demo_Credentials).
+Hand-authored SQL seeds also work (see
+[sql/example_patient_data.sql](sql/example_patient_data.sql) for the pattern;
+load with
+`mysql -h127.0.0.1 -P8320 -uopenemr -popenemr openemr < <file>` or via
+phpMyAdmin at http://localhost:8310), but realistic charts span many tables,
+so prefer `drid`/`irp`. See
+[CONTRIBUTING.md](CONTRIBUTING.md) items 9–12 for details.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full setup guide, test
+commands, and code-quality tooling.
+
 ### Contributing
 
 OpenEMR is a leader in healthcare open source software and comprises a large and diverse community of software developers, medical providers and educators with a very healthy mix of both volunteers and professionals. [Join us and learn how to start contributing today!](https://open-emr.org/wiki/index.php/FAQ#How_do_I_begin_to_volunteer_for_the_OpenEMR_project.3F)
