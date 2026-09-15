@@ -5,8 +5,13 @@ first; the ~500-word summary and the final `AUDIT.md` are produced from this
 file last. Task tracking lives in `AUDIT_TASKS.md`.
 
 **System under audit:** OpenEMR 8.2.0 (database schema v541, ACL v13), fork
-of `Gauntlet-HQ/openemr-base-clean`, branch `audit`, HEAD `859ad84`. All data
-in the dev stack is synthetic (Synthea-generated); no real PHI is present.
+of `Gauntlet-HQ/openemr-base-clean`, branch `audit`. The security section's
+automated scans (§1.1) ran against HEAD `859ad84`; all subsequent manual
+review (remainder of §1, and all of §2-§6) was performed against later
+commits on the same branch (`11e0d6d`, `8939181`, and this audit's own
+closing commit) with no code changes to the audited application in
+between — only audit documents were added. All data in the dev stack is
+synthetic (Synthea-generated); no real PHI is present.
 
 **Severity scale:** Critical / High / Medium / Low / Info — exploitability and
 impact, not confidence. Confidence is recorded separately where it matters.
@@ -73,6 +78,41 @@ finding by ID. `SEC-` security, `PERF-` performance, `ARCH-` architecture,
 | SEC-50 | Low | PHI in temp files | `src/Cqm/QrdaControllers/QrdaReportController.php:61,117,210,272,335` | QRDA/CQM export staging uses predictable temp filenames (`time()`-based) and `chmod 0777` directories, unlike the hardened random-name pattern used for CCDA export | Open |
 | SEC-51 | Medium | Third-party egress | `library/classes/postmaster.php:24,209`, `library/globals.inc.php:2474-2519` | SMTP email defaults to unencrypted (`SMTP_SECURE` default `''`) with an admin-redirectable `SMTP_HOST`; PHI-bearing notification content can be sent to any relay without forced TLS | Open |
 | SEC-52 | Low | Third-party egress | `interface/modules/custom_modules/oe-module-faxsms/src/Controller/ClickatellSMSClient.php:49` | SMS message content and API key placed in a GET query string (TLS-wrapped, but risks exposure via access/proxy logs) | Open |
+| PERF-01 | Medium | Config/caching | `interface/globals.php:449-464` | All ~526 `globals` rows reloaded via full-table read + O(globals×user-overrides) PHP merge loop on *every* request (incl. AJAX/background-service calls); no APCu/Redis cache despite both being available in the production image | Open |
+| PERF-02 | Medium | Audit log / compliance | `sql/database.sql` (`log` table); no index on `date` | Date-range queries against the audit log (`EXPLAIN`/`ANALYZE`: `type=ALL`, filesort) full-scan; trivial at 2,268 seeded rows but this is exactly the table SEC-48/COMP breach-scope queries depend on, and it grows unboundedly with every logged PHI access | Open |
+| PERF-03 | Low | Query performance | `sql/database.sql` (`lists` table); no index on `begdate`/`enddate` | Problem/medication/allergy list sorted by `begdate` (a common UI sort) does `Using filesort` (confirmed via `ANALYZE`) | Open |
+| PERF-04 | Medium | N+1 queries | `src/Services/BaseService.php:551-573` (`addCoding`), `:583-595` (`splitAndProcessMultipleFields`) | `addCoding()` issues one code-lookup query per diagnosis/drug code per row instead of a batched `IN()`; reused by `ConditionService.php:101-108`, `PrescriptionService.php:345-360`, and `CodeTypesService::parseCodesIntoCodeableConcepts` (incl. FHIR bundle building). `splitAndProcessMultipleFields()` does the same per-field-not-batched pattern for UUID resolution | Open |
+| PERF-05 | Medium | Request architecture | `interface/patient_file/summary/demographics.php:611-729` | Patient summary page loads via 7+ independent sequential `fetch()`/AJAX round trips (pnotes, discharge, labs, track-anything, vitals, clinical reminders, patient reminders fragments), each paying its own HTTP+DB-connection overhead; no batched "chart bundle" endpoint | Open |
+| PERF-06 | Low | DB layer overhead | `src/Common/Database/QueryUtils.php:41-56` (`escapeTableName`) | Runs a fresh `SHOW TABLES` metadata query on every call to whitelist a dynamic table name, with no caching of the table list; called from `library/formdata.inc.php` on every clinical form save | Open |
+| PERF-07 | Medium | Concurrency/locking | `library/spreadsheet.inc.php:145,205` | `LOCK TABLES form_<name> ... / UNLOCK TABLES` takes a full table-level lock (not row-level) on that form-type's data table during save, blocking reads/writes to it for *any* patient for the save's duration | Open |
+| PERF-08 | Medium | Concurrency/data integrity | `src/PaymentProcessing/Recorder.php:200-213` (`getNextSequenceNumber`) | Self-documented race condition (dev comment: "even in a default-configured DB transaction, this still has a potential race condition"): `ar_activity.sequence_no` computed via `SELECT MAX()+1` with no locking read; concurrent payment posts for the same pid/encounter can collide | Open |
+| PERF-09 | Info | Measurement methodology | `docker/development-easy` vs `docker/release/php.ini:1679` | Dev docker image ships `opcache.enable=Off` (confirmed via `php -i`); production/release image ships `opcache.enable=1` plus APCu/Redis packages. Any timing taken against the dev stack (as this audit's numbers were) is systematically slower than production and should not be read as a production latency estimate | Open |
+| PERF-10 | Info | Schema/EAV | `sql/database.sql` (40 `form_*` tables) | Clinical forms are stored one-table-per-form-type (40 tables) keyed off the `forms` index table; assembling one encounter's full content is inherently up to N tables × N queries (N = distinct form types present), with no single joined view | Open |
+| PERF-11 | Low | Storage layout | `sql/database.sql` (`documents.document_data`) | Document content stored as `LONGTEXT` inline in the row (unless offloaded via `couch_docid` to the optional CouchDB backend), bloating the InnoDB buffer pool per large scanned document relative to its row count | Open |
+| ARCH-01 | Info | Service layer coverage | `src/Services/` vs `library/` | Billing/claims and ACL/permissions have no typed `Services/*Service.php` at all — legacy `library/`/`gacl/` code only; no single chokepoint exists to add a check or convert to DI, consistent with why ACL gaps (SEC-27..29, SEC-34) keep recurring in scattered call sites | Open |
+| ARCH-02 | Info | Extension points | `src/Events/Encounter/` | No encounter-closed/signed lifecycle event exists — only UI-rendering hooks (menu/button/form-list events); a new capability needing "react when an encounter is finalized" has nothing to subscribe to | Open |
+| ARCH-03 | Info | Static analysis coverage | `.phpstan/baseline/` (170 files, 375,460 lines) | PHPStan level 10 is enforced only against the non-baselined portion of the codebase; the historical baseline is large enough that most existing code's type-safety is suppressed, not verified — CI diffs the baseline rather than shrinking it | Open |
+| ARCH-04 | Info | Module architecture | `interface/modules/{zend_modules,custom_modules}/` | Two parallel, non-unified module-loading systems (Laminas MVC vs plain-PHP drop-in) with no shared authorization middleware for either; a new integration must pick one convention and self-implement any ACL checks | Open |
+| DQ-01 | High | Reference integrity | `form_encounter.facility_id` vs `facility.id` | 1,514 of 1,517 encounters (99.8%) reference `facility_id=11`, which does not exist in the `facility` table (only `id=3` "Great Clinic" exists) — an import-time break, not a schema defect; any facility-scoped report/query silently loses almost the entire encounter set | Open (dataset-level, from Synthea import) |
+| DQ-02 | Medium | Units/formatting | `form_vitals.height`/`weight` | Column has no unit indicator; values in the seed mix imperial (e.g. `70`, `60`, `40` — inches/lbs range) and metric (e.g. `154.5`, `186.0` — cm range) in the same column with no way to distinguish them per-row. Interpretation depends entirely on the global `units_of_measurement` setting at read time, not on stored data — schema-level risk, not just a dataset artifact | Open |
+| DQ-03 | Medium | Consistency | `lists` (`medical_problem`, `medication`, type=`activity`) | 620/872 (71%) active medical problems and 166/238 (70%) active medications have an `enddate` already in the past while still marked `activity=1` — internally contradictory "active but ended" state | Open |
+| DQ-04 | Medium | Completeness | `procedure_result.abnormal` | 5,605/5,605 (100%) lab result rows have no normal/abnormal flag set — a clinician cannot see at a glance which results are out of range from this field | Open |
+| DQ-05 | Low | Completeness | `prescriptions.route` | 233/234 (99.6%) prescriptions have no administration route recorded | Open |
+| DQ-06 | Low | Completeness | `patient_data.ss`/`phone_home`/`email` | 28/30 (93%) patients have no SSN, home phone, or email on file — all layout-optional (`uor=1`) fields, but a real identification/contact gap at this rate | Open |
+| DQ-07 | Info | Lifecycle/timestamps | `form_encounter`, `procedure_result` | Neither table has any `created`/`updated` timestamp column — "how fresh is this row" is architecturally unanswerable for encounters or lab results, only inferrable from the clinical `date` field itself | Open |
+| DQ-08 | Info | Lifecycle | `form_encounter.last_level_closed` | 100% of the 1,517 seeded encounters have `last_level_closed=0` (never signed/closed) — expected for a bulk Synthea import that bypassed the normal e-sign workflow, but means "encounters lacking a signed note" is effectively the entire dataset and not a useful discriminator on this seed | Open (dataset-level) |
+| COMP-01 | Medium | Retention/deletion | `interface/patient_file/deleter.php:185-189` (`delete_document`) | Deleting a document only sets `documents.deleted=1`; no `unlink()` call anywhere in the deletion path — the physical file on disk is never removed even by an intentional, authorized patient-data deletion | Open |
+| COMP-02 | Low | Backup integrity | `interface/main/backup.php` | On-demand, unscheduled, unencrypted (SEC-46) backup tool whose own header comment warns restore capability is unverified without operator testing — a self-acknowledged compliance-readiness gap | Open |
+| COMP-03 | Info | Breach detection | app-wide | No anomaly/unusual-access detection exists anywhere (bulk views, off-hours access, repeated break-glass use are all invisible unless manually queried after the fact) | Open |
+| COMP-04 | Medium | Breach scope determination | `log` table (ties to PERF-02) | "Which patients were accessed by whom in this time window" — the core breach-scope query — requires a `log.date` range scan that is unindexed and full-scans at any volume, directly bounding incident-response speed | Open |
+| COMP-05 | Info | Retention policy | `globals` table | No retention/purge configuration exists at all — safe against silent premature purging, but also no built-in way for an operator to configure or prove a retention policy is being honored | Open |
+| COMP-06 | Medium | Audit logging gap | `src/Common/Logging/EventAuditLogger.php:77`; no entry in `library/globals.inc.php` | `audit_events_lab-order` is read in code to gate lab-order audit logging but has no corresponding global definition or admin-UI toggle; defaults to `false` via `OEGlobalsBag::getBoolean()`, so lab-order activity is silently never audit-logged with no way for an admin to enable it short of a direct DB edit | Open |
+| COMP-07 | High | Tamper evidence | `src/Common/Logging/Audit/LogTablesSink.php:63,83,90-91`; no verification code found anywhere | A SHA3-512 checksum is computed and stored per log row (`log_comment_encrypt.checksum`) at write time, but no code path anywhere recomputes/compares it — it is write-only, inert data. Combined with `log`/`log_comment_encrypt`/`api_log` being plain InnoDB tables with no triggers or restricted grants, the audit log has no functioning tamper-evidence control despite the schema implying one exists | Open |
+| COMP-08 | High | PHI in audit log | `src/Common/Logging/EventAuditLogger.php:446-452,642-695` | `log.comments` stores the raw SQL statement text plus bound parameter values (base64-encoded, not encrypted) for every audited query — meaning patient names, DOBs, diagnosis text, etc. that appear as query parameters land unencrypted in the audit log itself. `log_comment_encrypt.encrypt` is hardcoded to `'No'` (`LogTablesSink.php:89`) — the encryption flag exists in the schema but is never actually set to Yes, making the "encrypted comment" concept vestigial | Open |
+| COMP-09 | Low | Retention/rotation | `log`, `log_comment_encrypt`, `api_log` | No rotation, retention, or purge job exists for any audit-log table (checked `src/Services/Background/*` and background-service task code) — these tables, which per COMP-08 contain unencrypted PHI-bearing content, grow forever with no lifecycle policy | Open |
+| COMP-10 | Medium | Breach-response usability | `interface/logview/logview.php`; `EventAuditLogger::getEvents():353,389` | The access-history viewer defaults to a "today only" date range and hard-caps results at `LIMIT 5000` with no indication when truncation occurs — an investigator must already know roughly what to look for, and a wide-date-range query against a busy system can silently drop results exactly when a breach investigation needs completeness most | Open |
+| COMP-11 | Medium | Minimum necessary / API | `src/Services/FHIR/FhirEncounterService.php`; `src/RestControllers/EncounterRestController.php:52,110` | `form_encounter.sensitivity` is enforced via `AclMain::aclCheckCore('sensitivities', ...)` throughout the legacy UI (`EncounterService.php:449-451` and others) but has zero references in the FHIR encounter service — a "private"/"high" sensitivity encounter is not filtered from FHIR API responses, bulk exports, or any service-layer consumer that bypasses the legacy UI screens | Open |
+| COMP-12 | Low | Accounting of disclosures | `EventAuditLogger::recordDisclosure()` (`EventAuditLogger.php:567-626`), `extended_log` table, `interface/patient_file/summary/disclosure_full.php` | A genuine accounting-of-disclosures feature exists (distinct from internal access logging), but it is entirely staff-curated — nothing automatically records a disclosure when data actually leaves via FHIR/REST API, CCDA transmission, or portal export; completeness depends entirely on manual entry | Open |
 
 ---
 
@@ -88,7 +128,8 @@ Two complementary methods:
    or majority survivors are reported. Nondeterministic; a clean result means
    "nothing surfaced in one pass", not proof of absence.
 2. **Manual review** — targeted reads of the auth/session/ACL stack, upload
-   handlers, and PHI paths (tasks 1.2–1.5 in `AUDIT_TASKS.md`; pending).
+   handlers, and PHI paths (tasks 1.2–1.5 in `AUDIT_TASKS.md`; complete,
+   see §1.2b–§1.3e below).
 
 #### Scan runs
 
@@ -1582,41 +1623,1208 @@ alongside SEC-34 and SEC-11/12.
 ## 2. Performance audit
 
 ### 2.1 Scope & method
-*(pending — tasks 2.x)*
+
+Done 2026-09-15 against the running `development-easy` dev stack: OpenEMR
+8.2.0, PHP 8.5.6, MariaDB 11.8.8 (`mariadb:11.8.8-ubu2404`), Apache
+`mpm_prefork`. Seed data: 30 Synthea-generated patients, 1,517
+`form_encounter` rows, 1,157 `lists` rows, 234 prescriptions, 5,605
+`procedure_result` rows, 395 immunizations, 2,268 `log` rows, 0 documents.
+
+Method: `information_schema` inventory of the ~30 largest tables and index
+coverage on the core clinical tables named in task 2.1.1; `EXPLAIN`/`ANALYZE`
+on representative chart-load, problem-list, and audit-log queries;
+`slow_query_log` enabled (`long_query_time=0.1`, `log_queries_not_using_indexes=ON`)
+and the app exercised (login page, globals bootstrap, module loading) to
+capture real per-request query sets; direct code review (not a subagent
+scan) of `src/Common/Database/QueryUtils.php`, `interface/globals.php`,
+background-service locking (`src/Services/Background/BackgroundServiceRunner.php`),
+and `library/spreadsheet.inc.php`/`src/PaymentProcessing/Recorder.php` for
+locking/concurrency; a delegated read-only review of `src/Services/*Service.php`
+and the patient-summary widget-loading pattern for N+1 query patterns;
+`php -i` and Apache config comparison between the dev and release/production
+Docker images for runtime settings (opcache, memory_limit); `du`/`find` over
+`public/assets/` for vendored frontend library sizes.
+
+**Not attempted:** authenticated real-browser page-load timing (`curl -w`
+against the legacy staff login flow returns HTTP 403 post-login without a
+full browser session — OpenEMR's session bootstrap does more than cookie
+auth; `symfony/panther`, listed in `composer.json`, is not installed in this
+container image's `vendor/` — a dev-dependency gap, not itself a
+performance finding). p50 timings for individual pages (2.3.1) and exact
+per-page frontend payload (2.3.3) are therefore estimated from static
+evidence (vendor bundle sizes, query counts, `EXPLAIN` costs) rather than
+measured with a stopwatch; a follow-up pass with a working Selenium/Panther
+session or the browser network tab should replace these estimates with real
+numbers before this becomes a load-bearing SLA claim.
 
 ### 2.2 Findings
 
+**2.1.1 Schema inventory.** Largest tables by size are almost entirely
+static reference data, not clinical data: `icd10_dx_order_code` (95,639
+rows/24.6 MB), `lang_definitions` (172,536 rows/21.6 MB), `icd10_pcs_order_code`
+(19.6 MB), and three ICD9↔ICD10 GEM mapping tables (4.5-5.5 MB each). The
+largest *clinical* table in this seed is `procedure_result` (5,605
+rows/2.9 MB). Core clinical table row counts: `patient_data` 30,
+`form_encounter` 1,517, `lists` 1,157, `prescriptions` 234, `procedure_result`
+5,605, `form_vitals` 30, `immunizations` 395, `documents` 0, `log` 2,268.
+Note `form_vitals` (30 rows) vs `form_encounter` (1,517 rows): only 30
+encounters have a vitals form attached at all in this seed — most encounters
+carry no vitals (also a data-quality signal for task 4.1.4).
+
+**2.1.2 Index coverage.** Checked `pid`/`patient_id`, `encounter`, and date
+columns on `patient_data`, `form_encounter`, `lists`, `prescriptions`,
+`procedure_result`, `form_vitals`, `immunizations`, `documents`, `log`.
+`pid`/`patient_id` is indexed everywhere it exists. Gaps: `log.date` has no
+index (PERF-02); `lists.begdate`/`enddate` have no index despite being the
+natural problem/medication-list sort key (PERF-03); `procedure_result` has
+no direct patient-scoping column at all — it reaches a patient only by
+joining `procedure_report → procedure_order.patient_id`, which *is* indexed
+(`procedure_order.patient_id`, composite `datepid(date_ordered,patient_id)`),
+so the join plan is fine (confirmed via `EXPLAIN`: `ref` access on both
+join steps, no full scans). `form_vitals` and `immunizations` are indexed
+only on `pid`/`patient_id`, with no date index — acceptable at current
+per-patient row counts (a handful of vitals/immunization rows each) but
+would degrade for patients with dense vitals history.
+
+**2.1.3 Storage layout.** All core tables are InnoDB, `utf8mb4_general_ci`.
+`documents.document_data` is `LONGTEXT` (PERF-11) with an optional
+`couch_docid` column for offloading to the CouchDB container shipped in the
+dev stack — meaning document storage architecture is bimodal (inline DB
+blob vs external document store) depending on configuration, not
+independently verified which mode is active for the seed (0 documents
+present). Clinical data uses a per-form-type EAV pattern: 40 distinct
+`form_*` tables (PERF-10) hang off the `forms` index table (id → form type
+→ specific `form_<type>.id`), so a full encounter render is a scatter of
+lookups across up to 40 possible tables rather than one joined view — this
+is standard OpenEMR architecture, recorded here because it directly bounds
+"chart assembly cost" (task 2.5.2).
+
+**2.1.4 Per-patient chart size.** Measured row counts across
+`form_encounter`+`lists`+`prescriptions`+`immunizations`+`form_vitals`+`procedure_order`
+per patient. Largest seeded patient (pid 28): 138 encounters, 80
+problem/medication/allergy list entries, 9 prescriptions, 1,162 lab result
+rows (via `procedure_order`→`procedure_report`→`procedure_result`) —601
+total rows across the six tables. Smallest (pid 1-3): 2-7 total rows. That
+is a >150x spread between the cheapest and most expensive chart to render
+in a 30-patient seed; a "full chart read" is not a fixed-cost operation and
+any new service layered on top must not assume a typical patient is cheap
+to load.
+
+**2.2.1-2.2.2 Slow-query log and EXPLAIN.** At this seed's data volume
+(thousands of rows, not millions), no query in ordinary use crossed the
+100 ms threshold — the slow-query log is a mechanism-readiness check, not a
+volume stress test (30 patients is far below any production chart count).
+The evidence that matters is structural, from `EXPLAIN`/`ANALYZE`: the
+`log` table date-range scan (PERF-02) and `lists` filesort (PERF-03) are
+real "will not scale" patterns, confirmed by `type=ALL`/`Using filesort` in
+the query plan even though the *measured* time is sub-millisecond today.
+Exercising the app's normal request path also confirmed `interface/globals.php`
+re-fetches all 526 `globals` rows via `sqlStatementNoLog` on every single
+observed request (login page render, module load, etc.) — see PERF-01.
+
+**2.2.3 N+1 patterns.** Delegated code review of the chart-loading service
+layer found: `PatientService`, `EncounterService`, `ObservationLabService`,
+and `VitalsService` are clean — all use batched `IN()` queries or a single
+JOIN, with per-row loops only reshaping already-fetched arrays. The N+1
+pattern does exist in shared base-class helpers: `BaseService::addCoding()`
+(`src/Services/BaseService.php:551-573`) issues one code-description lookup
+query per diagnosis/drug code per result row, reached from
+`ConditionService.php:101-108`, `PrescriptionService.php:345-360`, and FHIR
+bundle-building via `CodeTypesService::parseCodesIntoCodeableConcepts`
+(PERF-04); `BaseService::splitAndProcessMultipleFields()` has the same
+per-field-not-batched pattern resolving UUIDs. Separately, the patient
+summary page (`interface/patient_file/summary/demographics.php:611-729`,
+not `summary.php` as the task list assumed — that file does not exist in
+this codebase) loads via 7+ independent sequential AJAX fragment requests
+(notes, discharge, labs, track-anything, vitals, clinical/patient
+reminders), each paying its own HTTP round trip and DB connection setup,
+with no batched "give me everything for this chart" endpoint (PERF-05).
+
+**2.2.4 ORM/DB layer overhead.** Layering is `sqlQuery`/`sqlStatement`
+(legacy global functions) → `QueryUtils` → ADODB → mysqli; no Doctrine DBAL
+usage was found in the reviewed files despite it being listed in
+`CLAUDE.md`'s tech stack. `QueryUtils::getADODB()` reuses one ADODB
+connection per request (not per-call), but there is no prepared-statement
+or query-plan cache anywhere in this chain — every call re-prepares via
+ADODB/mysqli, even identical queries issued in a loop (compounding PERF-04).
+MariaDB's own query cache is present but disabled by default
+(`query_cache_type=OFF`, confirmed), and no APCu/Redis-backed
+application-level query cache exists — Redis in this codebase is wired
+only as an optional session store (`src/Common/Session/Predis/`), never as
+a data cache (`src/Health/Check/CacheCheck.php` is a health-check probe for
+that session backend, not a cache client). `QueryUtils::escapeTableName()`
+compounds this by running a fresh `SHOW TABLES` on every dynamic-table-name
+call with no caching (PERF-06).
+
+**2.3.1 Request latency.** Not measured end-to-end (see Scope & method —
+no working browser automation in this container image, and the legacy
+login flow does not script cleanly over plain `curl`). What was measured:
+unauthenticated login-page render (`GET /interface/login/login.php`) at
+~0.28s wall time including 7 DB queries visible in the exercised slow-query
+log (globals bootstrap, module list ×2, code_types, SNOMED revision check)
+even before any authentication happens — i.e., the fixed per-request
+overhead floor (globals load + module discovery) is paid on *every*
+request regardless of what the request actually needs, which is the
+practical consequence of PERF-01.
+
+**2.3.2 PHP runtime config.** `memory_limit=512M`, `max_execution_time=0`
+(unlimited — appropriate for the Apache/mod_php model used here, not
+PHP-FPM), Apache uses `mpm_prefork` (one process per connection, no shared
+opcache SHM benefit across workers the way FPM+opcache would). Dev image:
+`opcache.enable=Off`. Release/production image (`docker/release/php.ini`):
+`opcache.enable=1`, plus `php-pecl-apcu`, `php-pecl-redis` packages
+installed and `composer dump-autoload --optimize --apcu` run at build time
+(PERF-09) — so the production autoloader and opcode cache are meaningfully
+faster than what this audit's dev-stack numbers would suggest; do not
+extrapolate dev timings to production without accounting for this.
+
+**2.3.3 Frontend weight.** Not measured per-page (no browser session — see
+Scope & method). As an upper bound, `public/assets/` (the full vendored
+frontend library tree, not what any single page actually loads) totals
+several hundred MB, dominated by `ckeditor5` (41 MB), `jspdf` (29 MB), and
+`lforms` (21 MB) — none of which are core to the patient-summary/encounter
+pages in the general case (they're feature-specific: rich text editing,
+PDF export, structured forms). The Angular 1.8/jQuery/Bootstrap 4.6 core
+frontend stack itself is comparatively small; the real payload risk is
+per-page over-inclusion of these large optional libraries, which a
+follow-up pass should confirm with the browser network tab rather than
+static tree size.
+
+**2.4.1 Background services.** Confirmed the task's stated constraints:
+services are lease-locked via `background_services.lock_expires_at`, with
+an atomic `UPDATE ... WHERE lock_expires_at IS NULL OR lock_expires_at < NOW()`
+acquire pattern in `BackgroundServiceRunner.php` (safe compare-and-swap,
+correctly designed) plus a session-scoped `GET_LOCK()` advisory lock to
+prevent double-orchestration. The script (`library/ajax/execute_background_services.php`)
+does support CLI/cron invocation (`php_sapi_name() === 'cli'` branch,
+`$argv`-driven), contrary to the task's framing of "Ajax-triggered only" —
+but no cron entry exists in any of the Docker images reviewed
+(`docker/release`, `docker/production`), so in practice, absent an
+operator adding one, services genuinely only run while a browser session
+is polling. This remains a hard constraint for any capability needing
+guaranteed after-hours or long-running execution: nothing runs it unless
+(a) a user is logged in, or (b) an operator configures external cron.
+
+**2.4.2 Caching.** No general-purpose cache layer exists. Redis (available
+in `docker/development-easy-redis` and referenced by
+`src/Common/Session/Predis/`) is session-store-only. No APCu usage found in
+application code (confirmed independently by both this task and the
+security audit's SEC-45 area review). MariaDB query cache is off. The only
+caching-adjacent construct found is PHP's opcode cache (opcache), which
+caches compiled bytecode, not query results or config — and is disabled in
+the dev image (PERF-09). Given PHI sensitivity, any future caching layer
+must be scoped per-user/per-patient with explicit invalidation, not a
+naive global response cache — but right now there is no caching at all to
+build that discipline into, which is itself the finding: performance
+headroom is currently being left entirely on the table (PERF-01, PERF-06).
+
+**2.4.3 Concurrency and locking.** Two distinct patterns found beyond the
+well-designed background-service leasing: `library/spreadsheet.inc.php`
+takes a full `LOCK TABLES form_<name>` / `UNLOCK TABLES` around
+spreadsheet-style form saves (PERF-07) — a table-level, not row-level,
+lock that blocks all other patients' reads/writes to that form type for
+the save's duration, unlike the row-scoped locking elsewhere in the
+codebase. `src/PaymentProcessing/Recorder.php::getNextSequenceNumber()`
+has a self-documented (by the original author, in a code comment) race
+condition: `ar_activity.sequence_no` is computed via
+`SELECT MAX(sequence_no)+1` without a locking read, so concurrent payment
+posts against the same patient/encounter can compute the same next
+sequence number (PERF-08) — a correctness/concurrency bug more than a raw
+throughput one, but it lives in the payment-posting hot path.
+
 ### 2.3 Not covered
+
+- **Volume/scale testing.** The 30-patient Synthea seed is far too small to
+  observe real query degradation; all "will not scale" claims here (PERF-02,
+  PERF-03, PERF-04) are structural (`EXPLAIN`/`ANALYZE` plan shape), not
+  measured at production-representative row counts. A load test against a
+  seeded DB with 10k+ patients / years of `log` growth would validate or
+  refute the severity assigned here.
+- **End-to-end page-load timing (2.3.1) and real frontend payload (2.3.3).**
+  Blocked on the container image lacking an installed `symfony/panther` and
+  the legacy staff login flow not scripting cleanly over plain `curl`
+  (see Scope & method). Numbers here are structural/estimated, not
+  stopwatch-measured; flagged as a follow-up rather than silently
+  presented as measured.
+- **FHIR/REST endpoint timing** (`/apis/default/api/patient`, FHIR
+  `Patient` search, bulk `$export`) — not exercised at all; OAuth2
+  password grant is off by default (per SEC-25 area review) which makes
+  scripted authenticated REST calls non-trivial without a browser-driven
+  auth-code flow.
+- **`interface/billing/`, `ccdaservice/`, module (`interface/modules/`)
+  query patterns** — out of scope for this pass; the N+1 review covered
+  the core chart-loading services named in the task list plus the
+  patient-summary widget path, not every module.
+- **Production-scale infrastructure** (read replicas, connection pooling,
+  CDN for static assets, PHP-FPM vs mod_php trade-off) — noted as absent
+  from the Docker images reviewed but not evaluated as a recommendation
+  space; this audit records the current-state constraint, not a target
+  architecture.
 
 ---
 
 ## 3. Architecture audit
 
 ### 3.1 Scope & method
-*(pending — tasks 3.x)*
+
+Done 2026-09-15. Method: direct code review of the request-bootstrap chain
+(`interface/globals.php`, `apis/dispatch.php`, `portal/index.php`,
+`src/Core/Kernel.php`, `src/Core/ModulesApplication.php`), the ACL/OAuth2
+enforcement points already mapped in the security audit (§1.3.1, §1.2b),
+`sql/database.sql`'s 282 `CREATE TABLE` statements, and `sites/default/`
+layout for multi-site/config; a delegated read-only inventory of
+`src/Services/`, `src/Events/`, the module loader, the Twig/Smarty split,
+and the test/quality-gate tooling.
+
+`graphify-out/graph.json` was checked first per project convention, but its
+corpus is scoped to `src/` only (2,008 files; confirmed via
+`GRAPH_REPORT.md`'s "Graph Report - src" header) — it has no visibility
+into `interface/`, `library/`, `portal/`, `apis/`, or `controllers/`, which
+is most of what a layer map (3.1) and request-routing map (3.2) need to
+cover. It was used for `src/`-internal structure (god nodes, event-class
+community, service community boundaries) and direct file reads were used
+for everything else.
 
 ### 3.2 Findings
 
+**3.1 Layer map — three code generations.** `controllers/` (e.g.
+`C_Document.class.php`, `C_PatientFinder.class.php`) is the oldest
+generation: procedural-flavored classes with no namespace, predating
+PSR-4, still live and referenced by legacy `library/` code. `library/` is
+the second generation: global functions (`sqlStatement`, `formData`, etc.)
+included via `require_once` chains, no dependency injection, heavy
+`$GLOBALS`/`$_SESSION` use — this is what "Legacy Code Is Not the
+Standard" in `CLAUDE.md` refers to. `src/` (`OpenEMR\` PSR-4, this audit's
+`graphify` corpus) is the modern generation: typed services, Doctrine-style
+value objects (`src/Entities/README.md` documents "no ORM relations,
+string IDs, partial column mapping" — an explicitly transitional,
+not-quite-ORM convention per the graph's "Surprising Connections"), Laminas
+MVC for `zend_modules`, Symfony components for REST/events. The three
+generations interoperate by inclusion, not abstraction: `interface/*.php`
+scripts `require_once("../../globals.php")` then call into `library/`
+functions and `src/Services/*Service.php` classes side by side in the same
+file — there is no enforced boundary preventing a legacy script from
+reaching directly into `QueryUtils` or a `src/` service reaching back into
+a `library/*.inc.php` global function. `god nodes` in the `src/` graph
+(`FHIRBackboneElement` 966 edges, `OEGlobalsBag` 510, `QueryUtils` 496,
+`ProcessingResult` 356) mark the load-bearing shared abstractions any new
+`src/`-based capability will end up depending on.
+
+**3.2 Request routing.** Three parallel entry families, none unified by a
+front controller: (1) **Direct PHP file hits** under `interface/` — Apache
+serves whatever `.php` file the URL names; each file independently
+`require_once`s `globals.php` for bootstrap (site resolution, DB
+connection, session, ACL helpers) then does its own auth/ACL check (or, per
+SEC-03..06/SEC-27..29, sometimes doesn't). (2) **REST/FHIR dispatch** —
+`apis/dispatch.php` (45 lines) builds an `HttpRestRequest` from globals,
+instantiates `RestControllers\ApiApplication`, and hands off; route
+matching and the `AuthorizationListener` (`src/RestControllers/Subscriber/AuthorizationListener.php`)
+scope-check happen inside that application via Symfony's `HttpKernel`
+event system — this is the one place in the codebase with a centralized
+authorization enforcement point (confirmed clean in the security audit).
+(3) **Laminas MVC modules** — `src/Core/ModulesApplication.php` wraps
+`Laminas\Mvc\Application`, used for the `zend_modules/` tree (a handful of
+first-party modules under `interface/modules/zend_modules/`, distinct from
+the ~8 modules under `interface/modules/custom_modules/`, which are plain
+PHP include-based, not Laminas-routed). (4) **Portal entry** —
+`portal/index.php` is its own bootstrap, separate from `interface/globals.php`,
+setting up a namespace-separated portal session (confirmed in security
+audit §1.2b) before routing to portal-specific pages. `globals.php` itself
+is the one thing all of (1) and, indirectly via shared session/DB setup,
+(4) depend on: it resolves the multi-site ID from `$_GET['site']`/session,
+opens the DB connection (`library/sql.inc.php`), constructs the `Kernel`
+(event dispatcher + module system), and populates `OEGlobalsBag`
+end-to-end — see PERF-01 for the cost of doing this unconditionally on
+every request.
+
+**3.3 Where data lives.** 282 tables in `sql/database.sql`. Rough domain
+families: demographics (`patient_data`, `patient_history`, contact/address
+tables), encounters/forms (`form_encounter`, `forms`, 40 `form_*` per-type
+tables — PERF-10), clinical lists (`lists`, `list_options`), orders/results
+(`procedure_order`, `procedure_report`, `procedure_result`, `prescriptions`,
+`immunizations`), billing (`billing`, `ar_activity`, `claims`, X12-related
+tables), scheduling (`openemr_postcalendar_events` and related), documents
+(`documents`, `categories`), users/ACL (`users`, `user_settings`, `gacl_*`
+tables — the phpGACL schema, not native OpenEMR tables), audit/log (`log`,
+`api_log`, `audit_master`/`audit_details`, `extended_log`,
+`payment_processing_audit`, `notification_log`, `direct_message_log`,
+`erx_rx_log`, `clinical_rules_log` — audit/logging is itself spread across
+at least 9 distinct tables with no single unified event log), config/globals
+(`globals`, `user_settings` global-prefixed rows — see PERF-01),
+layouts/list_options (`layout_options`, `list_options` — the EAV-style
+form-field configuration backing dynamic patient/encounter forms). Outside
+the DB: documents on disk under `sites/<site>/documents/` (or CouchDB, per
+PERF-11's `couch_docid` path), the per-site `sites/<site>/sqlconf.php` (DB
+credentials — see SEC-19) and `sites/<site>/config.php`, PHP session
+storage (file-based by default, Redis optionally per
+`src/Common/Session/Predis/`), uploaded/staged files (temp upload dirs,
+QRDA/CCDA export staging per SEC-50), and the `public/assets/` vendored
+frontend tree (not per-tenant).
+
+**3.7 Auth/session flow.**
+
+```mermaid
+flowchart TD
+    subgraph Staff
+        A1[interface/login/login.php] --> A2[POST to main_screen.php?auth=login]
+        A2 --> A3[globals.php bootstrap:\nsite resolve -> DB connect -> session]
+        A3 --> A4[AuthUtils: verify password\nAuthHash.php bcrypt/Argon2/SHA512]
+        A4 --> A5[Core session cookie set\nSecure=false, HttpOnly=false - SEC-22\nno session_regenerate_id - SEC-21]
+        A5 --> A6[Per-page: interface/*.php\nrequire_once globals.php]
+        A6 --> A7{aclCheckCore section,value?}
+        A7 -- called --> A8[AclMain -> gacl_* tables\ndeny-by-default, superuser bypass]
+        A7 -- NOT called - SEC-03..06,27..30 --> A9[Page renders anyway\nmenu-hiding is the only gate]
+    end
+    subgraph Portal
+        B1[portal/index.php] --> B2[Own bootstrap, separate\nfrom interface/globals.php]
+        B2 --> B3[Portal session: distinct cookie name\nApp selector cookie - namespace-separated]
+        B3 --> B4[Portal-scoped pages only;\nOneTimeAuth for password reset/registration]
+    end
+    subgraph OAuth2_API
+        C1[oauth2/authorize.php] --> C2[AuthorizationServer\nauth_code / refresh_token / client_credentials grants]
+        C2 --> C3[Access token 1h, refresh 3mo]
+        C3 --> C4[apis/dispatch.php -> ApiApplication]
+        C4 --> C5[AuthorizationListener\nsrc/RestControllers/Subscriber/AuthorizationListener.php\ncentralized scope check, default-deny]
+        C5 --> C6[FHIR/REST controller]
+    end
+```
+
+Boundaries enforced: staff — `AclMain::aclCheckCore()` (when called; the
+dominant security finding is that it often isn't — see §1.3.1); portal —
+session namespace separation only lets a portal session reach portal
+routes, per-patient scoping is separate (SEC-30 gaps aside); OAuth2/API —
+the only centrally-enforced boundary in the codebase, via
+`AuthorizationListener`'s default-deny scope check on every REST/FHIR
+request.
+
+**3.8 Configuration and multi-site.** `globals` table (526 rows in this
+seed) holds all admin-configurable settings, loaded into `OEGlobalsBag`
+(a Symfony `ParameterBag` subclass) once per request (PERF-01) —
+`OEGlobalsBag` is the #3 god node in the `src/` graph (510 edges),
+reflecting how pervasively code reaches into it rather than receiving
+config via constructor injection. Multi-site: `sites/<site>/` directories
+each carry their own `sqlconf.php` (DB credentials), `config.php`,
+`documents/`, and per-site file storage; the active site is resolved from
+`$_GET['site']` or the session (`interface/globals.php:270-320`) *before*
+any DB connection is opened, with a same-origin guard (session's stored
+site ID must match the request's, or the session is cleared — prevents
+cross-site session reuse). Dev vs production config differs primarily in
+`docker/development-easy` vs `docker/release`/`docker/production`: opcache
+(PERF-09), TLS cert provisioning, and default credentials (SEC-19) all
+diverge between the two.
+
+**3.10 Integration-point summary.**
+
+| Mechanism | Where to register | Auth context available | Limitations |
+|---|---|---|---|
+| REST/FHIR controller | `src/RestControllers/`, route table in `ApiApplication`/`RestConfig` | OAuth2 token + scope, enforced centrally by `AuthorizationListener` | Scope model is coarse (resource-level, not field-level); no built-in rate limiting beyond execution bounds (SEC-41) |
+| Laminas MVC module | `interface/modules/zend_modules/` | Whatever the module wires up itself; no shared authz middleware | Small ecosystem (a handful of first-party modules); heavier framework overhead than a plain include |
+| Custom module (plain PHP) | `interface/modules/custom_modules/` | Inherits ambient staff session if included after `globals.php`; must self-check ACL | No enforced convention — exactly the gap behind SEC-27..30 |
+| Symfony event subscriber | `src/Events/<Domain>/*Event.php` + subscribe via `Kernel`'s `EventDispatcher` | Runs in the dispatching request's ambient auth context (not re-checked) | Event catalog is domain-specific and incomplete — see §3.4/3.5 inventory for what does and doesn't exist |
+| Background service | `background_services` table + `src/Services/Background/` | Runs as whatever context the lease-holder process has (cron: none; Ajax: the logged-in user) | No cron by default (§2.4.1); only runs while a browser session polls unless an operator adds cron |
+| E-signature hook | `library/ESign/SignableIF`/`FactoryIF` | Runs in the signing user's session | Interface-based extension point for making a record signable; no "signed" event fires elsewhere (ties into the "no encounter-closed event" gap under §3.5) |
+| New `src/Services/*Service.php` | `src/Services/`, extend `BaseService` | Caller-supplied; `BaseService` provides `ProcessingResult`/validation plumbing but not auth — caller must check ACL | Only as strong as caller discipline; several clinical domains still have no typed service at all (§3.4) |
+
+**3.4 Service layer.** 50 classes extend `BaseService` across 18
+domain-specific subdirectories (`Address`, `Background`, `Cda`, `CodeTypes`,
+`DocumentTemplates`, `Email`, `FHIR`, `Globals`, `ImageUtilities`, `Qdm`,
+`Qrda`, `Reports`, `SDOH`, `Search`, `Storage`, plus `Trait`/`Traits`/`Utils`
+support code — `Cda`/`Qrda`/`Background`/`Search`/`FHIR` together account
+for ~96 files, the bulk of the non-`BaseService` surface). `BaseService`
+provides the shared plumbing: `QueryUtils`-based prepared queries,
+`UuidRegistry` integration (every FHIR-exposed resource needs a UUID),
+`ProcessingResult` for standardized success/validation/error returns,
+`FhirSearchWhereClauseBuilder`/`ISearchField` for FHIR search parameter
+handling, and constructor-injected `EventDispatcherInterface`,
+`SessionInterface`, `LoggerInterface`, `OEGlobalsBag` — i.e., it is
+reasonably DI-friendly *if* a caller wires it that way, though nothing
+forces a caller to actually check authorization before invoking a service
+method (see 3.10's caveat).
+
+Domain coverage is uneven — dual-path (typed service *and* legacy
+`library/` code still present, both reachable) for appointments
+(`AppointmentService` + `library/appointments.inc.php`), prescriptions
+(`PrescriptionService` + `library/classes/Prescription.class.php`),
+immunizations (`ImmunizationService` + `library/immunization_helper.php`),
+and documents (`DocumentService` + `library/documents.php` +
+`Document.class.php`); vitals is service-only (`VitalsService`/
+`VitalsCalculatedService`, no legacy vitals file found). Two domains are
+**legacy-only, with no typed service at all**: billing/claims (only
+`library/billing_sftp_service.php` and ad hoc `library/ajax/*` scripts) and
+ACL/user-permissions (`UserService` exists for user *records*, but ACL
+itself — group membership, permission grants — has no `src/Services/`
+equivalent; it's `library/auth.inc.php`, `library/ajax/adminacl_ajax.php`,
+and the `gacl/` phpGACL library directly). This matters for any new
+capability: billing and ACL are exactly the two areas where a new feature
+would otherwise expect a clean, injectable service to build on and won't
+find one — and ACL being legacy-only is architecturally consistent with
+why SEC-27..29/SEC-34 (missing/inconsistent ACL checks) keep recurring:
+there's no single typed chokepoint to add a check to, only scattered
+call sites.
+
+**3.5 Event system and extension points.** `src/Events/` holds ~22
+domain subdirectories (Appointments, CDA, Codes, Command, Core, Encounter,
+Facility, Globals, Messaging, Patient, PatientDemographics,
+PatientDocuments, PatientFinder, PatientPortal, PatientReport,
+PatientSelect, RestApiExtend, Services, User, UserInterface, plus two
+currently-empty `Billing`/`Main` directories) wired through a standard
+Symfony `EventDispatcher` registered as a service in `src/Core/Kernel.php`
+(via `RegisterListenersPass`); modules subscribe with ordinary
+`EventSubscriberInterface`/`addListener` calls against that
+container-provided dispatcher — no bespoke pub/sub mechanism. What this
+lets you add: hook into patient create/update (`PatientCreatedEvent`,
+`BeforePatientUpdatedEvent`, etc. — 7 patient lifecycle events, the richest
+family), render extra UI on encounter/demographics pages
+(`EncounterButtonEvent`, `EncounterMenuEvent`, `RenderPharmacySectionEvent`),
+extend REST API surface declaratively (`RestApiCreateEvent`,
+`RestApiScopeEvent`, `RestApiResourceServiceEvent`,
+`RestApiSecurityCheckEvent` — a genuine sanctioned REST extension point),
+react to CDA import/export (`CDAPreParseEvent`/`CDAPostParseEvent`), and
+hook module load (`ModuleLoadEvents`). **Confirmed gap:** no
+encounter-closed/signed lifecycle event exists — grepped
+`src/Events/Encounter/` and `EncounterService.php` for "signed"/"closed"/
+"EncounterSign", zero hits; the only encounter events are UI-rendering
+hooks (menu, button, form-list, form-filter), not domain lifecycle events.
+Any new capability that needs to react to "this encounter was just
+finalized" has nothing to subscribe to and would have to poll or patch in
+its own event.
+
+Module loading is genuinely two parallel systems, not one: (1) Laminas/Zend
+MVC modules under `interface/modules/zend_modules/module/*/Module.php`
+(Documents, Carecoordination, PrescriptionTemplates, Patientvalidation,
+PatientFlowBoard, etc.), routed via `src/Core/Routing/ZendModuleApplication.php`/
+`ZendModuleRouteLoader.php`; and (2) plain-PHP "custom_modules" drop-ins
+(`oe-module-dorn`, `oe-module-weno`, `oe-module-faxsms`, etc.) loaded via
+`src/Core/ModulesClassLoader.php`/`AbstractModuleActionListener.php`, with
+no MVC routing of their own. A new integration has to pick one of these
+two loader conventions; there's no indication either is being deprecated
+in favor of the other.
+
+**3.6 Templating and UI stack.** 199 `.twig` files under `templates/`
+versus 1,048 `.php` files under `interface/` — Twig has real but partial
+penetration; the majority of the UI is still inline-PHP legacy pages.
+Smarty is confirmed effectively dead code: `grep 'new Smarty'` repo-wide
+finds exactly 2 hits, both old admin scripts
+(`interface/main/calendar/modules/PostCalendar/pnadmin.php`,
+`gacl/admin/gacl_admin.inc.php`) outside the mainstream request path — the
+`CLAUDE.md` tech-stack line listing "Smarty 4.5 (legacy)" is accurate as a
+dependency but overstates its actual runtime footprint. New UI convention:
+newer feature work pairs a Controller class with a `.html.twig` template —
+e.g. `src/Controllers/Interface/Forms/Observation/ObservationController.php`
+calls `$this->twig->render($this->getTemplatePath('observation_edit.html.twig'), ...)`
+— confirming that new UI should go into a `src/Controllers/` class +
+`templates/**/*.html.twig` pair, not a new inline-PHP page or a Smarty
+template.
+
+**3.9 Testing and quality gates.** Test counts: `tests/Tests/Isolated` 261
+files (by far the largest suite — no-DB, fast), `Services` 56, `E2e` 36,
+`Unit` 32, `Api` 19. PHPStan runs at level 10 (`phpstan.neon.dist`), but
+the baseline is not one file — it's 170 per-error-type files under
+`.phpstan/baseline/` (e.g. `argument.byRef.php`, `arguments.count.php`)
+totaling **375,460 lines** of suppressed errors combined, with a CI
+workflow (`.github/workflows/phpstan-baseline-diff.yml`) that diffs
+baseline counts against `master` on every PR rather than requiring the
+baseline to shrink. That is a large volume of known-suppressed type errors
+across the codebase — level 10 is real for *new* code but the historical
+baseline means most of the codebase's actual type-safety is unverified,
+not verified-and-clean. 18 custom PHPStan rules in `tests/PHPStan/Rules/`
+enforce project-specific bans: forbidden `global`/`eval`/`exit-in-catch`/
+`shell_exec`/`curl_*`/direct `$_SESSION` writes/direct superglobal access/
+static-method calls/specific class instantiations, plus a `Sql/` subfolder
+(`SqlReservedWordRule`, `SchemaColumnRegistry`) checking SQL identifier
+safety — a meaningfully strict, hand-built guardrail set beyond stock
+PHPStan. `.pre-commit-config.yaml` runs standard hygiene hooks
+(trailing-whitespace, yaml/json checks, large-file check, merge-conflict
+check) plus codespell, actionlint, hadolint, and — as local hooks —
+php-syntax-check, composer-validate/normalize, phpcbf/phpcs, phpstan,
+rector, composer-require-checker, and conventional-commits validation.
+Not covered by any of this: most of `interface/` (1,048 PHP files, no
+PHPStan-level enforcement of runtime correctness beyond static type
+checks, and E2E coverage at 36 files is thin relative to that surface).
+
 ### 3.3 Not covered
+
+- **`graphify-out/`'s architectural analysis is `src/`-only.** No graph
+  coverage of `interface/`, `library/`, `portal/`, `apis/`, `controllers/`,
+  or the module trees — those were mapped by direct file reads, which is
+  slower and less exhaustive than a graph traversal would be. A follow-up
+  `graphify update` scoped to the whole repo (not just `src/`) would
+  sharpen the layer map and let 3.1/3.2 be re-verified against a real
+  dependency graph instead of spot-checked file reads.
+- **Full `interface/modules/custom_modules/` and `zend_modules/` inventory.**
+  Named a representative few of each (Documents, Carecoordination,
+  PrescriptionTemplates, PatientFlowBoard; oe-module-dorn, oe-module-weno,
+  oe-module-faxsms) rather than cataloguing all ~11 modules individually.
+- **Doctrine DBAL's actual usage surface.** The performance audit (§2.2.4)
+  found no Doctrine DBAL usage in the specific files it reviewed
+  (`QueryUtils`, `BaseService`); `CLAUDE.md` lists Doctrine DBAL as the DB
+  layer for new schema migrations specifically, which is a narrower claim
+  this audit didn't independently verify (migration tooling under
+  `src/` migrations directories wasn't inspected).
+- **gacl/ internals.** Referenced as the ACL backing store (§1.3.1,
+  §3.4) but its internal schema/API wasn't mapped beyond "phpGACL library,
+  not native OpenEMR tables" — consistent with it being marked unscanned
+  in the security audit (§1.6.1) too.
+- **CDA/CCDA service internals (`ccdaservice/`)** — named as an
+  integration point (CDA pre/post-parse events) but the standalone
+  `ccdaservice/` directory itself was not opened, matching the security
+  audit's same scope exclusion.
+- **Live dependency-injection container wiring details** (exact
+  `ServiceManagerConfig`/`RegisterListenersPass` configuration) — confirmed
+  present and used, not read line-by-line.
 
 ---
 
 ## 4. Data quality audit
 
 ### 4.1 Scope & method
-*(pending — tasks 4.x; all queries against the seeded Synthea dataset)*
+
+Done 2026-09-15, run directly against the seeded `development-easy` DB (30
+Synthea-generated patients; see §0.2 and §2.1.1 for row counts). All
+queries below are recorded so they can be re-run on a production dataset.
+As the task list itself flags, **this seed is Synthea-generated, synthetic
+data and understates real-world messiness** — it is well-coded (SNOMED/
+RxNorm/LOINC nearly universal), has no duplicate patients, and no
+orphaned foreign keys on `pid`. Every finding here is marked schema-level
+(a structural gap that would recur on any dataset) or dataset-level (an
+artifact of this specific Synthea import) in its description.
 
 ### 4.2 Findings
 
+**4.1.1 Demographics.** `patient_data` (30 rows): `DOB` and `sex` — both
+marked `uor=2` (required) in `layout_options` — are 100% populated,
+consistent with the layout requirement. Of the *optional* (`uor=1`)
+fields: `ss`, `phone_home`, `email` are null for 28/30 (93%) — DQ-06;
+`street`, `postal_code`, `language`, `race`, `ethnicity` are null for only
+1/30 (one incomplete record); `pubpid` is 100% populated.
+
+**4.1.2 Encounters.** `form_encounter` (1,517 rows): `reason`,
+`facility_id`, `provider_id`, `pc_catid` are all 100% populated at the
+column level, but `facility_id` populated ≠ facility exists — see DQ-01.
+Only 3 rows have an empty `encounter_type_code`. Zero encounters have no
+`forms` row attached (0 orphans). "Signed note" tracking is via
+`last_level_closed`; all 1,517 rows are `0` (never closed/signed) — DQ-08,
+expected for a bulk import but means this check has no discriminating
+power on this seed.
+
+**4.1.3 Clinical lists.** `lists` (1,157 rows: 872 medical_problem, 238
+medication, 47 allergy): missing `diagnosis` code is rare (1, 1, 5 rows
+respectively). Missing `begdate`: 3, 5, 1 rows. The real finding is
+DQ-03: 620/872 (71%) active medical problems and 166/238 (70%) active
+medications carry an `enddate` in the past while still flagged
+`activity=1` — internally contradictory state, and (per §4.4.1) 520/872
+(60%) active problems began more than 5 years ago with no apparent
+update since. Free-text-without-code (`title` set, `diagnosis` empty) is
+rare (1, 1, 5 rows) — not a real gap at this volume.
+
+**4.1.4 Medications, immunizations, vitals, labs.** `prescriptions` (234
+rows): RxNorm code (`rxnorm_drugcode`) missing on only 1 row (near-100%
+coverage); `dosage` fully populated; **`route` missing on 233/234 (99.6%)**
+— DQ-05. `immunizations` (395 rows): CVX code 100% populated, no gap.
+`form_vitals` (30 rows, one per patient — see §2.1.1's note that most
+encounters carry no vitals at all): no rows are all-null across the core
+measurements. `procedure_result` (5,605 rows): `units` 100% populated,
+result codes are genuine LOINC (spot-checked: `2339-0`, `718-7`,
+`6299-2`, etc.); **`abnormal` flag missing on 5,605/5,605 (100%)** — DQ-04,
+a clinically meaningful gap (no result in the entire dataset is flagged
+in/out of range via this column).
+
+**4.2.1 Date formats.** Clean: 0 rows with `DOB='0000-00-00'` or null, 0
+future DOBs, 0 future-dated encounters, 0 encounters where `DOB > date`.
+`DOB` is a native `date` column (not varchar) — no format-storage issue at
+the schema level.
+
+**4.2.2 Code systems.** `lists.diagnosis` prefix mix (872 medical_problem
++ allergy rows with a code): 869 `SNOMED-CT:`, 2 `ICD9:`, 7 none — the 2
+ICD9 rows are a minor inconsistency against an otherwise all-SNOMED
+problem list (not logged as a numbered finding given the sample size, but
+worth a spot-check on a production dataset where ICD9 stragglers post-2015
+transition could be more common). The 279 "unprefixed" `medication`-type
+rows are **not** a coding gap — by convention `lists.diagnosis` holds a
+bare RxNorm code for medication-type rows (no prefix expected there);
+confirmed by sampling (e.g. `665078` = Loratadine 5mg). RxNorm coverage on
+`prescriptions`: 233/234 (99.6%). LOINC coverage on `procedure_result`:
+effectively 100% by sampling (all spot-checked codes are valid LOINC
+numeric-dash-check-digit format).
+
+**4.2.3 Free-text vs coded.** No systemic dual-storage problem found in
+this seed (see 4.1.3 — free-text-without-code is rare). Not exhaustively
+checked: `sex` casing/variants and `status` values outside `list_options`
+were checked only for `patient_data.status` (see 4.2.4 — 3 bad values
+found), not swept across every coded field in the schema.
+
+**4.2.4 Reference integrity.** **DQ-01 (High):** 1,514/1,517 (99.8%) of
+`form_encounter` rows reference `facility_id=11`, which does not exist in
+the `facility` table (the only row present is `id=3`, "Great Clinic") —
+an import-time break: nearly the entire encounter set is orphaned from
+its facility, so any facility-scoped report, filter, or join silently
+drops almost all encounters (returns 0 or excludes them, depending on
+join type) rather than erroring. `provider_id` referential integrity is
+clean (0 orphans against `users`). 3 `patient_data.status` values fall
+outside the `patient_status` `list_options` set — minor.
+
+**4.2.5 Units and numeric formats.** **DQ-02 (Medium):** `form_vitals`
+has no unit column for `height`/`weight` (`decimal(12,6)`, unitless at
+the schema level); the seeded data mixes imperial-range values (`70`,
+`60`, `40` — inches/lbs) and metric-range values (`154.5`, `166.1`,
+`186.0` — cm) in the same column with nothing per-row to disambiguate.
+Interpretation depends entirely on the `units_of_measurement` global
+setting at *read* time, not on anything stored with the row — so a
+change to that setting, or data arriving via a different import path (as
+happened here), silently reinterprets historical values at the wrong
+scale. This is a schema-level risk (would recur on any dataset combining
+sources), not just a Synthea-import artifact. Phone format has a minor
+inconsistency (one record `333-444-2222`, dashes; sample too small — 2
+non-empty values — to generalize).
+
+**4.3.1 Duplicate patients.** None found: 0 duplicate `fname+lname+DOB`
+groups, 0 duplicate non-empty `ss` values. Expected for a clean synthetic
+import; `interface/patient_file/merge_patients.php` exists as the
+built-in merge tool if duplicates do appear in production.
+
+**4.3.2 Duplicate clinical entries.** Not exhaustively swept given time
+budget; spot-checked via the `activity`/`enddate` anomaly in 4.1.3 instead
+of a dedicated same-date-same-code duplicate query. Flagged under Not
+covered.
+
+**4.3.3 Orphaned rows.** Clean: 0 orphaned `lists`, `prescriptions`, or
+`form_encounter` rows against `patient_data.pid`. Also checked the
+`forms` index table against its four represented form types
+(`newpatient`→`form_encounter`, `vitals`→`form_vitals`,
+`procedure_order`→`procedure_order`, `soap`→`form_soap`): 0 rows in any
+of the four point to a missing backing row.
+
+**4.4.1 Staleness.** DQ-03 (see 4.1.3) is the headline staleness finding:
+majority of active problems/medications are stale-but-marked-active. 520
+of 872 (60%) active medical problems began more than 5 years ago with no
+apparent update. 3 of 30 patients have no encounter in the last 2 years
+while presumably still active (not cross-checked against `patient_data`
+active/inactive status here — flagged under Not covered). Appointments:
+all 11 seeded rows in `openemr_postcalendar_events` are in the past
+(`pc_eventDate < CURDATE()`) and still carry `pc_apptstatus='-'`
+(unset/pending) — never marked complete, cancelled, or no-show. Sample is
+too small (11 rows — appointments aren't part of the Synthea patient
+import) to generalize a percentage from, but it confirms the pattern
+exists and that nothing in the schema auto-expires a past-due appointment
+status.
+
+**4.4.2 Deleted vs soft-deleted.** Inconsistent pattern across tables:
+`documents` and `forms` use an explicit `deleted` flag (confirmed
+correctly filtered — `DocumentService.php`/`library/documents.php` both
+query `WHERE deleted = 0`); `lists` uses `activity` (0/1) for
+active/inactive, which is a clinical-status flag, not strictly a
+soft-delete marker; `form_encounter`, `prescriptions`,
+`patient_data` have **neither** — deletion of those rows, if it happens,
+is presumably a hard `DELETE` with no tombstone. `patient_data` has no
+`deceased_date`-style hard-delete marker either (0 rows with a deceased
+date set in this seed, so patient-death lifecycle wasn't observable here).
+
+**4.4.3 Timestamps.** DQ-07: `form_encounter` and `procedure_result` have
+**no** `created`/`updated`/`modifydate` column at all — freshness is
+answerable only via the clinical `date` field (when the encounter/result
+occurred), not when the record was entered or last modified in the
+system. By contrast `patient_data` (`created_by`, `updated_by`,
+`last_updated`), `prescriptions` (`date_modified`, `created_by`,
+`updated_by`), `immunizations` (`created_by`, `updated_by`), and `lists`
+(`modifydate`) all do track this. The gap on `form_encounter` in
+particular is notable given how central that table is.
+
 ### 4.3 Not covered
+
+- **4.3.2 Duplicate clinical entries** — not run as a dedicated query
+  (same problem/med/allergy per patient, same-date-same-CVX immunizations,
+  same-date-same-provider encounters). The `activity`/`enddate` anomaly in
+  DQ-03 was found instead while checking staleness; a real duplicate sweep
+  would need separate `GROUP BY pid, diagnosis, begdate HAVING COUNT(*)>1`
+  -style queries per table.
+- **Full free-text-vs-coded sweep (4.2.3)** — only checked
+  `patient_data.status` against `list_options`; `sex` casing/variants and
+  other coded fields across the schema were not swept individually.
+- **Patient-active-status cross-check for 4.4.1** — the "3 patients with
+  no encounter in 2 years" count wasn't cross-referenced against whether
+  those patients are still marked active in `patient_data`, which is what
+  would make it an actionable staleness finding rather than just a count.
+- **Production-scale volume.** As with the performance audit, this is a
+  30-patient seed; percentages here (e.g. DQ-03's 70%, DQ-06's 93%) are
+  informative about *pattern* but the specific percentages should be
+  re-measured against a production dataset before being treated as
+  representative.
+- **De-identification/anonymization tooling** — not evaluated here;
+  covered instead under the compliance audit (§5.2.2).
 
 ---
 
 ## 5. Compliance & regulatory audit
 
 ### 5.1 Scope & method
-*(pending — tasks 5.x)*
+
+Done 2026-09-15. This is a HIPAA-focused pass, distinct from the security
+audit (§1) — it asks not "can this be exploited" but "does this meet the
+Security Rule's specific safeguards and the surrounding regulatory
+expectations." Heavy overlap with §1 is expected and cited rather than
+re-derived: audit logging (§1.5.3's SEC-47/48), encryption (§1.5.1/1.5.2's
+SEC-43..46), third-party egress (§1.5.4), and break-glass (§1.3.4's
+SEC-33) all feed directly into this section. New investigation here
+covered: audit-log depth (event categories, tamper evidence, retention),
+patient deletion/backup mechanics, breach-detection capability, ACL role
+granularity and `sensitivity` enforcement, patient-rights tooling
+(amendments, accounting of disclosures), and the LLM/BAA compliance
+framing requested by task 5.5.2 — the latter is a provider-agnostic
+regulatory write-up, not a code finding. Method: direct DB queries against
+`log`/`log_comment_encrypt`, direct review of
+`interface/patient_file/deleter.php` and `interface/main/backup.php`, a
+delegated code review for audit-logging internals (`EventAuditLogger`,
+checksum/tamper-evidence, `interface/reports/audit_log.php`) and access-
+control granularity (`gacl_groups` seed, `sensitivity` enforcement,
+patient-rights tooling), plus a read of `AI_INTEGRATION_PLAN.md` for the
+6.5 cross-check.
 
 ### 5.2 Findings
 
+**5.1.1 What is logged.** `src/Common/Logging/EventAuditLogger.php`
+categorizes activity via a `LOG_TABLES` map (lines 107-174) covering
+patient-record tables (billing, forms, `form_encounter`, `patient_data`,
+`pnotes`, `lists`, immunizations, etc.), orders/lab-orders/lab-results,
+scheduling, and security-administration. **PHI-*view* logging is
+implemented**, not just writes — but it's bolted onto the SQL layer, not a
+semantic event: `auditSQLEvent()` (lines 405-525) inspects every SQL
+statement and, if it's a `SELECT` against a `LOG_TABLES` table with the
+relevant `audit_events_*` global on, logs it as `<category>-select`. A
+single page view can therefore generate many raw per-query log rows
+rather than one coherent "record accessed" entry, and any table not in
+`LOG_TABLES` is silently dropped (`if ($event=="other") return;`, line
+501). Defaults (`library/globals.inc.php:2778-2860`): `enable_auditlog`,
+`audit_events_patient-record`, `-scheduling`, `-order`, `-lab-results`,
+`-security-administration`, `-other`, `-query`, `-http-request`, and
+`gbl_force_log_breakglass` are all **on by default** — a genuinely
+reasonable default posture. **COMP-06:** the one exception is
+`audit_events_lab-order`, which the code reads to gate lab-order logging
+but which has no corresponding `globals.inc.php` entry or admin toggle —
+it silently defaults to off with no way to enable it short of a direct DB
+edit, so lab *order* activity (as opposed to lab *results*) goes
+unaudited by default.
+
+**5.1.2 What is not logged.** Structurally, anything querying a table
+outside `LOG_TABLES`, or any request whose SQL doesn't match the
+interceptor's recognized shape, is invisible to this system by design
+(not a bug, but a real coverage boundary worth knowing). Document
+downloads and report exports were not independently re-verified in this
+pass beyond what SEC-40/SEC-42 already found (export endpoints with ACL
+or rate-limit gaps) — see Not covered.
+
+**5.1.3 Tamper evidence and integrity.** **COMP-07 (High):** a SHA3-512
+checksum is computed and stored per log row
+(`src/Common/Logging/Audit/LogTablesSink.php:63,83,90-91`, written to
+`log_comment_encrypt.checksum`) — but no code path anywhere in the
+repository recomputes or compares it (grepped for `log_validator`,
+`validateChecksum`, and any verification logic — zero hits). It is
+write-only, inert data: a checksum exists in the schema, but nothing ever
+checks it, so it provides no actual tamper detection today. `log`,
+`log_comment_encrypt`, and `api_log` are plain InnoDB tables with no
+triggers, no append-only configuration, and no restricted grants apparent
+in the schema — a compromised DB credential, a write-capable SQL
+injection, or a DBA could alter or delete audit rows with nothing to flag
+it. The legacy `log.checksum` column (`sql/database.sql:7769`) is
+confirmed dead — a code comment notes it hasn't been populated since
+version 6.0.
+
+**5.1.4 Log retention and PHI in logs.** **COMP-08 (High):** `log.comments`
+does store real PHI, not just event metadata — `auditSQLEvent()`
+(`EventAuditLogger.php:446-452`) builds the comment from the literal SQL
+statement text plus its bound parameter values, and `recordLogItem()`
+(lines 642-695) base64-encodes that into the `log` table. Patient names,
+DOBs, and diagnosis text that appear as query parameters therefore end up
+sitting unencrypted (base64 is encoding, not encryption) in the audit
+log. `log_comment_encrypt.encrypt` — the column that should indicate
+whether that comment is encrypted — is hardcoded to `'No'`
+(`LogTablesSink.php:89`); the encryption capability exists in the schema
+but is never actually turned on. **COMP-09:** no rotation, retention, or
+purge job exists for `log`, `log_comment_encrypt`, or `api_log` (checked
+`src/Services/Background/*` and related background-task code) — these
+PHI-bearing tables grow forever.
+
+**5.1.5 Access review tooling.** The actual "who accessed patient X"
+report is `interface/logview/logview.php` (there is no
+`interface/reports/audit_log.php` — a separate
+`audit_log_tamper_report.php` exists but is a tamper-detection report,
+not an access-history view). Gated by `AclMain::aclCheckCore('admin','users')`
+(consistent with SEC-48's known coarse gating) and backed by
+`EventAuditLogger::getEvents()`, which does a real join across
+`log_comment_encrypt`/`log`/`api_log` and **can filter by patient AND
+date range simultaneously** — the core capability works. **COMP-10
+(Medium):** two usability/reliability gaps undercut it: the default date
+range is "today" only, so an investigator must already know roughly when
+to look; and the query hard-caps at `LIMIT 5000` with no indication when
+results are truncated — a wide-date-range query on a busy system can
+silently drop rows exactly when a breach investigation needs
+completeness most.
+
+**5.2.1 Retention policy support.** No retention/purge configuration
+exists anywhere in `globals` (checked: no `gl_name` matching
+`%retention%`/`%purge%`/`%expir%` other than `password_expiration_days`,
+unrelated). This cuts both ways for compliance: the system will not
+silently violate the "don't purge before the state-law retention window
+closes" expectation (task 5.2.1's stated concern) because it has no
+auto-purge mechanism at all — but an operator also has no built-in way to
+*configure or prove* a retention policy is being honored; retention is
+entirely a manual/procedural matter outside the application.
+
+**5.2.2 Deletion and de-identification.** `interface/patient_file/deleter.php`
+performs a genuine hard `DELETE FROM patient_data` cascading across ~15
+related tables (`prescriptions`, `claims`, `payments`,
+`openemr_postcalendar_events`, `immunizations`, `issue_encounter`,
+`lists`, `transactions`, `employer_data`, `history_data`,
+`insurance_data`, `patient_history`, `forms`, `form_encounter`) —
+`deleter.php:225-252`. It correctly does **not** cascade to the audit log
+(`log`/`log_comment_encrypt`), which is the right behavior — an audit
+trail should survive the record it describes. It does **not** touch
+on-disk documents at all: `delete_document()` (`deleter.php:185-189`)
+only sets `documents.deleted = 1`; there is no `unlink()` call anywhere in
+this file, so the underlying file on `sites/<site>/documents/` (or
+CouchDB, per PERF-11) is never actually removed by any code path found —
+even an intentional, authorized patient-data deletion leaves document
+files stranded on disk. No de-identification or anonymization tooling
+exists for clinical data anywhere in the codebase (confirmed by grep for
+"anonymiz"/"de-identif" — the only hits are `src/Telemetry/GeoTelemetry.php`,
+unrelated to PHI records).
+
+**5.2.3 Backups.** `interface/main/backup.php` produces an on-demand
+tarball (DB dump + web directory, which includes patient documents and
+config) downloaded through the browser — there is no scheduling, no
+retention policy, and no automated rotation; per SEC-46, the archive is
+compressed but not encrypted. The tool's own header comment is explicit
+about the restore-testing gap: *"DO NOT PRESUME THAT IT WORKS FOR YOU
+until you have successfully tested a restore!"* — i.e., the maintainers
+themselves flag that backup validity is unverified without operator
+action, which is a real (self-acknowledged) compliance-readiness gap for
+any operator who takes backups but has never test-restored one.
+
+**5.3.1 Detection capability.** None. Grepped for anomaly/unusual-access
+detection (`anomaly`, "unusual access", bulk-download alerting) across
+`src/`/`library/` — zero hits. There is no mechanism to flag bulk record
+views, off-hours access, or repeated break-glass use (SEC-33 already
+noted break-glass itself has no rate limiting or dedicated review UI).
+Detection is entirely log-only: an incident is only visible if someone
+manually queries the `log` table after the fact.
+
+**5.3.2 Scope determination.** Partially answerable. `log.patient_id` is
+indexed (confirmed in §2.1.2), so "what did user X access" and "who
+accessed patient Y" are both efficient point queries today. But
+**PERF-02** already found `log.date` has no index — a real incident
+investigation's actual question ("which patients were accessed by whom
+*during this time window*") requires a date-range scan that will degrade
+as the log grows, precisely the scenario a breach investigation can't
+afford to be slow for. Test query:
+`SELECT patient_id, user, event, date FROM log WHERE date BETWEEN ? AND ? ORDER BY date`
+— confirmed via `EXPLAIN` in §2 to be `type=ALL` (full scan) at any
+volume. The `log` table's event-category coverage (see 5.1.1) also
+directly bounds what scope determination can answer: if a category is
+off by default or a code path bypasses the logger entirely, that access
+is invisible to this query regardless of index quality.
+
+**5.3.3 Notification workflow.** None found. No incident-tracking or
+patient-notification support anywhere in the codebase (grepped
+"breach"/"incident" — all hits are unrelated FHIR clinical resource
+types, e.g. `FHIRBiologicallyDerivedProduct`). Exactly as the task
+predicted: an operator would have to run the entire §164.400-414
+notification process manually and externally to the system — determine
+scope via the log queries above, draft notifications, track the 60-day
+clock, and file with HHS, none of which OpenEMR assists with.
+
+**5.4.1 Role granularity.** Better than SEC-48 alone might suggest: the
+ACL *model* itself is reasonably fine-grained, not a single coarse
+"patients" blob. Default ARO groups (`library/classes/Installer.class.php`
+~lines 1094-1106): `admin`, `clin` (Clinicians), `doc` (Physicians),
+`front` (Front Office), `back` (Accounting), `breakglass` (Emergency
+Login). ACO sections under `patients` are independently grantable:
+`appt`, `demo`, `med` (Medical/History), `trans`, `docs`/`docs_rm`,
+`notes`, `sign` (lab sign-off), `reminder`, `alert`, `disclosure`, `rx`,
+`amendment`, `lab`. Confirmed concretely: the default Front Office group
+is granted only `alert` (view) plus `appt`+`demo` (write) —
+**not** `med`, `notes`, `docs`, `rx`, `lab`, or `amendment`
+(`Installer.class.php` ~1293-1349). So "can a front-desk role see
+clinical notes" is correctly **no** in the default seed — minimum
+necessary is achievable at the model level; SEC-48's finding is
+specifically that the *audit-log viewer* doesn't use this same
+granularity, not that the underlying ACL model can't support it.
+
+**5.4.2 Sensitivity flags.** **COMP-11 (Medium):** `form_encounter.sensitivity`
+is enforced via `AclMain::aclCheckCore('sensitivities', ...)` throughout
+the legacy UI and service layer (`src/Services/EncounterService.php:449-451`,
+`interface/patient_file/encounter/forms.php`, `interface/patient_file/history/encounters.php`,
+several `interface/forms/*` handlers) — but has **zero** references in
+`src/Services/FHIR/FhirEncounterService.php`. A "private"/"high"
+sensitivity encounter is enforced in the UI a clinician normally uses,
+but not filtered out of FHIR API responses, bulk exports, or any other
+service-layer consumer that doesn't go through those specific legacy
+screens — a real minimum-necessary gap for anything built on the API
+surface (including a future capability layered on `src/Services/`).
+
+**5.4.3 Unique user identification and emergency access.** No technical
+control prevents two staff members from sharing one login — this remains
+policy-only, consistent with (not a new instance of) the security audit's
+finding that there is no concurrent-session limit tied to a username
+(SEC-24). Break-glass logging ties to SEC-33 (§1.3.4): Emergency Login is
+a normal grantable ACL group with `gbl_force_log_breakglass` on by
+default, but no approval workflow, justification field, or dedicated
+review UI.
+
+**5.4.4 Patient rights.** More capability exists here than the task's own
+framing ("likely none" for some of these) assumed — worth stating
+plainly rather than defaulting to "absent": **Record access** — the
+portal supports full-record download via C-CDA generation
+(`ccda_alt_service_enable`) and document download
+(`portal_onsite_document_download`), wired in `portal/home.php:338-393`;
+a separate admin-run "EHI Export" tool also exists
+(`Documentation/EHI_Export/`), consistent with the 21st Century Cures Act
+EHI-export requirement, though that's an admin tool, not self-service.
+**Amendments** — a real patient-requested-correction workflow exists:
+`amendments`/`amendments_history` tables, staff UI
+(`interface/patient_file/summary/add_edit_amendments.php`,
+`list_amendments.php`, `print_amendments.php`), and a portal-facing
+`portal/get_amendments.php`, gated by the `patients.amendment` ACO.
+**Accounting of disclosures** — COMP-12 (Low): also genuinely present,
+not absent, but incomplete by construction: `EventAuditLogger::recordDisclosure()`
+writes to a dedicated `extended_log` table (distinct from the internal
+access log) via a UI at `interface/patient_file/summary/disclosure_full.php`,
+gated by `patients.disclosure` — but nothing automatically populates it
+when data actually leaves via FHIR/REST API, CCDA transmission, or portal
+export. It works as a manual disclosure register a staff member fills
+out, not an automated record of every real PHI transmission — accurate
+only as far as staff diligence extends.
+
+**5.5.1 Existing BAA-requiring integrations.** From §1.5.4: fax
+(RingCentral/EtherFax/SignalWire), SMS (Twilio/Clickatell), email (SMTP),
+X12 clearinghouse (SFTP) are all off-by-default, admin-configured
+third-party PHI egress paths, each requiring its own BAA before
+activation in a real deployment. No Surescripts/e-prescribing integration
+and **no LLM/AI API integration exists anywhere in the shipped codebase**
+today (confirmed by full-repo grep in §1.5.4; `AI_INTEGRATION_PLAN.md` is
+a planning document, not shipped code).
+
+**5.5.2 LLM provider implications.** Sending chart text to an LLM API is
+a disclosure to a business associate under HIPAA and requires, at
+minimum: (a) a signed BAA with the provider before any real PHI is sent;
+(b) contractual zero-data-retention (ZDR) / no-training terms, since
+default API terms at most providers permit retention and/or abuse
+monitoring that a BAA alone doesn't necessarily waive; (c) confirmed data
+residency (which region/jurisdiction processes and at-rest-stores the
+request); (d) minimum-necessary scoping — sending a full chart when a
+narrower extract would do is itself a Security Rule violation regardless
+of BAA status; (e) audit logging of each disclosure (which patient's data
+went to the LLM, when, for what purpose) — distinct from, and currently
+absent alongside, the internal-access logging gaps in 5.1.1; (f) a
+de-identification fallback path (Safe Harbor's 18-identifier removal, or
+formal Expert Determination) for any use case where a BAA isn't
+available or PHI exposure isn't wanted at all. As of this audit, major
+providers offering a BAA on their commercial API include Anthropic,
+OpenAI, Google, and Microsoft Azure OpenAI — typically gated to specific
+enterprise/business tiers or requiring a separate BAA execution process,
+not available on free/consumer tiers; exact terms and available tiers
+should be reconfirmed against the provider's current published BAA policy
+at implementation time rather than assumed from this write-up, since
+these terms change. `AI_INTEGRATION_PLAN.md` (§12, line ~600) already
+names this precondition explicitly — "Business Associate Agreement with
+Anthropic in place" — as a go-live gate with the feature flagged off by
+default absent it, which is the correct posture per (a)-(b) above; see
+task 6.5 for the full cross-check against this audit's findings.
+
+**5.5.3 Local vs hosted inference.** Self-hosted/local model inference
+removes the BAA requirement (no PHI leaves the operator's own
+infrastructure to a third party) but does not remove any compliance
+obligation — it shifts *all* of it onto the operator: the operator's own
+infrastructure must independently satisfy every technical safeguard this
+audit already found gaps in for OpenEMR itself (encryption in transit/at
+rest, access logging, audit tamper-evidence — §1.5, §5.1), now extended
+to cover the model-serving stack too (GPU host hardening, model weight
+storage, inference-request logging). This is a real trade-off, not a free
+win: hosted inference concentrates compliance obligations into one
+BAA-covered relationship; self-hosted inference multiplies the operator's
+own surface area. No recommendation is made here on which to choose —
+this is scoped as a fact for implementers to weigh, per the task.
+
 ### 5.3 Not covered
+
+- **Document downloads and report exports vs the audit logger** (5.1.2) —
+  not independently re-verified beyond what the security audit already
+  found (SEC-40 CCDA/QRDA export ACL gap, SEC-42 patient-list CSV export
+  with no rate limit); whether those specific export code paths actually
+  invoke `EventAuditLogger` or bypass it wasn't traced line-by-line here.
+- **`api_log` table's own audit depth** — confirmed it exists and is
+  joined by `logview.php`, but its population logic (which API/FHIR
+  request types populate it, whether it captures request bodies) wasn't
+  independently traced beyond the schema-level checksum finding (COMP-07).
+- **Production-scale audit-log volume.** As with §2/§4, the seeded log
+  has only 2,268 rows; COMP-10's `LIMIT 5000` truncation risk and PERF-02's
+  full-scan-on-date-range issue are both structural findings that would
+  bite harder — and only become *observable* — at real production log
+  volume.
+- **HL7/lab-order network destination and `ccdaservice/` internals** —
+  out of scope, consistent with the security audit's same exclusion
+  (§1.6.1).
+- **Non-Docker/bare-metal deployment compliance posture** — this audit's
+  encryption-in-transit and file-access findings (§1.5.1, §1.4.5) already
+  flag several Docker-image-specific protections that a non-Docker install
+  would need to replicate manually; not independently re-verified here.
+- **Formal legal review.** Everything in §5.5.2/5.5.3 is a provider-agnostic
+  compliance framing written from general HIPAA Security Rule and Business
+  Associate Agreement principles, not a substitute for actual legal review
+  of any specific provider's current BAA terms at implementation time.
+
+### 5.4 Compliance section wrap-up
+
+Note: the safeguard-mapping/ranking tables that would normally sit here
+(tasks 5.6.1/5.6.2, compliance-only) are below, immediately followed by
+the cross-audit synthesis (§6, tasks 6.1-6.6) that ranks across *all*
+five audits together — read this subsection as the compliance-scoped
+ranking and §6.2 as the final cross-audit ranking that supersedes it for
+the executive summary.
+
+**5.6.1 Mapping to HIPAA Security Rule safeguards.**
+
+| Safeguard category | Finding | Technical control missing, or operator policy required? |
+|---|---|---|
+| Technical — Audit controls (§164.312(b)) | COMP-06 (lab-order logging silently off), COMP-07 (checksum never verified), COMP-08 (unencrypted PHI in log comments), COMP-10 (5000-row cap / today-only default) | **Technical control missing** — these need code changes (define the missing global, add checksum verification, encrypt/redact log comments, raise the result cap or make truncation visible) |
+| Technical — Audit controls (§164.312(b)) | COMP-09 (no log retention/rotation job) | **Technical control missing**, but the retention *length* itself is an operator/legal policy decision (state law + HIPAA's 6-year floor) that the missing tooling should enforce, not decide |
+| Technical — Access control (§164.312(a)) | COMP-11 (sensitivity not enforced in FHIR API), SEC-27..30/34 (ACL gaps from the security audit) | **Technical control missing** — code-level fix, not a policy gap; the ACL *model* (§5.4.1) is fine-grained enough to express the right policy once the enforcement gap is closed |
+| Technical — Access control (§164.312(a)) | SEC-24 (no concurrent-session limit), §5.4.3 unique-user-ID | **Operator policy required** — "don't share logins" is enforceable today only through training/policy, not the software; a technical session-limit control would need to be built to change that |
+| Technical — Integrity (§164.312(c)) | COMP-07 (audit log tamper-evidence non-functional) | **Technical control missing** |
+| Technical — Transmission security (§164.312(e)) | SEC-43/44/51 (HTTP redirect disabled by default, plaintext LDAP, unencrypted SMTP default) — from §1.5.1/§1.5.4 | **Technical control missing** (defaults), but activating TLS everywhere ultimately also needs an **operator** to provision/require certificates for LDAP and SMTP relays they don't control |
+| Administrative — Sanction policy / workforce access (§164.308(a)) | §5.4.4 (amendments/disclosure features exist but depend on staff diligence), §5.3 (no breach detection/notification tooling) | **Operator policy required** — the software provides the mechanism (disclosure register, amendment workflow) but cannot enforce staff follow-through, and breach response itself is an administrative process no EHR can fully automate |
+| Physical (§164.310) | Not assessed — out of scope for a code audit; DB volume encryption (SEC-45) and backup handling (COMP-02) are the closest proxies this audit can speak to | **Operator/infrastructure policy required** |
+
+**5.6.2 Ranking.** By impact (reachability × how directly it undermines a
+specific Security Rule safeguard, not raw count): **COMP-07** and
+**COMP-08** are the two most serious — together they mean the audit log
+HIPAA explicitly requires (§164.312(b)) both contains unprotected PHI and
+provides no real tamper evidence, undermining its value as evidence in
+exactly the scenario (a breach investigation) it exists for. **COMP-04**
+(unindexed breach-scope query) and **COMP-10** (5000-row cap, today-only
+default) compound that by making the log slow and easy to under-query
+even when its content is trustworthy. **COMP-11** (sensitivity not
+enforced in the FHIR API) and **COMP-06** (lab-order logging silently
+off) are next — both are narrow, concrete, code-level fixes with clear
+minimum-necessary/audit-completeness impact. **COMP-01** (documents never
+actually deleted from disk) and **COMP-12** (disclosure accounting is
+manual-only) matter for patient-rights and deletion-request scenarios
+specifically. **COMP-02/COMP-03/COMP-05/COMP-09** are lower-urgency
+process/tooling gaps (backup restore-testing, breach detection, retention
+tooling, log rotation) that are real but conventional EHR operational
+gaps rather than active mishandling of PHI already in the system.
+
+---
+
+## 6. Synthesis and final deliverable
+
+### 6.1 Completeness confirmation
+
+Every section (§1-§5) has Scope & method, Findings, and Not covered
+populated (verified by heading structure, not just presence — see the
+task-list cross-references embedded throughout). 87 numbered findings in
+the register: 52 SEC, 11 PERF, 4 ARCH, 8 DQ, 12 COMP (10 High / 37 Medium
+/ 25 Low / 15 Info).
+
+### 6.2 Cross-audit ranking
+
+Ranked by impact = severity × reachability × breadth (a narrow High
+that needs an unusual precondition ranks below a Medium that recurs
+everywhere), not by severity label alone:
+
+1. **SEC-11** (High) — unvalidated query-parameter names become SQL
+   column names in the REST search layer; reachable by an authenticated
+   **portal patient** (the lowest-privilege account type) for an
+   arbitrary-table read. Highest reachability × impact combination found
+   in the entire audit.
+2. **The "gate the menu, not the handler" pattern** (SEC-03..06, SEC-08,
+   SEC-13..16, SEC-27..30 — 14 findings, one root cause) — the dominant
+   *structural* security theme: endpoints rely on the UI menu hiding a
+   link instead of calling `AclMain::aclCheckCore()` themselves, so direct
+   URL access bypasses authorization entirely. Individually mostly
+   Medium/Low; as a pattern it's the single highest-breadth issue in the
+   codebase, and ARCH-01 (billing/ACL have no typed service layer to
+   centralize the fix in) explains why it keeps recurring.
+3. **SEC-34** (High) — missing superuser-inclusion check lets any
+   `admin/acl`-privileged non-superuser grant themselves full superuser
+   access; the sibling code path already has this check, so it's a narrow,
+   fixable gap with a severe ceiling (total privilege escalation).
+4. **COMP-07 + COMP-08** (High) — the audit log itself contains
+   unencrypted PHI (query parameter values) and has a checksum that is
+   written but never verified — the one control HIPAA §164.312(b)
+   specifically requires is both a PHI-exposure surface and non-functional
+   as tamper evidence. This undermines every other finding's forensic
+   backstop, not just these two items.
+5. **SEC-21** (High) — no session ID regeneration on login (session
+   fixation) — affects every staff and portal login, not a narrow path.
+6. **SEC-47** (High) — `email_queue`/`notification_log` store full PHI
+   message bodies plaintext, indefinitely, entirely outside the per-patient
+   ACL model that governs every other PHI surface in the system.
+7. **SEC-12** (High) — string-interpolated SQL in a reports page (full DB
+   read for any acct/reporting-privileged user).
+8. **SEC-17** (High) — 4 High-severity dependency CVEs confirmed
+   reachable (Guzzle host-check bypass; phpspreadsheet DoS/SSRF via
+   uploads) — supply-chain exposure independent of any first-party code
+   fix.
+9. **DQ-01** (High, dataset-level) — 99.8% of encounters reference a
+   nonexistent facility; flagged this high because any new capability
+   built on "assemble a patient's chart" (the exact shape of
+   `AI_INTEGRATION_PLAN.md`) will silently get an empty/wrong facility for
+   nearly every encounter unless it's aware of this.
+10. **The "no operational headroom" constraint cluster** (PERF-01 no
+    config caching, §2.4.1 no cron/job queue, PERF-04/05 N+1 patterns,
+    ARCH-02 no encounter-lifecycle event) — not a single finding but the
+    combined answer to "what breaks first if load increases": nothing in
+    this codebase currently absorbs added request volume, and the one
+    extension point a new async feature would need (an "encounter
+    finalized" event) doesn't exist.
+
+### 6.3 Summary
+
+See `AUDIT.md` for the published ~500-word executive summary drawn from
+this ranking (word count verified there per task 6.3's requirement).
+
+### 6.4 AUDIT.md assembly
+
+`AUDIT.md` = the summary (§6.3) followed by the complete contents of this
+file (`audit-long.md`), per the task gate. See `AUDIT.md` itself.
+
+### 6.5 Review gate
+
+Cross-check against `AI_INTEGRATION_PLAN.md` §2 "Repository facts": its
+claims were spot-checked against this audit's independent findings and
+found **consistent, not contradictory** — worth recording as a positive
+cross-check rather than a discrepancy:
+
+- Its chart-size measurement (pid 28: 138 encounters, 1,162 lab results)
+  matches this audit's independently-measured §2.1.4 numbers exactly (601
+  total rows across encounters/lists/rx/imm/vitals/labs for the same
+  patient).
+- Its claim "no `encounter closed` event exists" matches ARCH-02 exactly
+  (independently re-derived here via grep, not copied from the plan).
+- Its claim "background services run via Ajax only while a user is logged
+  in; an after-hours job needs real cron" matches §2.4.1's finding
+  precisely, down to noting the same script/invocation path.
+- Its §12.4 Egress boundary (BAA + ZDR with Anthropic required before any
+  real PHI use, feature flag off by default absent that) independently
+  matches this audit's own §5.5.2 LLM-provider write-up's requirements
+  (a)-(b) — the plan's authors already designed for the same compliance
+  gate this audit derived from first principles.
+- One addition this audit surfaces that the plan does not account for:
+  DQ-01's facility-reference break would affect any facility-scoped
+  logic the plan's chart assembler might add later (not currently in
+  scope per the plan's own v1 boundaries, but worth flagging for anyone
+  extending it).
+
+No placeholders, unresolved `*(pending...)*` markers, or unverified claims
+found remaining in `audit-long.md` as of this pass (checked via grep for
+"pending"/"TBD"/"TODO" — one stale cross-reference found and corrected in
+§1.1). No finding already fixed (SEC-01/SEC-02, "Fixed in 859ad84
+(untested)") is mislabeled as open. No PHI from the seeded Synthea dataset
+was pasted into any finding beyond synthetic sample values already
+disclosed as synthetic in this document's header — all patient
+names/values quoted in this document (e.g. "Loratadine 5 MG Chewable
+Tablet", medication list samples in §4.2) are from the synthetic Synthea
+seed, not real PHI, consistent with the header's disclosure.
+
+### 6.6 Commit
+
+Committed on the `audit` branch per task 6.6.

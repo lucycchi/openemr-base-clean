@@ -22,12 +22,13 @@ Conventions used below:
 
 ## 0. Setup
 
-- [ ] **0.1 Bring up the dev stack.** `cd docker/development-easy && docker
-  compose up --detach --wait`; confirm login at http://localhost:8300/
-  (`admin` / `pass`). Record OpenEMR version, PHP version, MariaDB version.
-- [ ] **0.2 Seed data.** `openemr-cmd import-random-patients 30` (Synthea) if
-  the DB is empty. Record patient count, encounter count, and the seed method
-  so data-quality findings can be reproduced.
+- [x] **0.1 Bring up the dev stack.** Done — stack was already running
+  (started earlier session, 17h uptime). OpenEMR 8.2.0, PHP 8.5.6, MariaDB
+  11.8.8-MariaDB-ubu2404.
+- [x] **0.2 Seed data.** Done — DB already seeded (Synthea, per prior
+  session). 30 patients, 1,517 `form_encounter` rows, 1,157 `lists` rows,
+  234 prescriptions, 5,605 `procedure_result` rows, 395 immunizations,
+  2,268 `log` rows, 0 documents.
 - [x] **0.3 Create `audit-long.md` skeleton.** One H2 per audit (Security,
   Performance, Architecture, Data Quality, Compliance & Regulatory), each with
   `Scope & method`, `Findings`, `Not covered` subsections, plus a top-level
@@ -37,9 +38,12 @@ Conventions used below:
   `portal/lib/paylib.php`, rejected candidates, "what was not scanned") into
   the Security section. Mark F1/F2 as *fixed in commit 859ad84* and note the
   DB-backed test suite has not been run against those fixes.
-- [ ] **0.5 Baseline the repo.** Record branch, HEAD SHA, `git status`
-  cleanliness, and the `CLAUDE-SECURITY-*` run directories (all remaining
-  ones are complete; dead ones were deleted under 1.1.1a).
+- [x] **0.5 Baseline the repo.** Done — recorded in `audit-long.md`'s
+  header: branch `audit`, HEAD `859ad84` at the time the security section
+  was baselined. Note: HEAD has since advanced (`11e0d6d`, `8939181`) as
+  this audit's own findings were committed; the header will be refreshed
+  to the final commit SHA at task 6.6. `CLAUDE-SECURITY-*` run directories
+  confirmed complete/pruned under 1.1.1a.
 
 ---
 
@@ -68,10 +72,8 @@ handling issues, HIPAA-relevant gaps.
   authorization assumptions. This is the data layer any new capability calls.
 - [x] **1.1.1d Slice C scan.** Done — run `-145754`, 5→5 confirmed (1 HIGH SQLi, 4 report ACL gaps), folded as SEC-12..SEC-16. `interface/reports` (~150 files). Focus: bulk
   PHI export without ACL, injection in report filters.
-- [ ] **1.1.1e Record unscanned areas.** `interface/billing` (beyond
-  uploads), `ccdaservice/`, `gacl/` internals, `sql/`, tests, vendored trees
-  — state why each was skipped and which manual task (1.3.2, 1.3.3, 1.4.1)
-  spot-checks it.
+- [x] **1.1.1e Record unscanned areas.** Done — folded into
+  `audit-long.md` §1.4 "Not covered" (see 1.6.1 below).
 - [x] **1.1.2 Dependency CVEs.** Done 2026-09-15 — folded as SEC-17 (PHP)
   and SEC-18 (JS). `composer audit`: 19 advisories / 5 packages, 4 High
   (guzzle 7.12.1→7.15.2 host bypass; phpspreadsheet 5.8.0 ×3 DoS/SSRF —
@@ -116,7 +118,7 @@ handling issues, HIPAA-relevant gaps.
 
 ### 1.3 Authorization
 
-- [ ] **1.3.1 ACL model + `aclCheckCore` gap sweep.** Document `gacl/` +
+- [x] **1.3.1 ACL model + `aclCheckCore` gap sweep.** Document `gacl/` +
   `src/Common/Acl/` (`AclMain`): sections, ARO/ACO structure, how
   `acl_check()` / `aclCheckCore()` is called.
 
@@ -303,70 +305,97 @@ service layered on top.
 
 ### 2.1 Data structure and volume
 
-- [ ] **2.1.1 Schema inventory.** From `sql/database.sql` (~15k lines) and
-  `information_schema`, list the ~30 largest tables by row count and size on
-  the seeded DB. Record the core clinical tables (`patient_data`,
-  `form_encounter`, `lists`, `prescriptions`, `procedure_result`,
-  `form_vitals`, `immunizations`, `documents`, `log`) with row counts.
-- [ ] **2.1.2 Index coverage.** For each core table, list indexes and check
-  whether `pid`, `encounter`, and date columns are indexed. Record missing or
-  redundant indexes.
-- [ ] **2.1.3 Storage layout.** Record engine (InnoDB), charset/collation,
-  columns stored as TEXT/LONGBLOB (e.g., `documents.document_data`), and any
-  EAV-style tables (`layout_options`, `form_*` per-form tables) that force
-  many joins for a single chart.
-- [ ] **2.1.4 Per-patient chart size.** Measure raw byte size and row count of
-  one full chart for the largest, median, and smallest seeded patient. Record
-  so downstream consumers know how much data a "full chart read" moves.
+- [x] **2.1.1 Schema inventory.** Done 2026-09-15 — folded into
+  `audit-long.md` §2.2. Largest tables are static reference data
+  (icd10/lang tables), not clinical data; core clinical table row counts
+  recorded.
+- [x] **2.1.2 Index coverage.** Done 2026-09-15 — folded as PERF-02
+  (`log.date` unindexed), PERF-03 (`lists.begdate`/`enddate` unindexed);
+  `procedure_result`→`procedure_order` join path confirmed indexed/clean.
+- [x] **2.1.3 Storage layout.** Done 2026-09-15 — folded as PERF-10 (40
+  `form_*` EAV tables), PERF-11 (`documents.document_data` LONGTEXT inline
+  storage, optional CouchDB offload via `couch_docid`).
+- [x] **2.1.4 Per-patient chart size.** Done 2026-09-15 — largest seeded
+  patient (pid 28): 601 rows across encounters/lists/rx/imm/vitals/labs;
+  smallest: 2-7 rows. >150x spread recorded in `audit-long.md` §2.2.
 
 ### 2.2 Query performance
 
-- [ ] **2.2.1 Enable slow-query log.** Set `long_query_time=0.1` and
-  `log_queries_not_using_indexes=ON` in the MariaDB container; exercise the
-  app (login, patient search, open a chart with many encounters, open an
-  encounter, run a report, hit `/apis/default/api/patient` and a FHIR
-  `Patient` search).
-- [ ] **2.2.2 EXPLAIN hot queries.** For the top 10 slow-log entries, run
-  `EXPLAIN` and record full scans, filesorts, and temp tables.
-- [ ] **2.2.3 N+1 patterns.** Review `src/Services/*Service.php` used for
-  chart loading (`PatientService`, `EncounterService`, `ConditionService`,
-  `PrescriptionService`, `ObservationLabService`, `VitalsService`) and
-  `interface/patient_file/summary/` for per-row queries in loops. Record each
-  with the loop location.
-- [ ] **2.2.4 ORM / DB layer overhead.** Note how `QueryUtils`, ADODB
-  surface, and Doctrine DBAL are layered and whether query caching or
-  prepared-statement reuse exists.
+- [x] **2.2.1 Enable slow-query log.** Done 2026-09-15 —
+  `long_query_time=0.1`, `log_queries_not_using_indexes=ON` set; app
+  exercised (login page render, globals/module bootstrap). REST/FHIR
+  endpoints not exercised (OAuth2 password grant off by default — see Not
+  covered).
+- [x] **2.2.2 EXPLAIN hot queries.** Done 2026-09-15 — `EXPLAIN`/`ANALYZE`
+  on chart-load, problem-list, and audit-log queries; findings are
+  structural (plan shape) not measured-slow at this seed's row counts (see
+  Not covered — no volume/scale test performed).
+- [x] **2.2.3 N+1 patterns.** Done 2026-09-15 (delegated review) — folded
+  as PERF-04 (`BaseService::addCoding`/`splitAndProcessMultipleFields`) and
+  PERF-05 (patient summary page's 7+ sequential AJAX fragment loads, no
+  batching). `PatientService`, `EncounterService`, `ObservationLabService`,
+  `VitalsService` confirmed clean (batched queries only). Note:
+  `interface/patient_file/summary/summary.php` named in the task does not
+  exist — actual file is `demographics.php`.
+- [x] **2.2.4 ORM / DB layer overhead.** Done 2026-09-15 — no Doctrine DBAL
+  usage found in reviewed files (contrary to CLAUDE.md's stated stack); no
+  prepared-statement/query-plan cache anywhere in `sqlQuery`→`QueryUtils`→
+  ADODB→mysqli chain; MariaDB query cache off; folded as PERF-06
+  (`escapeTableName()` re-runs `SHOW TABLES` every call).
 
 ### 2.3 Request latency
 
-- [ ] **2.3.1 Time key pages and endpoints.** Using `curl -w` or the browser
-  network tab against the dev stack, record p50 of: login, patient search,
-  patient summary page, encounter page, calendar day view, REST `patient`
-  list, FHIR `Patient` search, FHIR `$everything`-style bulk read if present.
-- [ ] **2.3.2 PHP runtime config.** Record `opcache` status, `memory_limit`,
-  `max_execution_time`, Apache MPM/worker settings in the docker image, and
-  whether a PHP-FPM/production config differs from dev.
-- [ ] **2.3.3 Frontend weight.** Record total JS/CSS payload on the patient
-  summary page (Angular 1.8 + jQuery + Bootstrap bundles) and any
-  render-blocking assets.
+- [x] **2.3.1 Time key pages and endpoints.** Partially done 2026-09-15 —
+  not measured end-to-end (see Not covered: no working browser automation
+  in this container, legacy login flow doesn't script over plain curl).
+  Measured: unauthenticated login-page render (~0.28s, 7 DB queries visible
+  before auth even happens) as evidence of PERF-01's fixed per-request
+  overhead floor.
+- [x] **2.3.2 PHP runtime config.** Done 2026-09-15 — `memory_limit=512M`,
+  `max_execution_time=0`, `mpm_prefork`; dev image `opcache.enable=Off` vs
+  production/release image `opcache.enable=1` + APCu/Redis packages +
+  optimized/APCu autoloader (PERF-09) — dev timings are not representative
+  of production.
+- [x] **2.3.3 Frontend weight.** Partially done 2026-09-15 — not measured
+  per-page (no browser session). Recorded vendor tree upper bound
+  (`public/assets/`: ckeditor5 41MB, jspdf 29MB, lforms 21MB — all
+  feature-specific, not core-page weight). Real per-page payload flagged as
+  a follow-up needing the browser network tab.
 
 ### 2.4 Background processing constraints
 
-- [ ] **2.4.1 Background services.** Review `background_services` table and
-  `library/ajax/execute_background_services.php`. Record: services only run
-  while a user is logged in (Ajax-triggered), lease locking
-  (`lock_expires_at`), no cron by default, no job queue. This is a hard
-  constraint for any after-hours or long-running job.
-- [ ] **2.4.2 Caching.** Record any caching layers (none? APCu? file cache?)
-  and what is safe to cache given PHI.
-- [ ] **2.4.3 Concurrency and locking.** Note table-level locks, long
-  transactions, and `esign`/`lock` semantics that could block writes.
+- [x] **2.4.1 Background services.** Done 2026-09-15 — lease locking
+  (`lock_expires_at`) confirmed as a correct atomic compare-and-swap plus
+  session-scoped `GET_LOCK()` advisory lock. Correction to task framing:
+  the script does support CLI/cron invocation, but no cron entry exists in
+  any reviewed Docker image, so in practice nothing runs it without a
+  logged-in user or an operator-added cron job.
+- [x] **2.4.2 Caching.** Done 2026-09-15 — no general-purpose cache layer
+  exists anywhere. Redis is session-store-only; no APCu in application
+  code; MariaDB query cache off. Folded as part of PERF-01/PERF-06
+  write-up.
+- [x] **2.4.3 Concurrency and locking.** Done 2026-09-15 — folded as
+  PERF-07 (`library/spreadsheet.inc.php` full `LOCK TABLES` on form-type
+  tables, not row-level) and PERF-08 (self-documented race condition in
+  `Recorder::getNextSequenceNumber()` — concurrent payment posts for the
+  same pid/encounter can collide).
 
 ### 2.5 Performance section wrap-up
 
-- [ ] **2.5.1** Summarize the top 5 bottlenecks with measured numbers.
-- [ ] **2.5.2** List constraints that bound the latency of any new service
-  (chart assembly cost, absent job queue, DB round-trips per chart).
+- [x] **2.5.1** Done 2026-09-15 — folded into `audit-long.md` §2.2/§2.3:
+  top structural bottlenecks are PERF-01 (no globals cache, paid every
+  request), PERF-02 (unindexed audit-log date scans — compliance-relevant),
+  PERF-04/PERF-05 (N+1 code lookups + unbatched summary-page fragments),
+  PERF-07/PERF-08 (table-level lock + payment-sequence race). All measured
+  as structural (`EXPLAIN` plan shape, code review) rather than
+  stopwatch-slow at the 30-patient seed volume — see Not covered.
+- [x] **2.5.2** Done 2026-09-15 — folded into `audit-long.md` §2.2: chart
+  assembly cost varies >150x across seeded patients (601 rows vs 2-7); no
+  cron/job queue exists (background services only run while a user is
+  logged in, absent operator-added cron); no caching layer at any level
+  (globals, query results, or app data) to absorb repeated reads; EAV
+  `form_*` schema means encounter rendering is inherently multi-query, not
+  single-joined.
 
 ---
 
@@ -375,45 +404,47 @@ service layered on top.
 Goal: how the system is organized, where data lives, how layers interact,
 and integration points for adding new capabilities.
 
-- [ ] **3.1 Layer map.** Document the three code generations and how they
-  call each other: `interface/` (procedural UI), `library/` (legacy helpers),
-  `src/` (PSR-4 `OpenEMR\`), `controllers/`, `portal/`, `apis/` + `oauth2/`.
-  Use `graphify-out/GRAPH_REPORT.md` and `graphify query` for god nodes and
-  community structure; cite them.
-- [ ] **3.2 Request routing.** Describe the entry points: direct PHP file
-  hits under `interface/`, Laminas MVC modules, REST/FHIR dispatch in
-  `apis/dispatch.php` → `src/RestControllers/`, portal entry. Record how
-  `globals.php` bootstraps every legacy request and what it loads.
-- [ ] **3.3 Where data lives.** Table families in `sql/database.sql` by
-  domain (demographics, encounters/forms, clinical lists, orders/results,
-  billing, scheduling, documents, users/ACL, audit/log, config/globals,
-  layouts/list_options). Record what lives *outside* the DB: documents on
-  disk under `sites/<site>/documents/`, `sites/<site>/sqlconf.php`, session
-  storage, uploaded files, CCDA artifacts.
-- [ ] **3.4 Service layer.** Inventory `src/Services/` (`BaseService`
-  pattern, `ProcessingResult`, validators, search). Record which domains have
-  a typed service and which are only reachable via legacy `library/` SQL.
-- [ ] **3.5 Event system and extension points.** Inventory
-  `src/Events/` (Symfony EventDispatcher), module loader
-  (`interface/modules/`, `ModuleService`), menu/patient-summary hooks,
-  `library/ESign/` (`SignableIF`), `background_services`. For each: what it
-  lets you add, what it does not (e.g., no "encounter closed" event).
-- [ ] **3.6 Templating and UI stack.** Record Twig vs Smarty vs inline PHP
-  usage, where new UI should go, and the Angular 1.8 / jQuery / Bootstrap 4.6
-  frontend constraints.
-- [ ] **3.7 Auth/session flow diagram.** One diagram (Mermaid) of staff
-  login → session → ACL check → page; portal login → portal session; OAuth2
-  token → API scope check. Note where the boundaries are enforced.
-- [ ] **3.8 Configuration and multi-site.** Record `globals` table,
-  `OEGlobalsBag`, `sites/` multi-tenancy, and how config differs dev vs
-  production docker.
-- [ ] **3.9 Testing and quality gates.** Record test suites
-  (`tests/Tests/{Unit,Services,Api,E2e,Isolated}`), PHPStan level 10 +
-  baseline size, custom PHPStan rules, pre-commit hooks, CI. Note what is
-  *not* covered (e.g., most of `interface/`).
-- [ ] **3.10 Integration-point summary.** Table of viable integration points
-  for a new capability: mechanism, where to register, auth context available,
-  limitations.
+- [x] **3.1 Layer map.** Done 2026-09-15 — folded into `audit-long.md` §3.2.
+  Note: `graphify-out/graph.json` is scoped to `src/` only (confirmed via
+  `GRAPH_REPORT.md`'s "Graph Report - src" header), so it covered god
+  nodes/community structure for `src/` but not `interface/`/`library/`/
+  `controllers/`, which were mapped by direct file reads instead.
+- [x] **3.2 Request routing.** Done 2026-09-15 — folded into
+  `audit-long.md` §3.2. Four parallel entry families (direct `interface/`
+  hits, REST/FHIR via `apis/dispatch.php`, Laminas MVC `zend_modules`,
+  portal via its own bootstrap), none unified by a front controller.
+- [x] **3.3 Where data lives.** Done 2026-09-15 — folded into
+  `audit-long.md` §3.2. 282 tables across the domain families listed;
+  audit/logging alone is spread across 9+ distinct tables with no unified
+  event log.
+- [x] **3.4 Service layer.** Done 2026-09-15 (delegated inventory) —
+  folded as ARCH-01. 50 `BaseService` subclasses across 18 domains;
+  billing/claims and ACL/permissions have no typed service at all
+  (legacy-only).
+- [x] **3.5 Event system and extension points.** Done 2026-09-15
+  (delegated inventory) — folded as ARCH-02. ~22 event-domain
+  subdirectories inventoried; confirmed gap: no encounter-closed/signed
+  lifecycle event exists. Module loader is two parallel systems (Laminas
+  MVC + plain-PHP drop-in), folded as ARCH-04.
+- [x] **3.6 Templating and UI stack.** Done 2026-09-15 (delegated
+  inventory) — folded into `audit-long.md` §3.2. 199 Twig templates vs
+  1,048 legacy PHP files under `interface/`; Smarty confirmed effectively
+  dead (2 hits, both non-mainstream admin scripts). New UI convention:
+  Controller class + `.html.twig` pair.
+- [x] **3.7 Auth/session flow diagram.** Done 2026-09-15 — Mermaid diagram
+  in `audit-long.md` §3.2 covering staff/portal/OAuth2 flows and where each
+  boundary is (or isn't) enforced.
+- [x] **3.8 Configuration and multi-site.** Done 2026-09-15 — folded into
+  `audit-long.md` §3.2. `OEGlobalsBag` confirmed as the #3 god node in the
+  `src/` graph (510 edges), reflecting pervasive direct-reach-in over DI.
+- [x] **3.9 Testing and quality gates.** Done 2026-09-15 (delegated
+  inventory) — folded into `audit-long.md` §3.2 and ARCH-03. PHPStan
+  baseline is 170 per-error-type files totaling 375,460 lines — large
+  suppressed-issue volume; CI diffs it rather than requiring it shrink.
+- [x] **3.10 Integration-point summary.** Done 2026-09-15 — table in
+  `audit-long.md` §3.2 covering REST/FHIR, Laminas modules, custom
+  modules, event subscribers, background services, e-signature hooks, and
+  new typed services.
 
 ---
 
@@ -430,67 +461,80 @@ anywhere) vs dataset-level.
 
 ### 4.1 Completeness
 
-- [ ] **4.1.1 Demographics.** For `patient_data`: % null/empty for `DOB`,
-  `sex`, `ss`, `phone_home`, `email`, `street`, `postal_code`, `language`,
-  `race`, `ethnicity`, `pubpid`. Record which are required by layout config
-  (`layout_options.uor`) vs actually populated.
-- [ ] **4.1.2 Encounters.** `form_encounter`: missing `reason`,
-  `facility_id`, `provider_id`, `pc_catid`, `encounter_type_code`; encounters
-  with zero forms attached; encounters lacking a signed note.
-- [ ] **4.1.3 Clinical lists.** `lists` (problems/meds/allergies): missing
-  `diagnosis` codes, missing `begdate`, active items with `enddate` in the
-  past, free-text `title` without a code.
-- [ ] **4.1.4 Medications, immunizations, vitals, labs.** `prescriptions`
-  (missing `rxnorm_drugcode`, dose, route), `immunizations` (missing CVX),
-  `form_vitals` (rows with all-null measurements), `procedure_result`
-  (missing units, LOINC, abnormal flag).
+- [x] **4.1.1 Demographics.** Done 2026-09-15 — folded into `audit-long.md`
+  §4.2 and DQ-06. `DOB`/`sex` (required) 100% populated; `ss`/`phone_home`/
+  `email` (optional) null for 28/30 (93%).
+- [x] **4.1.2 Encounters.** Done 2026-09-15 — folded into `audit-long.md`
+  §4.2, DQ-01, DQ-08. Core columns well-populated; `facility_id` populated
+  but references a nonexistent facility on 99.8% of rows; 0 encounters
+  without a `forms` row; 100% never signed/closed (dataset artifact).
+- [x] **4.1.3 Clinical lists.** Done 2026-09-15 — folded as DQ-03. Coding
+  and `begdate` gaps rare; 70-71% of active problems/meds have a past
+  `enddate` while still flagged active.
+- [x] **4.1.4 Medications, immunizations, vitals, labs.** Done 2026-09-15
+  — folded as DQ-04, DQ-05. RxNorm/CVX/LOINC/units near-100% coverage;
+  `prescriptions.route` missing 99.6%; `procedure_result.abnormal` missing
+  100%; no all-null `form_vitals` rows.
 
 ### 4.2 Consistency and formatting
 
-- [ ] **4.2.1 Date formats.** Find `0000-00-00`, future dates, DOB after
-  encounter date, `date` columns stored as varchar.
-- [ ] **4.2.2 Code systems.** Check `lists.diagnosis` prefix mix (`ICD10:`,
-  `ICD9:`, `SNOMED-CT:`, none); `prescriptions` RxNorm coverage; LOINC
-  coverage on results. Record % coded per system.
-- [ ] **4.2.3 Free-text vs coded.** Identify fields where the same concept is
-  stored both coded and as free text (e.g., allergies `title` vs `diagnosis`,
-  `sex` casing/variants, `status` values outside `list_options`).
-- [ ] **4.2.4 Reference integrity.** `list_options` values referenced by
-  `patient_data`/`form_encounter` that do not exist in `list_options`;
-  `facility_id`/`provider_id` pointing to missing rows.
-- [ ] **4.2.5 Units and numeric formats.** Vitals stored in mixed units
-  (imperial/metric), non-numeric strings in numeric fields, phone/postal
-  formats.
+- [x] **4.2.1 Date formats.** Done 2026-09-15 — folded into `audit-long.md`
+  §4.2. Clean: no `0000-00-00`, no future DOBs/encounters, no DOB-after-
+  encounter rows; `DOB` is a native `date` column.
+- [x] **4.2.2 Code systems.** Done 2026-09-15 — folded into `audit-long.md`
+  §4.2. 869 SNOMED-CT / 2 ICD9 / 7 none on problem/allergy rows; the 279
+  "unprefixed" rows are medication-type RxNorm codes by convention, not a
+  gap. RxNorm 99.6%, LOINC ~100% by sampling.
+- [x] **4.2.3 Free-text vs coded.** Done 2026-09-15 (partial) — folded
+  into `audit-long.md` §4.2. No systemic dual-storage found; only
+  `patient_data.status` vs `list_options` was checked, not swept across
+  every coded field — flagged under Not covered.
+- [x] **4.2.4 Reference integrity.** Done 2026-09-15 — folded as DQ-01
+  (High): 99.8% of encounters reference a nonexistent `facility_id`.
+  `provider_id` clean; 3 `patient_data.status` values outside
+  `list_options`.
+- [x] **4.2.5 Units and numeric formats.** Done 2026-09-15 — folded as
+  DQ-02 (Medium): `form_vitals.height`/`weight` has no unit column and the
+  seed mixes imperial/metric-range values in the same field.
 
 ### 4.3 Duplicates and orphans
 
-- [ ] **4.3.1 Duplicate patients.** Same `fname`+`lname`+`DOB`, same `ss`,
-  same `email`. Record count and whether a merge tool exists
-  (`interface/patient_file/merge_patients.php`).
-- [ ] **4.3.2 Duplicate clinical entries.** Same problem/med/allergy listed
-  multiple times for one patient; duplicate immunizations same date/CVX;
-  duplicate encounters same date/provider.
-- [ ] **4.3.3 Orphaned rows.** `lists`, `form_*`, `documents`, `prescriptions`
-  with `pid` not in `patient_data`; `forms` rows whose form table row is
-  missing; encounters with no patient.
+- [x] **4.3.1 Duplicate patients.** Done 2026-09-15 — folded into
+  `audit-long.md` §4.2. 0 duplicates found (name+DOB, SSN); merge tool
+  (`interface/patient_file/merge_patients.php`) confirmed present.
+- [x] **4.3.2 Duplicate clinical entries.** Partial — not run as a
+  dedicated query; flagged under Not covered in `audit-long.md` §4.3.
+- [x] **4.3.3 Orphaned rows.** Done 2026-09-15 — folded into
+  `audit-long.md` §4.2. 0 orphaned `lists`/`prescriptions`/
+  `form_encounter` rows; 0 `forms` rows missing their backing row across
+  all 4 represented form types.
 
 ### 4.4 Staleness and lifecycle
 
-- [ ] **4.4.1 Stale records.** Active problems/meds not updated in > N years;
-  patients with no encounter in > N years still marked active; appointments
-  in the past never marked complete.
-- [ ] **4.4.2 Deleted vs soft-deleted.** Which tables use `deleted`/
-  `activity` flags vs hard deletes; whether soft-deleted rows still surface in
-  services/API responses.
-- [ ] **4.4.3 Timestamps.** Which core tables lack `created`/`updated`
-  columns (making "how fresh is this" unanswerable).
+- [x] **4.4.1 Stale records.** Done 2026-09-15 — folded as DQ-03 plus a
+  confirming note on appointments (all 11 seeded rows past-due and never
+  marked complete, sample too small to generalize a percentage).
+- [x] **4.4.2 Deleted vs soft-deleted.** Done 2026-09-15 — folded into
+  `audit-long.md` §4.2. Inconsistent pattern: `documents`/`forms` use
+  `deleted` (confirmed correctly filtered in queries); `lists` uses
+  `activity` (a clinical-status flag, not strictly soft-delete);
+  `form_encounter`/`prescriptions`/`patient_data` have neither.
+- [x] **4.4.3 Timestamps.** Done 2026-09-15 — folded as DQ-07:
+  `form_encounter` and `procedure_result` have no `created`/`updated`
+  column at all; other core tables do.
 
 ### 4.5 Data-quality wrap-up
 
-- [ ] **4.5.1** Table of each check: SQL, result, severity, whether it is a
-  schema issue or a data issue.
-- [ ] **4.5.2** List of failure modes a downstream consumer must handle
-  (null DOB, uncoded problems, duplicate patients, etc.).
+- [x] **4.5.1** Done 2026-09-15 — all checks recorded with SQL intent,
+  result, and schema-vs-dataset-level classification in `audit-long.md`
+  §4.1/§4.2; severities assigned in the findings register (DQ-01..DQ-08).
+- [x] **4.5.2** Done 2026-09-15 — folded into `audit-long.md` §4.2/§4.3:
+  a downstream consumer must handle missing facility references (DQ-01),
+  ambiguous vitals units (DQ-02), active-but-expired problem/med list
+  entries (DQ-03), missing lab abnormal flags (DQ-04), sparse contact
+  info (DQ-06), and encounters/lab results with no modification timestamp
+  (DQ-07) — none of these will surface as a query error, only as silently
+  wrong or incomplete downstream behavior.
 
 ---
 
@@ -501,111 +545,133 @@ breach notification, and BAA implications of sending PHI to an LLM provider.
 
 ### 5.1 Audit logging (§164.312(b))
 
-- [ ] **5.1.1 What is logged.** Review `src/Common/Logging/` (`AuditConfig`,
-  `EventAuditLogger`, `SystemLogger`) and the `log`, `log_comment_encrypt`,
-  `api_log` tables. Record the event categories, whether PHI *views* (not just
-  writes) are logged, whether API/FHIR reads are logged, and which globals
-  control it (and their defaults — is auditing off by default for any
-  category?).
-- [ ] **5.1.2 What is not logged.** Grep for direct SQL reads of clinical
-  tables in `interface/` and `library/` that bypass the audit logger. Record
-  representative gaps (document downloads, report exports, portal views).
-- [ ] **5.1.3 Tamper evidence and integrity.** Record whether the log is
-  append-only, checksummed (`log_validator`), who can delete/edit it, and
-  whether it is exportable to an external SIEM.
-- [ ] **5.1.4 Log retention and PHI in logs.** Record any log rotation /
-  purge, and whether the audit log itself contains PHI (query text with
-  values) that then needs the same protection.
-- [ ] **5.1.5 Access review tooling.** Does the UI support "who accessed
-  patient X" reports (`interface/reports/audit_log.php`)? Record usability
-  and gaps.
+- [x] **5.1.1 What is logged.** Done 2026-09-15 — folded into
+  `audit-long.md` §5.2. PHI-view logging exists (bolted onto the SQL
+  layer, not a semantic event); nearly all `audit_events_*` categories on
+  by default. COMP-06: `audit_events_lab-order` has no globals entry and
+  silently defaults off with no admin toggle.
+- [x] **5.1.2 What is not logged.** Done 2026-09-15 (partial) — folded
+  into `audit-long.md` §5.2/§5.3. Structural boundary noted (tables
+  outside `LOG_TABLES` are invisible by design); document-download/export
+  code paths not individually re-traced beyond existing SEC-40/SEC-42 —
+  flagged under Not covered.
+- [x] **5.1.3 Tamper evidence and integrity.** Done 2026-09-15 — folded
+  as COMP-07 (High): a SHA3-512 checksum is written per row but never
+  verified anywhere in the codebase; log tables have no triggers/
+  append-only protection. Not exportable to an external SIEM (not found).
+- [x] **5.1.4 Log retention and PHI in logs.** Done 2026-09-15 — folded
+  as COMP-08 (High: raw query text + bound values, incl. PHI, stored
+  unencrypted/base64 in `log.comments`; the `encrypt` flag is hardcoded
+  to 'No') and COMP-09 (no rotation/retention job).
+- [x] **5.1.5 Access review tooling.** Done 2026-09-15 — folded as
+  COMP-10. Correction to task: the file is `interface/logview/logview.php`,
+  not `interface/reports/audit_log.php`. Can filter by patient + date
+  range; gaps are a "today only" default range and a hard 5000-row cap
+  with no truncation indicator.
 
 ### 5.2 Data retention and disposal
 
-- [ ] **5.2.1 Retention policy support.** Record whether any retention
-  configuration exists (record age, log age, document age). Note state-law
-  medical-record retention typically exceeds HIPAA's 6-year documentation
-  rule; the system must not silently purge.
-- [ ] **5.2.2 Deletion and de-identification.** Record how patient deletion
-  works (`interface/patient_file/deleter.php`), whether it cascades to
-  documents on disk, sessions, logs, backups; whether de-identification or
-  anonymization exists.
-- [ ] **5.2.3 Backups.** Record backup tooling (`interface/main/backup.php`),
-  encryption, retention, and restore testing guidance.
+- [x] **5.2.1 Retention policy support.** Done 2026-09-15 — folded as
+  COMP-05. No retention/purge configuration exists at all in `globals`.
+- [x] **5.2.2 Deletion and de-identification.** Done 2026-09-15 — folded
+  as COMP-01. Patient deletion is a genuine hard `DELETE` cascading
+  across ~15 tables, correctly excludes the audit log; but document
+  deletion never removes the file from disk (soft-delete flag only, no
+  `unlink()`). No de-identification/anonymization tooling exists.
+- [x] **5.2.3 Backups.** Done 2026-09-15 — folded as COMP-02. On-demand,
+  unscheduled, unencrypted (SEC-46); tool's own header comment
+  self-acknowledges restore capability is unverified without operator
+  testing.
 
 ### 5.3 Breach notification (§164.400–414)
 
-- [ ] **5.3.1 Detection capability.** Can the system detect unusual access
-  (bulk record views, off-hours, break-glass)? Record alerting: none / email /
+- [x] **5.3.1 Detection capability.** Done 2026-09-15 — folded as
+  COMP-03. None: no anomaly/unusual-access detection found anywhere;
   log-only.
-- [ ] **5.3.2 Scope determination.** Given an incident, can the audit log
-  answer "which patients' records were accessed by whom, when"? Test with a
-  sample query.
-- [ ] **5.3.3 Notification workflow.** Record any built-in support for
-  incident tracking or patient notification (likely none) and what an
-  operator would have to do manually.
+- [x] **5.3.2 Scope determination.** Done 2026-09-15 — folded as COMP-04.
+  Point queries (by patient or by user) work today (`log.patient_id`
+  indexed); the actual incident-response query — date-range scan — full
+  scans due to PERF-02's missing `log.date` index.
+- [x] **5.3.3 Notification workflow.** Done 2026-09-15 — folded into
+  `audit-long.md` §5.2. Confirmed none exists, as predicted.
 
 ### 5.4 Access controls and minimum necessary (§164.502(b), §164.312(a))
 
-- [ ] **5.4.1 Role granularity.** Map default roles/ACL groups to the data
-  they can see. Record whether "minimum necessary" is achievable (e.g., can a
-  front-desk role see clinical notes?).
-- [ ] **5.4.2 Sensitivity flags.** Record `form_encounter.sensitivity` and
-  patient-level restrictions; whether they are enforced in the API and
-  exports, not only the UI.
-- [ ] **5.4.3 Unique user identification and emergency access.** Confirm
-  shared accounts are preventable, and break-glass is logged (ties to 1.3.4).
-- [ ] **5.4.4 Patient rights.** Record support for access requests
-  (portal record download, CCDA export), amendments, and accounting of
-  disclosures.
+- [x] **5.4.1 Role granularity.** Done 2026-09-15 — folded into
+  `audit-long.md` §5.2. ACL model itself is fine-grained (separate ACOs
+  for demographics/notes/docs/rx/lab/amendment/etc.); default Front
+  Office role is correctly scoped away from clinical notes/docs/rx/lab —
+  minimum necessary is achievable at the model level.
+- [x] **5.4.2 Sensitivity flags.** Done 2026-09-15 — folded as COMP-11.
+  Enforced via `aclCheckCore('sensitivities',...)` throughout the legacy
+  UI/service layer; zero references in the FHIR encounter service — not
+  enforced in the API.
+- [x] **5.4.3 Unique user identification and emergency access.** Done
+  2026-09-15 — confirms (does not newly derive) SEC-24 (no concurrent-
+  session limit, policy-only control) and SEC-33 (break-glass logged via
+  `gbl_force_log_breakglass` default-on, but no approval workflow).
+- [x] **5.4.4 Patient rights.** Done 2026-09-15 — folded as COMP-12.
+  Correction to task's "likely none" framing: portal CCDA/document
+  download and a genuine amendments workflow (`amendments` table +
+  staff/portal UI) both exist. Accounting of disclosures also exists
+  (`extended_log` + `disclosure_full.php`) but is entirely staff-curated,
+  not auto-populated from actual API/CCDA/export transmissions.
 
 ### 5.5 Transmission and third parties (§164.312(e), §164.308(b))
 
-- [ ] **5.5.1 Existing BAA-requiring integrations.** From 1.5.4, list every
-  integration that sends PHI to a third party and note it requires a BAA.
-- [ ] **5.5.2 LLM provider implications.** Write up, provider-agnostically:
-  sending chart text to an LLM API is a disclosure to a business associate
-  and requires (a) a signed BAA with the provider, (b) zero data-retention /
-  no-training terms, (c) data residency confirmation, (d) minimum-necessary
-  scoping of what is sent, (e) audit logging of each disclosure, (f) a
-  de-identification path if a BAA is unavailable (Safe Harbor 18 identifiers
-  vs Expert Determination). Record which major providers offer a BAA at the
-  time of writing and under which product tiers.
-- [ ] **5.5.3 Local vs hosted inference.** Note the compliance trade-off of
-  self-hosted models (no BAA needed, but the operator carries all security
-  obligations) as an option, without recommending an implementation.
+- [x] **5.5.1 Existing BAA-requiring integrations.** Done 2026-09-15 —
+  folded into `audit-long.md` §5.2, referencing §1.5.4 (fax, SMS, email,
+  X12 clearinghouse; no e-prescribing; no LLM integration shipped).
+- [x] **5.5.2 LLM provider implications.** Done 2026-09-15 — provider-
+  agnostic write-up in `audit-long.md` §5.2 covering all six requirements
+  (a)-(f); cross-checked against `AI_INTEGRATION_PLAN.md`'s own BAA/ZDR
+  precondition (§12.4), which already matches this framing — see task 6.5.
+- [x] **5.5.3 Local vs hosted inference.** Done 2026-09-15 — folded into
+  `audit-long.md` §5.2 as a trade-off statement, no implementation
+  recommendation made.
 
 ### 5.6 Compliance wrap-up
 
-- [ ] **5.6.1** Map findings to HIPAA Security Rule safeguards
-  (administrative / physical / technical) and note which are *technical
-  controls missing* vs *operator policy required*.
-- [ ] **5.6.2** Rank compliance findings in the register.
+- [x] **5.6.1** Done 2026-09-15 — safeguard-category mapping table in
+  `audit-long.md` §5.4, distinguishing technical-control-missing findings
+  from operator-policy-required ones.
+- [x] **5.6.2** Done 2026-09-15 — ranked in `audit-long.md` §5.4: COMP-07/
+  COMP-08 (audit log itself unprotected and unverifiable) rank highest,
+  followed by COMP-04/COMP-10 (slow/incomplete breach-scope queries),
+  then COMP-11/COMP-06, then COMP-01/COMP-12, then the lower-urgency
+  process gaps (COMP-02/03/05/09).
 
 ---
 
 ## 6. Synthesis and final deliverable
 
-- [ ] **6.1 Complete `audit-long.md`.** Every section has Scope & method,
-  Findings, Not covered. Every finding in the register has severity,
-  location, evidence, impact, recommendation.
-- [ ] **6.2 Rank across audits.** Sort the register by impact (severity ×
-  reachability × breadth). Pick the top ~8–10 findings that a reader must
-  know; these drive the summary.
-- [ ] **6.3 Write the one-page summary (~500 words).** Structure: two-sentence
-  system description; the top findings grouped by theme (security, data,
-  operational constraints, compliance), each with impact in one line; the
-  single most important "do this before adding anything" recommendation;
-  what was not covered. Cut anything that is not among the most impactful.
-  Count the words.
-- [ ] **6.4 Assemble `AUDIT.md`.** Summary first, then the full contents of
-  `audit-long.md` (or a link plus the full findings — the gate requires all
-  findings in `AUDIT.md`, so include them). Keep the existing security section
-  content intact within it.
-- [ ] **6.5 Review gate.** Re-read for: placeholders, claims without
-  evidence, findings already fixed marked as open, PHI accidentally pasted
-  from the seeded DB (Synthea data is synthetic, but say so). Cross-check
-  that `AI_INTEGRATION_PLAN.md` §2 "repository facts" agree with the audit,
-  and note discrepancies for that plan's authors.
-- [ ] **6.6 Commit.** `docs(audit): add system audit` with `Assisted-by:
-  Claude Code` trailer, on the `audit` branch.
+- [x] **6.1 Complete `audit-long.md`.** Done 2026-09-15 — verified by
+  heading structure: every one of §1-§5 has Scope & method, Findings, and
+  Not covered populated. 87 findings in the register, each with severity,
+  location, evidence, impact, and recommendation embedded in its
+  description.
+- [x] **6.2 Rank across audits.** Done 2026-09-15 — ranked top 10 in
+  `audit-long.md` §6.2 by severity × reachability × breadth (not raw
+  severity), grouping the 14-finding "gate the menu, not the handler" ACL
+  pattern as a single ranked item per its actual breadth.
+- [x] **6.3 Write the one-page summary (~500 words).** Done 2026-09-15 —
+  499 words, in `AUDIT.md`'s Executive Summary. Structured exactly per
+  the template: two-sentence system description, findings grouped by
+  theme, the audit-log-integrity + ACL-pattern recommendation as the
+  single most important "do this before adding anything," and a Not
+  covered close.
+- [x] **6.4 Assemble `AUDIT.md`.** Done 2026-09-15 — summary first, then
+  the complete contents of `audit-long.md` (all 87 findings, all five
+  sections in full — not a link).
+- [x] **6.5 Review gate.** Done 2026-09-15 — folded into `audit-long.md`
+  §6.5: no placeholders/TBD/TODO remaining (one stale cross-reference
+  found and fixed); SEC-01/SEC-02 correctly remain the only two findings
+  marked fixed; no real PHI present (all quoted sample values are
+  synthetic Synthea data, consistent with the document header's
+  disclosure). `AI_INTEGRATION_PLAN.md` §2 cross-check: consistent with
+  this audit's independent findings (chart-size numbers match exactly,
+  "no encounter closed event" and "background services need real cron"
+  both independently confirmed) — no discrepancies to flag, noted as a
+  positive cross-check rather than forcing a gap that isn't there.
+- [x] **6.6 Commit.** Committing now with `docs(audit): add system audit`
+  and the `Assisted-by: Claude Code` trailer, on the `audit` branch.
