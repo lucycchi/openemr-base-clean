@@ -51,3 +51,8 @@ docker/development-easy-redis/docker-compose.override.yml
 compose.override.yml
 tmp/
 .webpack-cache/
+
+# graphify knowledge graph + local Claude hooks
+graphify-out/
+src/graphify-out/
+.claude/settings.json
