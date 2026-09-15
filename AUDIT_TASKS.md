@@ -72,31 +72,47 @@ handling issues, HIPAA-relevant gaps.
   uploads), `ccdaservice/`, `gacl/` internals, `sql/`, tests, vendored trees
   — state why each was skipped and which manual task (1.3.2, 1.3.3, 1.4.1)
   spot-checks it.
-- [ ] **1.1.2 Dependency CVEs.** `openemr-cmd e 'composer audit'` and `npm
-  audit --omit=dev` (host). Record each High/Critical advisory with package,
-  version, fixed version, and whether the vulnerable code path is reachable.
-- [ ] **1.1.3 Secrets and config.** Grep for hard-coded credentials, API keys,
-  default passwords (`sites/default/sqlconf.php`, `.env.example`,
-  `docker/*/docker-compose.yml`, `oauth2/`). Record any committed secrets and
-  default credentials that ship enabled.
+- [x] **1.1.2 Dependency CVEs.** Done 2026-09-15 — folded as SEC-17 (PHP)
+  and SEC-18 (JS). `composer audit`: 19 advisories / 5 packages, 4 High
+  (guzzle 7.12.1→7.15.2 host bypass; phpspreadsheet 5.8.0 ×3 DoS/SSRF —
+  parser DoS reachable via uploads, WEBSERVICE SSRF not), + dompdf/psr7/
+  smarty medium/low and 6 abandoned packages. `npm audit --omit=dev`: 5
+  moderate shipped (dompurify, jszip, dwv, fflate, validate.js); the 13
+  high/critical in full `npm audit` are dev/build-chain only, not shipped.
+- [x] **1.1.3 Secrets and config.** Done 2026-09-15 — folded as SEC-19
+  (production compose ships `root`/`root` DB + `admin`/`pass` app creds with
+  no env indirection) and SEC-20 (dev/CI TLS private `.pem` keys committed;
+  not used by production). `sites/default/sqlconf.php` ships `openemr/openemr`
+  but `$config=0` (uninstalled template, installer overwrites). No live API
+  keys/tokens found; OAuth2 keys are runtime-generated
+  (`src/Common/Auth/OAuth2KeyConfig.php`), not committed.
 
 ### 1.2 Authentication
 
-- [ ] **1.2.1 Login flow.** Trace `interface/login/` → `src/Common/Auth/`.
-  Record: password hashing algorithm and cost, brute-force / lockout policy,
-  password complexity and expiry settings (globals), whether MFA (TOTP/U2F)
-  exists and whether it is enforceable per role.
-- [ ] **1.2.2 Session management.** Review `src/Common/Session/`. Record:
-  cookie flags (`HttpOnly`, `Secure`, `SameSite`), session ID regeneration on
-  login, idle and absolute timeouts, concurrent-session handling, and how the
-  portal session is separated from the staff session (`patient_portal_onsite_two`).
-- [ ] **1.2.3 API / OAuth2.** Review `oauth2/`, `apis/`, `src/RestControllers/`.
-  Record: grant types enabled, token lifetimes, refresh rotation, client
-  registration controls, scope enforcement on FHIR/REST endpoints, and whether
-  any endpoint is reachable without a token.
-- [ ] **1.2.4 Portal registration and password reset.** Review `portal/`
-  account creation, credential reset, and email verification. Record
-  enumeration or takeover risks.
+- [x] **1.2.1 Login flow.** Done 2026-09-15 — folded into `audit-long.md`
+  §1.2b. bcrypt/Argon2/SHA512 via `AuthHash.php`, rehash-on-login; server-side
+  lockout (20/account, 100/IP, 1h auto-reset); password min length 9, no
+  complexity regex, 180-day expiry + 30-day grace; TOTP/U2F MFA implemented
+  (`MfaUtils.php`) but **not wired into the staff web login** — SEC-23.
+- [x] **1.2.2 Session management.** Done 2026-09-15 — folded into
+  `audit-long.md` §1.2b. No `session_regenerate_id()` on login — SEC-21;
+  core/portal cookies `Secure=false` hardcoded, core also `HttpOnly=false` by
+  design — SEC-22; idle-only timeout, no absolute cap, no concurrent-session
+  limit — SEC-24; portal/staff sessions are cleanly namespace-separated
+  (distinct cookie names, `App` selector cookie).
+- [x] **1.2.3 API / OAuth2.** Done 2026-09-15 — folded into `audit-long.md`
+  §1.2b. Grant types: auth_code, refresh_token, client_credentials, password
+  (password grant off by default via `oauth_password_grant`). Refresh
+  rotation enforced (library default). Access token 1h, refresh 3mo (ONC
+  min). Dynamic client registration unauthenticated, auto-enabled for
+  default-scope clients when `oauth_app_manual_approval` is off (default) —
+  SEC-25. Scope enforcement centralized in `AuthorizationListener`,
+  default-deny; public endpoint allowlist is narrow and explicit.
+- [x] **1.2.4 Portal registration and password reset.** Done 2026-09-15 —
+  folded into `audit-long.md` §1.2b. Self-registration + reset both use
+  CSPRNG tokens, 1h expiry, single-use, anti-enumeration responses. Reset
+  *trigger* gated on guessable PII (DOB+name+email), no dedicated rate limit
+  beyond reCAPTCHA — SEC-26 (distinct from SEC-06's staff-side ACL bypass).
 
 ### 1.3 Authorization
 
@@ -137,65 +153,145 @@ handling issues, HIPAA-relevant gaps.
      `encounter`, also scope the write to the session patient.
 
   The SEC-13–16 findings are confirmed instances; this sweep finds the rest.
-- [ ] **1.3.2 IDOR sweep.** Following the F1/F2 pattern, grep for
-  `$_GET['id']`, `$_POST['pid']`, `$_REQUEST['doc_id']`, `foreign_id`, etc.
-  in `portal/`, `library/ajax/`, `interface/patient_file/`, and document
-  download paths (`library/documents.php`, `controllers/`). For each, verify
-  the row is scoped to the session's patient/user or ACL. Record misses.
-- [ ] **1.3.3 Upload handlers.** Review the upload handlers named but not
-  reviewed in the first scan: `interface/super/`, `interface/billing/`,
-  `library/documents.php`, `library/edihistory/`, Documents and
-  Carecoordination modules. Record path traversal, MIME/extension validation,
-  storage location, and executable-upload risk.
-- [ ] **1.3.4 Break-glass / emergency access.** Review
-  `src/Common/Logging/BreakglassChecker.php`. Record how it is granted, whether
-  it is logged and reviewed, and whether it can be abused to bypass ACLs.
-- [ ] **1.3.5 Privilege escalation.** Check user/role administration
-  (`interface/usergroup/`) for self-elevation, and whether admin-only globals
-  can be changed by non-admins.
+
+  **Done 2026-09-15** — swept `library/ajax/*`, `apis/routes/*`,
+  `src/RestControllers/*`. REST layer is clean (centralized
+  `AuthorizationListener` PEP, narrow public allowlist). Found 3 new gaps in
+  `library/ajax/`: SEC-27 (`person_search_ajax.php`, PHI search+create, no
+  ACL), SEC-28 (`upload.php`, document upload/fetch, no ACL — distinct from
+  the fixed SEC-01 IDOR), SEC-29 (`addlistitem.php`, unrestricted
+  `list_options` writes). ~33 other `library/ajax/*` files flagged NO-ACL by
+  the grep but not confirmed as having concrete PHI/state-change impact in
+  the time available — flagged for a future follow-up pass, not logged as
+  findings.
+- [x] **1.3.2 IDOR sweep.** Done 2026-09-15. Confirmed SEC-01/SEC-02 fixes
+  are present and correct (`upload.php`, `paylib.php`). New gap: SEC-30 —
+  `pnotes.php`/`pnotes_full.php`/`pnotes_full_add.php` derive the acting
+  patient from request `docid`/`orderid` rather than session pid; squad ACL
+  runs against the derived patient but not a pid-match check, so cross-patient
+  note read/write is possible for staff with generic notes-write rights.
+  Everything else checked (`portal/report/document_downloads_action.php`,
+  `portal/get_patient_documents.php`, `C_Document::retrieve_action`, ~20
+  other portal/ajax endpoints) was properly scoped or had no request-supplied
+  id at all.
+- [x] **1.3.3 Upload handlers.** Done 2026-09-15. `interface/billing/` has no
+  upload handler. `interface/super/*`, `library/documents.php`
+  (`addNewDocument`, reuses the SEC-01-fixed engine), and
+  `library/edihistory/edih_uploads.php` (best-in-class: MIME allowlist +
+  extension denylist + null-byte checks) are all safe. Two low-severity gaps:
+  SEC-31 (Documents zend module — client-side-only MIME gate, bounded impact)
+  and SEC-32 (fax module — no type validation, mitigated by non-webroot
+  storage). Carecoordination module has no direct upload handler.
+- [x] **1.3.4 Break-glass / emergency access.** Done 2026-09-15 — SEC-33.
+  "Emergency Login" is a normal ACL group grantable by any `admin`/`users`
+  admin with no justification field or approval workflow; default install
+  grants it `admin/super`-equivalent, unscoped, indefinite access; logging is
+  generic (no dedicated review UI); no rate limiting/alerting on repeated use.
+- [x] **1.3.5 Privilege escalation.** Done 2026-09-15 — SEC-34 (HIGH).
+  `interface/usergroup/usergroup_admin.php` correctly blocks a non-superuser
+  from self-assigning any group that includes `admin/super` (including
+  Emergency Login). The sibling `library/ajax/adminacl_ajax.php`, which
+  performs the same group-membership-add operation, omits that check —
+  any `admin`/`acl`-privileged non-superuser can add themselves to
+  Administrators or Emergency Login and gain superuser access. Globals
+  editing (`interface/super/edit_globals.php`) is uniformly gated on
+  `admin/super`, no partial-coverage issue found there.
 
 ### 1.4 Data exposure vectors
 
-- [ ] **1.4.1 Injection.** Sample raw SQL in `library/` and `interface/`
-  (grep `sqlStatement(` with string concatenation, `$_GET`/`$_POST` in
-  queries). Record confirmed SQLi. Sample templates for unescaped output
-  (Smarty `|escape` missing, Twig `|raw`, `echo $_GET`) for XSS.
-- [ ] **1.4.2 CSRF.** Confirm `src/Common/Csrf/` coverage: sample state-
-  changing POST handlers in `interface/` and `library/ajax/` for missing
-  token verification.
-- [ ] **1.4.3 CORS and headers.** Re-check `CORSListener.php` conclusion from
-  the first scan; record CSP, HSTS, X-Frame-Options, Referrer-Policy as
-  configured in Apache config and PHP.
-- [ ] **1.4.4 Error and log leakage.** Check `display_errors` settings,
-  stack traces in API responses, and whether PHP error log / `SystemLogger`
-  output can contain PHI (patient names, DOB, MRN in log lines).
-- [ ] **1.4.5 Direct file access.** Identify web-reachable directories with
-  sensitive files (`sites/*/documents/`, `sites/*/sqlconf.php`, backups,
-  `tmp/`). Record which are protected by `.htaccess`/Apache config and which
-  rely on obscurity.
-- [ ] **1.4.6 Export and reporting surfaces.** Review CCDA export, report
-  generation, and bulk FHIR export for authorization and rate limiting.
+- [x] **1.4.1 Injection.** Done 2026-09-15 — no new confirmed findings
+  (folded into `audit-long.md` §1.3d as a coverage note). Sampled
+  `library/`, `interface/main|forms|orders|billing|usergroup` for
+  string-built SQL: all clean (parameterized or `add_escape_custom()`).
+  One dead/unreachable SQLi pattern in a code comment
+  (`interface/usergroup/usergroup_admin.php:514-532`), not logged. No
+  Smarty templates exist (100% Twig); sampled `|raw` usage in calendar
+  templates traces back to pre-escaped `CalendarViewModel` output — safe.
+  Explicitly a sample, several areas not covered (see write-up).
+- [x] **1.4.2 CSRF.** Done 2026-09-15 — SEC-35 (`search_payments.php`
+  `DeletePayments`, POST-only, no CSRF) and SEC-36
+  (`ub04_dispose.php`/`ub04_submit.php`, no CSRF **and** GET-triggerable
+  write — the more serious gap since it lacks even a POST-only fallback).
+  Broad sample of `library/ajax/*` (40 files) and `interface/patient_file/`,
+  `interface/usergroup/` found consistent CSRF coverage elsewhere.
+- [x] **1.4.3 CORS and headers.** Done 2026-09-15 — CORS conclusion
+  re-verified accurate (Origin reflected but never paired with
+  `Access-Control-Allow-Credentials` on the real response). New finding
+  SEC-37: no CSP/X-Frame-Options/Referrer-Policy outside login/portal entry
+  pages; HSTS present only via the Docker image's Apache config, absent for
+  non-Docker deployments.
+- [x] **1.4.4 Error and log leakage.** Done 2026-09-15. `display_errors`
+  correctly `Off` in both dev and prod docker images (same base php.ini,
+  no divergence). New finding SEC-38: REST/OAuth/FHIR layers return raw
+  `$exception->getMessage()` to clients (traces stay server-side).
+  SEC-39: CCDA import logs source filenames that may embed PHI by naming
+  convention (unconfirmed, medium confidence).
+- [x] **1.4.5 Direct file access.** Done 2026-09-15 — no new findings;
+  `sites/*/documents/`, `bin/` have explicit `Require all denied` in the
+  Docker Apache config (not relying on obscurity); `sqlconf.php` is
+  protected by PHP execution (blank output) rather than an explicit deny,
+  flagged as a config-dependent nuance, not a finding; `tmp/`
+  (`temporary_files_dir`) is genuinely outside the docroot. Non-Docker/
+  bare-metal installs depend on legacy `.htaccess` `Deny From All` syntax
+  requiring `mod_access_compat` on Apache 2.4 — noted as a manual-check item
+  for non-Docker deployments, not independently verifiable from source.
+- [x] **1.4.6 Export and reporting surfaces.** Done 2026-09-15. SEC-40:
+  CCDA/QRDA export (`Carecoordination` module) takes `pid`/`pids` from
+  request with no visible per-patient ACL check and no rate limit
+  (medium confidence — needs runtime confirmation). SEC-41 (INFO): bulk
+  FHIR system export has no abuse-rate limiting beyond execution-time
+  bounds — acceptable since the scope itself is admin-granted, but an
+  operational-control gap. SEC-42: `interface/reports/patient_list.php`
+  CSV export lets any authenticated user dump the entire patient list with
+  no pagination/rate limit (distinct from SEC-13's ACL gap).
 
 ### 1.5 PHI handling
 
-- [ ] **1.5.1 Encryption in transit.** Record TLS configuration
-  (`docker/production` vs dev), whether HTTP is redirected, and any internal
-  service calls made over plain HTTP.
-- [ ] **1.5.2 Encryption at rest.** Record DB volume encryption (none by
-  default?), document storage encryption (`documents.encrypted` column,
-  `src/Common/Crypto/`), key location and rotation, and backup encryption.
-- [ ] **1.5.3 PHI in non-clinical stores.** Check sessions, caches, queue
-  tables, email outbox, `tmp/`, and the `log` table for PHI copies that
-  bypass access controls.
-- [ ] **1.5.4 Third-party egress.** Inventory every outbound integration that
-  can carry PHI (fax, SMS, email, e-prescribing, clearinghouse, labs, any
-  LLM/AI hook). Record destination, transport security, and whether it is
-  configurable/off by default.
+- [x] **1.5.1 Encryption in transit.** Done 2026-09-15 — folded into
+  `audit-long.md` §1.3e. TLS terminated in-container via Apache in both
+  prod and dev compose files. SEC-43: HTTP→HTTPS redirect present but
+  commented out by default. SEC-44: internal LDAP traffic plaintext
+  (`ldap://`) despite TLS material provisioned on the LDAP container.
+- [x] **1.5.2 Encryption at rest.** Done 2026-09-15. SEC-45 (INFO): DB
+  volume has no encryption by default (standard for self-hosted Docker,
+  not a code defect). Document encryption (`drive_encryption`, default ON,
+  `CryptoGen.php` dual-key architecture) confirmed solid — no finding.
+  SEC-46: backup archives (`interface/main/backup.php`) are compressed but
+  not encrypted.
+- [x] **1.5.3 PHI in non-clinical stores.** Done 2026-09-15. SEC-47
+  (HIGH): `email_queue`/`notification_log` store PHI-bearing message
+  content plaintext, indefinitely, with no ACL-gated viewer. SEC-48
+  (MEDIUM): audit-log viewer (`interface/logview/logview.php`) gates PHI-
+  bearing free-text comments with a single coarse `admin/users` ACL, not
+  per-patient authorization. SEC-49/50 (LOW): portal one-time-auth caches
+  names in session (narrow scope); QRDA/CQM export staging uses predictable
+  filenames + `chmod 0777` (contrast with the hardened CCDA export
+  pattern). No PHI found in caches (no APCu usage; `background_services`
+  is scheduler metadata only, not a payload queue).
+- [x] **1.5.4 Third-party egress.** Done 2026-09-15. Inventoried fax
+  (RingCentral/EtherFax/SignalWire), SMS (Twilio/Clickatell), email
+  (SMTP), X12 clearinghouse (SFTP), HL7 lab orders (file-drop, no direct
+  network client found in this repo) — all off-by-default, admin-
+  configured. SEC-51 (MEDIUM): SMTP defaults to unencrypted transport with
+  an admin-redirectable host. SEC-52 (LOW): Clickatell SMS puts content +
+  API key in a GET query string. **No Surescripts/e-prescribing
+  integration exists.** **No LLM/AI API integration exists anywhere in the
+  shipped codebase** — confirmed by full-repo grep; only match is
+  `AI_INTEGRATION_PLAN.md` itself (a planning doc), consistent with that
+  plan's own stated premise (relevant to task 6.5's cross-check).
 
 ### 1.6 Security section wrap-up
 
-- [ ] **1.6.1** Record everything *not* reviewed and why.
-- [ ] **1.6.2** Rank security findings by severity in the register.
+- [x] **1.6.1** Done 2026-09-15 — folded into `audit-long.md` §1.4 "Not
+  covered": areas never reached (`ccdaservice/`, `gacl/` internals, `sql/`
+  migrations, `tests/`/vendored trees, most of `interface/billing/`, HL7
+  network destination), areas sampled-not-exhaustive (`library/ajax/*`
+  remainder, most of `interface/forms/*`, calendar/report code, non-Docker
+  deployments), and explicit scope exclusions (no dynamic/runtime testing).
+- [x] **1.6.2** Done 2026-09-15 — folded into `audit-long.md` §1.5:
+  52 findings total, 7 High / 23 Medium / 17 Low / 5 Info, with a note on
+  weighting reachability and breadth (the "gate the menu not the handler"
+  root cause spans 10+ findings) for the cross-audit ranking in task 6.2.
 
 ---
 
