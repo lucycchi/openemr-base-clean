@@ -48,6 +48,16 @@ $action = $_POST['action'] ?? null;
 $doc_id = (int)($_POST['doc_id'] ?? null);
 $json_data = $_POST['json_data'] ?? null;
 
+// Portal patients may only touch documents that belong to them.
+if ($isPortal && ($action == 'save' || $action == 'fetch')) {
+    $docOwner = sqlQuery("SELECT foreign_id FROM documents WHERE id = ?", [$doc_id]);
+    if (empty($docOwner) || (int)$docOwner['foreign_id'] !== (int)$pid) {
+        http_response_code(403);
+        echo xlj("Access denied");
+        exit();
+    }
+}
+
 if ($action == 'save') {
     $pass_it = dicom_history_action($action, $doc_id, $json_data);
     if ($pass_it === 'false') {
