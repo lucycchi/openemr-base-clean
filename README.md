@@ -93,7 +93,7 @@ openemr-cmd backup-snapshot baseline     # alias: bs — snapshot DB + sites/ fi
 Later, after a test run dirties the data:
 
 ```bash
-openemr-cmd restore-snapshot baseline    # alias: rs — back to the seeded state
+openemr-cmd restore-snapshot baseline    # alias: rs — back to the seeded state and removes new data
 openemr-cmd list-snapshots
 ```
 
