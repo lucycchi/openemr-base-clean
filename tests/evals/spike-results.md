@@ -65,3 +65,18 @@ in the seed (receptionist, accountant).
   today's encounter created (front-desk check-in), which is the real flow.
 - `lab_delta` is noisy (pid 15: 20 deltas, some tiny). Not must-surface; the
   model chooses. A minimum-change threshold is a candidate refinement.
+
+## Live narration smoke (2026-09-15, after T5)
+
+`tests/evals/spike/narrate_smoke.php` (real facts → OpenAI gpt-4o-mini →
+Verifier → OmissionGuard → DB cache), pids 4 and 15:
+
+- Cold: ~3.2 s, 0 strips, 0 omissions, 600-1400 prompt tokens. Cached
+  (same facts, same prompt version, same model): 1 ms, 0 tokens, across
+  processes.
+- Follow-up "which lab was out of range?" → `cited`, grounded on the abnormal
+  fact. "Blood pressure at last visit?" (not in facts) → `not_in_facts`.
+- The model echoes "[id]" inline despite the rule; the Verifier now ignores
+  cited ids in the text before scanning for ungrounded numbers (an all-digit
+  8-hex id would otherwise have stripped a correct sentence). Prompt VERSION
+  bumped to 2026-09-15.2.

@@ -138,6 +138,16 @@ final class VerifierTest extends TestCase
         self::assertFalse($result->isTotalFailure());
     }
 
+    public function testInlineCitedFactIdMadeOfDigitsIsNotTreatedAsANumber(): void
+    {
+        $facts = new FactSet([new Fact('12345678', 'PrescriptionService', 1, 'drug', 'Aspirin 81 MG', FactCategory::MedicationActive)]);
+        $sentence = new Sentence('Aspirin is active [12345678].', ['12345678']);
+
+        $result = (new Verifier())->verify(new Narration([$sentence]), $facts);
+
+        self::assertSame([$sentence], $result->kept());
+    }
+
     public function testNumberMayComeFromAnyCitedFactInTheSentence(): void
     {
         $sentence = new Sentence('Since 2026-09-09, A1c is 7.8 %.', ['0a0b0c', 'd4e5f6']);
