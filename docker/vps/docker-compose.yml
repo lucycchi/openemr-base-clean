@@ -1,0 +1,74 @@
+# Single-VPS deployment of this fork using the flex image.
+#
+# The flex image clones FLEX_REPOSITORY at container start and builds it
+# (composer + npm), so the fork's custom modules are present without a
+# custom image. docker/production/docker-compose.yml cannot be used as-is:
+# it pulls the upstream openemr/openemr:latest image, which does not
+# contain this fork.
+#
+# Usage on the VPS (Docker + compose plugin installed):
+#   mkdir -p ~/openemr && cd ~/openemr
+#   curl -O https://raw.githubusercontent.com/lucycchi/openemr-base-clean/audit/docker/vps/docker-compose.yml
+#   cp .env.example .env   # see README.md; set passwords and DOMAIN
+#   docker compose up -d
+# First start takes ~10 minutes (clone + composer + npm). Redeploy:
+#   docker compose up -d --force-recreate openemr
+services:
+  mysql:
+    restart: always
+    image: mariadb:11.8.8@sha256:be1ef4fe5f14589325c08a41c76334097ce66c86264b75e1d28342c742782a61
+    command: ['mariadbd', '--character-set-server=utf8mb4']
+    volumes:
+      - databasevolume:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set in .env}
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      start_period: 1m
+      start_interval: 10s
+      interval: 1m
+      timeout: 5s
+      retries: 3
+
+  openemr:
+    restart: always
+    image: openemr/openemr:flex@sha256:1d2c8345a320cf2985c9d02138951267739ec498559ca724b3d5397e4568482e
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - sitesvolume:/var/www/localhost/htdocs/openemr/sites:rw
+      - logvolume:/var/log
+    environment:
+      FLEX_REPOSITORY: ${FLEX_REPOSITORY:-https://github.com/lucycchi/openemr-base-clean.git}
+      FLEX_REPOSITORY_BRANCH: ${FLEX_REPOSITORY_BRANCH:-audit}
+      MYSQL_HOST: mysql
+      MYSQL_ROOT_PASS: ${MYSQL_ROOT_PASSWORD:?set in .env}
+      MYSQL_USER: openemr
+      MYSQL_PASS: ${MYSQL_PASS:?set in .env}
+      OE_USER: admin
+      OE_PASS: ${OE_PASS:?set in .env}
+      # Agent + observability (read by the clinical-copilot module)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
+      OPENEMR_SETTING_site_addr_oath: https://${DOMAIN:?set in .env}
+      OPENEMR_SETTING_rest_api: 1
+      OPENEMR_SETTING_rest_fhir_api: 1
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/bin/curl", "--fail", "--insecure", "--location", "--silent", "https://localhost/meta/health/readyz"]
+      start_period: 15m
+      start_interval: 30s
+      interval: 1m
+      timeout: 5s
+      retries: 3
+
+volumes:
+  databasevolume: {}
+  sitesvolume: {}
+  logvolume: {}
