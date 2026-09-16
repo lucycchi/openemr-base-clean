@@ -9,7 +9,7 @@
 # Usage on the VPS (Docker + compose plugin installed):
 #   mkdir -p ~/openemr && cd ~/openemr
 #   copy docker-compose.yml and .env.example here (see README.md)
-#   cp .env.example .env   # set FLEX_REPOSITORY (GitLab deploy token), passwords, DOMAIN
+#   cp .env.example .env   # set passwords and DOMAIN; put the deploy key in ./deploy-ssh
 #   docker compose up -d
 # First start takes ~10 minutes (clone + composer + npm). Redeploys are
 # driven by .gitlab-ci.yml (docker compose up -d --force-recreate openemr).
@@ -53,8 +53,14 @@ services:
     # upstream-named repo, and every step after it runs unmodified.
     # (The GitLab project is literally named "openemr", so the rewrite is a
     # no-op there; it is kept so FLEX_REPOSITORY can point anywhere.)
+    #
+    # The GitLab instance rejects HTTPS git auth (deploy tokens and PATs both
+    # get 401 through its proxy), so the clone goes over SSH with a read-only
+    # deploy key mounted at /root/.ssh. The flex image has git but no ssh
+    # client, hence the apk add.
     command: >
-      sh -c "git config --global url.\"${FLEX_REPOSITORY:?set in .env}\".insteadOf https://flex.invalid/openemr.git &&
+      sh -c "apk add --no-cache openssh-client > /dev/null &&
+      git config --global url.\"${FLEX_REPOSITORY:?set in .env}\".insteadOf https://flex.invalid/openemr.git &&
       FLEX_REPOSITORY=https://flex.invalid/openemr.git ./openemr.sh"
     ports:
       - "8080:80"
@@ -62,9 +68,12 @@ services:
     volumes:
       - sitesvolume:/var/www/localhost/htdocs/openemr/sites:rw
       - logvolume:/var/log
+      # id_ed25519 (0600) + known_hosts; see README "Deploy key"
+      - ./deploy-ssh:/root/.ssh:ro
     environment:
-      # Private GitLab project: https://<token-user>:<token>@labs.gauntletai.com/lucychi/openemr.git
+      # ssh://git@labs.gauntletai.com:22022/lucychi/openemr.git
       FLEX_REPOSITORY: ${FLEX_REPOSITORY:?set in .env}
+      GIT_SSH_COMMAND: ssh -i /root/.ssh/id_ed25519 -o UserKnownHostsFile=/root/.ssh/known_hosts -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes
       FLEX_REPOSITORY_BRANCH: ${FLEX_REPOSITORY_BRANCH:-audit}
       MYSQL_HOST: mysql
       MYSQL_ROOT_PASS: ${MYSQL_ROOT_PASSWORD:?set in .env}

@@ -13,9 +13,9 @@ image clones `FLEX_REPOSITORY` at container start instead.
 - A VPS with 4 GB RAM, Docker Engine, and the compose plugin
   (DigitalOcean, Hetzner, Lightsail all work).
 - A DNS A record for `DOMAIN` pointing at the VPS.
-- A GitLab deploy token for the (private) project so the VPS can clone it:
-  GitLab → Settings → Repository → Deploy tokens → name `vps`, scope
-  `read_repository`. Note the username (`gitlab+deploy-token-N`) and token.
+- A read-only GitLab deploy key so the VPS can clone the private project
+  over SSH (HTTPS git auth on this GitLab instance returns 401 for deploy
+  tokens and PATs alike, so tokens are not an option). See "Deploy key".
 
 ## Steps
 
@@ -23,15 +23,30 @@ image clones `FLEX_REPOSITORY` at container start instead.
 mkdir -p ~/openemr && cd ~/openemr
 scp docker/vps/docker-compose.yml docker/vps/.env.example do-openemr:~/openemr/   # from your laptop
 mv .env.example .env
-$EDITOR .env          # FLEX_REPOSITORY (deploy token URL), DOMAIN, passwords, OPENAI_API_KEY, LANGFUSE_* keys
+$EDITOR .env          # DOMAIN, passwords, OPENAI_API_KEY, LANGFUSE_* keys
+# then set up the deploy key (next section) before the first `up`
 docker compose up -d
 docker compose logs -f openemr   # first boot clones, composer installs, npm builds: ~10 min
 ```
 
-`FLEX_REPOSITORY` must be the tokenized HTTPS URL, e.g.
-`https://gitlab+deploy-token-1:TOKEN@labs.gauntletai.com/lucychi/openemr.git`.
 The deploy job in `.gitlab-ci.yml` refuses to run if `.env` does not point at
 GitLab, so a stale GitHub URL cannot be silently redeployed.
+
+## Deploy key
+
+The container has no ssh client of its own; the compose `command` installs
+one at start and `GIT_SSH_COMMAND` points it at a key bind-mounted read-only
+from `./deploy-ssh`:
+
+```bash
+cd ~/openemr && mkdir -p deploy-ssh && chmod 700 deploy-ssh
+ssh-keygen -t ed25519 -N "" -C openemr-vps-deploy -f deploy-ssh/id_ed25519
+ssh-keyscan -p 22022 labs.gauntletai.com > deploy-ssh/known_hosts
+cat deploy-ssh/id_ed25519.pub   # add in GitLab: Settings → Repository → Deploy keys, read-only
+# verify before starting the stack:
+GIT_SSH_COMMAND="ssh -i deploy-ssh/id_ed25519 -o UserKnownHostsFile=deploy-ssh/known_hosts" \
+  git ls-remote ssh://git@labs.gauntletai.com:22022/lucychi/openemr.git refs/heads/audit
+```
 
 The image serves HTTPS on 443 with a self-signed certificate. For a real
 certificate, change the port mappings to `8080:80` / `8443:443`, install
