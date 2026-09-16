@@ -92,6 +92,34 @@ final class NarrationPipeline
         return new AnswerResult($type, $verified->kept(), $verified->strippedCount(), null, $completion->promptTokens, $completion->completionTokens);
     }
 
+    /**
+     * Models sometimes leak inline "[id]" citations or JSON punctuation into
+     * sentence text. Citations live in fact_ids, so remove the inline echoes,
+     * then trim anything that is not sentence text from both ends.
+     *
+     * @param list<string> $ids
+     */
+    private function scrub(string $text, array $ids): string
+    {
+        $text = preg_replace_callback(
+            '/\s*\[([A-Za-z0-9]+(?:\s*,\s*[A-Za-z0-9]+)*)\]/',
+            static function (array $m) use ($ids): string {
+                $tokens = preg_split('/\s*,\s*/', $m[1]) ?: [];
+                $allCited = array_diff($tokens, $ids) === [];
+                $allHexIds = array_filter($tokens, static fn(string $t) => !preg_match('/^[0-9a-f]{8}$/', $t)) === [];
+                return ($allCited || $allHexIds) ? '' : $m[0];
+            },
+            $text
+        ) ?? $text;
+        $text = preg_replace('/^[\s{}\[\]",:]*(?:text"?\s*:\s*"?)?/', '', $text) ?? $text;
+        $text = preg_replace('/[\s{}\[\]",:]+$/', '', $text) ?? $text;
+        $text = trim(preg_replace('/\s+([.,;:!?])/', '$1', $text) ?? $text);
+        if ($text !== '' && !preg_match('/[.!?]$/', $text)) {
+            $text .= '.';
+        }
+        return $text;
+    }
+
     /** @param array<string, mixed> $data */
     private function narrationFrom(array $data): Narration
     {
@@ -108,7 +136,7 @@ final class NarrationPipeline
                         $ids[] = $id;
                     }
                 }
-                $sentences[] = new Sentence($item['text'], $ids);
+                $sentences[] = new Sentence($this->scrub($item['text'], $ids), $ids);
             }
         }
         return new Narration($sentences);

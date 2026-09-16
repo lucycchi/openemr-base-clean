@@ -136,6 +136,21 @@ final class NarrationPipelineTest extends TestCase
         self::assertSame('briefing', $this->llm->lastSchemaName);
     }
 
+    public function testModelJsonArtifactsAndInlineIdsAreScrubbedFromSentenceText(): void
+    {
+        $this->llm->reply = ['sentences' => [
+            ['text' => 'The prior visit was a check-up [en0001].},{', 'fact_ids' => ['en0001']],
+            ['text' => '{"text":"A new medication was started [rx0001, al0001]."', 'fact_ids' => ['rx0001', 'al0001']],
+        ]];
+
+        $result = $this->pipeline()->brief($this->assembled());
+
+        self::assertSame(
+            ['The prior visit was a check-up.', 'A new medication was started.'],
+            array_map(fn($s) => $s->text, $result->sentences)
+        );
+    }
+
     public function testFollowUpAnswerIsVerifiedAndNeverCached(): void
     {
         $this->llm->reply = ['answer_type' => 'cited', 'sentences' => [
