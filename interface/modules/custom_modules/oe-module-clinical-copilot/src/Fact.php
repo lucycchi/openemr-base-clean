@@ -25,4 +25,10 @@ final readonly class Fact
         public FactCategory $category,
     ) {
     }
+
+    // Content-derived so ids stay stable across turns even when the set changes.
+    public static function idFor(string $service, int $recordId, string $field): string
+    {
+        return substr(hash('sha256', "$service|$recordId|$field"), 0, 8);
+    }
 }
