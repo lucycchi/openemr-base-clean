@@ -46,6 +46,62 @@ if (!AclMain::aclCheckCore('admin', 'acl')) {
     CsrfUtils::csrfNotVerified(false);
 }
 
+// admin/acl lets a user manage ordinary groups; only admin/super may touch a group that itself grants
+// admin/super, or hand out the admin/super ACO.  usergroup_admin.php enforces the same rule on its
+// user-edit form; without it here, an admin/acl user could add themselves to Administrators.
+$isSuperuser = AclMain::aclCheckCore('admin', 'super');
+
+// Denies the request (error xml + audit event + exit) when a non-superuser tries to change the
+// membership or ACO set of a group that itself grants admin/super — the same rule usergroup_admin.php
+// applies. Superusers pass straight through.
+$denyUnlessSuperuserMayEditGroups = function ($groups) use ($isSuperuser, $session): void {
+    if ($isSuperuser) {
+        return;
+    }
+    $groups = is_array($groups) ? $groups : [$groups];
+    foreach ($groups as $group) {
+        if (!is_string($group) || $group === '') {
+            continue;
+        }
+        if (AclExtended::isGroupIncludeSuperuser($group)) {
+            EventAuditLogger::getInstance()->newEvent(
+                "security-administration-update",
+                $session->get('authUser'),
+                $session->get('authProvider'),
+                0,
+                "Denied: non-superuser attempted to modify superuser group " . $group
+            );
+            echo error_xml(xl('Only a superuser may modify a group that grants superuser access'));
+            exit;
+        }
+    }
+};
+
+// Denies the request (error xml + audit event + exit) when a non-superuser tries to attach the
+// admin/super ACO to any group. Superusers pass straight through.
+$denyUnlessSuperuserMayGrantAcos = function ($acoIds) use ($isSuperuser, $session): void {
+    if ($isSuperuser) {
+        return;
+    }
+    $acoIds = is_array($acoIds) ? $acoIds : [$acoIds];
+    foreach ($acoIds as $acoId) {
+        if (!is_int($acoId) && !is_string($acoId)) {
+            continue;
+        }
+        if (AclExtended::isSuperuserAco($acoId)) {
+            EventAuditLogger::getInstance()->newEvent(
+                "security-administration-update",
+                $session->get('authUser'),
+                $session->get('authProvider'),
+                0,
+                "Denied: non-superuser attempted to grant admin/super ACO"
+            );
+            echo error_xml(xl('Only a superuser may grant superuser access'));
+            exit;
+        }
+    }
+};
+
 //Display red alert if Emergency Login ACL is activated for a user.
 if ($_POST["action"] === "add") {
     if (!empty($_POST["selection"]) && is_array($_POST["selection"]) && in_array("Emergency Login", $_POST["selection"])) {
@@ -77,6 +133,8 @@ if ($_POST["control"] === "membership") {
             exit;
         }
 
+        $denyUnlessSuperuserMayEditGroups($_POST["selection"]);
+
         //add the group, then log it, then return updated membership data
         AclExtended::addUserAros($_POST["name"], $_POST["selection"]);
         EventAuditLogger::getInstance()->newEvent("security-administration-update", $session->get('authUser'), $session->get('authProvider'), 1, "Added " . $_POST["name"] . " to following access group(s): " . implode(', ', $_POST["selection"]));
@@ -90,6 +148,8 @@ if ($_POST["control"] === "membership") {
             echo user_group_listings_xml($_POST["name"], $error);
             exit;
         }
+
+        $denyUnlessSuperuserMayEditGroups($_POST["selection"]);
 
         // check if user is protected. If so, then state message unable to remove from admin group.
         $userNametoID = (new UserService())->getIdByUsername($_POST["name"]);
@@ -216,6 +276,9 @@ if ($_POST["control"] === "aco") {
             exit;
         }
 
+        $denyUnlessSuperuserMayEditGroups([$_POST["name"]]);
+        $denyUnlessSuperuserMayGrantAcos($_POST["selection"]);
+
         //add the aco, then return updated membership data
         AclExtended::aclAddAcos($_POST["name"], $_POST["return_value"], $_POST["selection"]);
         echo AclExtended::acoListingsXml($_POST["name"], $_POST["return_value"], $error);
@@ -235,6 +298,8 @@ if ($_POST["control"] === "aco") {
             echo AclExtended::acoListingsXml($_POST["name"], $_POST["return_value"], $error);
             exit;
         }
+
+        $denyUnlessSuperuserMayEditGroups([$_POST["name"]]);
 
         //remove the acos, then return updated data
         AclExtended::aclRemoveAcos($_POST["name"], $_POST["return_value"], $_POST["selection"]);
