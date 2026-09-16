@@ -35,19 +35,48 @@ The flex entrypoint itself has no ACME support.
 
 ## Seed the same patients as local
 
-The local dev stack's seeded database can be moved as a capsule so the 10
-named eval patients are identical on both boxes:
+Move the local seeded database to the droplet so the eval patients match.
+**Do not use `/root/devtools restore` inside the flex container**: it assumes
+the dev-container layout, and on 2026-09-16 it dropped the database and
+truncated `sqlconf.php` before failing. Import the dump by hand instead.
 
 ```bash
-# on your laptop
+# on your laptop: snapshot and export
 openemr-cmd backup-snapshot baseline
 openemr-cmd get-capsule baseline.tgz
-scp baseline.tgz vps:~/openemr/
+scp baseline.tgz do-openemr:~/openemr/
 
-# on the VPS
-docker compose cp baseline.tgz openemr:/root/
-docker compose exec openemr /root/devtools put-capsule /root/baseline.tgz
-docker compose exec openemr /root/devtools restore-snapshot baseline
+# on the droplet: unpack and import the SQL dump
+cd ~/openemr
+docker compose cp baseline.tgz openemr:/tmp/baseline.tgz
+docker compose exec -T openemr sh -c '
+  cd /tmp && rm -rf cap && mkdir cap && tar -xzf baseline.tgz -C cap &&
+  mariadb -h mysql -uopenemr -p"$MYSQL_PASS" openemr < cap/baseline/backup.sql &&
+  mariadb -h mysql -uopenemr -p"$MYSQL_PASS" openemr -e "SELECT COUNT(*) patients FROM patient_data"'
+```
+
+The dump carries the module registration row and the `copilot_briefing_cache`
+table too, so "Enable the module" below is already done. It also carries the
+local `admin` password (`pass` on the dev stack); change it in the UI
+afterwards if you set a different one.
+
+If the database or DB user ever disappears (that is what the broken restore
+did), recreate them as root before importing, then write `sqlconf.php` from
+the droplet's own `.env` so no password is typed into a terminal:
+
+```bash
+docker compose exec -T openemr sh -c 'mariadb -h mysql -uroot -p"$MYSQL_ROOT_PASS" -e "
+  CREATE DATABASE IF NOT EXISTS openemr CHARACTER SET utf8mb4;
+  CREATE USER IF NOT EXISTS openemr@\"%\" IDENTIFIED BY \"$MYSQL_PASS\";
+  GRANT ALL PRIVILEGES ON openemr.* TO openemr@\"%\"; FLUSH PRIVILEGES;"'
+set -a; . ./.env; set +a
+docker compose exec -T openemr sh -c 'cat > /var/www/localhost/htdocs/openemr/sites/default/sqlconf.php && chown apache:apache /var/www/localhost/htdocs/openemr/sites/default/sqlconf.php' <<EOF
+<?php
+\$host = "mysql"; \$port = "3306"; \$login = "openemr"; \$pass = "$MYSQL_PASS"; \$dbase = "openemr";
+\$sqlconf = array(); global \$sqlconf;
+\$sqlconf["host"] = \$host; \$sqlconf["port"] = \$port; \$sqlconf["login"] = \$login; \$sqlconf["pass"] = \$pass; \$sqlconf["dbase"] = \$dbase;
+\$config = 1;
+EOF
 ```
 
 ## Enable the module
@@ -63,12 +92,22 @@ docker compose exec openemr sh -c "grep -v '^#' $M/install.sql | mariadb -h mysq
 
 ## Redeploy after a push
 
+The container's code tree is an rsync of the clone with no `.git`, so
+`git pull` does not work inside it. Two options:
+
 ```bash
+# full: re-clone and rebuild (~10 min; composer + npm run again)
 docker compose up -d --force-recreate openemr
+
+# quick: copy just the changed files (no build step needed for PHP/JS in the module)
+R=/var/www/localhost/htdocs/openemr/interface/modules/custom_modules/oe-module-clinical-copilot
+docker compose cp path/to/File.php openemr:$R/src/File.php
 ```
 
-The container re-clones the branch on recreate. Database and `sites/` live
-on named volumes and survive.
+Database and `sites/` live on named volumes and survive a recreate. The
+web tree is mounted read-mostly for the `apache` user, so scripts that write
+into it (e.g. `tests/evals/run.php`) should be pointed elsewhere:
+`EVAL_RESULTS=/tmp/results.json php tests/evals/run.php --live`.
 
 ## Health
 
