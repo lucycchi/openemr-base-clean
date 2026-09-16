@@ -44,3 +44,24 @@ in the seed (receptionist, accountant).
   substances (`penicillin`, `Bee venom`, `Mold`); drugs are RxNorm strings.
   Decision D18: seed one guaranteed hit (e.g. a penicillin-class prescription
   for a penicillin-allergy patient) in `tests/evals/seed/`.
+
+## FactAssembler smoke (2026-09-15, after T3)
+
+`tests/evals/spike/assemble_smoke.php`: real `OpenEmrChartSource` +
+`AclAuthorization`, 10 busiest patients, latest encounter as the current visit.
+
+- admin: 6-23 ms per patient; receptionist: refused before any chart read.
+- Abnormal labs fire on real seed data via the LOINC reference table (no
+  seeding needed): pid 4 Hemoglobin 11.45 g/dL below range; pid 15
+  Triglyceride 154.74 mg/dL above range. Deltas fire for repeated tests.
+- Data gotchas found: `procedure_result.date` and `prescriptions.start_date`
+  are zero dates, not NULL; the adapter uses NULLIF chains
+  (`date_report`, `date_collected`, `date_ordered`; `date_added`).
+- The service layer is not used by the adapter: its rows lack prescription
+  ids/start dates and lab encounter links. Direct patient-scoped queries via
+  `QueryUtils` instead; no identifiers selected.
+- Between visits, Synthea charts have no events, so with no current
+  encounter the diff is empty. The demo flow should open a chart with
+  today's encounter created (front-desk check-in), which is the real flow.
+- `lab_delta` is noisy (pid 15: 20 deltas, some tiny). Not must-surface; the
+  model chooses. A minimum-change threshold is a candidate refinement.

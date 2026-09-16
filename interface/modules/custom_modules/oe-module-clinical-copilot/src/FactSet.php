@@ -44,4 +44,12 @@ final readonly class FactSet
     {
         return array_values($this->byId);
     }
+
+    // Order-independent so a re-assembly that merely reorders rows is a cache hit.
+    public function hash(): string
+    {
+        $lines = array_map(fn(Fact $f) => $f->id . "\t" . $f->category->value . "\t" . $f->value, $this->byId);
+        sort($lines);
+        return hash('sha256', implode("\n", $lines));
+    }
 }

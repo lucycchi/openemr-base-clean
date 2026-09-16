@@ -122,7 +122,56 @@ final class FactAssembler
             }
         }
 
-        return new AssembledFacts(new FactSet($facts), $prior);
+        foreach ($this->chart->problems($pid) as $p) {
+            if ($this->isNew($p->beginDate, $since)) {
+                $facts[] = $this->fact('ConditionService', $p->id, 'title', $p->title, FactCategory::ProblemNew);
+            }
+        }
+
+        return new AssembledFacts(new FactSet($this->capPerCategory($facts)), $prior);
+    }
+
+    private const CAP_PER_CATEGORY = 50;
+
+    /**
+     * Rule 9A: bound each category so prompt size is predictable, and say so
+     * with a fact the omission guard will force onto the screen.
+     *
+     * @param list<Fact> $facts
+     * @return list<Fact>
+     */
+    private function capPerCategory(array $facts): array
+    {
+        $seen = [];
+        $overflow = [];
+        $kept = [];
+        foreach ($facts as $fact) {
+            $key = $fact->category->value;
+            $seen[$key] = ($seen[$key] ?? 0) + 1;
+            if ($seen[$key] > self::CAP_PER_CATEGORY) {
+                $overflow[$key] = ($overflow[$key] ?? 0) + 1;
+                continue;
+            }
+            $kept[] = $fact;
+        }
+        foreach ($overflow as $key => $count) {
+            $label = str_replace('_', ' ', $key);
+            $label = match (FactCategory::from($key)) {
+                FactCategory::MedicationActive => 'active medications',
+                FactCategory::MedicationNew => 'new medications',
+                FactCategory::LabAbnormal => 'abnormal lab results',
+                FactCategory::LabDelta => 'changed lab results',
+                FactCategory::Encounter => 'encounters',
+                FactCategory::AllergyActive => 'allergies',
+                FactCategory::AllergyNew => 'new allergies',
+                FactCategory::ProblemNew => 'new problems',
+                FactCategory::AllergyMedicationHit => 'allergy/medication matches',
+                FactCategory::MedicationChanged => 'changed medications',
+                FactCategory::Truncation => $label,
+            };
+            $kept[] = $this->fact('FactAssembler', 0, "truncated:$key", "$count additional $label not shown", FactCategory::Truncation);
+        }
+        return $kept;
     }
 
     /** @param list<LabRecord> $labs sorted newest first */

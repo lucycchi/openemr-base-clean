@@ -18,13 +18,14 @@ use DateTimeImmutable;
 use OpenEMR\Modules\ClinicalCopilot\AccessDeniedException;
 use OpenEMR\Modules\ClinicalCopilot\AllergyRecord;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
-use OpenEMR\Modules\ClinicalCopilot\LabRecord;
-use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\EncounterRecord;
 use OpenEMR\Modules\ClinicalCopilot\Fact;
-use OpenEMR\Modules\ClinicalCopilot\FactCategory;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
+use OpenEMR\Modules\ClinicalCopilot\FactCategory;
+use OpenEMR\Modules\ClinicalCopilot\LabRecord;
+use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
+use OpenEMR\Modules\ClinicalCopilot\ProblemRecord;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeAuthorization;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeChartSource;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FixedClock;
@@ -341,5 +342,67 @@ final class FactAssemblerTest extends TestCase
         $result = $this->assembler()->assemble(new PatientId(7), null);
 
         self::assertSame([], $this->factsIn($result, FactCategory::LabAbnormal));
+    }
+
+    public function testProblemRecordedAfterPriorVisitIsANewProblemFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->problems = [
+            new ProblemRecord(501, 'Type 2 diabetes mellitus', new DateTimeImmutable('2026-09-12')),
+            new ProblemRecord(500, 'Hypertension', new DateTimeImmutable('2020-01-01')),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $new = $this->factsIn($result, FactCategory::ProblemNew);
+        self::assertCount(1, $new);
+        self::assertSame('Type 2 diabetes mellitus', $new[0]->value);
+        self::assertSame('ConditionService', $new[0]->service);
+        self::assertSame(501, $new[0]->recordId);
+        self::assertSame('title', $new[0]->field);
+        self::assertCount(1, $result->facts()->all());
+    }
+
+    public function testCategoryOverCapIsTruncatedWithACountFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        for ($i = 1; $i <= 53; $i++) {
+            $this->chart->medications[] = new MedicationRecord($i, "Drug $i", new DateTimeImmutable('2020-01-01'), true);
+        }
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        self::assertCount(50, $this->factsIn($result, FactCategory::MedicationActive));
+        $truncation = $this->factsIn($result, FactCategory::Truncation);
+        self::assertCount(1, $truncation);
+        self::assertSame('3 additional active medications not shown', $truncation[0]->value);
+    }
+
+    public function testFactIdsAreDerivedFromSourceNotPosition(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->medications = [new MedicationRecord(17, 'Metformin 500 MG Oral Tablet', new DateTimeImmutable('2025-01-10'), true)];
+        $first = $this->assembler()->assemble(new PatientId(7), null)->facts()->all()[0]->id;
+
+        array_unshift($this->chart->medications, new MedicationRecord(16, 'Aspirin 81 MG', new DateTimeImmutable('2025-01-10'), true));
+        $facts = $this->assembler()->assemble(new PatientId(7), null)->facts()->all();
+
+        self::assertSame($first, $facts[1]->id);
+        self::assertSame(Fact::idFor('PrescriptionService', 17, 'drug'), $first);
+    }
+
+    public function testFactsHashIsStableAndChangesWhenAnyValueChanges(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->medications = [new MedicationRecord(17, 'Metformin 500 MG Oral Tablet', new DateTimeImmutable('2025-01-10'), true)];
+        $a = $this->assembler()->assemble(new PatientId(7), null)->facts()->hash();
+        $b = $this->assembler()->assemble(new PatientId(7), null)->facts()->hash();
+
+        $this->chart->medications = [new MedicationRecord(17, 'Metformin 1000 MG Oral Tablet', new DateTimeImmutable('2025-01-10'), true)];
+        $c = $this->assembler()->assemble(new PatientId(7), null)->facts()->hash();
+
+        self::assertSame($a, $b);
+        self::assertNotSame($a, $c);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $a);
     }
 }

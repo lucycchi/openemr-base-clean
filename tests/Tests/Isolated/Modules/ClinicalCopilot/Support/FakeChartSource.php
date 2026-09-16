@@ -16,10 +16,11 @@ namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support;
 
 use OpenEMR\Modules\ClinicalCopilot\AllergyRecord;
 use OpenEMR\Modules\ClinicalCopilot\ChartSource;
-use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\EncounterRecord;
 use OpenEMR\Modules\ClinicalCopilot\LabRecord;
+use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
+use OpenEMR\Modules\ClinicalCopilot\ProblemRecord;
 
 final class FakeChartSource implements ChartSource
 {
@@ -32,6 +33,8 @@ final class FakeChartSource implements ChartSource
     public array $allergies = [];
     /** @var list<LabRecord> */
     public array $labs = [];
+    /** @var list<ProblemRecord> */
+    public array $problems = [];
 
     public function encounters(PatientId $pid): array
     {
@@ -55,5 +58,11 @@ final class FakeChartSource implements ChartSource
     {
         $this->reads++;
         return $this->labs;
+    }
+
+    public function problems(PatientId $pid): array
+    {
+        $this->reads++;
+        return $this->problems;
     }
 }

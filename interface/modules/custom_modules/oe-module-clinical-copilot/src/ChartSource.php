@@ -27,4 +27,7 @@ interface ChartSource
 
     /** @return list<LabRecord> numeric results only */
     public function labs(PatientId $pid): array;
+
+    /** @return list<ProblemRecord> active problems only */
+    public function problems(PatientId $pid): array;
 }

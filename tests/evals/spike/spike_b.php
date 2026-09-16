@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 $ignoreAuth = 1; $_GET['site'] = 'default'; $sessionAllowWrite = true;
 require_once __DIR__ . '/../../../interface/globals.php';
 use OpenEMR\Common\Acl\AclMain;
