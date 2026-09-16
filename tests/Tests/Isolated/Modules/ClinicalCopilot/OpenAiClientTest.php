@@ -158,12 +158,28 @@ final class OpenAiClientTest extends TestCase
         }
     }
 
-    public function testTimeoutIsTyped(): void
+    public function testTimeoutTwiceIsTyped(): void
     {
-        $this->mock = new MockHandler([new ConnectException('timed out', new Request('POST', '/'))]);
+        $this->mock = new MockHandler([
+            new ConnectException('timed out', new Request('POST', '/')),
+            new ConnectException('timed out', new Request('POST', '/')),
+        ]);
 
         $this->expectException(LlmTimeout::class);
         $this->client()->complete('sys', 'user', 'narration', $this->schema());
+    }
+
+    public function testTimeoutThenSuccessSucceeds(): void
+    {
+        $this->mock = new MockHandler([
+            new ConnectException('timed out', new Request('POST', '/')),
+            $this->completion('{"sentences":["ok"]}'),
+        ]);
+
+        $result = $this->client()->complete('sys', 'user', 'narration', $this->schema());
+
+        self::assertSame(['sentences' => ['ok']], $result->data);
+        self::assertCount(2, $this->history);
     }
 
     public function testRefusalIsTyped(): void

@@ -38,6 +38,7 @@
         allergy_new: 'New allergies',
         problem_new: 'New problems',
         encounter: 'Visits since last visit',
+        prior_visit: 'Prior visit',
         lab_delta: 'Lab changes vs prior result',
         medication_active: 'Active medications',
         allergy_active: 'Allergies on file',

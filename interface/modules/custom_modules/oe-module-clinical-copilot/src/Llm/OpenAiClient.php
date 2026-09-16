@@ -28,7 +28,10 @@ use Psr\Http\Message\ResponseInterface;
 final class OpenAiClient implements LanguageModel
 {
     private const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
-    private const TOTAL_BUDGET_SECONDS = 10.0;
+    // Narration loads asynchronously beside an already-rendered fact table, so
+    // this bounds a background call, not the physician's wait for the chart.
+    private const TOTAL_BUDGET_SECONDS = 20.0;
+    private const PER_ATTEMPT_SECONDS = 12.0;
 
     public function __construct(
         private readonly ClientInterface $http,
@@ -71,12 +74,16 @@ final class OpenAiClient implements LanguageModel
                 $response = $this->http->request('POST', self::ENDPOINT, [
                     'headers' => ['Authorization' => 'Bearer ' . $this->apiKey, 'Content-Type' => 'application/json'],
                     'json' => $body,
-                    'timeout' => $remaining,
+                    'timeout' => min(self::PER_ATTEMPT_SECONDS, $remaining),
                     'connect_timeout' => min(3.0, $remaining),
                     'http_errors' => true,
                 ]);
                 return $this->parse($response);
             } catch (ConnectException $e) {
+                // Guzzle reports read timeouts here too; one retry if budget remains.
+                if ($attempt === 1 && self::TOTAL_BUDGET_SECONDS - (microtime(true) - $started) > 2.0) {
+                    continue;
+                }
                 throw new LlmTimeout('Connection failed or timed out', 0, $e);
             } catch (BadResponseException $e) {
                 $status = $e->getResponse()->getStatusCode();

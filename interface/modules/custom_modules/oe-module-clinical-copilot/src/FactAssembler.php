@@ -49,6 +49,9 @@ final class FactAssembler
         $prior = $this->priorEncounter($encounters, $currentEncounterId);
 
         $facts = [];
+        if ($prior !== null) {
+            $facts[] = $this->fact('EncounterService', $prior->id, 'date', $prior->date->format('Y-m-d') . ': ' . $prior->reason, FactCategory::PriorVisit);
+        }
         foreach ($encounters as $e) {
             if ($prior !== null && [$e->date, $e->id] <= [$prior->date, $prior->id]) {
                 continue;
@@ -162,6 +165,7 @@ final class FactAssembler
                 FactCategory::LabAbnormal => 'abnormal lab results',
                 FactCategory::LabDelta => 'changed lab results',
                 FactCategory::Encounter => 'encounters',
+                FactCategory::PriorVisit => 'prior visits',
                 FactCategory::AllergyActive => 'allergies',
                 FactCategory::AllergyNew => 'new allergies',
                 FactCategory::ProblemNew => 'new problems',

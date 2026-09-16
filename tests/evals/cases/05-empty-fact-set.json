@@ -1,0 +1,9 @@
+{
+  "id": "05-empty-fact-set",
+  "guards": "boundary",
+  "failure_mode": "Patient with nothing since last visit (or an empty chart). The pipeline must not fail or invent content; an empty narration is correct.",
+  "mode": "briefing",
+  "facts": [],
+  "narration": {"sentences": []},
+  "expect": {"kept": 0, "stripped": 0, "omitted_ids": [], "total_failure": false}
+}

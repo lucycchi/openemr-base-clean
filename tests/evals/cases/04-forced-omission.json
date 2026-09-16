@@ -1,0 +1,15 @@
+{
+  "id": "04-forced-omission",
+  "guards": "invariant",
+  "failure_mode": "The model leaves out a must-surface fact (new allergy). Omissions are the most common real-world summarization failure; the guard must append it.",
+  "mode": "briefing",
+  "facts": [
+    {"id": "rx0001", "service": "PrescriptionService", "record_id": 17, "field": "drug", "value": "Lisinopril 10 MG Oral Tablet", "category": "medication_new"},
+    {"id": "al0001", "service": "AllergyIntoleranceService", "record_id": 812, "field": "title", "value": "penicillin", "category": "allergy_new"},
+    {"id": "rx0002", "service": "PrescriptionService", "record_id": 18, "field": "drug", "value": "Metformin 500 MG Oral Tablet", "category": "medication_active"}
+  ],
+  "narration": {"sentences": [
+    {"text": "A new blood pressure medication was started.", "fact_ids": ["rx0001"]}
+  ]},
+  "expect": {"kept": 1, "stripped": 0, "omitted_ids": ["al0001"], "total_failure": false}
+}

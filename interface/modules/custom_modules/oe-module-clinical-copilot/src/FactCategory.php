@@ -16,6 +16,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 enum FactCategory: string
 {
+    case PriorVisit = 'prior_visit';
     case Encounter = 'encounter';
     case MedicationNew = 'medication_new';
     case MedicationChanged = 'medication_changed';
@@ -38,6 +39,7 @@ enum FactCategory: string
             self::LabAbnormal,
             self::ProblemNew,
             self::Truncation => true,
+            self::PriorVisit,
             self::Encounter,
             self::MedicationActive,
             self::AllergyActive,

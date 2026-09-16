@@ -1,0 +1,9 @@
+{
+  "id": "09-live-seed-patients-zero-strips",
+  "guards": "invariant",
+  "live": true,
+  "failure_mode": "With the real model and real charts, every briefing must complete (no status), never be a total failure, and strip at most one sentence. A strip means the model stated something it did not cite; the verifier removed it and the panel says so. More than one strip per briefing, or any total failure, means the prompt or schema no longer constrains the model (model drift or prompt regression). The strip rate is reported as a metric.",
+  "mode": "briefing",
+  "patients": "busiest:10",
+  "expect": {"max_stripped": 1, "status": null, "total_failure": false}
+}

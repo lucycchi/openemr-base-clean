@@ -1,0 +1,14 @@
+{
+  "id": "03-ungrounded-number",
+  "guards": "invariant",
+  "failure_mode": "The model cites the right fact but states a value that is not in it (entity-attribution failure). Value-level grounding must catch it.",
+  "mode": "briefing",
+  "facts": [
+    {"id": "d4e5f6a1", "service": "ObservationLabService", "record_id": 902, "field": "result", "value": "Hemoglobin A1c 7.8 % on 2026-09-10 (above reference range 4-5.6 %)", "category": "lab_abnormal"}
+  ],
+  "narration": {"sentences": [
+    {"text": "A1c came back at 9.1 %, above target.", "fact_ids": ["d4e5f6a1"]},
+    {"text": "A1c came back at 7.8 %, above the 4-5.6 % reference range.", "fact_ids": ["d4e5f6a1"]}
+  ]},
+  "expect": {"kept": 1, "stripped": 1, "omitted_ids": [], "total_failure": false}
+}

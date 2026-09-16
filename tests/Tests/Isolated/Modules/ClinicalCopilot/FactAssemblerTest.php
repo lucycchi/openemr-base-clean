@@ -152,6 +152,23 @@ final class FactAssemblerTest extends TestCase
         self::assertSame('reason', $encounterFacts[0]->field);
     }
 
+    public function testPriorVisitIsItselfACitableFact(): void
+    {
+        $this->chart->encounters = [
+            $this->encounter(100, '2026-09-15 08:30:00', '', 'Annual physical'),
+            $this->encounter(99, '2026-09-01 10:00:00', '', 'Follow-up'),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), 100);
+
+        $prior = $this->factsIn($result, FactCategory::PriorVisit);
+        self::assertCount(1, $prior);
+        self::assertSame('2026-09-01: Follow-up', $prior[0]->value);
+        self::assertSame(99, $prior[0]->recordId);
+        self::assertSame('date', $prior[0]->field);
+        self::assertFalse($prior[0]->category->mustSurface());
+    }
+
     public function testSensitiveEncounterTheUserMayNotSeeIsExcluded(): void
     {
         $this->auth->deny('sensitivities', 'high');
@@ -218,7 +235,7 @@ final class FactAssemblerTest extends TestCase
 
         $result = $this->assembler()->assemble(new PatientId(7), null);
 
-        self::assertSame([], $result->facts()->all());
+        self::assertSame([FactCategory::PriorVisit], array_map(fn(Fact $f) => $f->category, $result->facts()->all()));
     }
 
     public function testWithNoPriorVisitEveryActiveMedicationIsActiveNotNew(): void
@@ -360,7 +377,7 @@ final class FactAssemblerTest extends TestCase
         self::assertSame('ConditionService', $new[0]->service);
         self::assertSame(501, $new[0]->recordId);
         self::assertSame('title', $new[0]->field);
-        self::assertCount(1, $result->facts()->all());
+        self::assertCount(2, $result->facts()->all());
     }
 
     public function testCategoryOverCapIsTruncatedWithACountFact(): void
@@ -382,12 +399,12 @@ final class FactAssemblerTest extends TestCase
     {
         $this->withPriorVisitOn('2026-09-01 10:00:00');
         $this->chart->medications = [new MedicationRecord(17, 'Metformin 500 MG Oral Tablet', new DateTimeImmutable('2025-01-10'), true)];
-        $first = $this->assembler()->assemble(new PatientId(7), null)->facts()->all()[0]->id;
+        $first = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::MedicationActive)[0]->id;
 
         array_unshift($this->chart->medications, new MedicationRecord(16, 'Aspirin 81 MG', new DateTimeImmutable('2025-01-10'), true));
-        $facts = $this->assembler()->assemble(new PatientId(7), null)->facts()->all();
+        $meds = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::MedicationActive);
 
-        self::assertSame($first, $facts[1]->id);
+        self::assertSame($first, $meds[1]->id);
         self::assertSame(Fact::idFor('PrescriptionService', 17, 'drug'), $first);
     }
 
