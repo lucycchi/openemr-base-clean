@@ -89,6 +89,19 @@ use OpenEMR\Validators\ProcessingResult;
 )]
 class InsuranceRestController
 {
+    /**
+     * Query-parameter names accepted by the insurance search.  Search keys become column names in the service layer,
+     * so anything not listed here is dropped before it reaches the query.
+     *
+     * @var list<string>
+     */
+    private const SUPPORTED_SEARCH_FIELDS = [
+        "uuid",
+        "puuid",
+        "pid",
+        "type",
+    ];
+
     private $insuranceService;
 
     public function __construct()
@@ -121,6 +134,11 @@ class InsuranceRestController
     )]
     public function getAll($searchParams)
     {
+        $searchParams = array_filter(
+            is_array($searchParams) ? $searchParams : [],
+            fn($key): bool => in_array($key, self::SUPPORTED_SEARCH_FIELDS, true),
+            ARRAY_FILTER_USE_KEY
+        );
         if (isset($searchParams['uuid'])) {
             $searchParams['uuid'] = new TokenSearchField('uuid', $searchParams['uuid'], true);
         }

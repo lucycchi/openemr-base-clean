@@ -23,6 +23,30 @@ class SearchFieldStatementResolver
     const MAX_NESTED_LEVEL = 10;
 
     /**
+     * A search field's column name is interpolated directly into SQL (only the values are bound), so it must be a
+     * plain identifier: `column` or `table.column`.  Anything else — parentheses, whitespace, quotes, comments — is
+     * rejected before it can reach the query.  Callers that build search arrays from request data (e.g. REST
+     * controllers forwarding query parameters) otherwise let an attacker choose the column expression.
+     */
+    private const SQL_IDENTIFIER_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$/';
+
+    /**
+     * Throws if the search field's underlying column name is not a bare SQL identifier (`column` or `table.column`).
+     * @throws SearchFieldException
+     */
+    public static function assertFieldIsSqlIdentifier(ISearchField $searchField): void
+    {
+        $field = $searchField->getField();
+        if (preg_match(self::SQL_IDENTIFIER_PATTERN, $field) !== 1) {
+            $name = $searchField->getName();
+            throw new SearchFieldException(
+                is_string($name) ? $name : '',
+                "Search field name is not a valid column identifier"
+            );
+        }
+    }
+
+    /**
      * Given a search field that implements the ISearchField interface, convert the field based upon its type to a full
      * SQL Where Query fragment with its corresponding bound parameterized values.  This is a recursive method as it will
      * traverse any composite search fields up to a hierarchical depth of the class constant MAX_NESTED_LEVEL levels.
@@ -60,6 +84,7 @@ class SearchFieldStatementResolver
      */
     public static function resolveDateField(DateSearchField $searchField)
     {
+        self::assertFieldIsSqlIdentifier($searchField);
         if (empty($searchField->getValues())) {
             throw new SearchFieldException($searchField->getField(), " field does not have a value to search on");
         }
@@ -179,6 +204,7 @@ class SearchFieldStatementResolver
      */
     public static function resolveReferenceField(ReferenceSearchField $searchField)
     {
+        self::assertFieldIsSqlIdentifier($searchField);
         if (empty($searchField->getValues())) {
             throw new SearchFieldException($searchField->getField(), "field does not have a value to search on");
         }
@@ -209,6 +235,7 @@ class SearchFieldStatementResolver
      */
     public static function resolveTokenField(TokenSearchField $searchField)
     {
+        self::assertFieldIsSqlIdentifier($searchField);
         if (empty($searchField->getValues())) {
             throw new SearchFieldException($searchField->getField(), "field does not have a value to search on");
         }
@@ -277,6 +304,7 @@ class SearchFieldStatementResolver
      */
     public static function resolveStringSearchField(StringSearchField $searchField)
     {
+        self::assertFieldIsSqlIdentifier($searchField);
         if (empty($searchField->getValues())) {
             throw new SearchFieldException($searchField->getField(), "does not have a value to search on");
         }
