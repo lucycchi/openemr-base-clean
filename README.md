@@ -20,6 +20,38 @@
 
 [OpenEMR](https://open-emr.org) is a Free and Open Source electronic health records and medical practice management application. It features fully integrated electronic health records, practice management, scheduling, electronic billing, internationalization, free support, a vibrant community, and a whole lot more. It runs on Windows, Linux, Mac OS X, and many other platforms.
 
+## Clinical Co-Pilot (AgentForge Week 1)
+
+This fork adds a Clinical Co-Pilot: a verified pre-room briefing and chart
+Q&A panel on the patient dashboard for primary care physicians. The language
+model never generates clinical facts; deterministic PHP assembles cited
+facts, the model narrates by fact id, and every sentence is verified before
+it renders.
+
+| Document | Purpose |
+|---|---|
+| [USERS.md](USERS.md) | The physician, their workflow, three use cases and why an agent |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Summary, data flow, verification, trust boundaries, failure modes |
+| [KEY_METRICS.md](KEY_METRICS.md) | Five metrics with baselines and alert thresholds |
+| [AUDIT.md](AUDIT.md) | Security, performance, architecture, data-quality and HIPAA audit |
+| [docs/designs/pre-room-briefing-agent.md](docs/designs/pre-room-briefing-agent.md) | Design record with the reviewed decisions |
+| [tests/evals/README.md](tests/evals/README.md) | Eval suite: cases, failure modes, how to run |
+| [docker/vps/README.md](docker/vps/README.md) | Deployment |
+
+**Deployed:** _URL to be added at submission._
+
+**Try it locally:** bring up the dev stack (below), then register the module:
+
+```bash
+M=interface/modules/custom_modules/oe-module-clinical-copilot/sql
+openemr-cmd e "cd /var/www/localhost/htdocs/openemr/$M && grep -v '^#' install.sql | mariadb -h mysql -uopenemr -popenemr openemr && mariadb -h mysql -uopenemr -popenemr openemr < register.sql"
+```
+
+Put `OPENAI_API_KEY=...` in a root `.env` (git-ignored). Log in as `admin`/`pass`,
+open a patient, open their latest encounter, then Dashboard: the panel is at
+the top. Health: `/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php`
+and `.../ready.php`.
+
 ### Running the App Locally
 
 OpenEMR is a server-rendered PHP app (not a separate frontend/backend split), so
