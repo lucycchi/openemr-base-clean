@@ -113,7 +113,17 @@ docker compose exec openemr sh -c "grep -v '^#' $M/install.sql | mariadb -h mysq
 
 ## Redeploy after a push
 
-Pushing to `audit` on GitLab runs `.gitlab-ci.yml`: the `check` stage lints
+GitLab CI is not available to student accounts on labs.gauntletai.com (as
+of 2026-09-16: pipeline creation is refused for personal projects and the
+group forbids Developers' pushes). Until that changes, deploy from your
+laptop with the script that mirrors the pipeline's deploy job:
+
+```bash
+docker/vps/deploy.sh            # push audit to GitLab, recreate, wait for health
+docker/vps/deploy.sh --no-push  # redeploy whatever is already on gitlab/audit
+```
+
+When CI is granted, pushing to `audit` on GitLab runs `.gitlab-ci.yml`: the `check` stage lints
 the module and this compose file, then `deploy-vps` SSHes to the droplet,
 runs `docker compose up -d --force-recreate openemr`, and polls
 `/meta/health/readyz` plus the module's `health.php` / `ready.php` for up to
