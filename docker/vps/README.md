@@ -13,19 +13,25 @@ image clones `FLEX_REPOSITORY` at container start instead.
 - A VPS with 4 GB RAM, Docker Engine, and the compose plugin
   (DigitalOcean, Hetzner, Lightsail all work).
 - A DNS A record for `DOMAIN` pointing at the VPS.
-- The fork repo reachable by the VPS (public, or set `FLEX_REPOSITORY` to a
-  tokenized HTTPS URL).
+- A GitLab deploy token for the (private) project so the VPS can clone it:
+  GitLab → Settings → Repository → Deploy tokens → name `vps`, scope
+  `read_repository`. Note the username (`gitlab+deploy-token-N`) and token.
 
 ## Steps
 
 ```bash
 mkdir -p ~/openemr && cd ~/openemr
-curl -O https://raw.githubusercontent.com/lucycchi/openemr-base-clean/audit/docker/vps/docker-compose.yml
-curl -o .env https://raw.githubusercontent.com/lucycchi/openemr-base-clean/audit/docker/vps/.env.example
-$EDITOR .env          # DOMAIN, passwords, OPENAI_API_KEY, LANGFUSE_* keys
+scp docker/vps/docker-compose.yml docker/vps/.env.example do-openemr:~/openemr/   # from your laptop
+mv .env.example .env
+$EDITOR .env          # FLEX_REPOSITORY (deploy token URL), DOMAIN, passwords, OPENAI_API_KEY, LANGFUSE_* keys
 docker compose up -d
 docker compose logs -f openemr   # first boot clones, composer installs, npm builds: ~10 min
 ```
+
+`FLEX_REPOSITORY` must be the tokenized HTTPS URL, e.g.
+`https://gitlab+deploy-token-1:TOKEN@labs.gauntletai.com/lucychi/openemr.git`.
+The deploy job in `.gitlab-ci.yml` refuses to run if `.env` does not point at
+GitLab, so a stale GitHub URL cannot be silently redeployed.
 
 The image serves HTTPS on 443 with a self-signed certificate. For a real
 certificate, change the port mappings to `8080:80` / `8443:443`, install
@@ -92,8 +98,29 @@ docker compose exec openemr sh -c "grep -v '^#' $M/install.sql | mariadb -h mysq
 
 ## Redeploy after a push
 
-The container's code tree is an rsync of the clone with no `.git`, so
-`git pull` does not work inside it. Two options:
+Pushing to `audit` on GitLab runs `.gitlab-ci.yml`: the `check` stage lints
+the module and this compose file, then `deploy-vps` SSHes to the droplet,
+runs `docker compose up -d --force-recreate openemr`, and polls
+`/meta/health/readyz` plus the module's `health.php` / `ready.php` for up to
+20 minutes. Deploys are serialized (`resource_group: production`). The site
+is down for ~10 minutes while composer + npm rebuild.
+
+One-time setup for the pipeline (GitLab → Settings → CI/CD → Variables):
+
+| Variable | Type | Value |
+|---|---|---|
+| `DEPLOY_HOST` | Variable | droplet IP |
+| `DEPLOY_USER` | Variable | `root` |
+| `DEPLOY_SSH_KEY` | File | a private key whose public half is in the droplet's `~/.ssh/authorized_keys` (generate a dedicated one: `ssh-keygen -t ed25519 -f gitlab-deploy -N ""`) |
+| `DEPLOY_KNOWN_HOSTS` | File | `ssh-keyscan -H <droplet IP>` output |
+| `DEPLOY_DOMAIN` | Variable | public hostname (no scheme) |
+
+Mark all of them protected; `audit` must be a protected branch for protected
+variables to be exposed. The project also needs a runner (shared runners
+enabled under Settings → CI/CD → Runners, or a project runner).
+
+To redeploy by hand instead, the container's code tree is an rsync of the
+clone with no `.git`, so `git pull` does not work inside it. Two options:
 
 ```bash
 # full: re-clone and rebuild (~10 min; composer + npm run again)

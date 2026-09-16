@@ -8,11 +8,11 @@
 #
 # Usage on the VPS (Docker + compose plugin installed):
 #   mkdir -p ~/openemr && cd ~/openemr
-#   curl -O https://raw.githubusercontent.com/lucycchi/openemr-base-clean/audit/docker/vps/docker-compose.yml
-#   cp .env.example .env   # see README.md; set passwords and DOMAIN
+#   copy docker-compose.yml and .env.example here (see README.md)
+#   cp .env.example .env   # set FLEX_REPOSITORY (GitLab deploy token), passwords, DOMAIN
 #   docker compose up -d
-# First start takes ~10 minutes (clone + composer + npm). Redeploy:
-#   docker compose up -d --force-recreate openemr
+# First start takes ~10 minutes (clone + composer + npm). Redeploys are
+# driven by .gitlab-ci.yml (docker compose up -d --force-recreate openemr).
 services:
   mysql:
     restart: always
@@ -51,8 +51,10 @@ services:
     # at a URL whose basename is "openemr" and redirect it to the real fork -
     # openemr.sh's own clone lands in ./openemr like it would for any
     # upstream-named repo, and every step after it runs unmodified.
+    # (The GitLab project is literally named "openemr", so the rewrite is a
+    # no-op there; it is kept so FLEX_REPOSITORY can point anywhere.)
     command: >
-      sh -c "git config --global url.\"${FLEX_REPOSITORY:-https://github.com/lucycchi/openemr-base-clean.git}\".insteadOf https://flex.invalid/openemr.git &&
+      sh -c "git config --global url.\"${FLEX_REPOSITORY:?set in .env}\".insteadOf https://flex.invalid/openemr.git &&
       FLEX_REPOSITORY=https://flex.invalid/openemr.git ./openemr.sh"
     ports:
       - "8080:80"
@@ -61,7 +63,8 @@ services:
       - sitesvolume:/var/www/localhost/htdocs/openemr/sites:rw
       - logvolume:/var/log
     environment:
-      FLEX_REPOSITORY: ${FLEX_REPOSITORY:-https://github.com/lucycchi/openemr-base-clean.git}
+      # Private GitLab project: https://<token-user>:<token>@labs.gauntletai.com/lucychi/openemr.git
+      FLEX_REPOSITORY: ${FLEX_REPOSITORY:?set in .env}
       FLEX_REPOSITORY_BRANCH: ${FLEX_REPOSITORY_BRANCH:-audit}
       MYSQL_HOST: mysql
       MYSQL_ROOT_PASS: ${MYSQL_ROOT_PASSWORD:?set in .env}

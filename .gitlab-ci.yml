@@ -1,0 +1,91 @@
+# GitLab CI/CD for this fork.
+#
+# check   - fast, dependency-free validation of the code this fork changes
+#           (the clinical-copilot module and the VPS deploy files).
+# deploy  - on a push to the deploy branch, SSH to the VPS and recreate the
+#           openemr container. The flex image re-clones FLEX_REPOSITORY from
+#           this GitLab project at start (see docker/vps/docker-compose.yml),
+#           so "deploy" is "restart with a fresh clone". ~10 min of downtime
+#           while composer + npm rebuild; deploys are serialized by
+#           resource_group.
+#
+# Required CI/CD variables (Settings > CI/CD > Variables, all protected+masked
+# where GitLab allows):
+#   DEPLOY_HOST          VPS address, e.g. 146.190.139.37
+#   DEPLOY_USER          SSH user on the VPS (root)
+#   DEPLOY_SSH_KEY       private key, type "File", authorized on the VPS
+#   DEPLOY_KNOWN_HOSTS   output of `ssh-keyscan $DEPLOY_HOST`, type "File"
+#   DEPLOY_DOMAIN        public hostname for the post-deploy health check
+#   DEPLOY_DIR           optional, defaults to ~/openemr
+
+stages:
+  - check
+  - deploy
+
+variables:
+  DEPLOY_BRANCH: audit
+  MODULE_DIR: interface/modules/custom_modules/oe-module-clinical-copilot
+  GIT_DEPTH: "1"
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+
+php-lint:
+  stage: check
+  image: php:8.2-cli-alpine
+  script:
+    - |
+      set -e
+      fail=0
+      for f in $(find "$MODULE_DIR" tests/evals -name '*.php'); do
+        php -l "$f" > /dev/null || fail=1
+      done
+      test "$fail" = 0
+    - php -r 'json_decode(file_get_contents(getenv("MODULE_DIR")."/composer.json"), false, 512, JSON_THROW_ON_ERROR);'
+
+compose-lint:
+  stage: check
+  image: docker:27-cli
+  variables:
+    MYSQL_ROOT_PASSWORD: x
+    MYSQL_PASS: x
+    OE_PASS: x
+    DOMAIN: example.invalid
+  script:
+    - docker compose -f docker/vps/docker-compose.yml config --quiet
+
+deploy-vps:
+  stage: deploy
+  image: alpine:3.20
+  resource_group: production
+  environment:
+    name: production
+    url: https://$DEPLOY_DOMAIN
+  rules:
+    - if: $CI_COMMIT_BRANCH == $DEPLOY_BRANCH
+  before_script:
+    - apk add --no-cache openssh-client curl
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - cp "$DEPLOY_SSH_KEY" ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+    - cp "$DEPLOY_KNOWN_HOSTS" ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+  script:
+    - |
+      ssh "$DEPLOY_USER@$DEPLOY_HOST" "set -e
+        cd ${DEPLOY_DIR:-~/openemr}
+        grep -q '^FLEX_REPOSITORY=.*labs.gauntletai.com' .env || { echo 'FLEX_REPOSITORY in .env does not point at GitLab; see docker/vps/README.md'; exit 1; }
+        docker compose pull --quiet mysql openemr
+        docker compose up -d --force-recreate openemr
+        docker compose ps"
+    - |
+      # First boot clones + builds; poll readiness for up to 20 minutes.
+      for i in $(seq 1 80); do
+        if curl -fsSk --max-time 10 "https://$DEPLOY_DOMAIN/meta/health/readyz" > /dev/null; then
+          echo "ready after $((i*15))s"; break
+        fi
+        [ "$i" = 80 ] && { echo "not ready after 20 min"; exit 1; }
+        sleep 15
+      done
+    - curl -fsSk "https://$DEPLOY_DOMAIN/$MODULE_DIR/public/health.php"
+    - curl -fsSk "https://$DEPLOY_DOMAIN/$MODULE_DIR/public/ready.php"
