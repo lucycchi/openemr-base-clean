@@ -38,4 +38,16 @@
 **Priority:** P3
 **Depends on:** RxNorm mapping for seeded prescriptions; licensing review of the chosen source
 
+### Move Langfuse to the v4 OpenTelemetry write path
+
+**What:** Replace the `/api/public/ingestion` batch call in `LangfuseTracer` with OTLP export (or the v4 SDK path).
+
+**Why:** Langfuse Cloud reports the v3 ingestion API deprecated with v4-only write mode from 2026-11-16, and data on the v3 API is delayed about 10 minutes. Real-time dashboards need the OTel path.
+
+**Context:** `LangfuseTracer` is a single class with a unit test asserting the payload shape; swapping the transport is contained. Keep trace id = correlation id.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** None
+
 ## Completed

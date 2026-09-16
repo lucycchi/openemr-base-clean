@@ -30,7 +30,7 @@ final readonly class Config
         return new self(
             self::env('OPENAI_API_KEY'),
             self::env('OPENAI_MODEL') ?: 'gpt-4o-mini',
-            self::env('LANGFUSE_HOST') ?: 'https://cloud.langfuse.com',
+            self::env('LANGFUSE_HOST') ?: (self::env('LANGFUSE_BASE_URL') ?: 'https://cloud.langfuse.com'),
             self::env('LANGFUSE_PUBLIC_KEY'),
             self::env('LANGFUSE_SECRET_KEY'),
         );
