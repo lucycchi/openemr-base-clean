@@ -199,8 +199,9 @@ if ($liveRuns !== []) {
     ];
 }
 $summary = ['ran_at' => gmdate('c'), 'live' => $live, 'pass' => $pass, 'fail' => $fail, 'metrics' => $metrics, 'cases' => $results];
-file_put_contents(__DIR__ . '/results.json', json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
-printf("\n%d passed, %d failed. Results: tests/evals/results.json\n", $pass, $fail);
+$out = getenv('EVAL_RESULTS') ?: __DIR__ . '/results.json';
+file_put_contents($out, json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
+printf("\n%d passed, %d failed. Results: %s\n", $pass, $fail, $out);
 exit($fail === 0 ? 0 : 1);
 
 /**

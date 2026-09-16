@@ -11,7 +11,8 @@ boundary, an invariant, or a known regression; none is a happy-path demo.
 |---|---|
 | `cases/*.json` | One case per file: `guards` (boundary / invariant / regression), a plain-English `failure_mode`, inputs, and `expect`. |
 | `run.php` | The harness. Recorded cases replay a narration fixture through `Verifier` + `OmissionGuard` (deterministic, no DB, no network). `--live` adds cases that assemble real facts from the seed DB and call OpenAI. Writes `results.json`. |
-| `results.json` | Latest run: per-case pass/fail, per-patient strips/omissions/latency/tokens, and aggregate metrics (strip rate, p50/p95, tokens). |
+| `results.json` | Latest local run: per-case pass/fail, per-patient strips/omissions/latency/tokens, and aggregate metrics (strip rate, p50/p95, tokens). |
+| `results-deployed.json` | Same suite run on the deployed droplet (2026-09-16): 11/11, 1 of 58 sentences stripped, 0 omissions, p50 2.3 s, p95 14.4 s. Set `EVAL_RESULTS=<path>` to write elsewhere (the deployed tree is read-only). |
 | `smoke.php` | End-to-end through the real UI via Selenium: health/ready, then the dashboard panel for the 10 busiest seed patients as `admin`, then refusal as `receptionist`. |
 | `spike/` | The pre-build validation spike and its results (`../spike-results.md`). |
 
