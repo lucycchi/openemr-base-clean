@@ -109,7 +109,7 @@ chart page load (today's encounter in session)
         ▼
  NarrationPipeline
    ├─ cache(facts_hash | Prompt::VERSION | model) ─hit─► verified narration
-   ├─ OpenAiClient (Structured Outputs, temperature 0, 1 retry, 20 s budget)
+   ├─ OpenAiClient (Structured Outputs, temperature 0, 1 retry, 25 s budget)
    ├─ Verifier: ≥1 known id per sentence; every number/date verbatim in a cited fact
    ├─ OmissionGuard: must-surface facts not cited → "Also on file"
    └─ cache store (never on total failure)
@@ -185,13 +185,13 @@ why eval case 08 exists to keep the limitation visible.
 |---|---|---|
 | ACL denied | refused before any read | "You are not authorized to view this chart" |
 | OpenAI 429 / 5xx | one jittered retry, then typed failure | fact table + "AI summary unavailable: provider busy" |
-| OpenAI timeout | retry within 20 s budget, then typed failure | fact table + "timed out" |
+| OpenAI timeout | retry within 25 s budget, then typed failure | fact table + "timed out" |
 | Malformed / refused model output | typed failure | fact table + status line |
 | Every sentence stripped | not cached, distinct state | "Unable to verify the AI summary … showing verified chart facts only" |
 | Question outside the facts | `not_in_facts` | fixed sentence pointing to chart tabs |
 | Computed number in an answer | stripped | "The answer was withheld: it contained N claims not supported by the facts" |
 | Chart changed mid-thread | `chart_changed` | facts refreshed, thread restarted |
-| Panel endpoint unreachable | async fetch with 20 s abort | chart page unaffected; panel shows "could not be reached" |
+| Panel endpoint unreachable | async fetch with 30 s abort | chart page unaffected; panel shows "could not be reached" |
 | Langfuse down | best effort, 2 s bound | nothing; `/ready` reports `degraded` |
 
 ## Observability

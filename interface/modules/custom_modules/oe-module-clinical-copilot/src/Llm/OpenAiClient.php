@@ -30,7 +30,7 @@ final class OpenAiClient implements LanguageModel
     private const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
     // Narration loads asynchronously beside an already-rendered fact table, so
     // this bounds a background call, not the physician's wait for the chart.
-    private const TOTAL_BUDGET_SECONDS = 20.0;
+    private const TOTAL_BUDGET_SECONDS = 25.0;
     private const PER_ATTEMPT_SECONDS = 12.0;
 
     public function __construct(

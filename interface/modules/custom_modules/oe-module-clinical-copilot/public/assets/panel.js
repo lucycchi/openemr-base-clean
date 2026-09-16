@@ -135,7 +135,7 @@
     function post(fields) {
         const body = new URLSearchParams(Object.assign({ csrf_token_form: csrf }, fields));
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 20000);
+        const timer = setTimeout(() => controller.abort(), 30000);
         return fetch(endpoint, { method: 'POST', body, credentials: 'same-origin', signal: controller.signal })
             .then(r => r.json().then(j => ({ ok: r.ok, status: r.status, json: j })))
             .finally(() => clearTimeout(timer));
