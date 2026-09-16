@@ -36,7 +36,7 @@ finding by ID. `SEC-` security, `PERF-` performance, `ARCH-` architecture,
 | SEC-08 | Info | Session scoping | `interface/patient_file/encounter/encounter_top.php` | `set_pid`/`set_encounter` bind the session to any patient with no ACL check — the primitive that makes SEC-03..06 reach every patient | Open |
 | SEC-09 | Info | Defense in depth | `interface/super/edit_layout.php:598` | `copytolayout` branch lacks CSRF check; unexploitable because core cookie is `SameSite=Strict` | Open |
 | SEC-10 | Info | Defense in depth | `interface/patient_file/front_payment_cc.php:85` | Unescaped exception text echoes raw `$_POST['payment']`; self-XSS only under `SameSite=Strict` | Open |
-| SEC-11 | High | API / SQLi | `src/Services/Search/SearchFieldStatementResolver.php:293` | Query-parameter *names* become SQL column names unvalidated; arbitrary table read via REST search, reachable by portal patients on `/employer` (CWE-89) | Open |
+| SEC-11 | High | API / SQLi | `src/Services/Search/SearchFieldStatementResolver.php:293` | Query-parameter *names* become SQL column names unvalidated; arbitrary table read via REST search, reachable by portal patients on `/employer` (CWE-89) | Fixed in 9126051 (sink identifier check + controller allowlists; isolated unit test; runtime before/after reproduced on the dev stack — boolean-blind users-table read blocked) |
 | SEC-12 | High | Reports / SQLi | `interface/reports/ippf_statistics.php:1456` | `form_facility` interpolated into stats query; full DB read by acct/rep user (CWE-89) | Open |
 | SEC-13 | Medium | Reports authz | `interface/reports/patient_list.php:260` | Patient List report runs with no ACL check; bulk demographics + insurance to any user (CWE-862) | Open |
 | SEC-14 | Medium | Reports authz | `interface/reports/charts_checked_out.php:83` | Chart-tracker report discloses patient names/IDs on GET, no ACL (CWE-862) | Open |
@@ -59,7 +59,7 @@ finding by ID. `SEC-` security, `PERF-` performance, `ARCH-` architecture,
 | SEC-31 | Low | Upload validation | `interface/modules/zend_modules/module/Documents/.../DocumentsController.php:70-93` | Upload type gate relies on client-supplied `Content-Type`, not server-side sniffing; bounded impact since storage flows through the protected Document engine | Open |
 | SEC-32 | Low | Upload validation | `oe-module-faxsms` `*Client.php faxProcessUploads()` | No MIME/extension validation before `move_uploaded_file()`; mitigated by storage outside webroot (`temporary_files_dir`, default `/tmp`) | Open |
 | SEC-33 | Medium | Break-glass | `src/Common/Logging/BreakglassChecker.php`, `library/classes/Installer.class.php:1413-1436` | Break-glass ("Emergency Login") grants unscoped superuser-equivalent access, self-service with no justification/approval workflow, no rate limit, no dedicated review UI | Open |
-| SEC-34 | High | Privilege escalation | `library/ajax/adminacl_ajax.php:44-84` | Missing superuser-inclusion check (present in sibling `usergroup_admin.php`) lets any `admin/acl`-privileged non-superuser add themselves to Administrators or Emergency Login group | Open |
+| SEC-34 | High | Privilege escalation | `library/ajax/adminacl_ajax.php:44-84` | Missing superuser-inclusion check (present in sibling `usergroup_admin.php`) lets any `admin/acl`-privileged non-superuser add themselves to Administrators or Emergency Login group | Fixed in 7477e1c (also closes the control=aco admin/super variant; runtime before/after reproduced on the dev stack — escalation blocked, legit ops preserved) |
 | SEC-35 | Low | CSRF | `interface/billing/search_payments.php:50-69` | `DeletePayments` POST handler has no CSRF check; ACL-gated, mitigated by `SameSite=Strict` | Open |
 | SEC-36 | Medium | CSRF | `interface/billing/ub04_dispose.php`, `ub04_submit.php` | No CSRF check; handler accepts writes via GET (`$_POST[...] ?? $_GET[...]`), so only `SameSite=Strict` mitigates — no POST-only fallback defense | Open |
 | SEC-37 | Low | Security headers | app-wide; `interface/login/login.php:31-32`, `portal/index.php:20-21` | No CSP/X-Frame-Options/Referrer-Policy outside login/portal entry pages; HSTS only present via Docker-image Apache config, not app-level | Open |
@@ -329,7 +329,7 @@ not.* Any new capability that acts on behalf of a staff session must do its
 own authorization check at the handler, not inherit trust from the UI that
 led there.
 
-#### SEC-11 — SQL injection via query-parameter names in REST search (HIGH, confidence high)
+#### SEC-11 — SQL injection via query-parameter names in REST search (HIGH, confidence high) — *fixed*
 
 **Location.** Sink `src/Services/Search/SearchFieldStatementResolver.php:293`
 (`resolveStringSearchField`); entry
@@ -1077,7 +1077,7 @@ activation, an expiry/auto-deactivation timer, and a dedicated break-glass
 event report; consider narrowing the default ACL grant from
 superuser-equivalent to the minimum needed for emergency chart access.
 
-#### SEC-34 — Privilege escalation via `adminacl_ajax.php` group-membership endpoint (HIGH, confidence high)
+#### SEC-34 — Privilege escalation via `adminacl_ajax.php` group-membership endpoint (HIGH, confidence high) — *fixed*
 
 **Location.** `library/ajax/adminacl_ajax.php:44-47` (ACL gate),
 `:72-84` (`AclExtended::addUserAros()`); contrast with the correct
