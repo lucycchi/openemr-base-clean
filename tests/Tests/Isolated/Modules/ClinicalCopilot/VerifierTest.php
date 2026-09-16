@@ -148,6 +148,19 @@ final class VerifierTest extends TestCase
         self::assertSame([$sentence], $result->kept());
     }
 
+    public function testCommaSeparatedInlineCitationGroupIsNotTreatedAsNumbers(): void
+    {
+        $facts = new FactSet([
+            new Fact('12345678', 'PrescriptionService', 1, 'drug', 'Aspirin 81 MG', FactCategory::MedicationActive),
+            new Fact('87654321', 'PrescriptionService', 2, 'drug', 'Metformin 500 MG', FactCategory::MedicationActive),
+        ]);
+        $sentence = new Sentence('Aspirin and metformin are active [12345678, 87654321].', ['12345678', '87654321']);
+
+        $result = (new Verifier())->verify(new Narration([$sentence]), $facts);
+
+        self::assertSame([$sentence], $result->kept());
+    }
+
     public function testNumberMayComeFromAnyCitedFactInTheSentence(): void
     {
         $sentence = new Sentence('Since 2026-09-09, A1c is 7.8 %.', ['0a0b0c', 'd4e5f6']);

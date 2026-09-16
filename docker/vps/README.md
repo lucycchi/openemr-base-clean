@@ -52,9 +52,14 @@ docker compose exec openemr /root/devtools restore-snapshot baseline
 
 ## Enable the module
 
-Administration → Modules → Manage Modules → Unregistered → register and
-enable `oe-module-clinical-copilot`. Or, from SQL, the same rows the Module
-Manager writes (documented in the module's README once it exists).
+Either Administration → Modules → Manage Modules → Unregistered → register
+and enable `oe-module-clinical-copilot`, or from SQL (the same rows the
+Module Manager writes):
+
+```bash
+M=/var/www/localhost/htdocs/openemr/interface/modules/custom_modules/oe-module-clinical-copilot/sql
+docker compose exec openemr sh -c "grep -v '^#' $M/install.sql | mariadb -h mysql -uopenemr -p\$MYSQL_PASS openemr && mariadb -h mysql -uopenemr -p\$MYSQL_PASS openemr < $M/register.sql"
+```
 
 ## Redeploy after a push
 

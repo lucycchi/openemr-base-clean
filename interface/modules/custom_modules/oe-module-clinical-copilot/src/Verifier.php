@@ -37,8 +37,16 @@ final class Verifier
     // Numbers and ISO dates the model types must appear verbatim in a cited fact.
     private function literalsGrounded(Sentence $sentence, FactSet $facts): bool
     {
-        // Models sometimes echo "[id]" inline; a cited id is a reference, not a claim.
-        $text = str_replace(array_map(fn(string $id) => "[$id]", $sentence->factIds), '', $sentence->text);
+        // Models sometimes echo "[id]" or "[id, id]" inline; a cited id is a
+        // reference, not a claim.
+        $text = preg_replace_callback(
+            '/\[([0-9a-f]{8}(?:\s*,\s*[0-9a-f]{8})*)\]/',
+            function (array $m) use ($sentence): string {
+                $ids = preg_split('/\s*,\s*/', $m[1]) ?: [];
+                return array_diff($ids, $sentence->factIds) === [] ? '' : $m[0];
+            },
+            $sentence->text
+        ) ?? $sentence->text;
         preg_match_all('/(?<![A-Za-z\d])(?:\d{4}-\d{2}-\d{2}|\d+(?:\.\d+)?)(?![A-Za-z\d])/', $text, $matches);
         if ($matches[0] === []) {
             return true;
