@@ -33,9 +33,30 @@ services:
   openemr:
     restart: always
     image: openemr/openemr:flex@sha256:1d2c8345a320cf2985c9d02138951267739ec498559ca724b3d5397e4568482e
+    # openemr.sh's FLEX_REPOSITORY path does `git clone "$FLEX_REPOSITORY" --branch ...`
+    # with no explicit target dir, so git names the clone after the repo URL's
+    # basename (here "openemr-base-clean"). The script's own rsync step is
+    # hardcoded to read from ./openemr, so any fork not literally named
+    # "openemr" fails every time with "destination path ... already exists"
+    # on retry. (Tried bypassing the block with EASY_DEV_MODE_NEW/EMPTY, and
+    # tried replicating the clone+rsync ourselves - both have side effects:
+    # EASY_DEV_MODE_NEW drags in an unrelated couchdb devtools step this image
+    # doesn't have, and auto_configure.php is not just an existence gate, it's
+    # the actual PHP script the later MySQL auto-setup step runs - deleting it
+    # breaks setup.)
+    #
+    # Fix: `git config url.insteadOf` rewrites the URL git actually fetches
+    # from, but the clone directory name comes from the literal argument on
+    # the command line, evaluated before that rewrite. So point FLEX_REPOSITORY
+    # at a URL whose basename is "openemr" and redirect it to the real fork -
+    # openemr.sh's own clone lands in ./openemr like it would for any
+    # upstream-named repo, and every step after it runs unmodified.
+    command: >
+      sh -c "git config --global url.\"${FLEX_REPOSITORY:-https://github.com/lucycchi/openemr-base-clean.git}\".insteadOf https://flex.invalid/openemr.git &&
+      FLEX_REPOSITORY=https://flex.invalid/openemr.git ./openemr.sh"
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
+      - "8443:443"
     volumes:
       - sitesvolume:/var/www/localhost/htdocs/openemr/sites:rw
       - logvolume:/var/log
