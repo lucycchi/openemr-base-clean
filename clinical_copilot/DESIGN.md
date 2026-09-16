@@ -30,13 +30,13 @@ through three more tabs.
 - Core interface is fixed by the PRD: multi-turn chatbot, tool-calling, not
   a dashboard.
 - Agent surface area must trace to a validated PCP use case (to be
-  formalized in `USERS.md`, which this design doc's premises feed — not yet
+  formalized in [`USERS.md`](USERS.md), which this design doc's premises feed — not yet
   written) — no speculative tool-chaining.
 - Every claim must be source-attributed; domain constraints (interaction
   flags) must be enforced.
 - Wednesday 2026-09-16 (Early Submission) hard-gates a deployed, working
   agent. This design scopes to that deadline first.
-- Repo audit (`AUDIT.md`) already found: auth is often menu-gated, not
+- Repo audit ([`AUDIT.md`](AUDIT.md)) already found: auth is often menu-gated, not
   ACL-gated (UI hides a link but doesn't block direct access); no caching
   layer; no cron/job queue by default; N+1 patterns in shared services; no
   "encounter-finalized" event; audit log has unencrypted PHI and a checksum
@@ -81,7 +81,7 @@ through three more tabs.
 
 The LLM never generates clinical facts. This is the structural answer to
 both the citation problem and the omission problem, and it reuses the
-`ChartFacts` assembly idea from `AI_INTEGRATION_PLAN.md`.
+`ChartFacts` assembly idea from [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md).
 
 1. **Deterministic fact assembly (PHP, no LLM).** For the patient, the tool
    layer builds a typed fact list where every entry already carries
@@ -189,7 +189,7 @@ why the validation spike (premise #4) targets fact assembly, not the LLM.
   explicit non-goal, not a silent omission, since fixing that is a
   separate, larger audit-remediation item.
 
-**Approach ruled out during this session:** `AI_INTEGRATION_PLAN.md`'s
+**Approach ruled out during this session:** [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md)'s
 original design (nightly-refreshed prose chart/visit summaries with an
 e-sign workflow) — written before the audit existed and before the PRD's
 conversational-agent requirement was fully reasoned through. Its
@@ -299,7 +299,7 @@ What the runtime spike still has to do, against 5-10 seed patients:
 
 ## Open Questions (non-blocking)
 
-- Whether `AI_INTEGRATION_PLAN.md`'s e-sign/nightly-summary feature becomes
+- Whether [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md)'s e-sign/nightly-summary feature becomes
   a post-Sunday roadmap item or is dropped entirely — not decided here.
 - A real drug-interaction source (see premise #4) — future iteration.
 
@@ -337,7 +337,7 @@ submission rather than left for a grader to discover.
 ## Distribution Plan
 
 Web service (OpenEMR fork + embedded agent), existing deployment pipeline
-question still open (see `project-tasks.md` clarifying question #4) — no
+question still open (see [`project-tasks.md`](../project-tasks.md) clarifying question #4) — no
 separate distribution channel needed beyond the public URL hard gate.
 
 ## Next Steps
@@ -385,7 +385,7 @@ separate distribution channel needed beyond the public URL hard gate.
    active/new medications; no drug-drug interaction logic — see premise #4).
 5. Wire the chat loop (Approach C router), the DB-backed conversation-state
    table, and the chart-page-load auto-open trigger.
-6. Write `USERS.md` and `ARCHITECTURE.md` from this design doc's premises
+6. Write [`USERS.md`](USERS.md) and [`ARCHITECTURE.md`](ARCHITECTURE.md) from this design doc's premises
    and approaches — they're the PRD's hard-gated deliverables this design
    feeds.
 
@@ -483,7 +483,7 @@ chart page load (PatientDemographics RenderEvent)
 - Custom production image (TODOS.md); Wednesday deploy is flex + bind-mount.
 - Sensitivity filtering of meds/allergies/problems (not encounter-scoped; documented limitation).
 - Fixing the audit log's PHI/checksum gaps (separate remediation).
-- `AI_INTEGRATION_PLAN.md`'s nightly summaries and e-sign workflow (superseded).
+- [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md)'s nightly summaries and e-sign workflow (superseded).
 - Value normalizer for dates/units/brand-generic (removed by D16).
 - Langfuse self-hosting (D14).
 - Full E2E matrix before Wednesday (D21; due Sunday).
@@ -499,7 +499,7 @@ chart page load (PatientDemographics RenderEvent)
 | Authorization | `AclMain::aclCheckCore`, `EncounterService.php:450` sensitivity pattern | Yes |
 | HTTP client | `guzzlehttp/guzzle` in composer.json | Yes; no SDK added |
 | PSR-3 logging | `SystemLogger` (Monolog) | Yes; processor added |
-| Fact assembly concept | `AI_INTEGRATION_PLAN.md` `ChartFacts` | Idea reused |
+| Fact assembly concept | [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md) `ChartFacts` | Idea reused |
 
 ### Failure modes
 
@@ -578,7 +578,7 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
 - [ ] **T2 (P1, human: ~2h / CC: ~30min)** — spike — Runtime spike script: timing per category, encounter date quality, abnormal-lab and allergy-hit counts, restricted-user refusal
   - Surfaced by: Validation Spike section; D18
   - Files: `tmp/spike.php`, `tests/evals/seed/*.sql` if hits < 3
-  - Verify: script output committed to `tests/evals/spike-results.md`
+  - Verify: script output committed to [`tests/evals/spike-results.md`](../tests/evals/spike-results.md)
 - [ ] **T3 (P1, human: ~1 day / CC: ~1.5h)** — module/src — `FactSet`, `FactAssembler` with ACL, sensitivity on encounters/labs, prior-encounter rule (6A), date bounds + caps (9A), identifier stripping (4A), stable ids (7A), allergy cross-check, computed deltas (D16)
   - Surfaced by: Issues 3, 4, 6, 7, 9; D16, D18, D19
   - Files: `oe-module-clinical-copilot/src/{FactSet,Fact,FactAssembler}.php`
@@ -603,7 +603,7 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Surfaced by: Test review; D10, D21
   - Files: `tests/evals/{run.php,cases/*.json,fixtures/*,smoke.sh}`
   - Verify: recorded run green; live run writes results.json
-- [ ] **T9 (P1, human: ~half day / CC: ~30min)** — docs — `USERS.md`, `ARCHITECTURE.md` (with 500-word summary), `KEY_METRICS.md`; supersede note atop `AI_INTEGRATION_PLAN.md`; update `project-tasks.md`
+- [ ] **T9 (P1, human: ~half day / CC: ~30min)** — docs — [`USERS.md`](USERS.md), [`ARCHITECTURE.md`](ARCHITECTURE.md) (with 500-word summary), [`KEY_METRICS.md`](KEY_METRICS.md); supersede note atop [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md); update [`project-tasks.md`](../project-tasks.md)
   - Surfaced by: PRD hard gates; design doc Next Steps 6
   - Files: repo root
   - Verify: each file exists and traces to this doc

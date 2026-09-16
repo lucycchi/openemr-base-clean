@@ -1,7 +1,7 @@
 > **Superseded (2026-09-15).** This plan was written before `AUDIT.md`
 > existed and before the PRD's requirement for a multi-turn, tool-calling
 > conversational agent was fully reasoned through. The design that replaced
-> it is `docs/designs/pre-room-briefing-agent.md`, summarized in
+> it is `clinical_copilot/DESIGN.md`, summarized in
 > `ARCHITECTURE.md`. Its deterministic `ChartFacts` assembly idea survived as
 > `FactAssembler`; the nightly batch summaries and e-sign workflow did not
 > and are not planned for this submission. Kept for the record.

@@ -66,14 +66,14 @@ final class FactAssembler
             fn(MedicationRecord $m) => $m->active
         ));
         foreach ($activeMeds as $m) {
-            $facts[] = $this->fact('PrescriptionService', $m->id, 'drug', $m->drug, $this->isNew($m->startDate, $since)
+            $facts[] = $this->fact('PrescriptionService', $m->id, 'drug', $this->dated($m->drug, 'started', $m->startDate, $m->startDateProvenance), $this->isNew($m->startDate, $since)
                 ? FactCategory::MedicationNew
                 : FactCategory::MedicationActive);
         }
 
         $allergies = $this->chart->allergies($pid);
         foreach ($allergies as $a) {
-            $facts[] = $this->fact('AllergyIntoleranceService', $a->id, 'title', $a->title, $this->isNew($a->beginDate, $since)
+            $facts[] = $this->fact('AllergyIntoleranceService', $a->id, 'title', $this->dated($a->title, 'onset', $a->beginDate, $a->beginDateProvenance), $this->isNew($a->beginDate, $since)
                 ? FactCategory::AllergyNew
                 : FactCategory::AllergyActive);
         }
@@ -198,6 +198,19 @@ final class FactAssembler
     private function fact(string $service, int $recordId, string $field, string $value, FactCategory $category): Fact
     {
         return new Fact(Fact::idFor($service, $recordId, $field), $service, $recordId, $field, $value, $category);
+    }
+
+    // The date is part of the fact value so the model can cite it and the
+    // physician can see it. When the clinician never recorded a start/onset
+    // date, the record's own entry date is used and labelled as such rather
+    // than presented as clinical truth; with neither, no date is shown.
+    private function dated(string $name, string $recordedLabel, DateTimeImmutable $date, DateProvenance $provenance): string
+    {
+        return match ($provenance) {
+            DateProvenance::Recorded => sprintf('%s (%s %s)', $name, $recordedLabel, $date->format('Y-m-d')),
+            DateProvenance::FirstNoted => sprintf('%s (first noted %s)', $name, $date->format('Y-m-d')),
+            DateProvenance::Unknown => $name,
+        };
     }
 
     private function isNew(DateTimeImmutable $date, ?DateTimeImmutable $since): bool

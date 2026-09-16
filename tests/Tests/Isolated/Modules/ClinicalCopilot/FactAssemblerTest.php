@@ -18,6 +18,7 @@ use DateTimeImmutable;
 use OpenEMR\Modules\ClinicalCopilot\AccessDeniedException;
 use OpenEMR\Modules\ClinicalCopilot\AllergyRecord;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
+use OpenEMR\Modules\ClinicalCopilot\DateProvenance;
 use OpenEMR\Modules\ClinicalCopilot\EncounterRecord;
 use OpenEMR\Modules\ClinicalCopilot\Fact;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
@@ -210,7 +211,7 @@ final class FactAssemblerTest extends TestCase
 
         $facts = $this->factsIn($result, FactCategory::MedicationActive);
         self::assertCount(1, $facts);
-        self::assertSame('Metformin 500 MG Oral Tablet', $facts[0]->value);
+        self::assertSame('Metformin 500 MG Oral Tablet (started 2025-01-10)', $facts[0]->value);
         self::assertSame('PrescriptionService', $facts[0]->service);
         self::assertSame(17, $facts[0]->recordId);
         self::assertSame('drug', $facts[0]->field);
@@ -260,11 +261,57 @@ final class FactAssemblerTest extends TestCase
 
         $new = $this->factsIn($result, FactCategory::AllergyNew);
         self::assertCount(1, $new);
-        self::assertSame('penicillin', $new[0]->value);
+        self::assertSame('penicillin (onset 2026-09-12)', $new[0]->value);
         self::assertSame('AllergyIntoleranceService', $new[0]->service);
         self::assertSame(812, $new[0]->recordId);
         self::assertSame('title', $new[0]->field);
-        self::assertSame(['Mold (organism)'], array_map(fn(Fact $f) => $f->value, $this->factsIn($result, FactCategory::AllergyActive)));
+        self::assertSame(['Mold (organism) (onset 2019-03-14)'], array_map(fn(Fact $f) => $f->value, $this->factsIn($result, FactCategory::AllergyActive)));
+    }
+
+    public function testMedicationWithoutAStartDateIsDatedByWhenItWasFirstNoted(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->medications = [new MedicationRecord(18, 'Lisinopril 10 MG Oral Tablet', new DateTimeImmutable('2026-09-10'), true, DateProvenance::FirstNoted)];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $new = $this->factsIn($result, FactCategory::MedicationNew);
+        self::assertCount(1, $new);
+        self::assertSame('Lisinopril 10 MG Oral Tablet (first noted 2026-09-10)', $new[0]->value);
+    }
+
+    public function testMedicationWithNoDateAtAllCarriesNoDate(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->medications = [new MedicationRecord(18, 'Lisinopril 10 MG Oral Tablet', new DateTimeImmutable('1970-01-01'), true, DateProvenance::Unknown)];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $active = $this->factsIn($result, FactCategory::MedicationActive);
+        self::assertCount(1, $active);
+        self::assertSame('Lisinopril 10 MG Oral Tablet', $active[0]->value);
+    }
+
+    public function testAllergyWithoutAnOnsetDateIsDatedByWhenItWasFirstNoted(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->allergies = [new AllergyRecord(812, 'penicillin', new DateTimeImmutable('2026-09-12'), DateProvenance::FirstNoted)];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $new = $this->factsIn($result, FactCategory::AllergyNew);
+        self::assertCount(1, $new);
+        self::assertSame('penicillin (first noted 2026-09-12)', $new[0]->value);
+    }
+
+    public function testAllergyWithNoDateAtAllCarriesNoDate(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->allergies = [new AllergyRecord(812, 'penicillin', new DateTimeImmutable('1970-01-01'), DateProvenance::Unknown)];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        self::assertSame(['penicillin'], array_map(fn(Fact $f) => $f->value, $this->factsIn($result, FactCategory::AllergyActive)));
     }
 
     public function testAllergyMatchingAnActiveMedicationProducesAHitFact(): void

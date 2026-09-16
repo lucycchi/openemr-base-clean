@@ -46,7 +46,7 @@ final class OpenEmrChartSource implements ChartSource
     public function medications(PatientId $pid): array
     {
         $rows = QueryUtils::fetchRecords(
-            "SELECT id, drug, COALESCE(NULLIF(start_date, '0000-00-00'), date_added) AS started, active, end_date
+            "SELECT id, drug, NULLIF(start_date, '0000-00-00') AS start_date, date_added, active, end_date
              FROM prescriptions WHERE patient_id = ? AND drug <> ''",
             [$pid->value]
         );
@@ -54,11 +54,13 @@ final class OpenEmrChartSource implements ChartSource
         foreach ($rows as $r) {
             $end = Row::str($r, 'end_date');
             $ended = $end !== '' && $end !== '0000-00-00';
+            [$started, $provenance] = $this->datedWithProvenance(Row::str($r, 'start_date'), Row::str($r, 'date_added'));
             $out[] = new MedicationRecord(
                 Row::int($r, 'id'),
                 Row::str($r, 'drug'),
-                $this->date(Row::str($r, 'started')),
+                $started,
                 Row::int($r, 'active') === 1 && !$ended,
+                $provenance,
             );
         }
         return $out;
@@ -71,10 +73,12 @@ final class OpenEmrChartSource implements ChartSource
              WHERE pid = ? AND type = 'allergy' AND title <> '' AND (enddate IS NULL OR enddate = '0000-00-00')",
             [$pid->value]
         );
-        return array_map(
-            fn(array $r) => new AllergyRecord(Row::int($r, 'id'), Row::str($r, 'title'), $this->date(Row::str($r, 'begdate') ?: Row::str($r, 'date'))),
-            $rows
-        );
+        $out = [];
+        foreach ($rows as $r) {
+            [$began, $provenance] = $this->datedWithProvenance(Row::str($r, 'begdate'), Row::str($r, 'date'));
+            $out[] = new AllergyRecord(Row::int($r, 'id'), Row::str($r, 'title'), $began, $provenance);
+        }
+        return $out;
     }
 
     public function labs(PatientId $pid): array
@@ -115,6 +119,28 @@ final class OpenEmrChartSource implements ChartSource
             fn(array $r) => new ProblemRecord(Row::int($r, 'id'), Row::str($r, 'title'), $this->date(Row::str($r, 'begdate') ?: Row::str($r, 'date'))),
             $rows
         );
+    }
+
+    /**
+     * The clinician-recorded date when present, else the date the row was
+     * first entered, each labelled with where it came from.
+     *
+     * @return array{DateTimeImmutable, DateProvenance}
+     */
+    private function datedWithProvenance(string $recorded, string $entered): array
+    {
+        if ($this->hasDate($recorded)) {
+            return [$this->date($recorded), DateProvenance::Recorded];
+        }
+        if ($this->hasDate($entered)) {
+            return [$this->date($entered), DateProvenance::FirstNoted];
+        }
+        return [$this->date(''), DateProvenance::Unknown];
+    }
+
+    private function hasDate(string $s): bool
+    {
+        return $s !== '' && !str_starts_with($s, '0000-00-00');
     }
 
     private function date(string $s): DateTimeImmutable

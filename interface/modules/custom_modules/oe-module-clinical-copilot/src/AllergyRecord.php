@@ -20,6 +20,7 @@ final readonly class AllergyRecord
         public int $id,
         public string $title,
         public \DateTimeImmutable $beginDate,
+        public DateProvenance $beginDateProvenance = DateProvenance::Recorded,
     ) {
     }
 }

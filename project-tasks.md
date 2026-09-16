@@ -22,14 +22,14 @@ Legend: `[x]` done in this repo already, `[ ]` not started/incomplete,
 
 Decisions since this file was written: target user, architecture, provider
 (OpenAI), deployment (VPS + flex image), observability (Langfuse Cloud) are
-all decided and recorded in `docs/designs/pre-room-briefing-agent.md`
+all decided and recorded in `clinical_copilot/DESIGN.md`
 (includes the engineering review with 22 decisions).
 
 ## Completed
 
 - [x] Local run, `README.md` setup section.
 - [x] Audit: `AUDIT.md`, `audit-long.md`, `AUDIT_TASKS.md`; vulnerability fix pass.
-- [x] Design record: `docs/designs/pre-room-briefing-agent.md` (office hours + eng review, APPROVED).
+- [x] Design record: `clinical_copilot/DESIGN.md` (office hours + eng review, APPROVED).
 - [x] Validation spike and results: `tests/evals/spike-results.md`.
 - [x] `USERS.md`, `ARCHITECTURE.md` (539-word summary first), `KEY_METRICS.md`.
 - [x] `AI_INTEGRATION_PLAN.md` marked superseded.

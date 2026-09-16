@@ -21,6 +21,7 @@ final readonly class MedicationRecord
         public string $drug,
         public \DateTimeImmutable $startDate,
         public bool $active,
+        public DateProvenance $startDateProvenance = DateProvenance::Recorded,
     ) {
     }
 }

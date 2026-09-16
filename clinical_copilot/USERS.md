@@ -105,7 +105,7 @@ one more place to look.
 **Explicit non-goal:** drug-drug interaction checking. This install has no
 interaction source of truth, and letting the model decide interactions from
 general knowledge is precisely the ungrounded clinical claim the PRD
-forbids. Tracked in `TODOS.md`.
+forbids. Tracked in [`TODOS.md`](../TODOS.md).
 
 ## Capability → use case traceability
 
@@ -122,7 +122,7 @@ forbids. Tracked in `TODOS.md`.
 
 Nothing else was built. Tool chaining beyond one `get_fact_set`, server-side
 conversation memory, and interaction checking each lacked a use case above
-and were deferred (see `docs/designs/pre-room-briefing-agent.md`).
+and were deferred (see [`clinical_copilot/DESIGN.md`](DESIGN.md)).
 
 ## Users who are refused, by design
 

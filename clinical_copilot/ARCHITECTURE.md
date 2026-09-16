@@ -5,7 +5,7 @@
 The Clinical Co-Pilot is an OpenEMR custom module
 (`interface/modules/custom_modules/oe-module-clinical-copilot`) that adds a
 panel to the patient dashboard for a primary care physician (see
-`USERS.md`). When a chart opens, the panel shows what changed since the
+[`USERS.md`](USERS.md)). When a chart opens, the panel shows what changed since the
 previous visit and anything flagged on file, then answers follow-up
 questions in a multi-turn thread. It is a conversational agent in the PRD's
 sense, but the design decision that shapes everything is that **the
@@ -208,7 +208,7 @@ why eval case 08 exists to keep the limitation visible.
   total_failure, answer_type, verification_pass, duration; and, when the
   model ran, one generation with model, tokens, latency and status. Alerts
   (p95 latency, error rate, tool failure rate) are configured on those
-  fields in Langfuse; thresholds are in `KEY_METRICS.md`.
+  fields in Langfuse; thresholds are in [`KEY_METRICS.md`](KEY_METRICS.md).
 
 ## Deployment
 
@@ -240,14 +240,14 @@ the eval patients match locally and remotely. Module enablement is
 | Facts-first, ID-only narration | free prose + post-hoc fact checking | verification becomes set membership plus a digit scan; no normalizer, no re-fetch |
 | One LLM tool | tool per data source | with facts assembled deterministically, extra tools were categories in disguise |
 | Direct patient-scoped SQL in the adapter | service-layer calls | service rows lack prescription ids/start dates and lab→encounter links needed to cite and to filter by sensitivity |
-| Client-held transcript | conversation table | no migration before the gate; every turn re-verified anyway; persistence tracked in `TODOS.md` |
+| Client-held transcript | conversation table | no migration before the gate; every turn re-verified anyway; persistence tracked in [`TODOS.md`](../TODOS.md) |
 | Curated reference-range table | seeding abnormal flags | works on all 30 patients, is a real clinical rule, is versioned and cited; local labs vary |
-| flex image on a VPS | custom image | zero adaptation the night before the gate; custom image in `TODOS.md` |
+| flex image on a VPS | custom image | zero adaptation the night before the gate; custom image in [`TODOS.md`](../TODOS.md) |
 | Langfuse Cloud | self-hosted | four extra services on one box; only counts and ids leave the server |
 
 ## How the audit shaped this
 
-`AUDIT.md` findings that became design constraints: menu-gated
+[`AUDIT.md`](AUDIT.md) findings that became design constraints: menu-gated
 authorization (→ ACL enforced in the tool layer, verified by negative
 tests); no caching layer anywhere (→ the briefing cache is the first,
 keyed to be invalidation-safe); N+1 patterns in shared services (→ direct
@@ -259,4 +259,8 @@ encounters reference a nonexistent facility (→ facility is optional; the
 join is a LEFT JOIN). Data gotchas found during the spike (zero dates in
 `procedure_result.date` and `prescriptions.start_date`, no `abnormal` flags
 or ranges in 5,605 results) are handled in `OpenEmrChartSource` and
-`ReferenceRanges`.
+`ReferenceRanges`. A medication or allergy without a recorded start/onset
+date is dated by when the clinician first entered it and the fact value
+says `first noted` rather than `started`/`onset`, so the model can cite a
+date without the physician mistaking an entry date for a clinical one
+(`DateProvenance`); 67 of 68 active seed prescriptions take this path.

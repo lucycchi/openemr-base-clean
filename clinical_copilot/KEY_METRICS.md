@@ -1,6 +1,6 @@
 # KEY_METRICS.md — What "working" means, and how we prove it
 
-The promise to the physician (`USERS.md`) is: *in the 90 seconds between
+The promise to the physician ([`USERS.md`](USERS.md)) is: *in the 90 seconds between
 rooms, you get what changed and what is flagged, and you can act on it
 without re-checking the chart.* A hospital CTO deciding whether to put this
 in front of physicians needs to know three things: is it trustworthy, is it
