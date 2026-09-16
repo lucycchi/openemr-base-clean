@@ -18,6 +18,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Database\QueryUtils;
+use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 
 final class ReadinessProbes
@@ -44,7 +45,8 @@ final class ReadinessProbes
                 } catch (GuzzleException) {
                     return 'openai unreachable';
                 }
-                return $code === 200 ? null : 'openai returned HTTP ' . $code;
+                // Anonymous callers get no upstream status: a 401/429 would reveal key validity or quota state.
+                return $code === 200 ? null : 'openai unavailable';
             },
             'langfuse' => static function () use ($http, $config): ?string {
                 if (!$config->hasLangfuse()) {
@@ -55,8 +57,8 @@ final class ReadinessProbes
                 } catch (GuzzleException) {
                     return 'langfuse unreachable';
                 }
-                return $code === 200 ? null : 'langfuse returned HTTP ' . $code;
+                return $code === 200 ? null : 'langfuse unavailable';
             },
-        ], FileReadinessStore::default(), ServiceContainer::getClock());
+        ], FileReadinessStore::inSiteDirectory(OEGlobalsBag::getInstance()->getString('OE_SITE_DIR')), ServiceContainer::getClock());
     }
 }

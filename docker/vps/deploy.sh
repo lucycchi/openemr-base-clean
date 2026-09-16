@@ -44,7 +44,7 @@ ssh "$DEPLOY_SSH" "set -e
 
 echo "waiting for https://$DEPLOY_DOMAIN/meta/health/readyz (up to 20 min)"
 for i in $(seq 1 80); do
-    if curl -fsSk --max-time 10 "https://$DEPLOY_DOMAIN/meta/health/readyz" > /dev/null; then
+    if curl -fsk --max-time 10 "https://$DEPLOY_DOMAIN/meta/health/readyz" > /dev/null 2>&1; then
         echo "ready after $((i * 15))s"
         break
     fi

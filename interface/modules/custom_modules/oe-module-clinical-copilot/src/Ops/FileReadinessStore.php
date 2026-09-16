@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Readiness result persisted to a temp file so the TTL holds across PHP requests.
+ * Readiness result persisted under the site documents dir so the TTL holds across PHP requests.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -20,14 +20,20 @@ final readonly class FileReadinessStore implements ReadinessStore
     {
     }
 
-    public static function default(): self
+    // Under the site's own documents tree, not a shared temp dir: an unprivileged
+    // local user must not be able to pre-plant or replace the cache file.
+    public static function inSiteDirectory(string $siteDir): self
     {
-        return new self(sys_get_temp_dir() . '/oe-copilot-readiness.json');
+        $dir = $siteDir . '/documents/clinical-copilot';
+        if (!is_dir($dir) && !mkdir($dir, 0700, true) && !is_dir($dir)) {
+            throw new \RuntimeException('Cannot create readiness cache directory');
+        }
+        return new self($dir . '/readiness.json');
     }
 
     public function get(): ?array
     {
-        if (!is_file($this->path)) {
+        if (is_link($this->path) || !is_file($this->path)) {
             return null;
         }
         $raw = file_get_contents($this->path);
@@ -53,6 +59,10 @@ final readonly class FileReadinessStore implements ReadinessStore
 
     public function put(int $at, array $dependencies): void
     {
+        if (is_link($this->path)) {
+            throw new \RuntimeException('Readiness cache path is a symlink');
+        }
         file_put_contents($this->path, json_encode(['at' => $at, 'dependencies' => $dependencies], JSON_THROW_ON_ERROR), LOCK_EX);
+        chmod($this->path, 0600);
     }
 }
