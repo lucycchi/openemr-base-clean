@@ -38,7 +38,7 @@ it renders.
 | [tests/evals/README.md](tests/evals/README.md) | Eval suite: cases, failure modes, how to run |
 | [docker/vps/README.md](docker/vps/README.md) | Deployment |
 
-**Deployed:** _URL to be added at submission._
+**Deployed:** https://146-190-139-37.sslip.io (login `admin`; demo data). Health: [/health](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php) · [/ready](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php)
 
 **Try it locally:** bring up the dev stack (below), then register the module:
 
