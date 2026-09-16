@@ -1,0 +1,29 @@
+meta {
+  name: 09 Brief without CSRF is refused
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/chat.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  action: brief
+}
+
+assert {
+  res.status: neq 200
+}
+
+docs {
+  No csrf_token_form: refused. To see the ACL refusal, set user/password to
+  receptionist/receptionist in the environment and re-run 03-06: 06 returns
+  403 {"error":"You are not authorized to view this chart"} before any chart
+  row is read.
+}

@@ -1,0 +1,40 @@
+meta {
+  name: 06 Brief
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/chat.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: brief
+}
+
+assert {
+  res.status: eq 200
+  res.body.correlation_id: isString
+  res.body.facts_hash: isString
+  res.body.narration.total_failure: eq false
+}
+
+script:post-response {
+  bru.setVar('facts_hash', res.body.facts_hash);
+  bru.setVar('correlation_id', res.body.correlation_id);
+}
+
+docs {
+  Returns the deterministic fact table (facts[] with id, category, value,
+  source, must_surface), the verified narration (sentences with fact_ids,
+  stripped count, omitted_fact_ids, status, from_cache, tokens), the
+  prior_visit date and the facts_hash. Every response carries a
+  correlation_id that appears in the server log and audit log.
+  Second call with unchanged facts is a cache hit (from_cache: true, 0 tokens).
+}

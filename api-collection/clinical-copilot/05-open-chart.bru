@@ -1,0 +1,33 @@
+meta {
+  name: 05 Open chart (captures csrf + facts_hash)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/interface/patient_file/summary/demographics.php?set_pid={{pid}}
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const html = typeof res.body === 'string' ? res.body : JSON.stringify(res.body);
+  const m = html.match(/data-csrf="([^"]+)"/);
+  if (m) {
+    bru.setVar('csrf_token', m[1]);
+  } else {
+    throw new Error('Co-Pilot panel not found on the dashboard: is the module registered and the user authorized?');
+  }
+}
+
+docs {
+  Sets the session patient (pid from the environment) the same way the UI
+  does, and reads the CSRF token the panel embeds. The chat endpoint takes
+  the patient from the session only.
+}

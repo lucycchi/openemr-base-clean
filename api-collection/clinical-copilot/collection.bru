@@ -1,0 +1,21 @@
+docs {
+  # Clinical Co-Pilot API collection
+
+  Run top to bottom (or "Run collection"). Requests 3-6 establish the
+  session and capture the CSRF token and facts hash into variables.
+
+  1. Health            liveness, no auth
+  2. Ready             dependency probes, no auth, cached 60s
+  3. Login page        starts the OpenEMR session
+  4. Login             authenticates (admin by default)
+  5. Open chart        sets the session patient; captures csrf_token
+  6. Brief             the verified briefing; captures facts_hash
+  7. Ask               a follow-up question, verified
+  8. Ask (stale hash)  chart_changed: true
+  9. Brief without CSRF -> refused. For the ACL refusal, set user/password
+     to receptionist/receptionist and re-run 3-6 (6 returns 403).
+
+  Select the `local` or `vps` environment. Cookies are handled by Bruno
+  automatically. The patient id is set via the OpenEMR session (request 4);
+  a pid in the chat body is ignored by design.
+}
