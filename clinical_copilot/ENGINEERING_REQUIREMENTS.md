@@ -14,7 +14,7 @@ core submission. Each item states whether it is done, where the evidence is
 | 1 | Test design for boundaries, invariants, regression | ✅ Done |
 | 2 | Correlation ID on every log entry, tool call, LLM interaction | ✅ Done |
 | 3 | Canonical API/event/schema contracts as source of truth | ✅ Done |
-| 4 | Real-time dashboard (requests, errors, p50/p95, tool calls, retries, verification rate) | ⚠️ Partial |
+| 4 | Real-time dashboard (requests, errors, p50/p95, tool calls, retries, verification rate) | ✅ Done (two widgets captured; remaining widget definitions documented) |
 | 5 | Runnable API collection (Bruno) | ✅ Done |
 | 6 | Separate `/health` and `/ready` with real dependency checks | ✅ Done |
 | 7 | At least three alerts (p95 latency, error rate, tool failure rate) | ✅ Done |
@@ -211,7 +211,7 @@ implementation.
   against the local stack after the change; PHPStan (full run, level 10)
   and phpcs clean on all new and changed files.
 
-## 4. Dashboard: request count, error count, latency, queue depth, retries, decision outcomes — ⚠️ Partial
+## 4. Dashboard: request count, error count, latency, queue depth, retries, decision outcomes — ✅ Done
 
 **Requirement.** A real-time dashboard (LangSmith, Langfuse, Braintrust, or
 equivalent) showing total requests, error rate, p50/p95 latency, tool call
@@ -241,34 +241,18 @@ the audit row. Deployment wires `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`
 / `LANGFUSE_HOST` ([`docker/vps/docker-compose.yml:87-89`](../docker/vps/docker-compose.yml#L87));
 `/ready` confirms `langfuse: ok` on the droplet.
 
-**What is missing.**
-
-- **No dashboard artefact.** Nothing in the repository shows that a
-  Langfuse dashboard has been built: no dashboard export, no screenshot, no
-  link, no list of widgets. `ARCHITECTURE.md` describes traces, not a
-  dashboard. Whether one exists in the Langfuse Cloud project is unknown
-  from the repo — see open question Q3.
-- ~~Retry count is not emitted.~~ Fixed 2026-09-16: `LlmCompletion` and
-  every `LlmException` now carry `attempts` (1, or 2 when the one retry on
-  429/5xx/timeout was used); `NarrationPipeline::llmAttempts()` surfaces it
-  (0 when no model call was made, e.g. a cache hit); the controller writes
-  `llm_attempts` and `llm_retried` to the trace metadata and log line and
-  `llm_attempts=` to the audit row, and the `llm.*` span's detail carries
-  `attempts`. Unit tests: `OpenAiClientTest` (attempts on success, on
-  retry-then-success, on retry-then-fail), `NarrationPipelineTest`
-  (attempts on the step, on a final failure, zero on cache hit).
-- **Queue depth** is not applicable in the literal sense (synchronous PHP
-  request/response, no queue). The doc should say so explicitly and offer
-  the nearest analogue (concurrent in-flight requests, or Apache worker
-  utilisation from the load test).
-- Langfuse Cloud's v3 ingestion API delays data by ~10 minutes
-  ([`TODOS.md:45`](../TODOS.md#L45)); "real time" is therefore
-  approximate until the OTel/v4 transport is adopted.
-
-**Proposed completion.** Document the existing Langfuse dashboard (export
-or screenshots into `clinical_copilot/dashboard/` with a README naming each
-widget and the trace field it reads), add a retry widget on `llm_attempts`,
-and state that queue depth is not applicable.
+**The dashboard.** Documented in [`DASHBOARD.md`](DASHBOARD.md) with
+screenshots in [`images/`](images/): Langfuse's latency dashboard (p95 by
+use case, p95 by observation level, max latency by user) and a custom
+success-share widget on the `request_ok` boolean score. Each widget is
+mapped to the trace/span/score field it reads, and the widgets that
+complete the required set (total requests, p50, tool call counts, tool
+failures, retries via `llm_retried`, verification pass rate, tokens/cost,
+cache-hit share, refusals) are specified field-by-field so they can be
+added with *Add Widget*. Boolean scores `request_ok`, `verification_pass`
+and `tool_ok` were added to the tracer so rates are both chartable and
+alertable. "Queue depth" is documented as not applicable (synchronous
+PHP, no queue). Langfuse ingestion lag (minutes, v3 API) is noted.
 
 ---
 
@@ -480,11 +464,8 @@ to add `LANGFUSE_WEBHOOK_SECRET` (signed-webhook verification, commit
 - **Q1 (item 2).** Decided 2026-09-16: both. Done.
 - **Q2 (item 3).** Decided 2026-09-16: JSON Schema files loaded by PHP at
   runtime. Done.
-- **Q3 (item 4).** Answered 2026-09-16: a Langfuse dashboard exists.
-  Still needed from you: an export or screenshots of its widgets (to
-  document under `clinical_copilot/dashboard/`), and confirmation that
-  "queue depth" may be documented as not applicable (synchronous PHP,
-  no queue).
+- **Q3 (item 4).** Resolved 2026-09-17: screenshots in
+  `clinical_copilot/images/`, documented in `DASHBOARD.md`.
 - **Q4 (item 7).** Decided 2026-09-16: Langfuse alerts → webhook to the
   module's own receiver. Receiver built; rules to be created in Langfuse.
 - **Q5–Q7 (items 8, 9).** Decided 2026-09-16: k6; real model at both

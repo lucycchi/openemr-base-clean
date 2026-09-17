@@ -17,6 +17,8 @@ demo data) · [/health](https://146-190-139-37.sslip.io/interface/modules/custom
 | 3 | [USERS.md](../USERS.md) | Who it is for (a PCP with a 20-patient day), the workflow it enters, three use cases, capability→use-case traceability, who is refused by design. |
 | 4 | [ARCHITECTURE.md](../ARCHITECTURE.md) | Facts-first design, data flow, the verifier and omission guard precisely, authorization and PHI boundaries, failure modes, observability, deployment, testing, tradeoffs made knowingly. |
 | 5 | [KEY_METRICS.md](../KEY_METRICS.md) | The five metrics that define "working", their baselines from the deployed eval run, alert thresholds, and cost per briefing. |
+| 5a | [ENGINEERING_REQUIREMENTS.md](ENGINEERING_REQUIREMENTS.md) | The nine graded engineering requirements: what was done for each and where the evidence is. |
+| 5b | [DASHBOARD.md](DASHBOARD.md) · [ALERTS.md](ALERTS.md) · [BASELINES.md](BASELINES.md) | The Langfuse dashboard (with screenshots), the three paging alerts with runbooks and the proven webhook delivery, and the 10/50-user load baselines with CPU/memory. |
 | 6 | [DESIGN.md](DESIGN.md) | The design record: problem, premises, approaches considered, the engineering review's 22 decisions, failure-mode table, test plan, implementation tasks. Where a decision came from. |
 | 7 | [AUDIT.md](../AUDIT.md) | The security / performance / architecture / data-quality / HIPAA audit of the OpenEMR base that the design was built against. |
 
