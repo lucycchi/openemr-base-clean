@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/fact.schema.json",
+  "title": "Fact",
+  "description": "One verified chart fact as rendered to the panel. Produced by deterministic PHP (FactAssembler); the language model only ever cites facts by id and never produces them. Fact values are clinical strings and numbers; they never contain the patient's name, date of birth, MRN, address or phone.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Content-derived id: first 8 hex chars of sha256(service, record_id, field). Stable across requests for the same underlying row.",
+      "pattern": "^[0-9a-f]{8}$"
+    },
+    "category": {
+      "type": "string",
+      "description": "Fact category; must_surface categories are appended by the OmissionGuard if the narration does not cite them.",
+      "enum": [
+        "prior_visit",
+        "encounter",
+        "medication_new",
+        "medication_changed",
+        "medication_active",
+        "allergy_new",
+        "allergy_active",
+        "allergy_medication_hit",
+        "lab_abnormal",
+        "lab_delta",
+        "problem_new",
+        "truncation"
+      ]
+    },
+    "value": {
+      "type": "string",
+      "description": "Rendered, human-readable value. Every number and date the model states must appear verbatim in the cited fact's value.",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "description": "Provenance as <service>#<record_id>.<field>, e.g. PrescriptionService#17.drug.",
+      "pattern": "^[A-Za-z]+#[0-9]+\\.[A-Za-z_]+$"
+    },
+    "must_surface": {
+      "type": "boolean",
+      "description": "True when the OmissionGuard guarantees this fact reaches the physician even if the model omits it."
+    }
+  },
+  "required": ["id", "category", "value", "source", "must_surface"],
+  "additionalProperties": false
+}

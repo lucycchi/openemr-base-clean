@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/health.response.schema.json",
+  "title": "health.php response",
+  "description": "Liveness. HTTP 200 whenever PHP is serving the module; checks nothing else. No authentication.",
+  "type": "object",
+  "properties": {
+    "status": { "const": "ok" },
+    "service": { "const": "clinical-copilot" },
+    "time": { "type": "string", "format": "date-time", "description": "Server time, ISO 8601 UTC." }
+  },
+  "required": ["status", "service", "time"],
+  "additionalProperties": false
+}

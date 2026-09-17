@@ -29,10 +29,13 @@ use OpenEMR\Modules\ClinicalCopilot\AccessDeniedException;
 use OpenEMR\Modules\ClinicalCopilot\AclAuthorization;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
 use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
+use OpenEMR\Modules\ClinicalCopilot\ChatAction;
+use OpenEMR\Modules\ClinicalCopilot\ChatRequest;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\CorrelationId;
 use OpenEMR\Modules\ClinicalCopilot\DbBriefingCache;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
+use OpenEMR\Modules\ClinicalCopilot\InvalidRequest;
 use OpenEMR\Modules\ClinicalCopilot\Llm\OpenAiClient;
 use OpenEMR\Modules\ClinicalCopilot\NarrationPipeline;
 use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
@@ -110,22 +113,30 @@ final class ChatController
         $user = $session->get('authUser');
         $user = is_string($user) ? $user : '';
 
-        if (!CsrfUtils::verifyCsrfToken($this->request->request->getString('csrf_token_form'), session: $session)) {
-            $this->respond(['error' => 'CSRF verification failed'], 403);
+        // Parse the body against contracts/chat.request.schema.json before
+        // anything else; a body that violates it never reaches the chart.
+        try {
+            $chat = ChatRequest::fromBag($this->request->request);
+        } catch (InvalidRequest $e) {
+            $this->respond(['error' => $e->getMessage(), 'correlation_id' => $this->correlationId], $e->httpStatus);
+            return;
+        }
+        if (!CsrfUtils::verifyCsrfToken($chat->csrfToken, session: $session)) {
+            $this->respond(['error' => 'CSRF verification failed', 'correlation_id' => $this->correlationId], 403);
             return;
         }
         if ($user === '') {
-            $this->respond(['error' => 'Not authenticated'], 401);
+            $this->respond(['error' => 'Not authenticated', 'correlation_id' => $this->correlationId], 401);
             return;
         }
         $pidValue = PatientSessionUtil::getPid();
         if ($pidValue <= 0) {
-            $this->respond(['error' => 'No patient selected'], 400);
+            $this->respond(['error' => 'No patient selected', 'correlation_id' => $this->correlationId], 400);
             return;
         }
         $pid = new PatientId($pidValue);
         $encounter = EncounterSessionUtil::getEncounter();
-        $action = $this->request->request->getString('action');
+        $action = $chat->action->value;
 
         $this->logger->notice('copilot request', [
             'action' => $action,
@@ -149,10 +160,9 @@ final class ChatController
         }
 
         $config = $this->config;
-        $payload = match ($action) {
-            'brief' => $this->brief($assembled, $config, $pid),
-            'ask' => $this->ask($assembled, $config, $pid),
-            default => ['error' => 'Unknown action', 'correlation_id' => $this->correlationId],
+        $payload = match ($chat->action) {
+            ChatAction::Brief => $this->brief($assembled, $config, $pid),
+            ChatAction::Ask => $this->ask($chat, $assembled, $config, $pid),
         };
 
         $outcome = $payload['narration'] ?? $payload['answer'] ?? null;
@@ -228,20 +238,16 @@ final class ChatController
     }
 
     /** @return array<string, mixed> */
-    private function ask(AssembledFacts $assembled, Config $config, PatientId $pid): array
+    private function ask(ChatRequest $chat, AssembledFacts $assembled, Config $config, PatientId $pid): array
     {
-        if ($this->request->request->getString('facts_hash') !== $assembled->facts()->hash()) {
+        if ($chat->factsHash !== $assembled->facts()->hash()) {
             return PanelPayload::chartChanged($assembled, $this->correlationId);
-        }
-        $question = trim(mb_substr($this->request->request->getString('question'), 0, 500));
-        if ($question === '') {
-            return ['error' => 'Question is required', 'correlation_id' => $this->correlationId];
         }
         if (!$config->hasOpenAi()) {
             return ['error' => 'AI is not configured on this server', 'correlation_id' => $this->correlationId];
         }
         $t = hrtime(true);
-        $answer = $this->pipeline($config, $assembled, $pid)->answer($assembled, $question, $this->transcript(), $pid);
+        $answer = $this->pipeline($config, $assembled, $pid)->answer($assembled, (string) $chat->question, $chat->transcript, $pid);
         $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
         $this->llmCalled = true;
         return PanelPayload::answer($assembled, $answer, $this->correlationId);
@@ -264,29 +270,6 @@ final class ChatController
     {
         $omitted = (new OmissionGuard())->omitted(new VerificationResult([], []), $assembled->facts());
         return new BriefingResult([], 0, $omitted, 'AI summary unavailable: not configured on this server', false, false, 0, 0);
-    }
-
-    /** @return list<array{role: string, text: string}> */
-    private function transcript(): array
-    {
-        $raw = $this->request->request->getString('transcript', '[]');
-        try {
-            $decoded = json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            return [];
-        }
-        $turns = [];
-        foreach (is_array($decoded) ? array_slice($decoded, -10) : [] as $turn) {
-            if (!is_array($turn)) {
-                continue;
-            }
-            $role = $turn['role'] ?? '';
-            $text = $turn['text'] ?? '';
-            if (is_string($role) && is_string($text) && in_array($role, ['user', 'assistant'], true) && $text !== '') {
-                $turns[] = ['role' => $role, 'text' => mb_substr($text, 0, 1000)];
-            }
-        }
-        return $turns;
     }
 
     /** @param array<string, mixed> $payload */

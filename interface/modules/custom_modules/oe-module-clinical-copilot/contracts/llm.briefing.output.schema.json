@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/llm.briefing.output.schema.json",
+  "title": "LLM briefing output",
+  "description": "Structured output the model must return for a briefing (action=brief, cache miss). Sent to OpenAI as response_format.json_schema with strict=true, so the provider enforces it; OpenAiClient raises LlmSchemaMismatch on any deviation. Prompt::briefingSchema() loads this file.",
+  "type": "object",
+  "properties": {
+    "sentences": {
+      "type": "array",
+      "description": "Short list of cited sentences, most important first. May be empty.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" },
+          "fact_ids": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["text", "fact_ids"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["sentences"],
+  "additionalProperties": false
+}

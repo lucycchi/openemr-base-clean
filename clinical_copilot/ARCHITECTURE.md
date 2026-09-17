@@ -62,13 +62,16 @@ OpenEMR. The eval suite (`tests/evals`) exercises each of these.
 ```
 interface/modules/custom_modules/oe-module-clinical-copilot/
 ├── openemr.bootstrap.php      registers the namespace, subscribes Bootstrap
+├── contracts/                 JSON Schema for every input/output; the source of truth (README there)
 ├── src/
 │   ├── Bootstrap.php          PatientDemographics RenderEvent → panel HTML
 │   ├── Controller/ChatController.php   chat.php handler: session, CSRF, ACL, brief/ask
+│   ├── ChatRequest.php, ChatAction.php, InvalidRequest.php   typed request parsed per contracts/chat.request
+│   ├── Contracts.php          loads contracts/*.schema.json (Prompt reads the LLM schemas from it)
 │   ├── FactAssembler.php, FactSet.php, Fact.php, FactCategory.php
 │   ├── OpenEmrChartSource.php, AclAuthorization.php   adapters over OpenEMR
 │   ├── ReferenceRanges.php    curated LOINC ranges (versioned)
-│   ├── Prompt.php             prompts + strict schemas, VERSION in cache key
+│   ├── Prompt.php             prompts; strict schemas come from contracts/; VERSION in cache key
 │   ├── Llm/OpenAiClient.php   Guzzle, typed failures, bounded retry
 │   ├── NarrationPipeline.php  cache → model → Verifier → OmissionGuard
 │   ├── Verifier.php, OmissionGuard.php   pure, unit-tested

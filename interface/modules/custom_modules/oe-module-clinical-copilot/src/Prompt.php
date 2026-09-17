@@ -19,7 +19,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 final class Prompt
 {
-    public const VERSION = '2026-09-17.1';
+    public const VERSION = '2026-09-18.1';
 
     private const RULES = <<<'TXT'
 You are a clinical co-pilot writing a pre-visit briefing for a primary care physician.
@@ -64,46 +64,16 @@ TXT;
         return implode("\n", $lines);
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, mixed> The contracts/llm.briefing.output.schema.json file, as OpenAI accepts it. */
     public function briefingSchema(): array
     {
-        return [
-            'type' => 'object',
-            'properties' => ['sentences' => $this->sentencesSchema()],
-            'required' => ['sentences'],
-            'additionalProperties' => false,
-        ];
+        return Contracts::forOpenAi('llm.briefing.output');
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, mixed> The contracts/llm.followup.output.schema.json file, as OpenAI accepts it. */
     public function followUpSchema(): array
     {
-        return [
-            'type' => 'object',
-            'properties' => [
-                'answer_type' => ['type' => 'string', 'enum' => ['cited', 'not_in_facts']],
-                'sentences' => $this->sentencesSchema(),
-            ],
-            'required' => ['answer_type', 'sentences'],
-            'additionalProperties' => false,
-        ];
-    }
-
-    /** @return array<string, mixed> */
-    private function sentencesSchema(): array
-    {
-        return [
-            'type' => 'array',
-            'items' => [
-                'type' => 'object',
-                'properties' => [
-                    'text' => ['type' => 'string'],
-                    'fact_ids' => ['type' => 'array', 'items' => ['type' => 'string']],
-                ],
-                'required' => ['text', 'fact_ids'],
-                'additionalProperties' => false,
-            ],
-        ];
+        return Contracts::forOpenAi('llm.followup.output');
     }
 
     private function context(AssembledFacts $assembled): string

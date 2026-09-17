@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/llm.followup.output.schema.json",
+  "title": "LLM follow-up output",
+  "description": "Structured output the model must return for a follow-up question (action=ask). Sent to OpenAI as response_format.json_schema with strict=true. answer_type=not_in_facts is the only acceptable answer to a question the facts cannot answer, and must come with no sentences. Prompt::followUpSchema() loads this file.",
+  "type": "object",
+  "properties": {
+    "answer_type": {
+      "type": "string",
+      "description": "cited: the sentences answer the question from the facts. not_in_facts: the facts cannot answer it; the panel shows a fixed sentence pointing to the chart tabs.",
+      "enum": ["cited", "not_in_facts"]
+    },
+    "sentences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" },
+          "fact_ids": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["text", "fact_ids"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["answer_type", "sentences"],
+  "additionalProperties": false
+}

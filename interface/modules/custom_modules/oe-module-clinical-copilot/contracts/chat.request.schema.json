@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/chat.request.schema.json",
+  "title": "chat.php request body",
+  "description": "Form-encoded POST body accepted by public/chat.php. The patient id and current encounter are taken from the OpenEMR session only; a pid in the body is not part of the contract and is ignored. The session cookie must belong to an authenticated user with patients/med and encounters/notes ACL.",
+  "type": "object",
+  "properties": {
+    "csrf_token_form": {
+      "type": "string",
+      "description": "OpenEMR CSRF token for the session, as embedded in the panel markup. Missing or wrong token: 403.",
+      "minLength": 1
+    },
+    "action": {
+      "type": "string",
+      "description": "brief: assemble facts and return the verified briefing (cached by facts hash, prompt version and model). ask: answer a follow-up question about the same fact set.",
+      "enum": [
+        "brief",
+        "ask"
+      ]
+    },
+    "question": {
+      "type": "string",
+      "description": "ask only. Must contain at least one non-whitespace character; trimmed and truncated to 500 characters server-side.",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "\\S"
+    },
+    "facts_hash": {
+      "type": "string",
+      "description": "ask only. The facts_hash from the briefing the thread started on. If the chart has changed since, the response is chat.chart-changed.response and no answer is produced.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "transcript": {
+      "type": "string",
+      "description": "ask only. JSON-encoded array of {role: user|assistant, text} turns held by the browser; the server keeps the last 10, truncates each text to 1000 characters, and ignores malformed input.",
+      "contentMediaType": "application/json"
+    }
+  },
+  "required": [
+    "csrf_token_form",
+    "action"
+  ],
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "description": "brief needs nothing else.",
+      "properties": {
+        "action": {
+          "const": "brief"
+        }
+      }
+    },
+    {
+      "description": "ask needs the question and the facts_hash the thread started on.",
+      "properties": {
+        "action": {
+          "const": "ask"
+        }
+      },
+      "required": [
+        "question",
+        "facts_hash"
+      ]
+    }
+  ]
+}
