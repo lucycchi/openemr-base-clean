@@ -1,0 +1,14 @@
+# 20260917T0245Z-50vu-mixed  2026-09-17T02:59:37.888Z  https://146-190-139-37.sslip.io
+scenario=mixed vus=50 duration=2m0s
+requests=419 throughput=2.8 req/s  http_failed=0%  copilot_errors=0%
+briefs=140 (cache hit 100%)  asks=39  model_calls=39  summary_unavailable=0%  verification_fail=0%
+sentences kept=483 stripped=0
+
+endpoint          n      p50     p95     p99     max  (ms)
+all_http          419    6227   50046   54594   57238
+login              50   18521   23386   23626   23765
+chart_open        140   40409   53565   55468   57238
+brief             140    2047    3771    4396    5010
+brief_cache_hit   140    2047    3771    4396    5010
+brief_cold       null    null    null    null    null
+ask                39    3561    5914    6329    6562

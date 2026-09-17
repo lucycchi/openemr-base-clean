@@ -18,8 +18,8 @@ core submission. Each item states whether it is done, where the evidence is
 | 5 | Runnable API collection (Bruno) | ✅ Done |
 | 6 | Separate `/health` and `/ready` with real dependency checks | ✅ Done |
 | 7 | At least three alerts (p95 latency, error rate, tool failure rate) | ✅ Defined + receiver built; Langfuse rules to be configured |
-| 8 | Baseline CPU, memory, latency, throughput profiles | 🔧 Tooling done; capture pending deploy |
-| 9 | Load/stress tests at 10 and 50 concurrent users | 🔧 Tooling done; runs pending deploy |
+| 8 | Baseline CPU, memory, latency, throughput profiles | ✅ Done |
+| 9 | Load/stress tests at 10 and 50 concurrent users | ✅ Done |
 
 ---
 
@@ -385,7 +385,7 @@ into `clinical_copilot/dashboard/`. The deployed receiver needs
 `ALERT_WEBHOOK_SECRET` set in the droplet's `.env` and the container
 recreated.
 
-## 8. Baseline CPU, memory, latency, and throughput profiles — 🔧 Tooling done, capture pending
+## 8. Baseline CPU, memory, latency, and throughput profiles — ✅ Done
 
 **Requirement.** Capture CPU, memory, request latency, and throughput under
 the load-test scenarios and include them so future changes can be measured.
@@ -404,15 +404,18 @@ the load-test scenarios and include them so future changes can be measured.
 - Verified end to end on the local dev stack (3 VUs, 20 s): both tables
   render from real data.
 
-**Pending.** Run the matrix against the droplet (2 vCPU / 4 GB) on the
-current commit and write `clinical_copilot/BASELINES.md` with the tables,
-the commit SHA, host spec, model, warm/cold state and the run's time window
-(so the Langfuse traces, including `llm_retried`, can be found). Blocked on
-the deploy step below.
+**Captured 2026-09-17** against the droplet (2 vCPU / 4 GB, commit
+`135c8cf`): [`BASELINES.md`](BASELINES.md) records, per level and
+scenario, throughput, p50/p95/p99 per endpoint, error rates, app and DB
+CPU avg/peak, memory avg/peak and host load, with commit, host spec,
+model, cache state and the UTC window. Key figures: cache-hit briefing
+0.6 s p50 / 0.85 s p95 at 10 users; follow-up 1.4 s / 2.6 s; app ≈ 1 core,
+DB ≈ 0.9 core, load1 ≈ 9 at 10 users and ≈ 47 at 50; throughput plateau
+≈ 3 req/s. Raw data in `tests/load/results/20260917T0245Z-*`.
 
 ---
 
-## 9. Load/stress tests at 10 and 50 concurrent users — 🔧 Tooling done, runs pending
+## 9. Load/stress tests at 10 and 50 concurrent users — ✅ Done
 
 **Requirement.** Load tests simulating at least 10 and 50 concurrent users
 against the deployed agent; record p50/p95/p99 latency and error rate at
@@ -437,35 +440,26 @@ environment as `__ENV` (so `USER` was the shell user — variables are now
 `LOGIN_USER`/`LOGIN_PASS`), and k6 clears each VU's cookie jar per
 iteration unless `noCookiesReset: true`.
 
-**Pending.** The 10- and 50-user runs against the droplet for each
-scenario (six runs, 2 min each), results committed under
-`tests/load/results/` and summarised in `BASELINES.md`. Decisions taken:
-k6; real model at both levels (a 50-VU `ask` run is ≈ $0.15 and is
-expected to hit the provider's per-minute limits, which exercises the
-retry path); CPU/memory sampled on the droplet over ssh.
+**Run 2026-09-17**, six runs of 2 minutes (10 and 50 VUs × brief / mixed
+/ ask) against the deployed droplet with the real model at both levels;
+1 097 Co-Pilot requests, 374 real model calls. p50/p95/p99 and error
+rates per level are in [`BASELINES.md`](BASELINES.md). Findings: the
+module's endpoints returned 0 % errors and 0 stripped sentences in every
+run once sessions existed; the 50-user login burst exposed a deployment
+limit (MariaDB `max_connections = 151` reached; 22 % HTTP errors in that
+one run, root-caused from the server logs and recorded with a fix
+recommendation); the provider never rate-limited (2 retries in 374
+calls).
 
 ---
 
-## Deploy step needed before items 7, 8, 9 can be finished
+## Deploy state
 
-Commits `fa461d7`, `88a906a`, `6408b3c`, `1a41a30` are pushed to `gitlab
-audit` (what the droplet clones). On the droplet:
-
-```bash
-ssh do-openemr
-cd ~/openemr
-printf '\nALERT_WEBHOOK_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env   # keep the value; Langfuse needs it
-grep ALERT_WEBHOOK_SECRET .env
-docker compose up -d --force-recreate openemr                            # ~7 min; clones audit at start
-```
-
-Then, from the repo: `openemr-cmd`-free checks that it took —
-collection requests 01, 02, 17 (`--env vps --env-var alertToken=<value>`) —
-and the load matrix:
-
-```bash
-BASE_URL=https://146-190-139-37.sslip.io LOGIN_PASS=<admin password> STATS=ssh SSH_HOST=do-openemr tests/load/run-baselines.sh
-```
+Droplet recreated 2026-09-17 on commit `135c8cf` with `ALERT_WEBHOOK_SECRET`
+set; `/ready` reports all three dependencies ok; the alert receiver
+verified live (401 wrong token, 200 correct). A further recreate is needed
+to add `LANGFUSE_WEBHOOK_SECRET` (signed-webhook verification, commit
+`135c8cf`) — see item 7.
 
 ## Open questions before completing items 4, 7, 8, 9
 

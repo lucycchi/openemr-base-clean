@@ -1,0 +1,14 @@
+# 20260917T0245Z-10vu-ask  2026-09-17T02:53:27.254Z  https://146-190-139-37.sslip.io
+scenario=ask vus=10 duration=2m0s
+requests=398 throughput=3.06 req/s  http_failed=0%  copilot_errors=0%
+briefs=126 (cache hit 100%)  asks=126  model_calls=126  summary_unavailable=0%  verification_fail=0%
+sentences kept=512 stripped=0
+
+endpoint          n      p50     p95     p99     max  (ms)
+all_http          398    1393    8088    9044    9489
+login              10    2804    3282    3536    3599
+chart_open        126    6700    8926    9322    9489
+brief             126     547     862    1084    1133
+brief_cache_hit   126     547     862    1084    1133
+brief_cold       null    null    null    null    null
+ask               126    1393    2627    2854    3128

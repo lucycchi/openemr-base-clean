@@ -1,0 +1,14 @@
+# 20260917T0245Z-10vu-brief  2026-09-17T02:47:51.400Z  https://146-190-139-37.sslip.io
+scenario=brief vus=10 duration=2m0s
+requests=276 throughput=2.11 req/s  http_failed=0%  copilot_errors=0%
+briefs=128 (cache hit 79.69%)  asks=0  model_calls=26  summary_unavailable=0%  verification_fail=0%
+sentences kept=498 stripped=0
+
+endpoint          n      p50     p95     p99     max  (ms)
+all_http          276    3318    9364   10504   15504
+login              10    3029    3166    3183    3187
+chart_open        128    7597    9698   10319   10937
+brief             128     623    3473   11259   15504
+brief_cache_hit   102     588     849    1495    2081
+brief_cold         26    2985   11443   15064   15504
+ask                 0    null    null    null    null
