@@ -89,18 +89,18 @@ finding by ID. `SEC-` security, `PERF-` performance, `ARCH-` architecture,
 
 | ID | Sev | Area | Location | One-line | Status |
 |---|---|---|---|---|---|
-| SEC-01 | High | Portal authz | `library/ajax/upload.php:140` | Portal patient can read/overwrite any patient's document by `doc_id` (CWE-639) | Fixed in 859ad84 (untested) |
-| SEC-02 | Medium | Portal authz | `portal/lib/paylib.php:189` | Portal patient can write payment audit rows for any `form_pid` (CWE-639) | Fixed in 859ad84 (untested) |
+| SEC-01 | High | Portal authz | `library/ajax/upload.php:140` | Portal patient can read/overwrite any patient's document by `doc_id` (CWE-639) | Fixed in 859ad84 (runtime before/after reproduced on the dev stack — portal patient's cross-patient fetch/save now 403, own-doc access preserved) |
+| SEC-02 | Medium | Portal authz | `portal/lib/paylib.php:189` | Portal patient can write payment audit rows for any `form_pid` (CWE-639) | Fixed in 859ad84 (runtime before/after reproduced on the dev stack — forged `form_pid` now ignored, audit row bound to session pid) |
 | SEC-03 | Medium | Staff authz | `interface/patient_file/encounter/diagnosis.php:105` | Billing rows written before the coding ACL check runs (CWE-862) | Open |
 | SEC-04 | Medium | Staff authz | `interface/patient_file/encounter/diagnosis_full.php:37` | Any user can add/deactivate/clear any billing row by id; no ACL (CWE-862) | Open |
 | SEC-05 | Medium | Staff authz | `interface/patient_file/encounter/superbill_codes.php:51` | Any user can add charges from GET params; no ACL (CWE-862) | Open |
-| SEC-06 | Medium | Staff authz / portal | `interface/patient_file/summary/create_portallogin.php:61` | Any user can reset any patient's portal credentials and log in as them (CWE-862) | Open |
+| SEC-06 | Medium | Staff authz / portal | `interface/patient_file/summary/create_portallogin.php:61` | Any user can reset any patient's portal credentials and log in as them (CWE-862) | Fixed in audit branch (handler now enforces `patients/demo` write + squad ACL; runtime before/after reproduced on the dev stack — clinician without the right now 403s, admin still succeeds) |
 | SEC-07 | Low | Staff authz | `interface/patient_file/summary/add_edit_issue.php:268` | Issue save path skips per-issue-type ACL (`aclCheckIssue`); non-default config only (CWE-862) | Open |
 | SEC-08 | Info | Session scoping | `interface/patient_file/encounter/encounter_top.php` | `set_pid`/`set_encounter` bind the session to any patient with no ACL check — the primitive that makes SEC-03..06 reach every patient | Open |
 | SEC-09 | Info | Defense in depth | `interface/super/edit_layout.php:598` | `copytolayout` branch lacks CSRF check; unexploitable because core cookie is `SameSite=Strict` | Open |
 | SEC-10 | Info | Defense in depth | `interface/patient_file/front_payment_cc.php:85` | Unescaped exception text echoes raw `$_POST['payment']`; self-XSS only under `SameSite=Strict` | Open |
 | SEC-11 | High | API / SQLi | `src/Services/Search/SearchFieldStatementResolver.php:293` | Query-parameter *names* become SQL column names unvalidated; arbitrary table read via REST search, reachable by portal patients on `/employer` (CWE-89) | Fixed in 9126051 (sink identifier check + controller allowlists; isolated unit test; runtime before/after reproduced on the dev stack — boolean-blind users-table read blocked) |
-| SEC-12 | High | Reports / SQLi | `interface/reports/ippf_statistics.php:1456` | `form_facility` interpolated into stats query; full DB read by acct/rep user (CWE-89) | Open |
+| SEC-12 | High | Reports / SQLi | `interface/reports/ippf_statistics.php:1456` | `form_facility` interpolated into stats query; full DB read by acct/rep user (CWE-89) | Fixed in audit branch (bound `form_facility` as a `?` parameter matching the sibling branch; query-layer before/after reproduced on the dev stack — payload now an inert literal, interpolated form reached the SQL parser) |
 | SEC-13 | Medium | Reports authz | `interface/reports/patient_list.php:260` | Patient List report runs with no ACL check; bulk demographics + insurance to any user (CWE-862) | Open |
 | SEC-14 | Medium | Reports authz | `interface/reports/charts_checked_out.php:83` | Chart-tracker report discloses patient names/IDs on GET, no ACL (CWE-862) | Open |
 | SEC-15 | Medium | Reports authz | `interface/reports/unique_seen_patients_report.php:225` | Unique-seen report exports names+addresses, no ACL (CWE-862) | Open |
@@ -252,8 +252,20 @@ authenticated user class the system has.
 
 **Fix applied (commit 859ad84).** In a portal session, the endpoint now loads
 `documents.foreign_id` for the requested id and returns 403 unless it equals
-the session `pid`; missing rows are rejected. `php -l` passes; the DB-backed
-test suite has **not** been run against the change.
+the session `pid`; missing rows are rejected.
+
+**Testing (this pass).** Verified at runtime against the dev stack. Seeded two
+documents — id 9001 owned by pid 1, id 9002 owned by pid 2 — and logged into
+the portal as Phil (pid 1) via `get_patient_info.php` with a real CSRF token.
+Post-fix: `action=fetch` of own doc 9001 returned the plaintext body (HTTP
+200); `fetch` and `save` of Susan's doc 9002 both returned `"Access denied"`
+(HTTP 403); `fetch` of a nonexistent id 9999 returned 403; and the DB
+confirmed doc 9002's content was **unchanged** while own-doc 9001 saved
+normally. Swapping the pre-fix `library/ajax/upload.php` (from `859ad84^`) back
+in and re-running the identical requests: the cross-patient fetch of 9002
+returned `SUSAN-SECRET` and the cross-patient `save` overwrote it (both HTTP
+200) — confirming the before/after. Fixed file restored afterward; no residual
+tree or DB changes.
 
 #### SEC-02 — Portal patient can write payment audit rows for another patient (MEDIUM) — *fixed*
 
@@ -271,7 +283,18 @@ or PHI disclosure, hence MEDIUM.
 
 **Fix applied (commit 859ad84).** All four branches now use
 `$form_pid = isset($pid) ? $pid : $_POST['form_pid']`, matching
-`portal/portal_payment.php:115`. Untested beyond `php -l`.
+`portal/portal_payment.php:115`.
+
+**Testing (this pass).** Verified at runtime against the dev stack. Logged into
+the portal as Phil (pid 1) and POSTed `mode=portal-save` to `paylib.php` with a
+valid `portal-payment` CSRF token and a forged `form_pid=2` (Susan) plus a
+marker `inv_values=SEC02-TEST`. Post-fix: the resulting `onsite_portal_activity`
+row was written with `patient_id=1` (the session pid) — the forged `form_pid`
+was ignored. Swapping the pre-fix `portal/lib/paylib.php` (from `859ad84^`)
+back in and re-running the identical request: the row was written with
+`patient_id=2`, i.e. attributed to Susan — confirming the before/after. Fixed
+file restored and the marker rows deleted afterward; no residual tree or DB
+changes.
 
 #### SEC-03 — Billing rows written before the coding ACL check (MEDIUM, confidence high)
 
@@ -328,7 +351,7 @@ which does check.
 
 **Recommendation.** Same ACL gate as `diagnosis.php` intends, before `$mode`.
 
-#### SEC-06 — Any user can reset any patient's portal credentials (MEDIUM, confidence medium)
+#### SEC-06 — Any user can reset any patient's portal credentials (MEDIUM, confidence medium) — *fixed*
 
 **Location.** `interface/patient_file/summary/create_portallogin.php:61`.
 CWE-862. Panel 3/3.
@@ -353,6 +376,37 @@ slice A findings for PHI confidentiality.
 **Recommendation.** `AclMain::aclCheckCore('patients', 'demo', '', 'write')`
 plus squad check at the top of the page; enforce again inside
 `saveCredentials()` so future callers cannot skip it.
+
+**Fix applied (this pass, audit branch).**
+`interface/patient_file/summary/create_portallogin.php` now performs the
+authorization check itself, immediately after resolving the session `$pid`
+and before any credential write. It denies via `AccessDeniedHelper::deny()`
+when there is no selected patient, when the user lacks
+`AclMain::aclCheckCore('patients', 'demo', '', 'write')`, or when the
+patient's `squad` is set and the user fails `aclCheckCore('squads', <squad>)`
+— mirroring the pattern the sibling `demographics_full.php` already uses for
+the same patient scope. This gates both the GET render (which discloses the
+existing portal username and a freshly generated password) and the POST
+credential-reset path. The deeper "enforce again inside `saveCredentials()`"
+recommendation is left for a follow-up, since that service method is also
+called by legitimate internal callers (patient creation, the telehealth
+module) that would each need an authorized-principal parameter threaded
+through; the handler-level gate closes the reachable vulnerability now.
+
+**Testing (this pass).** Verified at runtime against the dev stack using the
+seeded `clinician` account, which the ACL model confirms holds **no**
+`patients/demo` write (checked directly via `AclMain::aclCheckCore`). Logged
+in as clinician, bound the session to patient 2 via `demographics.php?set_pid=2`
+(the SEC-08 primitive), then hit `create_portallogin.php`: the GET returned
+HTTP 403 `Access denied` (no page, no CSRF token, no generated password
+disclosed), and a POST `form_save=submit` with a new password returned HTTP
+403 with patient 2's stored `portal_pwd` hash **unchanged**. Swapping the
+pre-fix page (from `HEAD`) back in and repeating: the GET rendered (HTTP 200)
+and the POST **changed** patient 2's `portal_pwd` — confirming the before/after.
+Restored the fix and confirmed the authorized path still works: as `admin`
+(holds `patients/demo` write), both GET and POST succeeded (HTTP 200) and the
+credential write went through. DB hashes restored and fixed file back in place
+afterward.
 
 #### SEC-07 — Issue save path skips per-issue-type ACL (LOW, confidence medium)
 
@@ -447,7 +501,7 @@ recommends new capabilities call (see §3). A consumer that builds a
 column picker, a tool-call argument — inherits this injection unless it
 constructs `ISearchField` objects with hard-coded field names.
 
-#### SEC-12 — SQL injection via form_facility in the IPPF statistics report (HIGH, confidence medium)
+#### SEC-12 — SQL injection via form_facility in the IPPF statistics report (HIGH, confidence medium) — *fixed*
 
 **Location.** `interface/reports/ippf_statistics.php:1456` (source line 47).
 CWE-89. Panel 3/3.
@@ -472,6 +526,36 @@ SQLi findings despite equal impact.
 
 **Recommendation.** Bind `form_facility` as a parameter like the
 `form_content == 5` branch does; remove the interpolation.
+
+**Fix applied (this pass, audit branch).** Line 1456 now reads
+`$query .= "AND fe.facility_id = ? ";` with the existing
+`array_push($sqlBindArray, $form_facility)` supplying the bound value — making
+this branch identical to the already-safe `form_content == 5` branch a few
+hundred lines up (`" AND fe.facility_id = ?"`). The interpolation is removed;
+the value is now bound, and the placeholder count matches the bind array so
+the ADODB emulated-binding mismatch that enabled the injection is gone. A
+repo-wide grep for the remaining interpolation patterns (`= '$`, `IN ($`,
+`LIKE '$`) in this file returns nothing; the other dynamic fragments
+(`$sexcond`, `$pd_fields`) are built from server-side constants and
+`escape_sql_column_name()`, not raw request input.
+
+**Testing (this pass).** The report page cannot be driven end-to-end via HTTP
+on this dev stack — it dies at line 146 on a pre-existing seed schema mismatch
+(`Unknown column 'group_name'` in `layout_options`, unrelated to this finding)
+before the form or its CSRF token render, which is also why the audit rated
+this finding confidence-medium without an original runtime run. The fix was
+therefore verified at the query layer: a harness bootstrapped OpenEMR's real
+DB connection and ran the exact fixed query fragment with the audit's UNION
+payload (`1' UNION SELECT username,password,... FROM users_secure -- ?`) as the
+`form_facility` bind. Post-fix the query executed cleanly and returned **0
+rows** with no `users_secure` hash surfacing — the payload was treated as an
+inert literal facility id. Running the **old** interpolated form of the same
+fragment with the same payload, MySQL parsed the injected `UNION SELECT ...
+FROM users_secure` and reached it as SQL (raising "The used SELECT statements
+have a different number of columns" — the parser had accepted the UNION and
+was comparing column counts), proving the injection reaches the SQL engine in
+the pre-fix form and is neutralized in the fixed one. Harness removed
+afterward.
 
 #### SEC-13 to SEC-16 — Report pages run without their authorization check (MEDIUM each)
 
@@ -2880,8 +2964,10 @@ cross-check rather than a discrepancy:
 No placeholders, unresolved `*(pending...)*` markers, or unverified claims
 found remaining in [`audit-long.md`](audit-long.md) as of this pass (checked via grep for
 "pending"/"TBD"/"TODO" — one stale cross-reference found and corrected in
-§1.1). No finding already fixed (SEC-01/SEC-02, "Fixed in 859ad84
-(untested)") is mislabeled as open. No PHI from the seeded Synthea dataset
+§1.1). No finding already fixed (SEC-01, SEC-02, SEC-06, SEC-11, SEC-12,
+SEC-34) is mislabeled as open — SEC-01/SEC-02 (commit 859ad84) and SEC-06/
+SEC-12 (this pass) additionally now carry runtime before/after verification,
+recorded in their finding bodies. No PHI from the seeded Synthea dataset
 was pasted into any finding beyond synthetic sample values already
 disclosed as synthetic in this document's header — all patient
 names/values quoted in this document (e.g. "Loratadine 5 MG Chewable
