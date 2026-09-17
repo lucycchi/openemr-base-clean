@@ -56,3 +56,6 @@ tmp/
 graphify-out/
 src/graphify-out/
 .claude/settings.json
+
+# personal interview notes, not part of the submission
+clinical_copilot/INTERVIEW_PREP.md

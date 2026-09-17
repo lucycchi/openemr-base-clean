@@ -59,7 +59,7 @@ all decided and recorded in `clinical_copilot/DESIGN.md`
 
 - [ ] Dashboard regression E2E (Panther) for all seeded patients with the module enabled (mandatory before the branch ships), remaining Panther flows, DB-backed adapter tests.
 - [ ] Load tests at 10 and 50 concurrent users against the deployed agent; p50/p95/p99 and error rate; baseline CPU/memory.
-- [ ] AI cost analysis (dev spend from Langfuse + eval token counts; 100 / 1K / 10K / 100K users with the cache-hit ratio as the main lever; architectural changes per tier).
+- [x] AI cost analysis (`clinical_copilot/AI_COST_ANALYSIS.md`: dev spend from the audit log's `cost_usd` + Claude Code transcripts; 100 / 1K / 10K / 100K users with the cache-hit ratio as the main lever; architectural changes per tier).
 - [ ] Three alerts documented with on-call response (drafted in `KEY_METRICS.md`; wire in Langfuse).
 - [ ] Final demo video, social post tagging @GauntletAI, AI interview.
 - [ ] Refresh docs for anything that changed after Wednesday.
