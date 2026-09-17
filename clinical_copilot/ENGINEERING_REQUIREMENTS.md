@@ -18,8 +18,8 @@ core submission. Each item states whether it is done, where the evidence is
 | 5 | Runnable API collection (Bruno) | ✅ Done |
 | 6 | Separate `/health` and `/ready` with real dependency checks | ✅ Done |
 | 7 | At least three alerts (p95 latency, error rate, tool failure rate) | ✅ Defined + receiver built; Langfuse rules to be configured |
-| 8 | Baseline CPU, memory, latency, throughput profiles | ❌ Not done |
-| 9 | Load/stress tests at 10 and 50 concurrent users | ❌ Not done |
+| 8 | Baseline CPU, memory, latency, throughput profiles | 🔧 Tooling done; capture pending deploy |
+| 9 | Load/stress tests at 10 and 50 concurrent users | 🔧 Tooling done; runs pending deploy |
 
 ---
 
@@ -383,74 +383,99 @@ into `clinical_copilot/dashboard/`. The deployed receiver needs
 `ALERT_WEBHOOK_SECRET` set in the droplet's `.env` and the container
 recreated.
 
-## 8. Baseline CPU, memory, latency, and throughput profiles — ❌ Not done
+## 8. Baseline CPU, memory, latency, and throughput profiles — 🔧 Tooling done, capture pending
 
 **Requirement.** Capture CPU, memory, request latency, and throughput under
 the load-test scenarios and include them so future changes can be measured.
 
-**What exists.** Latency only, and only from single-user eval runs: fact
-assembly 6–55 ms; summary p50 ≈ 2.1 s, p95 ≈ 14.4 s cold, ~1 ms on cache
-hit (`tests/evals/results.json`, `results-deployed.json`, `KEY_METRICS.md`
-§ 3). No CPU, memory, or throughput (req/s) figures anywhere.
-`ARCHITECTURE.md § Evaluation` lists load tests under "Deferred".
+**What is built** (2026-09-16, [`tests/load/`](../tests/load/README.md)):
 
-**What is needed.** A `clinical_copilot/BASELINES.md` (plus raw data under
-`tests/load/results/`) recording, for each load level in item 9: container
-CPU % and memory (e.g. `docker stats` sampled every second for the
-`openemr` and `mysql` containers, or `/proc` on the droplet), request
-throughput (req/s achieved), p50/p95/p99 latency, and error rate — with the
-date, commit SHA, host spec, model, and whether the briefing cache was warm
-or cold. Depends on item 9 and open question Q5.
+- [`sample-stats.sh`](../tests/load/sample-stats.sh) samples `docker stats`
+  (CPU %, memory used/limit) for the app and database containers plus host
+  `load1` every 2 s as CSV. Read-only; the runner streams it back over ssh
+  from the droplet so nothing is written there.
+- [`run-baselines.sh`](../tests/load/run-baselines.sh) runs every load
+  level with the sampler attached and a 30 s quiet gap between runs.
+- [`summarise.py`](../tests/load/summarise.py) produces two tables per run:
+  latency/throughput/error rates per level and scenario, and app/DB CPU
+  avg/peak, memory avg/peak and host load peak per level.
+- Verified end to end on the local dev stack (3 VUs, 20 s): both tables
+  render from real data.
+
+**Pending.** Run the matrix against the droplet (2 vCPU / 4 GB) on the
+current commit and write `clinical_copilot/BASELINES.md` with the tables,
+the commit SHA, host spec, model, warm/cold state and the run's time window
+(so the Langfuse traces, including `llm_retried`, can be found). Blocked on
+the deploy step below.
 
 ---
 
-## 9. Load/stress tests at 10 and 50 concurrent users — ❌ Not done
+## 9. Load/stress tests at 10 and 50 concurrent users — 🔧 Tooling done, runs pending
 
 **Requirement.** Load tests simulating at least 10 and 50 concurrent users
 against the deployed agent; record p50/p95/p99 latency and error rate at
 each level.
 
-**What exists.** Nothing. No k6/Locust/Artillery/ab scripts, no results.
-The nearest thing is `tests/evals/smoke.php`, which is sequential.
+**What is built.** [`tests/load/copilot.js`](../tests/load/copilot.js), a
+k6 script in which each virtual user is a physician session: real OpenEMR
+login (cookie kept across iterations), chart open via
+`demographics.php?set_pid=` (sets the session patient and yields the
+panel's CSRF token, exactly as the Bruno collection does), then `brief`
+and, per scenario, `ask`. Three scenarios: `brief` (deterministic path,
+cache-hit after the first pass), `ask` (one real model call per
+iteration), `mixed` (30 % follow-ups — the clinic pattern). Per-endpoint
+p50/p95/p99/max trends split cache-hit vs cold briefings; rates for HTTP
+failures, Co-Pilot contract errors, `summary_unavailable`
+(model-unavailable 200s) and `verification_fail`; counters for model calls
+and sentences kept/stripped. Response bodies are parsed for status fields
+only and never written out. Summaries go to `tests/load/results/<label>.{json,txt}`.
 
-**What is needed.**
+Writing it found two k6 traps worth recording: k6 exposes the host
+environment as `__ENV` (so `USER` was the shell user — variables are now
+`LOGIN_USER`/`LOGIN_PASS`), and k6 clears each VU's cookie jar per
+iteration unless `noCookiesReset: true`.
 
-- A load-test script under `tests/load/` that (a) logs in and opens a chart
-  to obtain the session cookie and CSRF token — the same steps the Bruno
-  collection performs in requests 03–05 — and (b) drives realistic
-  scenarios against `chat.php`: warm-cache `brief` (the dominant real-world
-  path), cold `brief` (forces an OpenAI call), and `ask` follow-ups, across
-  several of the 30 seed patients.
-- Runs at 10 and 50 virtual users against the deployed droplet, recording
-  p50/p95/p99 and error rate per level and per scenario, saved to
-  `tests/load/results/` and summarised in `BASELINES.md`.
-- Decisions that need your input are in Q5–Q7 below.
+**Pending.** The 10- and 50-user runs against the droplet for each
+scenario (six runs, 2 min each), results committed under
+`tests/load/results/` and summarised in `BASELINES.md`. Decisions taken:
+k6; real model at both levels (a 50-VU `ask` run is ≈ $0.15 and is
+expected to hit the provider's per-minute limits, which exercises the
+retry path); CPU/memory sampled on the droplet over ssh.
 
 ---
+
+## Deploy step needed before items 7, 8, 9 can be finished
+
+Commits `fa461d7`, `88a906a`, `6408b3c`, `1a41a30` are pushed to `gitlab
+audit` (what the droplet clones). On the droplet:
+
+```bash
+ssh do-openemr
+cd ~/openemr
+printf '\nALERT_WEBHOOK_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env   # keep the value; Langfuse needs it
+grep ALERT_WEBHOOK_SECRET .env
+docker compose up -d --force-recreate openemr                            # ~7 min; clones audit at start
+```
+
+Then, from the repo: `openemr-cmd`-free checks that it took —
+collection requests 01, 02, 17 (`--env vps --env-var alertToken=<value>`) —
+and the load matrix:
+
+```bash
+BASE_URL=https://146-190-139-37.sslip.io LOGIN_PASS=<admin password> STATS=ssh SSH_HOST=do-openemr tests/load/run-baselines.sh
+```
 
 ## Open questions before completing items 4, 7, 8, 9
 
 - **Q1 (item 2).** Decided 2026-09-16: both. Done.
 - **Q2 (item 3).** Decided 2026-09-16: JSON Schema files loaded by PHP at
   runtime. Done.
-- **Q3 (item 4).** Does a Langfuse dashboard already exist in the Cloud
-  project for the droplet? If yes, I need an export or screenshots to
-  document it. If no, should I build it in Langfuse (matching the existing
-  tracer) or would you prefer a self-hosted alternative? Also confirm you
-  are fine with "queue depth" being documented as not applicable.
+- **Q3 (item 4).** Answered 2026-09-16: a Langfuse dashboard exists.
+  Still needed from you: an export or screenshots of its widgets (to
+  document under `clinical_copilot/dashboard/`), and confirmation that
+  "queue depth" may be documented as not applicable (synchronous PHP,
+  no queue).
 - **Q4 (item 7).** Decided 2026-09-16: Langfuse alerts → webhook to the
   module's own receiver. Receiver built; rules to be created in Langfuse.
-- **Q5 (items 8, 9).** Which load tool: k6 (single binary, JS scenarios,
-  built-in p50/p95/p99 — recommended), Locust (Python), or a PHP script
-  using Guzzle's concurrent pool so no new toolchain is needed?
-- **Q6 (item 9).** Cold-briefing scenarios at 50 concurrent users will
-  make up to 50 real OpenAI calls per iteration (≈ $0.0007 each, so a
-  5-minute run is a few dollars) and may hit the per-minute rate limit,
-  which is itself a useful finding. Is real-model load acceptable, or
-  should the 50-user level run warm-cache only with cold runs capped at 10
-  users?
-- **Q7 (items 8, 9).** Run against the deployed droplet (the requirement
-  says "deployed agent") — can I have shell access to it, or a way to
-  collect `docker stats` there, for the CPU/memory baselines? If not I will
-  capture CPU/memory on the local dev stack and latency/throughput on the
-  droplet, and label them accordingly.
+- **Q5–Q7 (items 8, 9).** Decided 2026-09-16: k6; real model at both
+  levels; CPU/memory sampled on the droplet over ssh (`ssh do-openemr`).
