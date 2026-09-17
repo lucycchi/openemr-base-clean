@@ -378,12 +378,24 @@ meaning and on-call response.
 - `KEY_METRICS.md` and `ARCHITECTURE.md` now point at `ALERTS.md` instead
   of claiming the alerts are documented elsewhere.
 
-**Still to do.** Create the three rules in the Langfuse project (metric,
-window, threshold and the webhook URL + header from `ALERTS.md`), send a
-test notification for each, and capture a screenshot/export of the rules
-into `clinical_copilot/dashboard/`. The deployed receiver needs
-`ALERT_WEBHOOK_SECRET` set in the droplet's `.env` and the container
-recreated.
+- **Made alertable in Langfuse.** Langfuse alerts can only threshold
+  observation metrics and scores, not trace metadata, so `LangfuseTracer`
+  now writes three boolean scores on every trace — `request_ok`,
+  `verification_pass`, `tool_ok` — and the error-rate and tool-failure
+  alerts are defined as "share of `true` below 95 % / 98 %" on those
+  scores; p95 latency thresholds the trace-level observation directly.
+  `ALERTS.md` has the click-by-click field table for *Alerts → New Alert*
+  and the webhook automation. Unit tests: `LangfuseTracerTest` (healthy,
+  provider failure, total verification failure, access denial).
+- The receiver parses Langfuse's real `monitor-alert` payload
+  (`payload.severity`, `payload.message.title`, value and threshold from
+  the message body) and is deployed with the signing secret; a signed
+  request is accepted and a tampered one refused on the droplet.
+
+**Still to do (in Langfuse, by the user).** Create the three rules per the
+table in `ALERTS.md` (plan permitting — Hobby allows two), force one
+firing by temporarily lowering a threshold, and record the resulting audit
+row's correlation id under "Delivery record" in `ALERTS.md`.
 
 ## 8. Baseline CPU, memory, latency, and throughput profiles — ✅ Done
 

@@ -57,7 +57,7 @@ final class LangfuseTracerTest extends TestCase
             user: 'physician',
             startedAtMs: 1_700_000_000_000,
             durationMs: 3200,
-            metadata: ['facts' => 14, 'stripped' => 0, 'omitted' => 0, 'from_cache' => false, 'http_status' => 200],
+            metadata: ['facts' => 14, 'stripped' => 0, 'omitted' => 0, 'from_cache' => false, 'http_status' => 200, 'verification_pass' => true],
             model: 'gpt-4o-mini',
             promptTokens: 606,
             completionTokens: 295,
@@ -88,11 +88,8 @@ final class LangfuseTracerTest extends TestCase
         self::assertSame('https://cloud.langfuse.com/api/public/ingestion', (string) $request->getUri());
         self::assertSame('Basic ' . base64_encode('pk-test:sk-test'), $request->getHeaderLine('Authorization'));
 
-        $batch = $this->sentBody()['batch'];
-        self::assertIsArray($batch);
+        $batch = $this->types('trace-create', 'generation-create');
         self::assertCount(2, $batch);
-        self::assertIsArray($batch[0]);
-        self::assertIsArray($batch[1]);
         self::assertSame('trace-create', $batch[0]['type']);
         self::assertIsArray($batch[0]['body']);
         self::assertSame('corr-abc', $batch[0]['body']['id']);
@@ -104,6 +101,78 @@ final class LangfuseTracerTest extends TestCase
         self::assertSame('gpt-4o-mini', $batch[1]['body']['model']);
         self::assertSame(['input' => 606, 'output' => 295], $batch[1]['body']['usage']);
         self::assertSame('DEFAULT', $batch[1]['body']['level']);
+    }
+
+    /** @return list<array<string, mixed>> batch events of the given types, in order */
+    private function types(string ...$types): array
+    {
+        $batch = $this->sentBody()['batch'];
+        self::assertIsArray($batch);
+        $out = [];
+        foreach ($batch as $event) {
+            self::assertIsArray($event);
+            if (in_array($event['type'], $types, true)) {
+                /** @var array<string, mixed> $event */
+                $out[] = $event;
+            }
+        }
+        return $out;
+    }
+
+    /** @return array<string, bool> score name => value, from the batch */
+    private function scores(): array
+    {
+        $batch = $this->sentBody()['batch'];
+        self::assertIsArray($batch);
+        $out = [];
+        foreach ($batch as $event) {
+            self::assertIsArray($event);
+            if ($event['type'] !== 'score-create') {
+                continue;
+            }
+            self::assertIsArray($event['body']);
+            self::assertSame('corr-abc', $event['body']['traceId']);
+            self::assertSame('BOOLEAN', $event['body']['dataType']);
+            self::assertIsString($event['body']['name']);
+            self::assertIsInt($event['body']['value']);
+            $out[$event['body']['name']] = $event['body']['value'] === 1;
+        }
+        return $out;
+    }
+
+    public function testAHealthyRequestScoresAllThreeBooleansTrue(): void
+    {
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($this->trace());
+
+        self::assertSame(['request_ok' => true, 'verification_pass' => true, 'tool_ok' => true], $this->scores());
+    }
+
+    public function testAProviderFailureScoresRequestOkFalseAndToolOkFalse(): void
+    {
+        $failed = new Step('llm.briefing', 1_700_000_000_500, 12000, 'LlmTimeout: Connection failed or timed out', []);
+        $trace = new RequestTrace('corr-abc', 'copilot.brief', 'physician', 1_700_000_000_000, 12100, ['http_status' => 200, 'verification_pass' => false], 'gpt-4o-mini', 0, 0, 12000, 'AI summary unavailable: timed out', [$failed]);
+
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($trace);
+
+        self::assertSame(['request_ok' => false, 'verification_pass' => false, 'tool_ok' => false], $this->scores());
+    }
+
+    public function testATotalVerificationFailureScoresVerificationFalseButRequestOk(): void
+    {
+        $trace = new RequestTrace('corr-abc', 'copilot.brief', 'physician', 1_700_000_000_000, 3000, ['http_status' => 200, 'verification_pass' => false, 'total_failure' => true], 'gpt-4o-mini', 500, 40, 2900, null, []);
+
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($trace);
+
+        self::assertSame(['request_ok' => true, 'verification_pass' => false, 'tool_ok' => true], $this->scores());
+    }
+
+    public function testAnAccessDenialScoresRequestOkTrueWithNoVerificationScore(): void
+    {
+        $trace = new RequestTrace('corr-abc', 'copilot.brief', 'receptionist', 1_700_000_000_000, 5, ['http_status' => 403, 'denied' => true], null, 0, 0, 0, 'access denied', []);
+
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($trace);
+
+        self::assertSame(['request_ok' => true, 'tool_ok' => true], $this->scores());
     }
 
     public function testEachStepBecomesAnOrderedSpanAndCostRidesOnTheGeneration(): void
@@ -129,25 +198,20 @@ final class LangfuseTracerTest extends TestCase
 
         $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($trace);
 
-        $batch = $this->sentBody()['batch'];
-        self::assertIsArray($batch);
+        $batch = $this->types('trace-create', 'span-create', 'generation-create');
         self::assertSame(['trace-create', 'span-create', 'span-create', 'generation-create'], array_column($batch, 'type'));
-        self::assertIsArray($batch[0]);
         self::assertIsArray($batch[0]['body']);
         self::assertIsArray($batch[0]['body']['metadata']);
         self::assertSame(0.000268, $batch[0]['body']['metadata']['cost_usd']);
-        self::assertIsArray($batch[1]);
         self::assertIsArray($batch[1]['body']);
         self::assertSame('corr-steps', $batch[1]['body']['traceId']);
         self::assertSame('authorize_and_assemble_facts', $batch[1]['body']['name']);
         self::assertSame('2023-11-14T22:13:20.000Z', $batch[1]['body']['startTime']);
         self::assertSame('2023-11-14T22:13:20.040Z', $batch[1]['body']['endTime']);
         self::assertSame('DEFAULT', $batch[1]['body']['level']);
-        self::assertIsArray($batch[2]);
         self::assertIsArray($batch[2]['body']);
         self::assertSame('ERROR', $batch[2]['body']['level']);
         self::assertSame('LlmUpstreamError: Upstream HTTP 503', $batch[2]['body']['statusMessage']);
-        self::assertIsArray($batch[3]);
         self::assertIsArray($batch[3]['body']);
         self::assertSame(['input' => 606, 'output' => 295, 'totalCost' => 0.000268], $batch[3]['body']['usage']);
     }
@@ -158,9 +222,8 @@ final class LangfuseTracerTest extends TestCase
 
         $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($trace);
 
-        $batch = $this->sentBody()['batch'];
-        self::assertIsArray($batch);
-        self::assertCount(1, $batch);
+        self::assertCount(0, $this->types('generation-create'));
+        self::assertCount(1, $this->types('trace-create'));
     }
 
     public function testFailedGenerationIsMarkedError(): void

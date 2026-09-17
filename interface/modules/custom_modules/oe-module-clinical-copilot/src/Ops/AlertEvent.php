@@ -30,20 +30,35 @@ final readonly class AlertEvent
     ) {
     }
 
-    /** @param array<string, mixed> $payload */
+    /**
+     * Langfuse's alert webhook ("monitor-alert") nests everything under
+     * payload: {payload: {severity, message: {title, body}}}, with the
+     * measured value and threshold only in the body text. Other senders
+     * are read from the flatter alert/metric/top-level locations.
+     *
+     * @param array<string, mixed> $payload
+     */
     public static function fromPayload(array $payload): self
     {
+        $inner = is_array($payload['payload'] ?? null) ? $payload['payload'] : [];
+        $message = is_array($inner['message'] ?? null) ? $inner['message'] : [];
         $alert = is_array($payload['alert'] ?? null) ? $payload['alert'] : [];
         $metric = is_array($payload['metric'] ?? null) ? $payload['metric'] : [];
+        $body = is_string($message['body'] ?? null) ? $message['body'] : '';
         return new self(
-            self::str($alert['name'] ?? $payload['name'] ?? $payload['title'] ?? $payload['alertName'] ?? null),
-            self::str($alert['severity'] ?? $payload['severity'] ?? $payload['status'] ?? null),
+            self::str($message['title'] ?? $alert['name'] ?? $payload['name'] ?? $payload['title'] ?? $payload['alertName'] ?? null),
+            self::str($inner['severity'] ?? $alert['severity'] ?? $payload['severity'] ?? $payload['status'] ?? null),
             self::str($payload['type'] ?? $payload['event'] ?? null),
             self::str($payload['id'] ?? $payload['eventId'] ?? null),
-            self::num($metric['value'] ?? $payload['value'] ?? null),
-            self::num($metric['threshold'] ?? $payload['threshold'] ?? null),
+            self::num($metric['value'] ?? $payload['value'] ?? self::fromBody($body, '/\bis\s+(-?[0-9.]+)/')),
+            self::num($metric['threshold'] ?? $payload['threshold'] ?? self::fromBody($body, '/threshold:\s*(-?[0-9.]+)/')),
             $payload,
         );
+    }
+
+    private static function fromBody(string $body, string $pattern): ?string
+    {
+        return preg_match($pattern, $body, $m) ? $m[1] : null;
     }
 
     /** @return array<string, scalar|list<string>|null> */

@@ -53,7 +53,7 @@ request: `duration_ms`, `http_status`, `status`, `verification_pass`,
 
 | | |
 |---|---|
-| **Metric** | p95 of trace `duration_ms`, traces tagged `clinical-copilot`, name `copilot.brief` or `copilot.ask` |
+| **Metric** | Langfuse: data source **Observations**, metric **p95 latency**, filter name = `copilot.brief` or `copilot.ask` (the trace-level observations; the `llm.*` spans are excluded so the number is the physician's wait, not the model's) |
 | **Window** | 15 minutes, evaluated every 5 minutes, at least 10 traces in the window |
 | **Threshold** | > 15 000 ms |
 | **Severity** | critical |
@@ -85,9 +85,9 @@ window) failing.
 
 | | |
 |---|---|
-| **Metric** | traces where `http_status >= 500` **or** `status` is non-null, divided by all `clinical-copilot` traces |
-| **Window** | 15 minutes, evaluated every 5 minutes, at least 10 traces |
-| **Threshold** | > 5 % |
+| **Metric** | Langfuse: data source **Scores (boolean)**, score **`request_ok`**, metric **share of `true`**. `request_ok` is written on every trace by `LangfuseTracer`: false when `http_status >= 500` or when a served request ended with a non-null `status`; a 4xx refusal is `true` (correct behaviour). Alert on the share falling **below 95 %** — equivalent to error rate > 5 % |
+| **Window** | 15 minutes (Langfuse "Window"), at least 10 requests |
+| **Threshold** | share of `true` < 0.95 |
 | **Severity** | critical |
 | **Baseline** | 0 % over the eval runs and the collection; the one expected non-null `status` in normal operation is `AI summary unavailable: provider busy` during an OpenAI incident |
 
@@ -124,9 +124,9 @@ is down or degraded.
 
 | | |
 |---|---|
-| **Metric** | spans with `level = ERROR`, divided by all spans under `clinical-copilot` traces (span names: `authorize_and_assemble_facts`, `cache_lookup`, `llm.briefing`, `llm.follow_up`, `verify`, `cache_store`, `omission_guard`, `scope_check`) |
-| **Window** | 15 minutes, evaluated every 5 minutes, at least 50 spans |
-| **Threshold** | > 2 % |
+| **Metric** | Langfuse: data source **Scores (boolean)**, score **`tool_ok`**, metric **share of `true`**. `tool_ok` is false when any step span of the request (`authorize_and_assemble_facts`, `cache_lookup`, `llm.briefing`, `llm.follow_up`, `verify`, `cache_store`, `omission_guard`, `scope_check`) recorded an error. Alert on the share falling **below 98 %** — equivalent to a request-level tool failure rate > 2 % |
+| **Window** | 15 minutes (Langfuse "Window"), at least 20 requests |
+| **Threshold** | share of `true` < 0.98 |
 | **Severity** | warning (critical if the failing span is `authorize_and_assemble_facts` or `verify`) |
 | **Baseline** | 0 % outside OpenAI incidents; an OpenAI incident shows as ≈ 1 failed span per request (`llm.*`), i.e. 15–25 % |
 
@@ -145,9 +145,10 @@ more than the rate:
 
 ### 4. Verification pass rate
 
-`verification_pass = false` on a completed request means every sentence
-the model produced was stripped (`total_failure`) or the request ended
-with a non-null `status`. Tracked on the dashboard; a rate above 10 % over
+`verification_pass` is also written as a boolean score on every served
+request (false when every sentence the model produced was stripped —
+`total_failure` — or the request ended with a non-null `status`). Tracked
+on the dashboard; a rate above 10 % over
 an hour is investigated during working hours as a prompt or model drift
 problem (see [KEY_METRICS.md § 1](../KEY_METRICS.md)). Not paged because the
 physician is protected either way: nothing unverified is shown.
@@ -162,12 +163,41 @@ in the audit log.
 
 ## Configuring the rules in Langfuse
 
-The Langfuse project already has the dashboard; the three rules above are
-created under the project's alerting page with the metric, filter, window
-and threshold from each table, and the webhook URL from the top of this
-document (the signing secret Langfuse shows on creation is what
-`LANGFUSE_WEBHOOK_SECRET` must be set to). Record the configured rules (a screenshot or export) in
-[`dashboard/`](dashboard/) next to the dashboard so a grader can see the
-rules exist without a Langfuse login. Test each rule once with "send test
-notification"; the receiver's 200 body and the resulting
-`clinical-copilot-alert` audit row are the proof of delivery.
+Langfuse separates the **destination** (a webhook, configured once under
+*Automations*) from the **rules** (under *Alerts*). The webhook already
+exists and its signing secret is deployed as `LANGFUSE_WEBHOOK_SECRET`.
+The rules are created as follows (Langfuse Cloud, September 2026 UI):
+
+1. *Automations → New automation*: event source **Alert**, action
+   **Webhook**, URL from the top of this document. Save; this is what the
+   alert editor's "Automations" panel lists. (Already done.)
+2. *Alerts → New Alert*, three times:
+
+   | Field | 1 · p95 latency | 2 · Error rate | 3 · Tool failure rate |
+   |---|---|---|---|
+   | Data source | Observations | Scores (boolean) | Scores (boolean) |
+   | Metric | p95 · latency | share of `true` | share of `true` |
+   | Filter | name = `copilot.brief` OR `copilot.ask` | score name = `request_ok` | score name = `tool_ok` |
+   | Operator / Alert threshold | > 15000 ms | < 0.95 | < 0.98 |
+   | Warning threshold (optional) | > 10000 ms | < 0.98 | < 0.99 |
+   | Window | 15 minutes | 15 minutes | 15 minutes |
+   | No-data handling | keep previous severity | keep previous severity | keep previous severity |
+   | Renotify | every 60 min | every 60 min | every 60 min |
+   | Automation | the webhook from step 1 | same | same |
+   | Name | `copilot p95 latency` | `copilot error rate` | `copilot tool failure rate` |
+
+   Plan limit: the Hobby plan allows 2 alerts per organisation (Pro and
+   above, 100). If only two can be created, keep 1 and 2 and use the
+   `tool_ok` score as a dashboard widget; the definition above still
+   stands for the day the plan allows it.
+3. Proof of delivery: Langfuse has no "send test" for alerts. Lower rule
+   1's alert threshold to `> 1` ms, run collection requests 03–07 once so
+   the window has data, wait for the next evaluation, then restore the
+   threshold. The firing appears as a WARNING `copilot alert received`
+   in the app log and a `clinical-copilot-alert` row in the audit log
+   (`SELECT FROM_BASE64(comments) FROM log WHERE event='clinical-copilot-alert'`)
+   whose `alert=` is the rule's title and whose `value=`/`threshold=` are
+   parsed from Langfuse's message body. Record the row's correlation id
+   below.
+
+**Delivery record:** _pending first firing_.

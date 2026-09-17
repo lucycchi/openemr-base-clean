@@ -24,6 +24,7 @@ demo data) · [/health](https://146-190-139-37.sslip.io/interface/modules/custom
 
 | Path | What |
 |---|---|
+| [AI_COST_ANALYSIS.md](AI_COST_ANALYSIS.md) | Actual development spend (OpenAI from the audit log, Claude Code from session transcripts, infrastructure) and projected production cost at 100 / 1K / 10K / 100K users with the architectural change each tier needs. |
 | [EVALS.md](EVALS.md) | The test suite with results: scope, five layers, the dataset shape, pass/fail rules, all 15 cases, latest local and deployed numbers, what the suite found, and the design decisions behind it. |
 | [tests/evals/README.md](../tests/evals/README.md) | The eval suite: 15 cases, the failure mode each guards, how to run, how to read results. |
 | [tests/evals/results-deployed.json](../tests/evals/results-deployed.json) | Latest run against the deployed instance: 11/11, 1 of 58 sentences stripped, 0 omissions, p50 2.3 s. |

@@ -83,6 +83,25 @@ final readonly class LangfuseTracer implements Tracer
                 ],
             ];
         }
+        // Boolean scores make the rates alertable in Langfuse (alerts can
+        // threshold the share of true values on a boolean score, not trace
+        // metadata): request_ok → error rate, tool_ok → tool-failure rate,
+        // verification_pass → verification pass rate. See ALERTS.md.
+        foreach (self::scores($t) as $name => $value) {
+            $batch[] = [
+                'id' => $t->correlationId . '-score-' . $name,
+                'type' => 'score-create',
+                'timestamp' => $now,
+                'body' => [
+                    'id' => $t->correlationId . '-score-' . $name,
+                    'traceId' => $t->correlationId,
+                    'name' => $name,
+                    'value' => $value ? 1 : 0,
+                    'dataType' => 'BOOLEAN',
+                    'source' => 'API',
+                ],
+            ];
+        }
         try {
             $this->http->request('POST', rtrim($this->host, '/') . '/api/public/ingestion', [
                 'headers' => ['Authorization' => 'Basic ' . base64_encode($this->publicKey . ':' . $this->secretKey)],
@@ -94,6 +113,26 @@ final readonly class LangfuseTracer implements Tracer
         } catch (GuzzleException) {
             // Observability must never fail the clinical request.
         }
+    }
+
+    /** @return array<string, bool> */
+    private static function scores(RequestTrace $t): array
+    {
+        $httpStatus = is_int($t->metadata['http_status'] ?? null) ? $t->metadata['http_status'] : 200;
+        // A refusal (403) is a correct outcome, not an error; a 5xx or a
+        // non-null status on a served request is.
+        $scores = ['request_ok' => $httpStatus < 500 && ($httpStatus >= 400 || $t->status === null)];
+        if (is_bool($t->metadata['verification_pass'] ?? null)) {
+            $scores['verification_pass'] = $t->metadata['verification_pass'];
+        }
+        $toolOk = true;
+        foreach ($t->steps as $step) {
+            if ($step->error !== null) {
+                $toolOk = false;
+            }
+        }
+        $scores['tool_ok'] = $toolOk;
+        return $scores;
     }
 
     private static function iso(int $ms): string
