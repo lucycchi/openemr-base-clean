@@ -40,6 +40,7 @@ All Clinical Co-Pilot documentation lives in [clinical_copilot/](clinical_copilo
 | [AUDIT.md](AUDIT.md) | Security, performance, architecture, data-quality and HIPAA audit |
 | [clinical_copilot/DESIGN.md](clinical_copilot/DESIGN.md) | Design record with the reviewed decisions |
 | [clinical_copilot/api-collection/](clinical_copilot/api-collection/README.md) | Runnable Bruno API collection: every endpoint and workflow, with assertions |
+| [clinical_copilot/EVALS.md](clinical_copilot/EVALS.md) | Test suite with results: structure, scope, design decisions |
 | [tests/evals/README.md](tests/evals/README.md) | Eval suite: cases, failure modes, how to run |
 | [docker/vps/README.md](docker/vps/README.md) | Deployment |
 
