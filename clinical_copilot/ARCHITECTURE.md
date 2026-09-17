@@ -77,8 +77,8 @@ interface/modules/custom_modules/oe-module-clinical-copilot/
 │   ├── Verifier.php, OmissionGuard.php   pure, unit-tested
 │   ├── DbBriefingCache.php    copilot_briefing_cache table
 │   ├── PanelPayload.php       JSON contract to the panel
-│   └── Ops/                   Readiness, LangfuseTracer, CorrelatedLogger
-├── public/chat.php, health.php, ready.php, assets/panel.js, panel.css
+│   └── Ops/                   Readiness, LangfuseTracer, CorrelatedLogger, AlertReceiver
+├── public/chat.php, health.php, ready.php, alerts.php, assets/panel.js, panel.css
 └── sql/install.sql, register.sql, uninstall.sql
 ```
 
@@ -312,12 +312,15 @@ from these numbers and the cache-hit ratio.
 
 ### Alerts
 
-Three alerts are defined on the trace fields in Langfuse and documented
-with thresholds and on-call response in [`KEY_METRICS.md`](KEY_METRICS.md):
-p95 `duration_ms`, error rate (`http_status` ≥ 500 or a non-null status),
-and tool-failure rate (spans at level ERROR). `verification_pass` false on
-a completed request is the fourth signal and is tracked as a metric rather
-than paged.
+Three alerts page — p95 `duration_ms`, error rate (`http_status` ≥ 500 or
+a non-null `status`), and tool-failure rate (spans at level ERROR) — each
+defined with metric, window, threshold, meaning and on-call runbook in
+[`ALERTS.md`](ALERTS.md). Langfuse fires them at the module's own
+`public/alerts.php` (shared-secret webhook), which writes a WARNING to the
+app log and a `clinical-copilot-alert` row to the audit log so a firing sits
+next to the requests that caused it. `verification_pass` false on a
+completed request is a fourth signal, tracked as a metric rather than
+paged.
 
 ### What is deliberately not recorded
 

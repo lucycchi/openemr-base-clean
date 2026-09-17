@@ -125,6 +125,13 @@ briefings.
 
 **Alert.** None; this is a weekly review metric, not a page.
 
+## Paging alerts
+
+The three alerts that page — p95 latency, error rate, tool failure rate —
+are defined with metric, window, threshold, meaning and on-call runbook in
+[ALERTS.md](ALERTS.md), together with the webhook receiver they fire into.
+The per-metric alerts above are the product-quality signals behind them.
+
 ## Cost, tracked alongside
 
 Tokens per briefing (cold) and per follow-up, from Langfuse generations and

@@ -17,7 +17,7 @@ core submission. Each item states whether it is done, where the evidence is
 | 4 | Real-time dashboard (requests, errors, p50/p95, tool calls, retries, verification rate) | ⚠️ Partial |
 | 5 | Runnable API collection (Bruno) | ✅ Done |
 | 6 | Separate `/health` and `/ready` with real dependency checks | ✅ Done |
-| 7 | At least three alerts (p95 latency, error rate, tool failure rate) | ⚠️ Partial |
+| 7 | At least three alerts (p95 latency, error rate, tool failure rate) | ✅ Defined + receiver built; Langfuse rules to be configured |
 | 8 | Baseline CPU, memory, latency, throughput profiles | ❌ Not done |
 | 9 | Load/stress tests at 10 and 50 concurrent users | ❌ Not done |
 
@@ -337,44 +337,51 @@ observability backend.
 
 ---
 
-## 7. Dashboard and alert definitions — ⚠️ Partial
+## 7. Dashboard and alert definitions — ✅ Defined, receiver built (Langfuse rules pending)
 
 **Requirement.** At least three alerts on the dashboard: p95 latency
 threshold, error rate threshold, tool failure rate; each documented with
 meaning and on-call response.
 
-**What exists.** [`KEY_METRICS.md`](KEY_METRICS.md) documents alert
-thresholds and on-call responses for:
+**How it is done.**
 
-| Alert in KEY_METRICS.md | Threshold | On-call response |
-|---|---|---|
-| Grounding failure (strip) rate | > 10 % rolling 1 h, or any `total_failure` | Compare `Prompt::VERSION`/model vs last good; re-run live evals; pin prior model |
-| Omission-guard append rate | > 25 % over a day | Prompt-quality review |
-| **Summary p95 latency** | > 15 s over 15 min (facts p95 > 2 s) | Check `/ready`, OpenAI status, retry rate in traces; DB health for facts |
-| Refused request returning facts | any (P0) | Audit-log review by user |
+- [`ALERTS.md`](ALERTS.md) defines the three paging alerts, each with the
+  exact trace fields, aggregation, window, minimum sample, threshold,
+  severity, baseline, what it means, and a numbered on-call runbook:
 
-So the **p95 latency alert is defined and documented.**
+  | Alert | Metric | Threshold |
+  |---|---|---|
+  | p95 latency | p95 of trace `duration_ms` | > 15 s over 15 min |
+  | Error rate | traces with `http_status ≥ 500` or non-null `status` ÷ traces | > 5 % over 15 min |
+  | Tool failure rate | spans with `level = ERROR` ÷ spans | > 2 % over 15 min, with a per-span table saying which tool failing means what |
 
-**What is missing.**
+  Two further signals (verification pass rate, refusal rate) are documented
+  as watched-not-paged with the reason.
+- **Webhook receiver.** Firings are POSTed to
+  [`public/alerts.php`](../interface/modules/custom_modules/oe-module-clinical-copilot/public/alerts.php),
+  which authenticates with `ALERT_WEBHOOK_SECRET` (`X-Alert-Token` header
+  or `?token=`; 503 until configured, 401 wrong token, 400 non-object body,
+  413 > 64 KiB, 405 non-POST), parses the payload tolerantly
+  ([`Ops/AlertReceiver`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Ops/AlertReceiver.php),
+  [`Ops/AlertEvent`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Ops/AlertEvent.php)),
+  and records the firing as a WARNING `copilot alert received` in the app
+  log and a `clinical-copilot-alert` row in the OpenEMR audit log — both
+  with a fresh correlation id, and never with raw payload values (only the
+  lifted fields and the remaining key names). Wired into
+  `docker/vps/docker-compose.yml` and `.env.example`. Unit tests:
+  `AlertReceiverTest` (7). Contract:
+  `contracts/alerts.response.schema.json`. Collection requests 17 and 18.
+  Verified live on the local stack: 401 / 400 / 200, audit row and log line
+  present.
+- `KEY_METRICS.md` and `ARCHITECTURE.md` now point at `ALERTS.md` instead
+  of claiming the alerts are documented elsewhere.
 
-- **Error-rate alert** and **tool-failure-rate alert** are not in
-  `KEY_METRICS.md`. `ARCHITECTURE.md § Alerts` claims all three are
-  "defined on the trace fields in Langfuse and documented … in
-  KEY_METRICS.md", but the doc only has the latency one; the other two exist
-  as a sentence, not as threshold + meaning + response.
-- No evidence the alerts are configured in Langfuse (or anywhere that pages
-  someone). The repo has no alert export, notification channel, or
-  screenshot. See open question Q4.
-
-**Proposed completion.** Add an "Alerts" section (or a separate
-`ALERTS.md`) with, for each of the three required alerts: the exact metric
-expression over trace fields (`http_status >= 500 OR status != null` for
-error rate; spans with `level = ERROR` ÷ spans for tool-failure rate;
-`p95(duration_ms)` for latency), window, threshold, what it means, and the
-on-call runbook; then configure them in Langfuse (or a Langfuse → webhook →
-pager path) and record the configuration in the repo.
-
----
+**Still to do.** Create the three rules in the Langfuse project (metric,
+window, threshold and the webhook URL + header from `ALERTS.md`), send a
+test notification for each, and capture a screenshot/export of the rules
+into `clinical_copilot/dashboard/`. The deployed receiver needs
+`ALERT_WEBHOOK_SECRET` set in the droplet's `.env` and the container
+recreated.
 
 ## 8. Baseline CPU, memory, latency, and throughput profiles — ❌ Not done
 
@@ -431,10 +438,8 @@ The nearest thing is `tests/evals/smoke.php`, which is sequential.
   document it. If no, should I build it in Langfuse (matching the existing
   tracer) or would you prefer a self-hosted alternative? Also confirm you
   are fine with "queue depth" being documented as not applicable.
-- **Q4 (item 7).** Where should alerts actually fire — Langfuse's built-in
-  alerting (if enabled on your plan), a webhook to email/Slack, or
-  documentation-only for this submission? And are the thresholds in
-  `KEY_METRICS.md` (p95 > 15 s / 15 min) the ones to keep?
+- **Q4 (item 7).** Decided 2026-09-16: Langfuse alerts → webhook to the
+  module's own receiver. Receiver built; rules to be created in Langfuse.
 - **Q5 (items 8, 9).** Which load tool: k6 (single binary, JS scenarios,
   built-in p50/p95/p99 — recommended), Locust (Python), or a PHP script
   using Guzzle's concurrent pool so no new toolchain is needed?

@@ -40,6 +40,8 @@ same in the app and the CLI.
 | 12 | Brief without CSRF | 403 |
 | 13–15 | Restricted user session | New session as `restrictedUser`, login, open the same chart |
 | 16 | Restricted user brief | 403 `You are not authorized to view this chart` — ACL enforced in the tool layer, not the menu |
+| 17 | Alert webhook | Simulates a Langfuse alert firing at `alerts.php`; 200, and a `clinical-copilot-alert` audit row (see [ALERTS.md](../ALERTS.md)). Needs `alertToken` |
+| 18 | Alert webhook, wrong token | 401; nothing recorded |
 
 Every workflow in [USING_CLINICAL_COPILOT.md](../USING_CLINICAL_COPILOT.md)
 has a request here; nothing needs a manual edit between runs.
@@ -51,10 +53,14 @@ has a request here; nothing needs a manual edit between runs.
 | `environments/local.bru` | http://localhost:8300 (dev stack) | `admin`/`pass`, `receptionist`/`receptionist` as shipped with the demo data |
 | `environments/vps.bru` | https://146-190-139-37.sslip.io | Set `password` to the deployed admin password before running 03+. 01–02 need no credentials. |
 
+`alertToken` must equal the target's `ALERT_WEBHOOK_SECRET` for request 17;
+pass it on the CLI rather than committing it:
+`npx --yes @usebruno/cli@2 run --disable-cookies --env local --env-var alertToken=<secret>`.
+
 `pid` defaults to 15, the seed patient with the richest chart (abnormal
 labs and deltas since the prior visit). Any of pids 1–30 works.
 
 ## Verified
 
-Last full run against the local dev stack: 16/16 requests, 35/35
+Last full run against the local dev stack: 18/18 requests, 42/42
 assertions, ~10 s. Requests 01–02 also verified against the deployed VPS.

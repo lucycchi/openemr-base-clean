@@ -1,0 +1,28 @@
+meta {
+  name: 18 Alert webhook rejects a wrong token
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/alerts.php
+  body: json
+}
+
+headers {
+  X-Alert-Token: not-the-secret
+  Content-Type: application/json
+}
+
+body:json {
+  { "alert": { "name": "spoofed" } }
+}
+
+assert {
+  res.status: eq 401
+  res.body.error: eq Invalid token
+}
+
+docs {
+  Anyone can reach the URL; only the shared secret gets an alert recorded.
+}

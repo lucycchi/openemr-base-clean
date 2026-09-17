@@ -111,6 +111,7 @@ final class ContractsTest extends TestCase
             'error response' => ['chat.error.response'],
             'health response' => ['health.response'],
             'ready response' => ['ready.response'],
+            'alerts response' => ['alerts.response'],
             'llm briefing output' => ['llm.briefing.output'],
             'llm follow-up output' => ['llm.followup.output'],
             'fact' => ['fact'],
@@ -231,6 +232,14 @@ final class ContractsTest extends TestCase
         self::assertConforms('ready.response', $degraded->toArray());
         $down = new ReadinessReport(false, ['database' => 'database query failed', 'openai' => 'ok', 'langfuse' => 'ok'], [], false, 0, '2026-09-16T12:00:00Z');
         self::assertConforms('ready.response', $down->toArray());
+    }
+
+    public function testAlertsResponseContract(): void
+    {
+        self::assertConforms('alerts.response', ['received' => true, 'alert' => 'copilot p95 latency', 'severity' => 'critical', 'correlation_id' => self::CORRELATION_ID]);
+        self::assertConforms('alerts.response', ['error' => 'Invalid token', 'correlation_id' => self::CORRELATION_ID]);
+        self::assertViolates('alerts.response', ['received' => true, 'correlation_id' => self::CORRELATION_ID]);
+        self::assertViolates('alerts.response', ['error' => 'x', 'received' => true, 'alert' => 'a', 'severity' => 's', 'correlation_id' => self::CORRELATION_ID]);
     }
 
     public function testHealthResponseContract(): void
