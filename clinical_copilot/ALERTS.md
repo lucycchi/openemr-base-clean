@@ -200,4 +200,20 @@ The rules are created as follows (Langfuse Cloud, September 2026 UI):
    parsed from Langfuse's message body. Record the row's correlation id
    below.
 
-**Delivery record:** _pending first firing_.
+**Delivery record.** First real firing received 2026-09-17 04:40:35 UTC
+from `User-Agent: Langfuse/1.0`, signature verified, HTTP 200. Audit row
+(`log.event = clinical-copilot-alert`):
+
+```
+alert=[ALERT] Avg of Scores (boolean) Value is below 0.95 severity=ALERT type=monitor-alert
+correlation_id=b8f80d7c985079b2e7e7e20d283c054b
+```
+
+It was the error-rate rule (`request_ok` share) evaluating an empty
+15-minute window as 0 — the no-data case — which is why that rule's
+*No-data handling* is set to "keep previous severity". Two properties of
+Langfuse's payload worth knowing: the title is the generic
+`[SEVERITY] <aggregation> of <source> Value is below <threshold>` rather
+than the rule name, and the measured value is not included, so the
+receiver records `payload.monitorId` (`monitor=` in the audit row) to
+identify the rule.

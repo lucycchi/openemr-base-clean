@@ -27,6 +27,8 @@ final readonly class AlertEvent
         public ?float $value,
         public ?float $threshold,
         public array $payload,
+        /** Langfuse's rule id (payload.monitorId); the title is generic, this is what identifies the rule. */
+        public ?string $monitorId = null,
     ) {
     }
 
@@ -53,6 +55,7 @@ final readonly class AlertEvent
             self::num($metric['value'] ?? $payload['value'] ?? self::fromBody($body, '/\bis\s+(-?[0-9.]+)/')),
             self::num($metric['threshold'] ?? $payload['threshold'] ?? self::fromBody($body, '/threshold:\s*(-?[0-9.]+)/')),
             $payload,
+            is_string($inner['monitorId'] ?? null) ? mb_substr($inner['monitorId'], 0, 120) : null,
         );
     }
 
@@ -71,6 +74,7 @@ final readonly class AlertEvent
             'id' => $this->id,
             'value' => $this->value,
             'threshold' => $this->threshold,
+            'monitor_id' => $this->monitorId,
             'payload_keys' => array_map(strval(...), array_keys($this->payload)),
         ];
     }
@@ -84,7 +88,7 @@ final readonly class AlertEvent
             $this->value === null ? 'n/a' : self::fmt($this->value),
             $this->threshold === null ? 'n/a' : self::fmt($this->threshold),
             $this->type,
-        );
+        ) . ($this->monitorId === null ? '' : ' monitor=' . $this->monitorId);
     }
 
     private static function str(mixed $v): string

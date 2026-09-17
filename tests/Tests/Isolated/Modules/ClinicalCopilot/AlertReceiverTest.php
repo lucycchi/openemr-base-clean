@@ -151,7 +151,8 @@ final class AlertReceiverTest extends TestCase
         self::assertSame('550e8400-e29b-41d4-a716-446655440000', $event->id);
         self::assertSame(18211.0, $event->value);
         self::assertSame(15000.0, $event->threshold);
-        self::assertSame('alert=p95 latency crossed alert threshold severity=ALERT value=18211 threshold=15000 type=monitor-alert', $event->auditComment());
+        self::assertSame('monitor_abc123', $event->monitorId);
+        self::assertSame('alert=p95 latency crossed alert threshold severity=ALERT value=18211 threshold=15000 type=monitor-alert monitor=monitor_abc123', $event->auditComment());
     }
 
     public function testFallsBackToTopLevelNameAndSeverityAndToUnknown(): void

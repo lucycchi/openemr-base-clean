@@ -17,7 +17,7 @@ core submission. Each item states whether it is done, where the evidence is
 | 4 | Real-time dashboard (requests, errors, p50/p95, tool calls, retries, verification rate) | ⚠️ Partial |
 | 5 | Runnable API collection (Bruno) | ✅ Done |
 | 6 | Separate `/health` and `/ready` with real dependency checks | ✅ Done |
-| 7 | At least three alerts (p95 latency, error rate, tool failure rate) | ✅ Defined + receiver built; Langfuse rules to be configured |
+| 7 | At least three alerts (p95 latency, error rate, tool failure rate) | ✅ Done |
 | 8 | Baseline CPU, memory, latency, throughput profiles | ✅ Done |
 | 9 | Load/stress tests at 10 and 50 concurrent users | ✅ Done |
 
@@ -337,7 +337,7 @@ observability backend.
 
 ---
 
-## 7. Dashboard and alert definitions — ✅ Defined, receiver built (Langfuse rules pending)
+## 7. Dashboard and alert definitions — ✅ Done
 
 **Requirement.** At least three alerts on the dashboard: p95 latency
 threshold, error rate threshold, tool failure rate; each documented with
@@ -392,10 +392,12 @@ meaning and on-call response.
   the message body) and is deployed with the signing secret; a signed
   request is accepted and a tampered one refused on the droplet.
 
-**Still to do (in Langfuse, by the user).** Create the three rules per the
-table in `ALERTS.md` (plan permitting — Hobby allows two), force one
-firing by temporarily lowering a threshold, and record the resulting audit
-row's correlation id under "Delivery record" in `ALERTS.md`.
+- **Rules created in Langfuse 2026-09-17** (Alerts → New Alert, per the
+  table in `ALERTS.md`) and **delivery proven**: the first real firing
+  (error-rate rule, empty-window/no-data case) arrived at the receiver at
+  04:40:35 UTC with a valid signature and is recorded as audit row
+  `correlation_id=b8f80d7c985079b2e7e7e20d283c054b` — see "Delivery
+  record" in `ALERTS.md`.
 
 ## 8. Baseline CPU, memory, latency, and throughput profiles — ✅ Done
 
