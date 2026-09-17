@@ -30,13 +30,13 @@ through three more tabs.
 - Core interface is fixed by the PRD: multi-turn chatbot, tool-calling, not
   a dashboard.
 - Agent surface area must trace to a validated PCP use case (to be
-  formalized in [`USERS.md`](USERS.md), which this design doc's premises feed — not yet
+  formalized in [`USERS.md`](../USERS.md), which this design doc's premises feed — not yet
   written) — no speculative tool-chaining.
 - Every claim must be source-attributed; domain constraints (interaction
   flags) must be enforced.
 - Wednesday 2026-09-16 (Early Submission) hard-gates a deployed, working
   agent. This design scopes to that deadline first.
-- Repo audit ([`AUDIT.md`](AUDIT.md)) already found: auth is often menu-gated, not
+- Repo audit ([`AUDIT.md`](../AUDIT.md)) already found: auth is often menu-gated, not
   ACL-gated (UI hides a link but doesn't block direct access); no caching
   layer; no cron/job queue by default; N+1 patterns in shared services; no
   "encounter-finalized" event; audit log has unencrypted PHI and a checksum
@@ -385,7 +385,7 @@ separate distribution channel needed beyond the public URL hard gate.
    active/new medications; no drug-drug interaction logic — see premise #4).
 5. Wire the chat loop (Approach C router), the DB-backed conversation-state
    table, and the chart-page-load auto-open trigger.
-6. Write [`USERS.md`](USERS.md) and [`ARCHITECTURE.md`](ARCHITECTURE.md) from this design doc's premises
+6. Write [`USERS.md`](../USERS.md) and [`ARCHITECTURE.md`](../ARCHITECTURE.md) from this design doc's premises
    and approaches — they're the PRD's hard-gated deliverables this design
    feeds.
 
@@ -603,7 +603,7 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Surfaced by: Test review; D10, D21
   - Files: `tests/evals/{run.php,cases/*.json,fixtures/*,smoke.sh}`
   - Verify: recorded run green; live run writes results.json
-- [ ] **T9 (P1, human: ~half day / CC: ~30min)** — docs — [`USERS.md`](USERS.md), [`ARCHITECTURE.md`](ARCHITECTURE.md) (with 500-word summary), [`KEY_METRICS.md`](KEY_METRICS.md); supersede note atop [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md); update [`project-tasks.md`](../project-tasks.md)
+- [ ] **T9 (P1, human: ~half day / CC: ~30min)** — docs — [`USERS.md`](../USERS.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md) (with 500-word summary), [`KEY_METRICS.md`](../KEY_METRICS.md); supersede note atop [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md); update [`project-tasks.md`](../project-tasks.md)
   - Surfaced by: PRD hard gates; design doc Next Steps 6
   - Files: repo root
   - Verify: each file exists and traces to this doc

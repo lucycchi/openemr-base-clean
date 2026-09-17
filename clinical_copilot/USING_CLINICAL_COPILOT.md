@@ -2,8 +2,8 @@
 
 A step-by-step guide to the Clinical Co-Pilot panel: how to reach it, how
 to read it, how to ask it questions, and what every message it can show
-means. For *why* it is built this way, see [ARCHITECTURE.md](ARCHITECTURE.md);
-for *who* it is for, see [USERS.md](USERS.md).
+means. For *why* it is built this way, see [ARCHITECTURE.md](../ARCHITECTURE.md);
+for *who* it is for, see [USERS.md](../USERS.md).
 
 ## 1. Getting to the panel
 

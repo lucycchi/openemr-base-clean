@@ -34,10 +34,10 @@ All Clinical Co-Pilot documentation lives in [clinical_copilot/](clinical_copilo
 | Document | Purpose |
 |---|---|
 | [clinical_copilot/USING_CLINICAL_COPILOT.md](clinical_copilot/USING_CLINICAL_COPILOT.md) | How to use the feature: setup, reading the panel, follow-ups, every status message, demo patients |
-| [clinical_copilot/USERS.md](clinical_copilot/USERS.md) | The physician, their workflow, three use cases and why an agent |
-| [clinical_copilot/ARCHITECTURE.md](clinical_copilot/ARCHITECTURE.md) | Summary, data flow, verification, trust boundaries, failure modes |
-| [clinical_copilot/KEY_METRICS.md](clinical_copilot/KEY_METRICS.md) | Five metrics with baselines and alert thresholds |
-| [clinical_copilot/AUDIT.md](clinical_copilot/AUDIT.md) | Security, performance, architecture, data-quality and HIPAA audit |
+| [USERS.md](USERS.md) | The physician, their workflow, three use cases and why an agent |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Summary, data flow, verification, trust boundaries, failure modes |
+| [KEY_METRICS.md](KEY_METRICS.md) | Five metrics with baselines and alert thresholds |
+| [AUDIT.md](AUDIT.md) | Security, performance, architecture, data-quality and HIPAA audit |
 | [clinical_copilot/DESIGN.md](clinical_copilot/DESIGN.md) | Design record with the reviewed decisions |
 | [clinical_copilot/api-collection/](clinical_copilot/api-collection/README.md) | Runnable Bruno API collection: every endpoint and workflow, with assertions |
 | [tests/evals/README.md](tests/evals/README.md) | Eval suite: cases, failure modes, how to run |

@@ -40,7 +40,7 @@ failure mode each test guards against is documented.
 - The table of cases and failure modes is in
   [`tests/evals/README.md`](../tests/evals/README.md) ("Cases and the failure
   mode each guards"), and the design rationale is in
-  [`ARCHITECTURE.md § Evaluation`](ARCHITECTURE.md#evaluation).
+  [`ARCHITECTURE.md § Evaluation`](../ARCHITECTURE.md#evaluation).
 - Recorded cases 01–08 replay a fixed fact set and a hand-written model
   reply through `Verifier` + `OmissionGuard` and require exact `kept`,
   `stripped`, `omitted_ids`, `total_failure`. They feed replies a
@@ -58,7 +58,7 @@ failure mode each test guards against is documented.
   arithmetic (11), ambiguous (12), identifier extraction (13), other-patient
   (14), and instruction-override (15) questions.
 - The PRD's three named edge cases are mapped to cases in
-  [`ARCHITECTURE.md`](ARCHITECTURE.md) ("The edge cases the PRD names"):
+  [`ARCHITECTURE.md`](../ARCHITECTURE.md) ("The edge cases the PRD names"):
   missing data → case 05 plus unit tests for no prior encounter, zero dates,
   missing reference ranges, missing facility; ambiguous queries → 11, 12;
   unauthorized extraction → 13, 14, 15 plus ACL refusal tests.

@@ -3,7 +3,7 @@
 Three alerts page someone; two more are watched but do not page. All are
 computed from the Langfuse traces the module writes on every request (one
 trace per request, one span per tool step, one generation per model call;
-see [ARCHITECTURE.md § Observability](ARCHITECTURE.md#observability)). Every
+see [ARCHITECTURE.md § Observability](../ARCHITECTURE.md#observability)). Every
 firing is POSTed to the module's own webhook receiver so the alert is
 recorded next to the requests that caused it.
 
@@ -149,7 +149,7 @@ more than the rate:
 the model produced was stripped (`total_failure`) or the request ended
 with a non-null `status`. Tracked on the dashboard; a rate above 10 % over
 an hour is investigated during working hours as a prompt or model drift
-problem (see [KEY_METRICS.md § 1](KEY_METRICS.md)). Not paged because the
+problem (see [KEY_METRICS.md § 1](../KEY_METRICS.md)). Not paged because the
 physician is protected either way: nothing unverified is shown.
 
 ### 5. Refusal rate
