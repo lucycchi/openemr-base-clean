@@ -125,11 +125,80 @@ briefings.
 
 **Alert.** None; this is a weekly review metric, not a page.
 
+## 6. Physician rating of the summary (planned, not yet built)
+
+**Definition.** Per day and per `Prompt::VERSION` + model: briefings rated
+thumbs-up, thumbs-down, and not rated, each as a share of briefings
+*rendered* (the denominator from metric 5), plus the free-text comments
+attached to ratings. Reported as three percentages that sum to 100, not as
+an up/(up+down) ratio, so that ignored briefings stay visible.
+
+**Why.** Metrics 1 and 2 prove the summary is grounded and complete;
+metric 5 proves it is opened. None of them says whether the physician found
+it useful. A one-click rating on the summary block is the cheapest
+usefulness signal that is attributable to the exact narration shown (the
+rating is keyed to the briefing cache key), so a prompt or model change can
+be compared before and after. The comment is the qualitative channel that
+tells us *why*, and it is the input to the next prompt revision and to new
+eval cases.
+
+**Source.** Planned: `copilot_briefing_rating` table (rating, comment,
+cache key, prompt version, model, correlation id); `copilot rating` log
+line and audit row; Langfuse `score` named `physician_rating` on the
+briefing's trace, which gives the per-version breakdown as a built-in
+Langfuse view. Design and build notes in [`TODOS.md`](TODOS.md).
+
+**Baseline.** None until built and used by a physician. Target for the
+first month of real use: rated on >30% of rendered briefings; thumbs-down
+below 15% of rendered.
+
+**Alert.** None that pages. Weekly review: thumbs-down share rising over
+two consecutive weeks, or any comment mentioning a missed fact (which is a
+candidate omission-guard or fact-category gap, and goes into
+`tests/evals/` as a recorded case).
+
+## 7. Chat adoption per patient encounter (planned, not yet built)
+
+**Definition.** `chat bot use / patient encounters`: the number of patient
+encounters during which the physician used the chat at least once, divided
+by the number of patient encounters, per physician and per day, and rolled
+up per week. "Used" means at least one `ask` turn (a typed question) on
+that encounter. The auto-rendered briefing does not count as use, because
+the physician did not choose it; a rating (metric 6) does not count as use
+either. Reported alongside the mean number of `ask` turns per used
+encounter.
+
+**Why.** Metric 5 asks whether the panel is *seen* (briefing rendered per
+chart open). This metric asks whether the conversational surface is
+*chosen*, and normalises by the clinical unit of work, the encounter,
+rather than by chart opens (one encounter can produce several chart opens;
+some chart opens have no encounter). It is the direct production test of
+the PRD's rule that multi-turn only exists because a use case needs it
+(UC2 in [`USERS.md`](USERS.md)): a chat that is never used on a visit is a
+chat that should be a report.
+
+**Source.** Planned: numerator from the existing audit rows
+(`clinical-copilot`, action = ask) which already carry user and patient,
+once the encounter id is added to the audit string; denominator from
+`form_encounter` rows whose date falls on that day for that provider. Both
+are already in the database; no new table. Design and build notes in
+[`TODOS.md`](TODOS.md).
+
+**Baseline.** None until a physician uses it. Target for the first month of
+real use: chat used on >20% of encounters (same bar as metric 5's follow-up
+target, restated per encounter), and no physician below 5% after week two
+without a conversation about why.
+
+**Alert.** None that pages. Weekly review, next to metric 6: falling
+adoption with rising thumbs-down means the summary is the problem; falling
+adoption with flat ratings means the physician gets what they need from the
+fact table and the chat is not earning its place.
+
 ## Paging alerts
 
 The three alerts that page — p95 latency, error rate, tool failure rate —
 are defined with metric, window, threshold, meaning and on-call runbook in
-[ALERTS.md](ALERTS.md), together with the webhook receiver they fire into.
+[ALERTS.md](clinical_copilot/ALERTS.md), together with the webhook receiver they fire into.
 The per-metric alerts above are the product-quality signals behind them.
 
 ## Cost, tracked alongside
@@ -146,7 +215,8 @@ in the submission, not as a health metric.
 ## Why not other metrics
 
 - *Physician satisfaction surveys*: valuable, but lagging and not
-  attributable to a change.
+  attributable to a change. The planned per-briefing rating (metric 6) is
+  the attributable replacement.
 - *Raw hallucination rate judged by an LLM*: the verifier makes ungrounded
   values structurally impossible to render; a judge would measure the
   semantic-inversion gap (eval case 08), which is real but is better handled

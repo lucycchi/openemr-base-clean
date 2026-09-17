@@ -105,7 +105,7 @@ one more place to look.
 **Explicit non-goal:** drug-drug interaction checking. This install has no
 interaction source of truth, and letting the model decide interactions from
 general knowledge is precisely the ungrounded clinical claim the PRD
-forbids. Tracked in [`TODOS.md`](../TODOS.md).
+forbids. Tracked in [`TODOS.md`](TODOS.md).
 
 ## Capability → use case traceability
 
@@ -122,7 +122,13 @@ forbids. Tracked in [`TODOS.md`](../TODOS.md).
 
 Nothing else was built. Tool chaining beyond one `get_fact_set`, server-side
 conversation memory, and interaction checking each lacked a use case above
-and were deferred (see [`clinical_copilot/DESIGN.md`](DESIGN.md)).
+and were deferred (see [`clinical_copilot/DESIGN.md`](clinical_copilot/DESIGN.md)).
+
+Three extensions to UC1 are designed but not built, and are tracked in
+[`TODOS.md`](TODOS.md): today's nurse intake (reason for visit and new
+symptoms) as must-surface facts; a due-today checklist from OpenEMR's
+Clinical Reminders and the immunization history; and a fixed briefing
+section schema so every briefing has the same shape.
 
 ## Users who are refused, by design
 

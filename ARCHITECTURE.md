@@ -202,7 +202,7 @@ why eval case 08 exists to keep the limitation visible.
 The PRD asks that four questions be answerable from the logs at any time.
 This section says, for each one, exactly where the answer is and what it
 looks like. Everything below is wired into the request path itself
-([`ChatController`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/ChatController.php)),
+([`ChatController`](interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/ChatController.php)),
 not bolted on, and none of it can fail a clinical request: the tracer is
 best-effort with a 2 s bound, and logging is fire-and-forget.
 
@@ -315,7 +315,7 @@ from these numbers and the cache-hit ratio.
 Three alerts page — p95 `duration_ms`, error rate (`http_status` ≥ 500 or
 a non-null `status`), and tool-failure rate (spans at level ERROR) — each
 defined with metric, window, threshold, meaning and on-call runbook in
-[`ALERTS.md`](ALERTS.md). Langfuse fires them at the module's own
+[`ALERTS.md`](clinical_copilot/ALERTS.md). Langfuse fires them at the module's own
 `public/alerts.php` (shared-secret webhook), which writes a WARNING to the
 app log and a `clinical-copilot-alert` row to the audit log so a firing sits
 next to the requests that caused it. `verification_pass` false on a
@@ -333,7 +333,7 @@ to it.
 
 ### How to see it yourself
 
-Run the [API collection](api-collection/README.md): request 06 returns a
+Run the [API collection](clinical_copilot/api-collection/README.md): request 06 returns a
 `correlation_id`; search it in Langfuse (deployed) or
 `SELECT FROM_BASE64(comments) FROM log WHERE event='clinical-copilot'` on
 the database. Request 16 produces the access-denied line above.
@@ -372,11 +372,11 @@ charts through the real model and require every briefing to complete.
 
 | Layer | Where | Count | Runs against | When |
 |---|---|---|---|---|
-| Unit | [`tests/Tests/Isolated/Modules/ClinicalCopilot/`](../tests/Tests/Isolated/Modules/ClinicalCopilot/) | 95 tests | Fakes; no DB, no network | Every commit (`openemr-cmd pit`) |
-| Eval, recorded | [`tests/evals/cases/01–08`](../tests/evals/cases/) | 8 cases | A fixed fact set and a hand-written model reply replayed through `Verifier` + `OmissionGuard` | Every commit; seconds; free |
-| Eval, live | [`tests/evals/cases/09–15`](../tests/evals/cases/) | 7 cases, 22 model calls | Real seed charts, real OpenAI | Before every submission and whenever `Prompt::VERSION` changes (~1 min, ~22k tokens) |
-| UI smoke | [`tests/evals/smoke.php`](../tests/evals/smoke.php) | 10 patients + 1 refusal | Selenium through the real dashboard | Before every deploy |
-| API collection | [`api-collection/`](api-collection/README.md) | 16 requests, 35 assertions | The running HTTP endpoints, local or deployed | Any time; graders can run it |
+| Unit | [`tests/Tests/Isolated/Modules/ClinicalCopilot/`](tests/Tests/Isolated/Modules/ClinicalCopilot/) | 95 tests | Fakes; no DB, no network | Every commit (`openemr-cmd pit`) |
+| Eval, recorded | [`tests/evals/cases/01–08`](tests/evals/cases/) | 8 cases | A fixed fact set and a hand-written model reply replayed through `Verifier` + `OmissionGuard` | Every commit; seconds; free |
+| Eval, live | [`tests/evals/cases/09–15`](tests/evals/cases/) | 7 cases, 22 model calls | Real seed charts, real OpenAI | Before every submission and whenever `Prompt::VERSION` changes (~1 min, ~22k tokens) |
+| UI smoke | [`tests/evals/smoke.php`](tests/evals/smoke.php) | 10 patients + 1 refusal | Selenium through the real dashboard | Before every deploy |
+| API collection | [`api-collection/`](clinical_copilot/api-collection/README.md) | 16 requests, 35 assertions | The running HTTP endpoints, local or deployed | Any time; graders can run it |
 | Deferred | Panther dashboard-regression E2E for all 30 patients, DB-backed adapter tests, load tests | — | — | Final submission |
 
 ### How pass/fail is defined
@@ -451,10 +451,10 @@ limitation in the case file.
 ### Latest results
 
 Local run, 2026-09-17, after the dated-facts and `QuestionScope` changes
-([`tests/evals/results.json`](../tests/evals/results.json)): 15/15 cases;
+([`tests/evals/results.json`](tests/evals/results.json)): 15/15 cases;
 10 live briefings, 0 sentences stripped of 60 kept, 0 omissions,
 p50 2.1 s, p95 14.4 s, 22,334 tokens (≈ $0.006). The deployed run before
-those changes ([`results-deployed.json`](../tests/evals/results-deployed.json))
+those changes ([`results-deployed.json`](tests/evals/results-deployed.json))
 was 11/11 with 1 of 58 stripped; it is re-run on the droplet after each
 deploy and committed.
 
@@ -467,7 +467,7 @@ openemr-cmd e "su -s /bin/sh apache -c 'php tests/evals/smoke.php http://openemr
 openemr-cmd pit                                                              # unit
 ```
 
-[`tests/evals/README.md`](../tests/evals/README.md) documents each case's
+[`tests/evals/README.md`](tests/evals/README.md) documents each case's
 `failure_mode` in one plain sentence and how to read `results.json`.
 
 ## Tradeoffs made knowingly
@@ -477,9 +477,9 @@ openemr-cmd pit                                                              # u
 | Facts-first, ID-only narration | free prose + post-hoc fact checking | verification becomes set membership plus a digit scan; no normalizer, no re-fetch |
 | One LLM tool | tool per data source | with facts assembled deterministically, extra tools were categories in disguise |
 | Direct patient-scoped SQL in the adapter | service-layer calls | service rows lack prescription ids/start dates and lab→encounter links needed to cite and to filter by sensitivity |
-| Client-held transcript | conversation table | no migration before the gate; every turn re-verified anyway; persistence tracked in [`TODOS.md`](../TODOS.md) |
+| Client-held transcript | conversation table | no migration before the gate; every turn re-verified anyway; persistence tracked in [`TODOS.md`](TODOS.md) |
 | Curated reference-range table | seeding abnormal flags | works on all 30 patients, is a real clinical rule, is versioned and cited; local labs vary |
-| flex image on a VPS | custom image | zero adaptation the night before the gate; custom image in [`TODOS.md`](../TODOS.md) |
+| flex image on a VPS | custom image | zero adaptation the night before the gate; custom image in [`TODOS.md`](TODOS.md) |
 | Langfuse Cloud | self-hosted | four extra services on one box; only counts and ids leave the server |
 
 ## How the audit shaped this

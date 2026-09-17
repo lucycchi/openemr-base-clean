@@ -9,7 +9,7 @@ scheduling, a REST/FHIR API, and a patient portal — for the 30-patient
 Synthea-seeded dev stack this audit examined. This pass covered security,
 performance, architecture, data quality, and HIPAA compliance, producing
 87 findings (10 High / 37 Medium / 25 Low / 15 Info) recorded in full in
-[`audit-long.md`](../audit-long.md).
+[`audit-long.md`](audit-long.md).
 
 **Security.** The single most important theme, spanning 14 of the 52
 security findings, is that many endpoints rely on the UI menu hiding a
@@ -65,7 +65,7 @@ container). See each section's "Not covered" for the full list.
 
 Working document. Every significant finding from each audit is recorded here
 first; the ~500-word summary and the final [`AUDIT.md`](AUDIT.md) are produced from this
-file last. Task tracking lives in [`AUDIT_TASKS.md`](../AUDIT_TASKS.md).
+file last. Task tracking lives in [`AUDIT_TASKS.md`](AUDIT_TASKS.md).
 
 **System under audit:** OpenEMR 8.2.0 (database schema v541, ACL v13), fork
 of `Gauntlet-HQ/openemr-base-clean`, branch `audit`. The security section's
@@ -191,7 +191,7 @@ Two complementary methods:
    or majority survivors are reported. Nondeterministic; a clean result means
    "nothing surfaced in one pass", not proof of absence.
 2. **Manual review** — targeted reads of the auth/session/ACL stack, upload
-   handlers, and PHI paths (tasks 1.2–1.5 in [`AUDIT_TASKS.md`](../AUDIT_TASKS.md); complete,
+   handlers, and PHI paths (tasks 1.2–1.5 in [`AUDIT_TASKS.md`](AUDIT_TASKS.md); complete,
    see §1.2b–§1.3e below).
 
 #### Scan runs
@@ -982,7 +982,7 @@ are instances of a pattern, not a census. To find the rest cheaply:
    additionally scope the write to the session's patient rather than the
    POSTed id.
 
-This procedure is captured as task 1.3.1 in [`AUDIT_TASKS.md`](../AUDIT_TASKS.md).
+This procedure is captured as task 1.3.1 in [`AUDIT_TASKS.md`](AUDIT_TASKS.md).
 
 ### 1.3c Authorization — manual review (task 1.3)
 
@@ -1397,8 +1397,8 @@ encryption. E-prescribing/Surescripts integration does not exist in the
 shipped code (only vestigial `erx_*` column names). **No LLM/AI API
 integration exists anywhere in the shipped codebase** — confirmed by a
 full-repo grep for provider names/hostnames; the only match is
-[`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md) itself, a planning document for a not-yet-built
-feature. This directly confirms [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md)'s own "repository
+[`AI_INTEGRATION_PLAN.md`](AI_INTEGRATION_PLAN.md) itself, a planning document for a not-yet-built
+feature. This directly confirms [`AI_INTEGRATION_PLAN.md`](AI_INTEGRATION_PLAN.md)'s own "repository
 facts" premise (relevant to task 6.5's cross-check). Fax/SMS/clearinghouse
 integrations (RingCentral, EtherFax, SignalWire, Twilio, X12 SFTP) are all
 off by default, admin-configured, and transport-secure (HTTPS/SFTP) except
@@ -1806,7 +1806,7 @@ with no batched "give me everything for this chart" endpoint (PERF-05).
 **2.2.4 ORM/DB layer overhead.** Layering is `sqlQuery`/`sqlStatement`
 (legacy global functions) → `QueryUtils` → ADODB → mysqli; no Doctrine DBAL
 usage was found in the reviewed files despite it being listed in
-[`CLAUDE.md`](../CLAUDE.md)'s tech stack. `QueryUtils::getADODB()` reuses one ADODB
+[`CLAUDE.md`](CLAUDE.md)'s tech stack. `QueryUtils::getADODB()` reuses one ADODB
 connection per request (not per-call), but there is no prepared-statement
 or query-plan cache anywhere in this chain — every call re-prepares via
 ADODB/mysqli, even identical queries issued in a loop (compounding PERF-04).
@@ -1941,7 +1941,7 @@ and the test/quality-gate tooling.
 
 `graphify-out/graph.json` was checked first per project convention, but its
 corpus is scoped to `src/` only (2,008 files; confirmed via
-[`GRAPH_REPORT.md`](../graphify-out/GRAPH_REPORT.md)'s "Graph Report - src" header) — it has no visibility
+[`GRAPH_REPORT.md`](graphify-out/GRAPH_REPORT.md)'s "Graph Report - src" header) — it has no visibility
 into `interface/`, `library/`, `portal/`, `apis/`, or `controllers/`, which
 is most of what a layer map (3.1) and request-routing map (3.2) need to
 cover. It was used for `src/`-internal structure (god nodes, event-class
@@ -1957,9 +1957,9 @@ PSR-4, still live and referenced by legacy `library/` code. `library/` is
 the second generation: global functions (`sqlStatement`, `formData`, etc.)
 included via `require_once` chains, no dependency injection, heavy
 `$GLOBALS`/`$_SESSION` use — this is what "Legacy Code Is Not the
-Standard" in [`CLAUDE.md`](../CLAUDE.md) refers to. `src/` (`OpenEMR\` PSR-4, this audit's
+Standard" in [`CLAUDE.md`](CLAUDE.md) refers to. `src/` (`OpenEMR\` PSR-4, this audit's
 `graphify` corpus) is the modern generation: typed services, Doctrine-style
-value objects ([`src/Entities/README.md`](../src/Entities/README.md) documents "no ORM relations,
+value objects ([`src/Entities/README.md`](src/Entities/README.md) documents "no ORM relations,
 string IDs, partial column mapping" — an explicitly transitional,
 not-quite-ORM convention per the graph's "Surprising Connections"), Laminas
 MVC for `zend_modules`, Symfony components for REST/events. The three
@@ -2170,7 +2170,7 @@ Smarty is confirmed effectively dead code: `grep 'new Smarty'` repo-wide
 finds exactly 2 hits, both old admin scripts
 (`interface/main/calendar/modules/PostCalendar/pnadmin.php`,
 `gacl/admin/gacl_admin.inc.php`) outside the mainstream request path — the
-[`CLAUDE.md`](../CLAUDE.md) tech-stack line listing "Smarty 4.5 (legacy)" is accurate as a
+[`CLAUDE.md`](CLAUDE.md) tech-stack line listing "Smarty 4.5 (legacy)" is accurate as a
 dependency but overstates its actual runtime footprint. New UI convention:
 newer feature work pairs a Controller class with a `.html.twig` template —
 e.g. `src/Controllers/Interface/Forms/Observation/ObservationController.php`
@@ -2220,7 +2220,7 @@ checks, and E2E coverage at 36 files is thin relative to that surface).
   oe-module-faxsms) rather than cataloguing all ~11 modules individually.
 - **Doctrine DBAL's actual usage surface.** The performance audit (§2.2.4)
   found no Doctrine DBAL usage in the specific files it reviewed
-  (`QueryUtils`, `BaseService`); [`CLAUDE.md`](../CLAUDE.md) lists Doctrine DBAL as the DB
+  (`QueryUtils`, `BaseService`); [`CLAUDE.md`](CLAUDE.md) lists Doctrine DBAL as the DB
   layer for new schema migrations specifically, which is a narrower claim
   this audit didn't independently verify (migration tooling under
   `src/` migrations directories wasn't inspected).
@@ -2439,7 +2439,7 @@ regulatory write-up, not a code finding. Method: direct DB queries against
 delegated code review for audit-logging internals (`EventAuditLogger`,
 checksum/tamper-evidence, `interface/reports/audit_log.php`) and access-
 control granularity (`gacl_groups` seed, `sensitivity` enforcement,
-patient-rights tooling), plus a read of [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md) for the
+patient-rights tooling), plus a read of [`AI_INTEGRATION_PLAN.md`](AI_INTEGRATION_PLAN.md) for the
 6.5 cross-check.
 
 ### 5.2 Findings
@@ -2662,7 +2662,7 @@ X12 clearinghouse (SFTP) are all off-by-default, admin-configured
 third-party PHI egress paths, each requiring its own BAA before
 activation in a real deployment. No Surescripts/e-prescribing integration
 and **no LLM/AI API integration exists anywhere in the shipped codebase**
-today (confirmed by full-repo grep in §1.5.4; [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md) is
+today (confirmed by full-repo grep in §1.5.4; [`AI_INTEGRATION_PLAN.md`](AI_INTEGRATION_PLAN.md) is
 a planning document, not shipped code).
 
 **5.5.2 LLM provider implications.** Sending chart text to an LLM API is
@@ -2686,7 +2686,7 @@ enterprise/business tiers or requiring a separate BAA execution process,
 not available on free/consumer tiers; exact terms and available tiers
 should be reconfirmed against the provider's current published BAA policy
 at implementation time rather than assumed from this write-up, since
-these terms change. [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md) (§12, line ~600) already
+these terms change. [`AI_INTEGRATION_PLAN.md`](AI_INTEGRATION_PLAN.md) (§12, line ~600) already
 names this precondition explicitly — "Business Associate Agreement with
 Anthropic in place" — as a go-live gate with the feature flagged off by
 default absent it, which is the correct posture per (a)-(b) above; see
@@ -2830,7 +2830,7 @@ everywhere), not by severity label alone:
 9. **DQ-01** (High, dataset-level) — 99.8% of encounters reference a
    nonexistent facility; flagged this high because any new capability
    built on "assemble a patient's chart" (the exact shape of
-   [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md)) will silently get an empty/wrong facility for
+   [`AI_INTEGRATION_PLAN.md`](AI_INTEGRATION_PLAN.md)) will silently get an empty/wrong facility for
    nearly every encounter unless it's aware of this.
 10. **The "no operational headroom" constraint cluster** (PERF-01 no
     config caching, §2.4.1 no cron/job queue, PERF-04/05 N+1 patterns,
@@ -2848,11 +2848,11 @@ this ranking (word count verified there per task 6.3's requirement).
 ### 6.4 AUDIT.md assembly
 
 [`AUDIT.md`](AUDIT.md) = the summary (§6.3) followed by the complete contents of this
-file ([`audit-long.md`](../audit-long.md)), per the task gate. See [`AUDIT.md`](AUDIT.md) itself.
+file ([`audit-long.md`](audit-long.md)), per the task gate. See [`AUDIT.md`](AUDIT.md) itself.
 
 ### 6.5 Review gate
 
-Cross-check against [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md) §2 "Repository facts": its
+Cross-check against [`AI_INTEGRATION_PLAN.md`](AI_INTEGRATION_PLAN.md) §2 "Repository facts": its
 claims were spot-checked against this audit's independent findings and
 found **consistent, not contradictory** — worth recording as a positive
 cross-check rather than a discrepancy:
@@ -2878,7 +2878,7 @@ cross-check rather than a discrepancy:
   extending it).
 
 No placeholders, unresolved `*(pending...)*` markers, or unverified claims
-found remaining in [`audit-long.md`](../audit-long.md) as of this pass (checked via grep for
+found remaining in [`audit-long.md`](audit-long.md) as of this pass (checked via grep for
 "pending"/"TBD"/"TODO" — one stale cross-reference found and corrected in
 §1.1). No finding already fixed (SEC-01/SEC-02, "Fixed in 859ad84
 (untested)") is mislabeled as open. No PHI from the seeded Synthea dataset
