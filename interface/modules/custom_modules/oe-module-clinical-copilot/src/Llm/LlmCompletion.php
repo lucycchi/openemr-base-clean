@@ -21,6 +21,8 @@ final readonly class LlmCompletion
         public array $data,
         public int $promptTokens,
         public int $completionTokens,
+        /** HTTP attempts the call took: 1 normally, 2 when the one retry was used. */
+        public int $attempts = 1,
     ) {
     }
 }

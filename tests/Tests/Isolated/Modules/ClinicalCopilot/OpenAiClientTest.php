@@ -68,8 +68,10 @@ final class OpenAiClientTest extends TestCase
         $container = $this->history;
         $stack = HandlerStack::create($this->mock);
         $stack->push(Middleware::history($container));
-        return new OpenAiClient(new Client(['handler' => $stack]), 'sk-test', 'gpt-4o-mini', retrySleepMs: 0);
+        return new OpenAiClient(new Client(['handler' => $stack]), 'sk-test', 'gpt-4o-mini', retrySleepMs: 0, correlationId: self::CORRELATION_ID);
     }
+
+    private const CORRELATION_ID = '763e45ddfc57b76bccc793509358ad89';
 
     /** @return array<string, mixed> */
     private function schema(): array
@@ -117,25 +119,45 @@ final class OpenAiClientTest extends TestCase
         self::assertSame('user', $body['messages'][1]['content']);
     }
 
-    public function testRateLimitIsRetriedOnceThenThrown(): void
+    public function testCorrelationIdRidesOnTheRequestAsUserFieldAndHeader(): void
+    {
+        $this->mock = new MockHandler([$this->completion('{"sentences":[]}')]);
+
+        $this->client()->complete('sys', 'user', 'narration', $this->schema());
+
+        $request = $this->requestAt(0);
+        self::assertSame(self::CORRELATION_ID, $this->bodyOf($request)['user']);
+        self::assertSame(self::CORRELATION_ID, $request->getHeaderLine('X-Correlation-Id'));
+    }
+
+    public function testRateLimitIsRetriedOnceThenThrownWithTheAttemptCount(): void
     {
         $this->mock = new MockHandler([new Response(429, [], '{}'), new Response(429, [], '{}')]);
 
-        $this->expectException(LlmRateLimited::class);
         try {
             $this->client()->complete('sys', 'user', 'narration', $this->schema());
-        } finally {
+            self::fail('expected LlmRateLimited');
+        } catch (LlmRateLimited $e) {
             self::assertCount(2, $this->history);
+            self::assertSame(2, $e->attempts());
         }
     }
 
-    public function testRateLimitThenSuccessSucceeds(): void
+    public function testRateLimitThenSuccessSucceedsAndReportsTwoAttempts(): void
     {
         $this->mock = new MockHandler([new Response(429, [], '{}'), $this->completion('{"sentences":["ok"]}')]);
 
         $result = $this->client()->complete('sys', 'user', 'narration', $this->schema());
 
         self::assertSame(['sentences' => ['ok']], $result->data);
+        self::assertSame(2, $result->attempts);
+    }
+
+    public function testAFirstTrySuccessIsOneAttempt(): void
+    {
+        $this->mock = new MockHandler([$this->completion('{"sentences":["ok"]}')]);
+
+        self::assertSame(1, $this->client()->complete('sys', 'user', 'narration', $this->schema())->attempts);
     }
 
     public function testServerErrorIsRetriedOnceThenThrown(): void

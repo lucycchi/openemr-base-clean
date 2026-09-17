@@ -38,6 +38,9 @@ final class OpenAiClient implements LanguageModel
         private readonly string $apiKey,
         private readonly string $model,
         private readonly int $retrySleepMs = 300,
+        // Sent as OpenAI's per-request `user` field and as X-Correlation-Id so
+        // the provider's own logs can be joined to ours.
+        private readonly ?string $correlationId = null,
     ) {
     }
 
@@ -61,6 +64,11 @@ final class OpenAiClient implements LanguageModel
             ],
             'temperature' => 0,
         ];
+        $headers = ['Authorization' => 'Bearer ' . $this->apiKey, 'Content-Type' => 'application/json'];
+        if ($this->correlationId !== null) {
+            $body['user'] = $this->correlationId;
+            $headers['X-Correlation-Id'] = $this->correlationId;
+        }
 
         $started = microtime(true);
         $attempt = 0;
@@ -68,23 +76,27 @@ final class OpenAiClient implements LanguageModel
             $attempt++;
             $remaining = self::TOTAL_BUDGET_SECONDS - (microtime(true) - $started);
             if ($remaining <= 0.5) {
-                throw new LlmTimeout('Time budget exhausted before request');
+                throw (new LlmTimeout('Time budget exhausted before request'))->withAttempts($attempt - 1);
             }
             try {
                 $response = $this->http->request('POST', self::ENDPOINT, [
-                    'headers' => ['Authorization' => 'Bearer ' . $this->apiKey, 'Content-Type' => 'application/json'],
+                    'headers' => $headers,
                     'json' => $body,
                     'timeout' => min(self::PER_ATTEMPT_SECONDS, $remaining),
                     'connect_timeout' => min(3.0, $remaining),
                     'http_errors' => true,
                 ]);
-                return $this->parse($response);
+                try {
+                    return $this->parse($response, $attempt);
+                } catch (LlmException $e) {
+                    throw $e->withAttempts($attempt);
+                }
             } catch (ConnectException $e) {
                 // Guzzle reports read timeouts here too; one retry if budget remains.
                 if ($attempt === 1 && self::TOTAL_BUDGET_SECONDS - (microtime(true) - $started) > 2.0) {
                     continue;
                 }
-                throw new LlmTimeout('Connection failed or timed out', 0, $e);
+                throw (new LlmTimeout('Connection failed or timed out', 0, $e))->withAttempts($attempt);
             } catch (BadResponseException $e) {
                 $status = $e->getResponse()->getStatusCode();
                 $retryable = $status === 429 || $status >= 500;
@@ -93,16 +105,16 @@ final class OpenAiClient implements LanguageModel
                     continue;
                 }
                 if ($status === 429) {
-                    throw new LlmRateLimited('Rate limited', $status, $e);
+                    throw (new LlmRateLimited('Rate limited', $status, $e))->withAttempts($attempt);
                 }
-                throw new LlmUpstreamError("Upstream HTTP $status", $status, $e);
+                throw (new LlmUpstreamError("Upstream HTTP $status", $status, $e))->withAttempts($attempt);
             } catch (GuzzleException $e) {
-                throw new LlmUpstreamError('Transport failure', 0, $e);
+                throw (new LlmUpstreamError('Transport failure', 0, $e))->withAttempts($attempt);
             }
         }
     }
 
-    private function parse(ResponseInterface $response): LlmCompletion
+    private function parse(ResponseInterface $response, int $attempts): LlmCompletion
     {
         try {
             $payload = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
@@ -139,6 +151,7 @@ final class OpenAiClient implements LanguageModel
             $data,
             is_int($usage['prompt_tokens'] ?? null) ? $usage['prompt_tokens'] : 0,
             is_int($usage['completion_tokens'] ?? null) ? $usage['completion_tokens'] : 0,
+            $attempts,
         );
     }
 }

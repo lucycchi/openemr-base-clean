@@ -64,6 +64,7 @@ final class ChatController
     private readonly StepRecorder $steps;
     private int $llmMs = 0;
     private bool $llmCalled = false;
+    private int $llmAttempts = 0;
 
     public function __construct(?LoggerInterface $logger = null, ?Request $request = null, ?Config $config = null, ?Tracer $tracer = null)
     {
@@ -188,6 +189,8 @@ final class ChatController
             'prompt_tokens' => $promptTokens,
             'completion_tokens' => $completionTokens,
             'cost_usd' => $costUsd,
+            'llm_attempts' => $this->llmAttempts,
+            'llm_retried' => $this->llmAttempts > 1,
         ];
         // One line per failed tool with the real reason (the user-facing
         // status label above is deliberately vague), then one line per request
@@ -203,7 +206,7 @@ final class ChatController
             $user,
             is_string($session->get('authProvider')) ? $session->get('authProvider') : '',
             $httpStatus === 200 ? 1 : 0,
-            sprintf('action=%s correlation_id=%s facts=%d stripped=%s from_cache=%s tokens=%d cost_usd=%s status=%s', $action, $this->correlationId, $metadata['facts'], var_export($metadata['stripped'], true), var_export($metadata['from_cache'], true), $promptTokens + $completionTokens, $costUsd === null ? 'unknown' : number_format($costUsd, 6, '.', ''), $status ?? 'ok'),
+            sprintf('action=%s correlation_id=%s facts=%d stripped=%s from_cache=%s tokens=%d cost_usd=%s llm_attempts=%d status=%s', $action, $this->correlationId, $metadata['facts'], var_export($metadata['stripped'], true), var_export($metadata['from_cache'], true), $promptTokens + $completionTokens, $costUsd === null ? 'unknown' : number_format($costUsd, 6, '.', ''), $this->llmAttempts, $status ?? 'ok'),
             $pid->value
         );
         $this->tracer->record(new RequestTrace(
@@ -231,9 +234,11 @@ final class ChatController
             return PanelPayload::briefing($assembled, $this->unconfigured($assembled), $this->correlationId);
         }
         $t = hrtime(true);
-        $result = $this->pipeline($config, $assembled, $pid)->brief($assembled);
+        $pipeline = $this->pipeline($config, $assembled, $pid);
+        $result = $pipeline->brief($assembled);
         $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
         $this->llmCalled = !$result->fromCache;
+        $this->llmAttempts = $pipeline->llmAttempts();
         return PanelPayload::briefing($assembled, $result, $this->correlationId);
     }
 
@@ -247,15 +252,17 @@ final class ChatController
             return ['error' => 'AI is not configured on this server', 'correlation_id' => $this->correlationId];
         }
         $t = hrtime(true);
-        $answer = $this->pipeline($config, $assembled, $pid)->answer($assembled, (string) $chat->question, $chat->transcript, $pid);
+        $pipeline = $this->pipeline($config, $assembled, $pid);
+        $answer = $pipeline->answer($assembled, (string) $chat->question, $chat->transcript, $pid);
         $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
         $this->llmCalled = true;
+        $this->llmAttempts = $pipeline->llmAttempts();
         return PanelPayload::answer($assembled, $answer, $this->correlationId);
     }
 
     private function pipeline(Config $config, AssembledFacts $assembled, PatientId $pid): NarrationPipeline
     {
-        $llm = new OpenAiClient(new Client(), $config->openAiApiKey, $config->openAiModel);
+        $llm = new OpenAiClient(new Client(), $config->openAiApiKey, $config->openAiModel, correlationId: $this->correlationId);
         $cache = new DbBriefingCache($pid, $assembled->facts()->hash(), $config->openAiModel);
         return new NarrationPipeline($llm, new Verifier(), new OmissionGuard(), $cache, steps: $this->steps);
     }

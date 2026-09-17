@@ -235,7 +235,7 @@ Each request is recorded as an ordered list of named steps
 ```
 authorize_and_assemble_facts   facts=24 prior_visit=2026-08-12
 cache_lookup                   hit=false
-llm.briefing                   model=gpt-4o-mini prompt_tokens=2181 completion_tokens=602
+llm.briefing                   model=gpt-4o-mini prompt_tokens=2181 completion_tokens=602 attempts=1
 verify                         kept=23 stripped=0 total_failure=false
 cache_store
 omission_guard                 appended=0
@@ -298,9 +298,13 @@ false zero. Cache hits record zero tokens and zero cost. Real rows from
 the local stack:
 
 ```
-action=ask   … tokens=471 cost_usd=0.000077 status=ok
-action=brief … from_cache=true tokens=0 cost_usd=0.000000 status=ok
+action=ask   … tokens=640 cost_usd=0.000102 llm_attempts=1 status=ok
+action=brief … from_cache=true tokens=0 cost_usd=0.000000 llm_attempts=0 status=ok
 ```
+
+`llm_attempts` is 1 normally, 2 when the one retry on 429/5xx/timeout was
+used (also `llm_retried: true` on the trace), and 0 when no model call was
+made.
 
 A cold briefing on the largest seed chart costs about $0.0007; a
 follow-up about $0.00008. The cost analysis in the submission is built

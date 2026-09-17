@@ -12,7 +12,7 @@ core submission. Each item states whether it is done, where the evidence is
 | # | Requirement | Status |
 |---|---|---|
 | 1 | Test design for boundaries, invariants, regression | ✅ Done |
-| 2 | Correlation ID on every log entry, tool call, LLM interaction | ✅ Done, one gap noted |
+| 2 | Correlation ID on every log entry, tool call, LLM interaction | ✅ Done |
 | 3 | Canonical API/event/schema contracts as source of truth | ✅ Done |
 | 4 | Real-time dashboard (requests, errors, p50/p95, tool calls, retries, verification rate) | ⚠️ Partial |
 | 5 | Runnable API collection (Bruno) | ✅ Done |
@@ -88,7 +88,7 @@ openemr-cmd pit                                                              # u
 
 ---
 
-## 2. Correlation ID across service boundaries — ✅ Done (one gap)
+## 2. Correlation ID across service boundaries — ✅ Done
 
 **Requirement.** Every agent invocation gets a unique correlation ID that
 appears in every log entry, tool call, and LLM interaction so a full trace
@@ -134,13 +134,13 @@ can be reconstructed from logs alone.
 - **Reconstruction.** `ARCHITECTURE.md § Observability` walks through
   finding one request in all three sinks from the 8-char ref.
 
-**Gap.** The id is not attached to the outbound OpenAI HTTP request itself
-([`OpenAiClient::complete()`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Llm/OpenAiClient.php#L49)
-receives only `$system, $user, $schemaName, $schema`). The LLM interaction
-is correlated on *our* side (Langfuse generation, `llm.*` step, log line)
-but OpenAI's own request logs cannot be joined to ours. Fix is small: pass
-the id into `complete()` and send it as the OpenAI `user` field or an
-`X-Correlation-Id`/`X-Request-Id` header. See open question Q1.
+- **On the outbound OpenAI request itself.** `OpenAiClient` receives the id
+  in its constructor ([`ChatController::pipeline()`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/ChatController.php))
+  and sends it both as OpenAI's per-request `user` field (stored on the
+  provider's side, so a request can be found in their logs and abuse
+  reports) and as an `X-Correlation-Id` request header (for our own egress
+  logs). Unit test: `OpenAiClientTest::testCorrelationIdRidesOnTheRequestAsUserFieldAndHeader`.
+  Added 2026-09-16 after this audit found it missing.
 
 ---
 
@@ -231,6 +231,7 @@ with the fields a dashboard needs, assembled at
 | Error rate | `http_status` (200/400/403/500), `status` (non-null on failure) | trace metadata / generation `level` |
 | p50 / p95 latency | `duration_ms` (whole request), `llm_duration_ms` (model call) | trace metadata, generation start/end |
 | Tool call counts | one span per step (`authorize_and_assemble_facts`, `cache_lookup`, `llm.*`, `verify`, `cache_store`, `omission_guard`), each with `duration_ms` and `level` ERROR on failure | spans |
+| Retry counts | `llm_attempts` (0/1/2), `llm_retried` (bool); `attempts` on the `llm.*` span | trace metadata, span detail |
 | Verification pass/fail | `verification_pass` (bool), `stripped`, `omitted`, `total_failure` | trace metadata |
 | Decision outcomes | `answer_type` (`cited` / `not_in_facts`), `chart_changed`, `from_cache`, `denied` | trace metadata |
 | Tokens / cost | `prompt_tokens`, `completion_tokens`, `cost_usd`, generation `usage.totalCost` | trace + generation |
@@ -247,11 +248,15 @@ the audit row. Deployment wires `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`
   link, no list of widgets. `ARCHITECTURE.md` describes traces, not a
   dashboard. Whether one exists in the Langfuse Cloud project is unknown
   from the repo — see open question Q3.
-- **Retry count is not emitted.** `OpenAiClient` retries once on 429/5xx
-  ([`OpenAiClient.php:90-92`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Llm/OpenAiClient.php#L90))
-  but the attempt count is a local variable; `LlmCompletion` carries only
-  `data`, `promptTokens`, `completionTokens`. No trace, log line or audit row
-  records whether a retry happened.
+- ~~Retry count is not emitted.~~ Fixed 2026-09-16: `LlmCompletion` and
+  every `LlmException` now carry `attempts` (1, or 2 when the one retry on
+  429/5xx/timeout was used); `NarrationPipeline::llmAttempts()` surfaces it
+  (0 when no model call was made, e.g. a cache hit); the controller writes
+  `llm_attempts` and `llm_retried` to the trace metadata and log line and
+  `llm_attempts=` to the audit row, and the `llm.*` span's detail carries
+  `attempts`. Unit tests: `OpenAiClientTest` (attempts on success, on
+  retry-then-success, on retry-then-fail), `NarrationPipelineTest`
+  (attempts on the step, on a final failure, zero on cache hit).
 - **Queue depth** is not applicable in the literal sense (synchronous PHP
   request/response, no queue). The doc should say so explicitly and offer
   the nearest analogue (concurrent in-flight requests, or Apache worker
@@ -260,12 +265,10 @@ the audit row. Deployment wires `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`
   ([`TODOS.md:45`](../TODOS.md#L45)); "real time" is therefore
   approximate until the OTel/v4 transport is adopted.
 
-**Proposed completion.** Surface `attempts` from `OpenAiClient` through
-`LlmCompletion` → `NarrationPipeline` → trace metadata (`llm_attempts`,
-`llm_retried`) and the log line; build the dashboard in Langfuse with one
-widget per row of the table above; export/screenshot it into
-`clinical_copilot/dashboard/` with a short README naming each widget and the
-trace field it reads.
+**Proposed completion.** Document the existing Langfuse dashboard (export
+or screenshots into `clinical_copilot/dashboard/` with a README naming each
+widget and the trace field it reads), add a retry widget on `llm_attempts`,
+and state that queue depth is not applicable.
 
 ---
 
@@ -418,11 +421,9 @@ The nearest thing is `tests/evals/smoke.php`, which is sequential.
 
 ---
 
-## Open questions before completing items 2, 4, 7, 8, 9
+## Open questions before completing items 4, 7, 8, 9
 
-- **Q1 (item 2).** Send the correlation id to OpenAI as the `user` field
-  on the chat-completions request (visible in OpenAI's own logs and abuse
-  reports), as a custom request header, or both?
+- **Q1 (item 2).** Decided 2026-09-16: both. Done.
 - **Q2 (item 3).** Decided 2026-09-16: JSON Schema files loaded by PHP at
   runtime. Done.
 - **Q3 (item 4).** Does a Langfuse dashboard already exist in the Cloud

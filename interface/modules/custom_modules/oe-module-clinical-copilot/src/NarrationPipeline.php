@@ -31,6 +31,8 @@ final class NarrationPipeline
     ) {
     }
 
+    private int $llmAttempts = 0;
+
     public function steps(): StepRecorder
     {
         return $this->steps;
@@ -104,14 +106,27 @@ final class NarrationPipeline
         return new AnswerResult($type, $verified->kept(), $verified->strippedCount(), null, $completion->promptTokens, $completion->completionTokens);
     }
 
+    /** HTTP attempts the model call took this request: 0 if no call was made, 2 if the one retry was used. */
+    public function llmAttempts(): int
+    {
+        return $this->llmAttempts;
+    }
+
     /** @param array<string, mixed> $schema */
     private function complete(string $system, string $user, string $schemaName, array $schema): LlmCompletion
     {
-        return $this->steps->measure(
-            'llm.' . $schemaName,
-            fn() => $this->llm->complete($system, $user, $schemaName, $schema),
-            fn(LlmCompletion $c) => ['model' => $this->llm->model(), 'prompt_tokens' => $c->promptTokens, 'completion_tokens' => $c->completionTokens],
-        );
+        try {
+            $completion = $this->steps->measure(
+                'llm.' . $schemaName,
+                fn() => $this->llm->complete($system, $user, $schemaName, $schema),
+                fn(LlmCompletion $c) => ['model' => $this->llm->model(), 'prompt_tokens' => $c->promptTokens, 'completion_tokens' => $c->completionTokens, 'attempts' => $c->attempts],
+            );
+        } catch (LlmException $e) {
+            $this->llmAttempts = $e->attempts();
+            throw $e;
+        }
+        $this->llmAttempts = $completion->attempts;
+        return $completion;
     }
 
     private function verify(Narration $narration, FactSet $facts): VerificationResult

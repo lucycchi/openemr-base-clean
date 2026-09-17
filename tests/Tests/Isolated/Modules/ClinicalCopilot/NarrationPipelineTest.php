@@ -94,6 +94,8 @@ final class NarrationPipelineTest extends TestCase
         self::assertSame(['cache_lookup', 'llm.briefing', 'verify', 'cache_store', 'omission_guard'], array_map(fn($s) => $s->name, $steps));
         self::assertSame(['hit' => false], $steps[0]->detail);
         self::assertSame('fake-model', $steps[1]->detail['model']);
+        self::assertSame(1, $steps[1]->detail['attempts']);
+        self::assertSame(1, $pipeline->llmAttempts());
         self::assertSame(['kept' => 1, 'stripped' => 1, 'total_failure' => false], $steps[2]->detail);
         self::assertSame(['appended' => 1], $steps[4]->detail);
         self::assertSame([], $pipeline->steps()->failed());
@@ -112,6 +114,28 @@ final class NarrationPipelineTest extends TestCase
         self::assertSame('llm.briefing', $failed[0]->name);
         self::assertSame('LlmRateLimited: Rate limited (caused by RuntimeException: 429 Too Many Requests)', $failed[0]->error);
         self::assertSame(['cache_lookup', 'llm.briefing', 'omission_guard'], array_map(fn($s) => $s->name, $pipeline->steps()->all()));
+    }
+
+    public function testARetriedCallReportsItsAttemptsEvenWhenItFinallyFails(): void
+    {
+        $this->llm->throw = (new LlmRateLimited('Rate limited', 429))->withAttempts(2);
+        $pipeline = $this->pipeline();
+
+        $pipeline->brief($this->assembled());
+
+        self::assertSame(2, $pipeline->llmAttempts());
+    }
+
+    public function testACacheHitMakesNoModelAttempt(): void
+    {
+        $this->llm->reply = ['sentences' => [['text' => 'Lisinopril 10 MG Oral Tablet was started.', 'fact_ids' => ['rx0001']]]];
+        $pipeline = $this->pipeline();
+        $pipeline->brief($this->assembled());
+        $warm = $this->pipeline();
+
+        $warm->brief($this->assembled());
+
+        self::assertSame(0, $warm->llmAttempts());
     }
 
     public function testAQuestionAboutAnotherPatientIsRefusedWithoutCallingTheModel(): void
