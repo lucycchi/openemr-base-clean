@@ -33,16 +33,70 @@ final class AlertReceiverTest extends TestCase
 
     private const SECRET = 'a-long-random-secret';
 
-    private function receiver(string $secret = self::SECRET): AlertReceiver
+    private const SIGNING = 'lf-whs-test-signing-secret';
+    private const NOW = 1_789_600_000;
+
+    private function receiver(string $secret = self::SECRET, string $signing = ''): AlertReceiver
     {
-        return new AlertReceiver($secret);
+        return new AlertReceiver($secret, $signing, static fn(): int => self::NOW);
+    }
+
+    private static function sign(string $body, int $ts = self::NOW, string $secret = self::SIGNING): string
+    {
+        return 't=' . $ts . ',v1=' . hash_hmac('sha256', $ts . '.' . $body, $secret);
+    }
+
+    public function testAValidLangfuseSignatureIsAcceptedWithoutAToken(): void
+    {
+        $body = '{"alert":{"name":"p95"}}';
+        $event = $this->receiver('', self::SIGNING)->receive('', $body, self::sign($body));
+        self::assertSame('p95', $event->name);
+    }
+
+    public function testATamperedBodyFailsTheSignature(): void
+    {
+        $this->expectException(AlertRejected::class);
+        $this->expectExceptionMessage('Invalid signature');
+        $this->receiver('', self::SIGNING)->receive('', '{"alert":{"name":"forged"}}', self::sign('{"alert":{"name":"p95"}}'));
+    }
+
+    public function testAStaleSignatureIsRejectedAsAReplay(): void
+    {
+        $body = '{"alert":{"name":"p95"}}';
+        $this->expectException(AlertRejected::class);
+        $this->expectExceptionMessage('Signature expired');
+        $this->receiver('', self::SIGNING)->receive('', $body, self::sign($body, self::NOW - 600));
+    }
+
+    public function testASignatureWithTheWrongSecretIsRejected(): void
+    {
+        $body = '{}';
+        $this->expectException(AlertRejected::class);
+        $this->expectExceptionMessage('Invalid signature');
+        $this->receiver('', self::SIGNING)->receive('', $body, self::sign($body, self::NOW, 'other'));
+    }
+
+    public function testASignatureIsIgnoredWhenNoSigningSecretIsConfiguredAndTokenStillWorks(): void
+    {
+        $body = '{"name":"x"}';
+        $event = $this->receiver(self::SECRET, '')->receive(self::SECRET, $body, self::sign($body));
+        self::assertSame('x', $event->name);
+    }
+
+    public function testWhenBothAreConfiguredEitherCredentialIsEnough(): void
+    {
+        $body = '{"name":"x"}';
+        self::assertSame('x', $this->receiver(self::SECRET, self::SIGNING)->receive(self::SECRET, $body, '')->name);
+        self::assertSame('x', $this->receiver(self::SECRET, self::SIGNING)->receive('', $body, self::sign($body))->name);
+        $this->expectException(AlertRejected::class);
+        $this->receiver(self::SECRET, self::SIGNING)->receive('wrong', $body, 't=1,v1=bad');
     }
 
     public function testRejectsWhenNoSecretIsConfigured(): void
     {
         $this->expectException(AlertRejected::class);
         $this->expectExceptionMessage('Alert webhook is not configured');
-        $this->receiver('')->receive('', '{}');
+        $this->receiver('', '')->receive('', '{}', '');
     }
 
     public function testRejectsAWrongToken(): void

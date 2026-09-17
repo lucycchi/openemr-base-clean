@@ -24,8 +24,10 @@ final readonly class Config
         public string $langfuseSecretKey,
         public ?float $inputUsdPerMillion = null,
         public ?float $outputUsdPerMillion = null,
-        /** Shared secret Langfuse alert webhooks must present to alerts.php; empty disables the receiver. */
+        /** Shared token a webhook sender may present to alerts.php (X-Alert-Token). */
         public string $alertWebhookSecret = '',
+        /** Langfuse webhook signing secret (lf-whs-…) used to verify x-langfuse-signature. */
+        public string $langfuseWebhookSecret = '',
     ) {
     }
 
@@ -40,6 +42,7 @@ final readonly class Config
             self::envFloat('OPENAI_INPUT_USD_PER_M'),
             self::envFloat('OPENAI_OUTPUT_USD_PER_M'),
             self::env('ALERT_WEBHOOK_SECRET'),
+            self::env('LANGFUSE_WEBHOOK_SECRET'),
         );
     }
 

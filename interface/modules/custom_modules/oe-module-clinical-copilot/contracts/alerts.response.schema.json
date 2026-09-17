@@ -2,19 +2,55 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-emr.org/clinical-copilot/contracts/alerts.response.schema.json",
   "title": "alerts.php response",
-  "description": "Body returned by the alert webhook receiver. POST only (405 otherwise). Authenticated by X-Alert-Token header or ?token= equal to ALERT_WEBHOOK_SECRET: 503 when no secret is configured, 401 on a wrong token, 400 when the body is not a JSON object, 413 over 64 KiB. On 200 the alert has been written to the application log (WARNING 'copilot alert received') and the OpenEMR audit log (event clinical-copilot-alert). The inbound body is whatever the observability backend sends; the receiver lifts name/severity/type/id/value/threshold from the common locations and records the remaining keys by name only.",
+  "description": "Body returned by the alert webhook receiver. POST only (405 otherwise). Authenticated by either Langfuse's x-langfuse-signature header (t=<unix>,v1=<HMAC-SHA256 of '<t>.<body>' with LANGFUSE_WEBHOOK_SECRET>; rejected if tampered or older than 5 minutes) or an X-Alert-Token header / ?token= equal to ALERT_WEBHOOK_SECRET: 503 when neither secret is configured, 401 on a bad credential, 400 when the body is not a JSON object, 413 over 64 KiB. On 200 the alert has been written to the application log (WARNING 'copilot alert received') and the OpenEMR audit log (event clinical-copilot-alert). The inbound body is whatever the observability backend sends; the receiver lifts name/severity/type/id/value/threshold from the common locations and records the remaining keys by name only.",
   "type": "object",
   "properties": {
-    "received": { "const": true },
-    "alert": { "type": "string", "description": "Alert name as parsed, or 'unknown'." },
-    "severity": { "type": "string", "description": "Severity as parsed, or 'unknown'." },
-    "error": { "type": "string", "description": "Present instead of received/alert/severity on a non-200." },
-    "correlation_id": { "type": "string", "pattern": "^[0-9a-f]{32}$" }
+    "received": {
+      "const": true
+    },
+    "alert": {
+      "type": "string",
+      "description": "Alert name as parsed, or 'unknown'."
+    },
+    "severity": {
+      "type": "string",
+      "description": "Severity as parsed, or 'unknown'."
+    },
+    "error": {
+      "type": "string",
+      "description": "Present instead of received/alert/severity on a non-200."
+    },
+    "correlation_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    }
   },
-  "required": ["correlation_id"],
+  "required": [
+    "correlation_id"
+  ],
   "additionalProperties": false,
   "oneOf": [
-    { "required": ["received", "alert", "severity"], "not": { "required": ["error"] } },
-    { "required": ["error"], "not": { "required": ["received"] } }
+    {
+      "required": [
+        "received",
+        "alert",
+        "severity"
+      ],
+      "not": {
+        "required": [
+          "error"
+        ]
+      }
+    },
+    {
+      "required": [
+        "error"
+      ],
+      "not": {
+        "required": [
+          "received"
+        ]
+      }
+    }
   ]
 }

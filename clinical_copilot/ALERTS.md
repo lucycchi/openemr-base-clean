@@ -18,10 +18,19 @@ Langfuse alert rule ── webhook POST ──► public/alerts.php
 
 - **URL:** `https://<host>/interface/modules/custom_modules/oe-module-clinical-copilot/public/alerts.php`
   (deployed: `https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/alerts.php`).
-- **Auth:** header `X-Alert-Token: <ALERT_WEBHOOK_SECRET>` (or `?token=`).
-  The secret lives in the droplet's `.env` (`ALERT_WEBHOOK_SECRET`, generate
-  with `openssl rand -hex 32`); the receiver answers 503 until it is set,
-  401 on a wrong token, 400 on a non-object body, 405 on anything but POST.
+- **Auth (preferred): Langfuse's signed webhook.** When the webhook is
+  created, Langfuse shows a signing secret (`lf-whs-…`) once; it goes in
+  the droplet's `.env` as `LANGFUSE_WEBHOOK_SECRET`. Every delivery carries
+  `x-langfuse-signature: t=<unix seconds>,v1=<hex>` where `v1` is
+  HMAC-SHA256 over `"<t>.<raw body>"`. The receiver recomputes it
+  (constant-time compare), rejects a mismatch (`Invalid signature`, 401) and
+  a timestamp more than 5 minutes off (`Signature expired`, 401), so a
+  tampered or replayed body is refused. No custom header is needed in
+  Langfuse.
+- **Auth (fallback): shared token.** `X-Alert-Token: <ALERT_WEBHOOK_SECRET>`
+  (or `?token=`) for senders that cannot sign. Either credential is
+  sufficient; with neither configured the receiver answers 503. Other
+  responses: 400 non-object body, 413 over 64 KiB, 405 non-POST.
 - **Payload:** the receiver is tolerant of shape. It lifts the alert name
   from `alert.name` / `name` / `title` / `alertName`, severity from
   `alert.severity` / `severity` / `status`, the value and threshold from
@@ -155,8 +164,9 @@ in the audit log.
 
 The Langfuse project already has the dashboard; the three rules above are
 created under the project's alerting page with the metric, filter, window
-and threshold from each table, and the webhook URL and header from the top
-of this document. Record the configured rules (a screenshot or export) in
+and threshold from each table, and the webhook URL from the top of this
+document (the signing secret Langfuse shows on creation is what
+`LANGFUSE_WEBHOOK_SECRET` must be set to). Record the configured rules (a screenshot or export) in
 [`dashboard/`](dashboard/) next to the dashboard so a grader can see the
 rules exist without a Langfuse login. Test each rule once with "send test
 notification"; the receiver's 200 body and the resulting

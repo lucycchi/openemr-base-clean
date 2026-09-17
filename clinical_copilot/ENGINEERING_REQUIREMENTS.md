@@ -359,9 +359,11 @@ meaning and on-call response.
   as watched-not-paged with the reason.
 - **Webhook receiver.** Firings are POSTed to
   [`public/alerts.php`](../interface/modules/custom_modules/oe-module-clinical-copilot/public/alerts.php),
-  which authenticates with `ALERT_WEBHOOK_SECRET` (`X-Alert-Token` header
-  or `?token=`; 503 until configured, 401 wrong token, 400 non-object body,
-  413 > 64 KiB, 405 non-POST), parses the payload tolerantly
+  which verifies Langfuse's signed `x-langfuse-signature` header
+  (HMAC-SHA256 with `LANGFUSE_WEBHOOK_SECRET`, 5-minute replay window;
+  tampered or stale → 401) or, as a fallback, a shared `X-Alert-Token`
+  equal to `ALERT_WEBHOOK_SECRET` (503 until either is configured, 400
+  non-object body, 413 > 64 KiB, 405 non-POST), parses the payload tolerantly
   ([`Ops/AlertReceiver`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Ops/AlertReceiver.php),
   [`Ops/AlertEvent`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Ops/AlertEvent.php)),
   and records the firing as a WARNING `copilot alert received` in the app
@@ -369,7 +371,7 @@ meaning and on-call response.
   with a fresh correlation id, and never with raw payload values (only the
   lifted fields and the remaining key names). Wired into
   `docker/vps/docker-compose.yml` and `.env.example`. Unit tests:
-  `AlertReceiverTest` (7). Contract:
+  `AlertReceiverTest` (13, including valid / tampered / stale / wrong-secret signatures). Contract:
   `contracts/alerts.response.schema.json`. Collection requests 17 and 18.
   Verified live on the local stack: 401 / 400 / 200, audit row and log line
   present.
