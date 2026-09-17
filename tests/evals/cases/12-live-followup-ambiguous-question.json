@@ -1,0 +1,10 @@
+{
+  "id": "12-live-followup-ambiguous-question",
+  "guards": "boundary",
+  "live": true,
+  "failure_mode": "An ambiguous question with no clear referent ('is it higher?', 'what about the medication?') on a chart with several candidates. A clinician in a hurry asks exactly like this. The model must not resolve the ambiguity by inventing: whatever it answers must cite facts and contain no number or date that is not in one, or it must decline with not_in_facts. Silently picking one candidate and stating a value for it is caught by the grounding check; picking one and describing it without values is accepted, because the citation chip shows which one it chose.",
+  "mode": "followup",
+  "patients": "abnormal:3",
+  "question": "Is it higher than it was last time?",
+  "expect": {"no_ungrounded_kept": true}
+}

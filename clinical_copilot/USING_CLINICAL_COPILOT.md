@@ -156,6 +156,10 @@ What is refused, on purpose:
   *Not in the facts for this briefing window. Check the chart tabs for
   older records.* The briefing covers changes since the prior visit plus
   the active-meds and allergy context; it is not a full-chart search.
+- **Another patient** ("what is patient 4 taking?"): the briefing is scoped
+  to the open chart. A question naming a different patient, chart or
+  record number is refused before the model runs and shows the same
+  *Not in the facts…* message. Open that patient's chart instead.
 - **Arithmetic** ("by how much did the A1c rise?"): the model is told not
   to compute. If it declines you get the `not_in_facts` message; if it
   computes anyway the verifier strips the sentence and you see

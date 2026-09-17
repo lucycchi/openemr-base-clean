@@ -1,0 +1,35 @@
+meta {
+  name: 11 Brief again (cache hit, no model call)
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/chat.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: brief
+}
+
+assert {
+  res.status: eq 200
+  res.body.facts_hash: eq {{facts_hash}}
+  res.body.narration.from_cache: eq true
+  res.body.narration.tokens.prompt: eq 0
+  res.body.narration.tokens.completion: eq 0
+}
+
+docs {
+  Same chart, same prompt version, same model as request 06, so the
+  narration comes from copilot_briefing_cache: from_cache true, zero tokens,
+  no request to OpenAI. The facts are still re-assembled and re-verified;
+  only the model call is skipped. Editing the chart changes facts_hash and
+  misses the cache.
+}

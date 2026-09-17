@@ -15,7 +15,9 @@ declare(strict_types=1);
 namespace OpenEMR\Modules\ClinicalCopilot;
 
 use OpenEMR\Modules\ClinicalCopilot\Llm\LanguageModel;
+use OpenEMR\Modules\ClinicalCopilot\Llm\LlmCompletion;
 use OpenEMR\Modules\ClinicalCopilot\Llm\LlmException;
+use OpenEMR\Modules\ClinicalCopilot\Ops\StepRecorder;
 
 final class NarrationPipeline
 {
@@ -25,7 +27,13 @@ final class NarrationPipeline
         private readonly OmissionGuard $guard,
         private readonly BriefingCache $cache,
         private readonly Prompt $prompt = new Prompt(),
+        private readonly StepRecorder $steps = new StepRecorder(),
     ) {
+    }
+
+    public function steps(): StepRecorder
+    {
+        return $this->steps;
     }
 
     public function cacheKey(AssembledFacts $assembled): string
@@ -38,14 +46,14 @@ final class NarrationPipeline
         $facts = $assembled->facts();
         $key = $this->cacheKey($assembled);
 
-        $cached = $this->cache->get($key);
+        $cached = $this->steps->measure('cache_lookup', fn() => $this->cache->get($key), static fn(?array $hit) => ['hit' => $hit !== null]);
         if ($cached !== null) {
-            $verified = $this->verifier->verify($this->narrationFrom($cached), $facts);
-            return new BriefingResult($verified->kept(), $verified->strippedCount(), $this->guard->omitted($verified, $facts), null, true, false, 0, 0);
+            $verified = $this->verify($this->narrationFrom($cached), $facts);
+            return new BriefingResult($verified->kept(), $verified->strippedCount(), $this->omitted($verified, $facts), null, true, false, 0, 0);
         }
 
         try {
-            $completion = $this->llm->complete(
+            $completion = $this->complete(
                 $this->prompt->briefingSystem(),
                 $this->prompt->briefingUser($assembled),
                 'briefing',
@@ -53,17 +61,17 @@ final class NarrationPipeline
             );
         } catch (LlmException $e) {
             $empty = new VerificationResult([], []);
-            return new BriefingResult([], 0, $this->guard->omitted($empty, $facts), $e->statusLabel(), false, false, 0, 0);
+            return new BriefingResult([], 0, $this->omitted($empty, $facts), $e->statusLabel(), false, false, 0, 0);
         }
 
-        $verified = $this->verifier->verify($this->narrationFrom($completion->data), $facts);
+        $verified = $this->verify($this->narrationFrom($completion->data), $facts);
         if (!$verified->isTotalFailure()) {
-            $this->cache->put($key, $completion->data);
+            $this->steps->measure('cache_store', fn() => $this->cache->put($key, $completion->data));
         }
         return new BriefingResult(
             $verified->kept(),
             $verified->strippedCount(),
-            $this->guard->omitted($verified, $facts),
+            $this->omitted($verified, $facts),
             null,
             false,
             $verified->isTotalFailure(),
@@ -73,10 +81,14 @@ final class NarrationPipeline
     }
 
     /** @param list<array{role: string, text: string}> $transcript */
-    public function answer(AssembledFacts $assembled, string $question, array $transcript): AnswerResult
+    public function answer(AssembledFacts $assembled, string $question, array $transcript, ?PatientId $open = null): AnswerResult
     {
+        if ($open !== null && QuestionScope::refersToAnotherPatient($question, $open)) {
+            $this->steps->add('scope_check', (int) round(microtime(true) * 1000), 0, null, ['refused' => 'other_patient']);
+            return new AnswerResult('not_in_facts', [], 0, null, 0, 0);
+        }
         try {
-            $completion = $this->llm->complete(
+            $completion = $this->complete(
                 $this->prompt->followUpSystem(),
                 $this->prompt->followUpUser($assembled, $question, $transcript),
                 'follow_up',
@@ -88,8 +100,37 @@ final class NarrationPipeline
 
         $type = $completion->data['answer_type'] ?? null;
         $type = $type === 'not_in_facts' ? 'not_in_facts' : 'cited';
-        $verified = $this->verifier->verify($this->narrationFrom($completion->data), $assembled->facts());
+        $verified = $this->verify($this->narrationFrom($completion->data), $assembled->facts());
         return new AnswerResult($type, $verified->kept(), $verified->strippedCount(), null, $completion->promptTokens, $completion->completionTokens);
+    }
+
+    /** @param array<string, mixed> $schema */
+    private function complete(string $system, string $user, string $schemaName, array $schema): LlmCompletion
+    {
+        return $this->steps->measure(
+            'llm.' . $schemaName,
+            fn() => $this->llm->complete($system, $user, $schemaName, $schema),
+            fn(LlmCompletion $c) => ['model' => $this->llm->model(), 'prompt_tokens' => $c->promptTokens, 'completion_tokens' => $c->completionTokens],
+        );
+    }
+
+    private function verify(Narration $narration, FactSet $facts): VerificationResult
+    {
+        return $this->steps->measure(
+            'verify',
+            fn() => $this->verifier->verify($narration, $facts),
+            static fn(VerificationResult $v) => ['kept' => count($v->kept()), 'stripped' => $v->strippedCount(), 'total_failure' => $v->isTotalFailure()],
+        );
+    }
+
+    /** @return list<Fact> */
+    private function omitted(VerificationResult $verified, FactSet $facts): array
+    {
+        return $this->steps->measure(
+            'omission_guard',
+            fn() => $this->guard->omitted($verified, $facts),
+            static fn(array $omitted) => ['appended' => count($omitted)],
+        );
     }
 
     /**

@@ -22,6 +22,8 @@ final readonly class Config
         public string $langfuseHost,
         public string $langfusePublicKey,
         public string $langfuseSecretKey,
+        public ?float $inputUsdPerMillion = null,
+        public ?float $outputUsdPerMillion = null,
     ) {
     }
 
@@ -33,6 +35,8 @@ final readonly class Config
             self::env('LANGFUSE_HOST') ?: (self::env('LANGFUSE_BASE_URL') ?: 'https://cloud.langfuse.com'),
             self::env('LANGFUSE_PUBLIC_KEY'),
             self::env('LANGFUSE_SECRET_KEY'),
+            self::envFloat('OPENAI_INPUT_USD_PER_M'),
+            self::envFloat('OPENAI_OUTPUT_USD_PER_M'),
         );
     }
 
@@ -44,6 +48,12 @@ final readonly class Config
     public function hasLangfuse(): bool
     {
         return $this->langfusePublicKey !== '' && $this->langfuseSecretKey !== '';
+    }
+
+    private static function envFloat(string $name): ?float
+    {
+        $v = self::env($name);
+        return is_numeric($v) ? (float) $v : null;
     }
 
     private static function env(string $name): string

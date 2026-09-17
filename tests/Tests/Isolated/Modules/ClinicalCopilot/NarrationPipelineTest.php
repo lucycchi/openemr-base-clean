@@ -23,6 +23,7 @@ use OpenEMR\Modules\ClinicalCopilot\FactSet;
 use OpenEMR\Modules\ClinicalCopilot\Llm\LlmRateLimited;
 use OpenEMR\Modules\ClinicalCopilot\NarrationPipeline;
 use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
+use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\Prompt;
 use OpenEMR\Modules\ClinicalCopilot\Verifier;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeBriefingCache;
@@ -77,6 +78,53 @@ final class NarrationPipelineTest extends TestCase
         self::assertSame(['al0001'], array_map(fn(Fact $f) => $f->id, $result->omitted));
         self::assertNull($result->status);
         self::assertFalse($result->fromCache);
+    }
+
+    public function testEveryStepOfABriefingIsRecordedInOrderWithItsOutcome(): void
+    {
+        $this->llm->reply = ['sentences' => [
+            ['text' => 'A new blood pressure medication was started.', 'fact_ids' => ['rx0001']],
+            ['text' => 'Everything else looks fine.', 'fact_ids' => []],
+        ]];
+        $pipeline = $this->pipeline();
+
+        $pipeline->brief($this->assembled());
+
+        $steps = $pipeline->steps()->all();
+        self::assertSame(['cache_lookup', 'llm.briefing', 'verify', 'cache_store', 'omission_guard'], array_map(fn($s) => $s->name, $steps));
+        self::assertSame(['hit' => false], $steps[0]->detail);
+        self::assertSame('fake-model', $steps[1]->detail['model']);
+        self::assertSame(['kept' => 1, 'stripped' => 1, 'total_failure' => false], $steps[2]->detail);
+        self::assertSame(['appended' => 1], $steps[4]->detail);
+        self::assertSame([], $pipeline->steps()->failed());
+    }
+
+    public function testAModelFailureIsRecordedAsAFailedStepWithTheRealReason(): void
+    {
+        $this->llm->throw = new LlmRateLimited('Rate limited', 429, new \RuntimeException('429 Too Many Requests'));
+        $pipeline = $this->pipeline();
+
+        $result = $pipeline->brief($this->assembled());
+
+        self::assertSame('AI summary unavailable: provider busy, try again shortly', $result->status);
+        $failed = $pipeline->steps()->failed();
+        self::assertCount(1, $failed);
+        self::assertSame('llm.briefing', $failed[0]->name);
+        self::assertSame('LlmRateLimited: Rate limited (caused by RuntimeException: 429 Too Many Requests)', $failed[0]->error);
+        self::assertSame(['cache_lookup', 'llm.briefing', 'omission_guard'], array_map(fn($s) => $s->name, $pipeline->steps()->all()));
+    }
+
+    public function testAQuestionAboutAnotherPatientIsRefusedWithoutCallingTheModel(): void
+    {
+        $this->llm->reply = ['answer_type' => 'cited', 'sentences' => [['text' => 'Started a medication.', 'fact_ids' => ['rx0001']]]];
+        $pipeline = $this->pipeline();
+
+        $result = $pipeline->answer($this->assembled(), 'What is patient 4 taking?', [], new PatientId(15));
+
+        self::assertSame('not_in_facts', $result->answerType);
+        self::assertSame([], $result->sentences);
+        self::assertSame(0, $this->llm->calls);
+        self::assertSame(['scope_check'], array_map(fn($s) => $s->name, $pipeline->steps()->all()));
     }
 
     public function testSecondBriefingWithSameFactsIsServedFromCacheWithoutCallingTheModel(): void

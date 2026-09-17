@@ -23,6 +23,7 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use OpenEMR\Modules\ClinicalCopilot\Ops\LangfuseTracer;
 use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
+use OpenEMR\Modules\ClinicalCopilot\Ops\Step;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
@@ -103,6 +104,52 @@ final class LangfuseTracerTest extends TestCase
         self::assertSame('gpt-4o-mini', $batch[1]['body']['model']);
         self::assertSame(['input' => 606, 'output' => 295], $batch[1]['body']['usage']);
         self::assertSame('DEFAULT', $batch[1]['body']['level']);
+    }
+
+    public function testEachStepBecomesAnOrderedSpanAndCostRidesOnTheGeneration(): void
+    {
+        $trace = new RequestTrace(
+            correlationId: 'corr-steps',
+            name: 'copilot.brief',
+            user: 'physician',
+            startedAtMs: 1_700_000_000_000,
+            durationMs: 3200,
+            metadata: ['facts' => 14],
+            model: 'gpt-4o-mini',
+            promptTokens: 606,
+            completionTokens: 295,
+            llmDurationMs: 3100,
+            status: 'AI summary unavailable: provider error',
+            steps: [
+                new Step('authorize_and_assemble_facts', 1_700_000_000_000, 40, null, ['facts' => 14]),
+                new Step('llm.briefing', 1_700_000_000_050, 3100, 'LlmUpstreamError: Upstream HTTP 503', []),
+            ],
+            costUsd: 0.000268,
+        );
+
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($trace);
+
+        $batch = $this->sentBody()['batch'];
+        self::assertIsArray($batch);
+        self::assertSame(['trace-create', 'span-create', 'span-create', 'generation-create'], array_column($batch, 'type'));
+        self::assertIsArray($batch[0]);
+        self::assertIsArray($batch[0]['body']);
+        self::assertIsArray($batch[0]['body']['metadata']);
+        self::assertSame(0.000268, $batch[0]['body']['metadata']['cost_usd']);
+        self::assertIsArray($batch[1]);
+        self::assertIsArray($batch[1]['body']);
+        self::assertSame('corr-steps', $batch[1]['body']['traceId']);
+        self::assertSame('authorize_and_assemble_facts', $batch[1]['body']['name']);
+        self::assertSame('2023-11-14T22:13:20.000Z', $batch[1]['body']['startTime']);
+        self::assertSame('2023-11-14T22:13:20.040Z', $batch[1]['body']['endTime']);
+        self::assertSame('DEFAULT', $batch[1]['body']['level']);
+        self::assertIsArray($batch[2]);
+        self::assertIsArray($batch[2]['body']);
+        self::assertSame('ERROR', $batch[2]['body']['level']);
+        self::assertSame('LlmUpstreamError: Upstream HTTP 503', $batch[2]['body']['statusMessage']);
+        self::assertIsArray($batch[3]);
+        self::assertIsArray($batch[3]['body']);
+        self::assertSame(['input' => 606, 'output' => 295, 'totalCost' => 0.000268], $batch[3]['body']['usage']);
     }
 
     public function testNoGenerationEventWhenTheModelWasNotCalled(): void

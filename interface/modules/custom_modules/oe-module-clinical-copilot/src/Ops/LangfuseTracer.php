@@ -40,10 +40,29 @@ final readonly class LangfuseTracer implements Tracer
                 'name' => $t->name,
                 'userId' => $t->user,
                 'timestamp' => $start,
-                'metadata' => $t->metadata + ['duration_ms' => $t->durationMs],
+                'metadata' => $t->metadata + ['duration_ms' => $t->durationMs, 'cost_usd' => $t->costUsd],
                 'tags' => ['clinical-copilot'],
             ],
         ]];
+        // One span per step, in order, so the trace view reads as a timeline
+        // and a failed step is red with its reason.
+        foreach ($t->steps as $i => $step) {
+            $batch[] = [
+                'id' => $t->correlationId . '-step-' . $i,
+                'type' => 'span-create',
+                'timestamp' => $now,
+                'body' => [
+                    'id' => $t->correlationId . '-step-' . $i,
+                    'traceId' => $t->correlationId,
+                    'name' => $step->name,
+                    'startTime' => self::iso($step->startedAtMs),
+                    'endTime' => self::iso($step->startedAtMs + $step->durationMs),
+                    'level' => $step->error === null ? 'DEFAULT' : 'ERROR',
+                    'statusMessage' => $step->error,
+                    'metadata' => $step->detail + ['duration_ms' => $step->durationMs],
+                ],
+            ];
+        }
         if ($t->model !== null) {
             $batch[] = [
                 'id' => $t->correlationId . '-gen',
@@ -56,7 +75,8 @@ final readonly class LangfuseTracer implements Tracer
                     'model' => $t->model,
                     'startTime' => $start,
                     'endTime' => self::iso($t->startedAtMs + $t->llmDurationMs),
-                    'usage' => ['input' => $t->promptTokens, 'output' => $t->completionTokens],
+                    'usage' => ['input' => $t->promptTokens, 'output' => $t->completionTokens]
+                        + ($t->costUsd === null ? [] : ['totalCost' => $t->costUsd]),
                     'level' => $t->status === null ? 'DEFAULT' : 'ERROR',
                     'statusMessage' => $t->status,
                     'metadata' => ['llm_duration_ms' => $t->llmDurationMs],

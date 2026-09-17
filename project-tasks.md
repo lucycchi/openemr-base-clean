@@ -18,7 +18,7 @@ Legend: `[x]` done in this repo already, `[ ]` not started/incomplete,
 
 ---
 
-## Status as of 2026-09-16 (evening before Early Submission)
+## Status as of 2026-09-16 (late evening, Early Submission day)
 
 Decisions since this file was written: target user, architecture, provider
 (OpenAI), deployment (VPS + flex image), observability (Langfuse Cloud) are
@@ -32,22 +32,28 @@ all decided and recorded in `clinical_copilot/DESIGN.md`
 - [x] Design record: `clinical_copilot/DESIGN.md` (office hours + eng review, APPROVED).
 - [x] Validation spike and results: `tests/evals/spike-results.md`.
 - [x] `USERS.md`, `ARCHITECTURE.md` (539-word summary first), `KEY_METRICS.md`.
+- [x] Grader-facing docs consolidated under `clinical_copilot/` with a reading-order index and `USING_CLINICAL_COPILOT.md` (setup, reading the panel, follow-ups, every status message, demo patients); root `README.md` points there.
+- [x] Medication/allergy facts carry a date (`started`/`onset`, or `first noted` when the clinician recorded none; `DateProvenance`), so "when was X first noted?" is citable.
 - [x] `AI_INTEGRATION_PLAN.md` marked superseded.
 - [x] Agent module `oe-module-clinical-copilot`: FactAssembler with ACL, prior-visit rule, sensitivity filter, reference-range abnormal labs, deltas, allergy-vs-medication; ID-only narration; Verifier; OmissionGuard; OpenAI client with typed failures; briefing cache; dashboard panel with chips, follow-ups, chart-changed restart.
 - [x] Correlation ids on every log line, audit-log row per request, Langfuse tracer (unit-tested; live pending keys).
 - [x] `/health` and `/ready` (real probes, 60 s cache, Langfuse degraded-not-down).
-- [x] 73 isolated unit tests; 11 eval cases (recorded + live) with `results.json`; UI smoke.
+- [x] Observability closed against the PRD's four questions: ordered per-step spans with timings and failure reasons (`StepRecorder`), USD cost per request (`Pricing`, `cost_usd` in trace/log/audit row), catch-all that logs + traces + returns a correlated 500; `ARCHITECTURE.md` § Observability rewritten around the four questions.
+- [x] Evaluation documented against the PRD (`ARCHITECTURE.md` § Evaluation): layers, pass/fail definitions, the three named edge cases mapped to cases. Added 4 live cases (ambiguous query, identifier extraction, other-patient, instruction override) and two independent harness checks (`no_ungrounded_kept` re-implemented, `no_identifier_leak`). Case 14 found a cross-patient misattribution on first run → fixed deterministically (`QuestionScope`) + prompt rule; `Prompt::VERSION` bumped.
+- [x] 95 isolated unit tests; 15 eval cases (8 recorded + 7 live) with `results.json` (15/15, 0 of 60 stripped); UI smoke.
+- [x] **VPS live**: https://146-190-139-37.sslip.io, `/health` and `/ready` green (database, OpenAI ok), URL in `README.md`.
+- [x] Live eval re-run on the deployed box: `tests/evals/results-deployed.json` (11/11, 1 of 58 sentences stripped, 0 omissions, p50 2.3 s).
+- [x] **Runnable API collection** (Bruno, `clinical_copilot/api-collection/`): 16 requests — health, ready, login, open chart, brief, cited follow-up, arithmetic withheld, out-of-window `not_in_facts`, stale-hash `chart_changed`, cache hit, CSRF 403, restricted-user 403. Session cookie and CSRF captured by the collection itself; `local` and `vps` environments. Verified 16/16 locally, 01–02 against the VPS. Linked from `clinical_copilot/README.md`.
 - [x] `docker/vps/` compose, env example, README (module registration, capsule seed transfer).
 - [x] `TODOS.md` (conversation persistence, custom image, interaction source).
 
 ## Due Wednesday 2026-09-16, 11:59 PM — remaining
 
-- [ ] **VPS live** (in progress): `docker compose up`, module registered, seed capsule restored, `OPENAI_API_KEY` in `.env`. Paste the URL into `README.md` ("Deployed").
-- [ ] **Langfuse Cloud project**: create, put `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` in both `.env` files; confirm `/ready` shows `langfuse: ok` and a trace appears; set up the dashboard (requests, error rate, p50/p95, tokens, `verification_pass`) and the three alerts from `KEY_METRICS.md`.
-- [ ] **Runnable API collection** (Postman/Bruno): `health.php`, `ready.php`, `chat.php` brief/ask with CSRF + session cookie notes. Not started.
+- [~] **Langfuse Cloud project**: tracer built and unit-tested; `LANGFUSE_BASE_URL` accepted; v4 OTel migration in `TODOS.md`. Still to do: put `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` in both `.env` files; confirm `/ready` shows `langfuse: ok` and a trace appears; set up the dashboard (requests, error rate, p50/p95, tokens, `verification_pass`) and the three alerts from `KEY_METRICS.md`.
 - [ ] **Demo video (3-5 min)**: open patient → latest encounter → Dashboard; show fact table, summary chips, a follow-up, the withheld computed-number answer, receptionist refusal, `/ready`.
 - [ ] Schedule the Technical Interview (Thu/Fri).
-- [ ] Re-run `tests/evals/run.php --live` against the deployed box once up and commit `results.json`.
+- [ ] Run the Bruno collection 03–16 against the VPS once the deployed admin password is in `environments/vps.bru` (01–02 verified).
+- [ ] Re-run `tests/evals/run.php --live` on the deployed box after the dated-facts change (cache keys changed; last deployed run predates it).
 
 ## Due Sunday 2026-09-20, Noon
 

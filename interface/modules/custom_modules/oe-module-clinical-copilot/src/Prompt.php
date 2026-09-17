@@ -19,7 +19,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 final class Prompt
 {
-    public const VERSION = '2026-09-16.2';
+    public const VERSION = '2026-09-17.1';
 
     private const RULES = <<<'TXT'
 You are a clinical co-pilot writing a pre-visit briefing for a primary care physician.
@@ -41,7 +41,8 @@ TXT;
 
     public function followUpSystem(): string
     {
-        return self::RULES . "\nAnswer the physician's question from the facts only. If the facts do not contain the answer, set answer_type to not_in_facts and write no sentences.";
+        return self::RULES . "\nAnswer the physician's question from the facts only. If the facts do not contain the answer, set answer_type to not_in_facts and write no sentences."
+            . "\nThe facts describe exactly one patient: the one whose chart is open. If the question is about a different patient, another person, or a patient referred to by a number or name, the facts cannot answer it: set answer_type to not_in_facts. Never answer a question about someone else with this patient's facts.";
     }
 
     public function briefingUser(AssembledFacts $assembled): string

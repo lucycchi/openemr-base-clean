@@ -13,20 +13,21 @@ demo data) · [/health](https://146-190-139-37.sslip.io/interface/modules/custom
 | # | Document | Read it for |
 |---|---|---|
 | 1 | [USING_CLINICAL_COPILOT.md](USING_CLINICAL_COPILOT.md) | How to open the panel, read it, ask follow-ups, what every message means, which patients to demo. Start here if you want to click through the deployed app. |
-| 2 | [USERS.md](USERS.md) | Who it is for (a PCP with a 20-patient day), the workflow it enters, three use cases, capability→use-case traceability, who is refused by design. |
-| 3 | [ARCHITECTURE.md](ARCHITECTURE.md) | Facts-first design, data flow, the verifier and omission guard precisely, authorization and PHI boundaries, failure modes, observability, deployment, testing, tradeoffs made knowingly. |
-| 4 | [KEY_METRICS.md](KEY_METRICS.md) | The five metrics that define "working", their baselines from the deployed eval run, alert thresholds, and cost per briefing. |
-| 5 | [DESIGN.md](DESIGN.md) | The design record: problem, premises, approaches considered, the engineering review's 22 decisions, failure-mode table, test plan, implementation tasks. Where a decision came from. |
-| 6 | [AUDIT.md](AUDIT.md) | The security / performance / architecture / data-quality / HIPAA audit of the OpenEMR base that the design was built against. |
+| 2 | [api-collection/](api-collection/README.md) | Runnable Bruno collection: 16 requests covering health, readiness, login, briefing, cited/withheld/out-of-window follow-ups, chart-changed, cache hit, CSRF and ACL refusals. Run it from the app or `npx @usebruno/cli`. |
+| 3 | [USERS.md](USERS.md) | Who it is for (a PCP with a 20-patient day), the workflow it enters, three use cases, capability→use-case traceability, who is refused by design. |
+| 4 | [ARCHITECTURE.md](ARCHITECTURE.md) | Facts-first design, data flow, the verifier and omission guard precisely, authorization and PHI boundaries, failure modes, observability, deployment, testing, tradeoffs made knowingly. |
+| 5 | [KEY_METRICS.md](KEY_METRICS.md) | The five metrics that define "working", their baselines from the deployed eval run, alert thresholds, and cost per briefing. |
+| 6 | [DESIGN.md](DESIGN.md) | The design record: problem, premises, approaches considered, the engineering review's 22 decisions, failure-mode table, test plan, implementation tasks. Where a decision came from. |
+| 7 | [AUDIT.md](AUDIT.md) | The security / performance / architecture / data-quality / HIPAA audit of the OpenEMR base that the design was built against. |
 
 ## Elsewhere in the repo
 
 | Path | What |
 |---|---|
-| [tests/evals/README.md](../tests/evals/README.md) | The eval suite: 11 cases, the failure mode each guards, how to run, how to read results. |
+| [tests/evals/README.md](../tests/evals/README.md) | The eval suite: 15 cases, the failure mode each guards, how to run, how to read results. |
 | [tests/evals/results-deployed.json](../tests/evals/results-deployed.json) | Latest run against the deployed instance: 11/11, 1 of 58 sentences stripped, 0 omissions, p50 2.3 s. |
 | [tests/evals/spike-results.md](../tests/evals/spike-results.md) | Pre-build validation spike: timing, encounter data quality, ACL refusal by user. |
-| [tests/Tests/Isolated/Modules/ClinicalCopilot/](../tests/Tests/Isolated/Modules/ClinicalCopilot/) | 73 isolated PHPUnit tests over the module. |
+| [tests/Tests/Isolated/Modules/ClinicalCopilot/](../tests/Tests/Isolated/Modules/ClinicalCopilot/) | 95 isolated PHPUnit tests over the module. |
 | [docker/vps/README.md](../docker/vps/README.md) | How the droplet is deployed and redeployed. |
 | [TODOS.md](../TODOS.md) | Deferred items with rationale (conversation persistence, custom image, drug-interaction source, Langfuse v4). |
 | [project-tasks.md](../project-tasks.md) | PRD task list with status against each deadline. |

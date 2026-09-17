@@ -128,7 +128,10 @@ briefings.
 ## Cost, tracked alongside
 
 Tokens per briefing (cold) and per follow-up, from Langfuse generations and
-`tokens_total` in eval results. Baseline: ~600-2,500 prompt tokens per
+`tokens_total` in eval results; `cost_usd` is computed per request from list
+prices (`Pricing`) and written to the trace, the log line and the audit
+row, so spend can be summed per user, per patient or per day without a
+bill. Baseline: ~600-2,500 prompt tokens per
 briefing depending on chart size, ~300-400 completion; ~13.5k tokens for the
 10-patient live eval run; cache hits cost zero. Used for the cost analysis
 in the submission, not as a health metric.

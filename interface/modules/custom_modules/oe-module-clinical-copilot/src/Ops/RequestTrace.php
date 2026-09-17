@@ -16,7 +16,10 @@ namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
 final readonly class RequestTrace
 {
-    /** @param array<string, scalar|null> $metadata */
+    /**
+     * @param array<string, scalar|null> $metadata
+     * @param list<Step> $steps
+     */
     public function __construct(
         public string $correlationId,
         public string $name,
@@ -29,6 +32,8 @@ final readonly class RequestTrace
         public int $completionTokens,
         public int $llmDurationMs,
         public ?string $status,
+        public array $steps = [],
+        public ?float $costUsd = null,
     ) {
     }
 }
