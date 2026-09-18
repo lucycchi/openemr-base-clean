@@ -28,15 +28,14 @@ use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Modules\ClinicalCopilot\AccessDeniedException;
 use OpenEMR\Modules\ClinicalCopilot\AclAuthorization;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
+use OpenEMR\Modules\ClinicalCopilot\BriefingPipelineFactory;
 use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
 use OpenEMR\Modules\ClinicalCopilot\ChatAction;
 use OpenEMR\Modules\ClinicalCopilot\ChatRequest;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\CorrelationId;
-use OpenEMR\Modules\ClinicalCopilot\DbBriefingCache;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
 use OpenEMR\Modules\ClinicalCopilot\InvalidRequest;
-use OpenEMR\Modules\ClinicalCopilot\Llm\OpenAiClient;
 use OpenEMR\Modules\ClinicalCopilot\NarrationPipeline;
 use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
 use OpenEMR\Modules\ClinicalCopilot\OpenEmrChartSource;
@@ -50,7 +49,6 @@ use OpenEMR\Modules\ClinicalCopilot\PanelPayload;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\Pricing;
 use OpenEMR\Modules\ClinicalCopilot\VerificationResult;
-use OpenEMR\Modules\ClinicalCopilot\Verifier;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -262,9 +260,7 @@ final class ChatController
 
     private function pipeline(Config $config, AssembledFacts $assembled, PatientId $pid): NarrationPipeline
     {
-        $llm = new OpenAiClient(new Client(), $config->openAiApiKey, $config->openAiModel, correlationId: $this->correlationId);
-        $cache = new DbBriefingCache($pid, $assembled->facts()->hash(), $config->openAiModel);
-        return new NarrationPipeline($llm, new Verifier(), new OmissionGuard(), $cache, steps: $this->steps);
+        return (new BriefingPipelineFactory())->create($config, $assembled, $pid, $this->correlationId, $this->steps);
     }
 
     /** @return list<array<string, scalar|null>> */
