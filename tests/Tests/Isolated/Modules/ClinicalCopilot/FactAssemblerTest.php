@@ -109,7 +109,7 @@ final class FactAssemblerTest extends TestCase
         self::assertSame(99, $result->priorEncounter()?->id);
     }
 
-    public function testSameDayPriorEncounterIsChosenByLowerId(): void
+    public function testAnEarlierEncounterOnTheSameDayIsNotThePriorVisit(): void
     {
         $this->chart->encounters = [
             $this->encounter(101, '2026-09-15 08:30:00'),
@@ -119,7 +119,7 @@ final class FactAssemblerTest extends TestCase
 
         $result = $this->assembler()->assemble(new PatientId(7), 101);
 
-        self::assertSame(100, $result->priorEncounter()?->id);
+        self::assertSame(99, $result->priorEncounter()?->id);
     }
 
     public function testNoPriorEncounterWhenChartHasOnlyTheCurrentVisit(): void
@@ -131,7 +131,7 @@ final class FactAssemblerTest extends TestCase
         self::assertNull($result->priorEncounter());
     }
 
-    public function testEncountersAfterThePriorVisitBecomeEncounterFacts(): void
+    public function testTodaysEncounterIsNotHistoryAndProducesNoFact(): void
     {
         $this->chart->encounters = [
             $this->encounter(100, '2026-09-15 08:30:00', '', 'Annual physical'),
@@ -141,16 +141,38 @@ final class FactAssemblerTest extends TestCase
 
         $result = $this->assembler()->assemble(new PatientId(7), null);
 
-        $encounterFacts = array_values(array_filter(
-            $result->facts()->all(),
-            fn(Fact $f) => $f->category === FactCategory::Encounter
-        ));
         self::assertSame(99, $result->priorEncounter()?->id);
-        self::assertCount(1, $encounterFacts);
-        self::assertSame('2026-09-15: Annual physical', $encounterFacts[0]->value);
-        self::assertSame('EncounterService', $encounterFacts[0]->service);
-        self::assertSame(100, $encounterFacts[0]->recordId);
-        self::assertSame('reason', $encounterFacts[0]->field);
+        self::assertSame([], $this->factsIn($result, FactCategory::Encounter));
+        foreach ($result->facts()->all() as $fact) {
+            self::assertStringNotContainsString('Annual physical', $fact->value);
+        }
+    }
+
+    public function testFactsHashIsUnchangedWhenTodaysEncounterIsCreatedAtCheckIn(): void
+    {
+        $this->chart->encounters = [$this->encounter(99, '2026-09-01 10:00:00')];
+        $this->chart->medications = [new MedicationRecord(17, 'Metformin 500 MG Oral Tablet', new DateTimeImmutable('2025-01-10'), true)];
+        $beforeCheckIn = $this->assembler()->assemble(new PatientId(7), null)->facts()->hash();
+
+        array_unshift($this->chart->encounters, $this->encounter(100, '2026-09-15 08:55:00', '', ''));
+        $afterCheckIn = $this->assembler()->assemble(new PatientId(7), null)->facts()->hash();
+
+        self::assertSame($beforeCheckIn, $afterCheckIn);
+    }
+
+    public function testFactsHashIsTheSameWhetherOrNotTodaysEncounterIsSelected(): void
+    {
+        $this->chart->encounters = [
+            $this->encounter(101, '2026-09-15 10:15:00', '', 'Nurse visit'),
+            $this->encounter(100, '2026-09-15 08:55:00', '', 'Annual physical'),
+            $this->encounter(99, '2026-09-01 10:00:00'),
+        ];
+        $this->chart->medications = [new MedicationRecord(17, 'Metformin 500 MG Oral Tablet', new DateTimeImmutable('2025-01-10'), true)];
+
+        $noneSelected = $this->assembler()->assemble(new PatientId(7), null)->facts()->hash();
+        $todaySelected = $this->assembler()->assemble(new PatientId(7), 100)->facts()->hash();
+
+        self::assertSame($noneSelected, $todaySelected);
     }
 
     public function testPriorVisitIsItselfACitableFact(): void

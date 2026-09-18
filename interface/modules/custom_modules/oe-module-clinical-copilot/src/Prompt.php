@@ -19,7 +19,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 final class Prompt
 {
-    public const VERSION = '2026-09-18.1';
+    public const VERSION = '2026-09-18.2';
 
     private const RULES = <<<'TXT'
 You are a clinical co-pilot writing a pre-visit briefing for a primary care physician.

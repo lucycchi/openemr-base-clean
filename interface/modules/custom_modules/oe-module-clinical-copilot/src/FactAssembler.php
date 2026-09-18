@@ -46,17 +46,20 @@ final class FactAssembler
         }
         usort($encounters, fn(EncounterRecord $a, EncounterRecord $b) => [$b->date, $b->id] <=> [$a->date, $a->id]);
 
-        $prior = $this->priorEncounter($encounters, $currentEncounterId);
+        // The briefing is history only: encounters on or after the day being
+        // prepared for (today's check-in, or the selected encounter's day) are
+        // the visit itself, not history. Dropping them keeps the facts hash
+        // stable through check-in so a pre-warmed briefing still matches.
+        $boundary = $this->historyBoundary($encounters, $currentEncounterId);
+        $encounters = array_values(array_filter(
+            $encounters,
+            static fn(EncounterRecord $e) => [$e->date, $e->id] < $boundary
+        ));
+        $prior = $encounters[0] ?? null;
 
         $facts = [];
         if ($prior !== null) {
             $facts[] = $this->fact('EncounterService', $prior->id, 'date', $prior->date->format('Y-m-d') . ': ' . $prior->reason, FactCategory::PriorVisit);
-        }
-        foreach ($encounters as $e) {
-            if ($prior !== null && [$e->date, $e->id] <= [$prior->date, $prior->id]) {
-                continue;
-            }
-            $facts[] = $this->fact('EncounterService', $e->id, 'reason', $e->date->format('Y-m-d') . ': ' . $e->reason, FactCategory::Encounter);
         }
 
         $since = $prior?->date;
@@ -227,31 +230,25 @@ final class FactAssembler
     }
 
     /**
-     * Rule 6A: the latest encounter strictly before the current one (by date,
-     * then id); with no current encounter, the latest before now.
+     * Rule 6A: history ends at the start of the day being prepared for. With a
+     * selected encounter that is the start of its day; otherwise the start of
+     * today. Everything at or after the boundary is the visit itself, and the
+     * prior visit is the latest encounter strictly before it.
      *
      * @param list<EncounterRecord> $encounters sorted newest first
+     * @return array{DateTimeImmutable, int}
      */
-    private function priorEncounter(array $encounters, ?int $currentEncounterId): ?EncounterRecord
+    private function historyBoundary(array $encounters, ?int $currentEncounterId): array
     {
-        $boundary = null;
+        $day = $this->clock->now();
         if ($currentEncounterId !== null) {
             foreach ($encounters as $e) {
                 if ($e->id === $currentEncounterId) {
-                    $boundary = [$e->date, $e->id];
+                    $day = $e->date;
                     break;
                 }
             }
         }
-        // No current encounter: anything dated today is today's visit, so the
-        // prior visit is the latest one before the start of today.
-        $boundary ??= [$this->clock->now()->setTime(0, 0), 0];
-
-        foreach ($encounters as $e) {
-            if ([$e->date, $e->id] < $boundary) {
-                return $e;
-            }
-        }
-        return null;
+        return [$day->setTime(0, 0), 0];
     }
 }
