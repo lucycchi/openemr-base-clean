@@ -7,6 +7,10 @@ in one folder. The feature itself lives in
 **Deployed:** https://146-190-139-37.sslip.io (login `admin`; synthetic
 demo data) · [/health](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php)
 · [/ready](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php)
+· [/prewarm](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/prewarm.php)
+(the morning pre-warm is built but **not turned on** there: `enabled: false`,
+no cron; [design](../docs/designs/copilot-morning-prewarm.md),
+[how to enable](../docker/vps/README.md#morning-pre-warm-available-not-turned-on))
 
 ## Suggested reading order
 

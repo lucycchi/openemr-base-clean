@@ -15,6 +15,7 @@ and `ChatRequestTest.php`, which run on every commit (`openemr-cmd pit`).
 | `chat.error.response.schema.json` | `chat.php` → browser, any error | Validated in `ContractsTest`; every error path in `ChatController` uses this shape. |
 | `health.response.schema.json` | `public/health.php` → caller | Validated in `ContractsTest`. |
 | `ready.response.schema.json` | `public/ready.php` → caller | `ReadinessReport::toArray()` validated in `ContractsTest` for ready, degraded and not-ready. |
+| `prewarm.response.schema.json` | `public/prewarm.php` → caller | `PrewarmStatusPayload::build()` validated in `ContractsTest` with and without a last run. Counts only; the alert signal for the morning pre-warm (ALERTS.md § 6). |
 | `llm.briefing.output.schema.json` | OpenAI → `OpenAiClient`, briefing | **Loaded at runtime** by `Prompt::briefingSchema()` via `Contracts::forOpenAi()` and sent to OpenAI as `response_format.json_schema` with `strict: true`. The provider enforces it; `LlmSchemaMismatch` is raised on any deviation. |
 | `llm.followup.output.schema.json` | OpenAI → `OpenAiClient`, follow-up | Same, via `Prompt::followUpSchema()`. |
 | `fact.schema.json` | shared: one row of the fact table | `$ref`'d by the three response contracts; its `category` enum is asserted equal to `FactCategory::cases()`. |

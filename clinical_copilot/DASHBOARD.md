@@ -12,10 +12,10 @@ field it reads so it can be rebuilt from scratch.
 
 | Event | Contents a widget can read |
 |---|---|
-| Trace (`copilot.brief` / `copilot.ask`, id = correlation id) | `userId`, `duration_ms`, `http_status`, `status`, `facts`, `stripped`, `omitted`, `from_cache`, `total_failure`, `answer_type`, `chart_changed`, `verification_pass`, `prompt_tokens`, `completion_tokens`, `cost_usd`, `llm_attempts`, `llm_retried`, tag `clinical-copilot` |
-| Span per tool step (`authorize_and_assemble_facts`, `cache_lookup`, `llm.briefing`, `llm.follow_up`, `verify`, `cache_store`, `omission_guard`, `scope_check`) | `level` DEFAULT / ERROR, `statusMessage` (the exception), `duration_ms`, step detail (`hit`, `attempts`, `kept`, `stripped`, `appended`…) |
+| Trace (`copilot.brief` / `copilot.ask`, id = correlation id) | `userId`, `duration_ms`, `http_status`, `status`, `facts`, `stripped`, `omitted`, `from_cache`, `total_failure`, `answer_type`, `chart_changed`, `verification_pass`, `prompt_tokens`, `completion_tokens`, `cost_usd`, `llm_attempts`, `llm_retried`, tag `clinical-copilot`; on a `brief` that was compared with a pre-warm receipt also `warm_result`, `warm_reason`, `warm_run_id`, `warm_provider`, `warm_generated_at`, `warm_new_fact_ids`, `warm_gone_fact_ids` |
+| Span per tool step (`authorize_and_assemble_facts`, `warm_lookup`, `cache_lookup`, `llm.briefing`, `llm.follow_up`, `verify`, `cache_store`, `omission_guard`, `scope_check`) | `level` DEFAULT / ERROR, `statusMessage` (the exception), `duration_ms`, step detail (`hit`, `attempts`, `kept`, `stripped`, `appended`…) |
 | Generation (`copilot.<action>.llm`, when the model ran) | `model`, `usage.input` / `usage.output` / `usage.totalCost`, latency, `level` ERROR on failure |
-| Boolean scores | `request_ok` (false on 5xx or a served request with non-null `status`), `verification_pass` (false when every sentence was stripped or the summary was unavailable), `tool_ok` (false when any step span errored) |
+| Boolean scores | `request_ok` (false on 5xx or a served request with non-null `status`), `verification_pass` (false when every sentence was stripped or the summary was unavailable), `tool_ok` (false when any step span errored), `warm_hit` (only on chart opens compared with a pre-warm receipt: true when the receipt's facts hash, prompt version and model matched) |
 
 Nothing else leaves the server: no fact values, narration text, question
 text or patient identifiers other than the OpenEMR user name.

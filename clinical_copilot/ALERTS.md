@@ -124,7 +124,7 @@ is down or degraded.
 
 | | |
 |---|---|
-| **Metric** | Langfuse: data source **Scores (boolean)**, score **`tool_ok`**, metric **share of `true`**. `tool_ok` is false when any step span of the request (`authorize_and_assemble_facts`, `cache_lookup`, `llm.briefing`, `llm.follow_up`, `verify`, `cache_store`, `omission_guard`, `scope_check`) recorded an error. Alert on the share falling **below 98 %** — equivalent to a request-level tool failure rate > 2 % |
+| **Metric** | Langfuse: data source **Scores (boolean)**, score **`tool_ok`**, metric **share of `true`**. `tool_ok` is false when any step span of the request (`authorize_and_assemble_facts`, `warm_lookup`, `cache_lookup`, `llm.briefing`, `llm.follow_up`, `verify`, `cache_store`, `omission_guard`, `scope_check`) recorded an error. Alert on the share falling **below 98 %** — equivalent to a request-level tool failure rate > 2 % |
 | **Window** | 15 minutes (Langfuse "Window"), at least 20 requests |
 | **Threshold** | share of `true` < 0.98 |
 | **Severity** | warning (critical if the failing span is `authorize_and_assemble_facts` or `verify`) |

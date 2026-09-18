@@ -75,11 +75,18 @@ interface/modules/custom_modules/oe-module-clinical-copilot/
 │   ├── Llm/OpenAiClient.php   Guzzle, typed failures, bounded retry
 │   ├── NarrationPipeline.php  cache → model → Verifier → OmissionGuard
 │   ├── Verifier.php, OmissionGuard.php   pure, unit-tested
-│   ├── DbBriefingCache.php    copilot_briefing_cache table
+│   ├── DbBriefingCache.php    copilot_briefing_cache table (returns CachedNarration: data + generated_at)
+│   ├── BriefingPipelineFactory.php   one wiring of the pipeline for the panel and the pre-warm
 │   ├── PanelPayload.php       JSON contract to the panel
+│   ├── Command/PrewarmCommand.php    copilot:prewarm (bin/console), registered from Bootstrap
+│   ├── Prewarmer.php, ScheduleSource.php, DbScheduleSource.php, BriefingNarrator.php,
+│   │   PipelineNarrator.php, FixedClock.php, RunLock.php, FileRunLock.php   the morning sweep
+│   ├── PrewarmReceipts.php, DbPrewarmReceipts.php, PrewarmRow/Receipt/Status/Summary.php   copilot_prewarm table
+│   ├── WarmOutcome.php, WarmMissReason.php   at chart open: did the sweep's receipt match, and why not
+│   ├── DbPrewarmRunLog.php, PrewarmRunStatus.php, PrewarmStatusPayload.php   prewarm.php body
 │   └── Ops/                   Readiness, LangfuseTracer, CorrelatedLogger, AlertReceiver
-├── public/chat.php, health.php, ready.php, alerts.php, assets/panel.js, panel.css
-└── sql/install.sql, register.sql, uninstall.sql
+├── public/chat.php, health.php, ready.php, alerts.php, prewarm.php, assets/panel.js, panel.css
+└── sql/install.sql (copilot_briefing_cache, copilot_prewarm), register.sql, uninstall.sql
 ```
 
 It hooks `PatientDemographics\RenderEvent::EVENT_SECTION_LIST_RENDER_BEFORE`,
@@ -109,6 +116,9 @@ chart page load (today's encounter in session)
    ├─ per-category cap 50 → truncation fact
    └─ FactSet{ facts[id → …], hash }        ── rendered first, no model
         │
+        ├─ warm lookup: today's copilot_prewarm receipt for this pid
+        │     → WarmOutcome hit | miss{no_row, prompt_version, model_changed,
+        │       viewer_differs, hash_drift} → log + trace + warm_hit score
         ▼
  NarrationPipeline
    ├─ cache(facts_hash | Prompt::VERSION | model) ─hit─► verified narration
@@ -123,10 +133,34 @@ chart page load (today's encounter in session)
         └─ logs (correlation id) · audit log row · Langfuse trace + generation
 ```
 
-**Prior-visit rule.** With a current encounter in the session: the latest
-encounter strictly before it by (date, id). Without one: the latest before
-the start of today. No prior encounter: "first visit on record", diff
-skipped, allergy checks still run.
+**Prior-visit rule.** History ends at the start of the day being prepared
+for: the selected encounter's day when one is in the session, otherwise
+today (by the site's clock). Encounters on or after that boundary are the
+visit itself, not history, so the empty encounter the front desk creates at
+check-in never enters the facts and the facts hash is the same before and
+after check-in, with or without that encounter selected. The prior visit is
+the latest encounter strictly before the boundary. No prior encounter:
+"first visit on record", diff skipped, allergy checks still run. The
+`encounter` fact category is no longer emitted (it was only ever fed by
+those same-day encounters); the enum case and contract entry remain.
+
+**Morning pre-warm.** `copilot:prewarm --date=today` (a Symfony Console
+command registered on `CommandRunnerFilterEvent`) reads the day's
+appointments, assembles each chart as the scheduled provider with the clock
+pinned to the start of that day, and runs the same `NarrationPipeline`
+through `BriefingPipelineFactory`, so the cache row it writes is the one the
+provider's chart open reads. Each patient gets a receipt in
+`copilot_prewarm` (run id, provider, facts hash, cache key, prompt version,
+model, fact lines, status, timing). At chart open, `WarmOutcome` compares
+the receipt with the fresh assembly and records hit or a miss reason; the
+panel label reads "generated 6:02 AM today · matches chart as of now" for a
+cached narration and "generated just now" otherwise. A `flock()` on
+`sites/<site>/documents/copilot/prewarm.lock` keeps sweeps from overlapping;
+`public/prewarm.php` reports whether the sweep is enabled and the last run's
+counts. The command is inert unless `COPILOT_PREWARM_ENABLED` is set
+(`--force` for one run) and **no cron is installed on the droplet**; see
+[docker/vps/README.md](docker/vps/README.md#morning-pre-warm-available-not-turned-on)
+and the [design](docs/designs/copilot-morning-prewarm.md).
 
 **Follow-ups.** `action=ask` re-assembles facts; if the client's
 `facts_hash` differs, the response is `chart_changed` and the panel restarts
@@ -378,7 +412,7 @@ charts through the real model and require every briefing to complete.
 
 | Layer | Where | Count | Runs against | When |
 |---|---|---|---|---|
-| Unit | [`tests/Tests/Isolated/Modules/ClinicalCopilot/`](tests/Tests/Isolated/Modules/ClinicalCopilot/) | 15 classes, 161 tests (601 assertions) | Fakes; no DB, no network | Every commit (`openemr-cmd pit`) |
+| Unit | [`tests/Tests/Isolated/Modules/ClinicalCopilot/`](tests/Tests/Isolated/Modules/ClinicalCopilot/) | 23 classes, 218 tests (772 assertions) | Fakes; no DB, no network | Every commit (`openemr-cmd pit`) |
 | Eval, recorded | [`tests/evals/cases/01–08`](tests/evals/cases/) | 8 cases | A fixed fact set and a hand-written model reply replayed through `Verifier` + `OmissionGuard` | Every commit; seconds; free |
 | Eval, live | [`tests/evals/cases/09–15`](tests/evals/cases/) | 7 cases, 22 model calls | Real seed charts, real OpenAI | Before every submission and whenever `Prompt::VERSION` changes (~1 min, ~22k tokens) |
 | UI smoke | [`tests/evals/smoke.php`](tests/evals/smoke.php) | 10 patients + 1 refusal | Selenium through the real dashboard | Before every deploy |

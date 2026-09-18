@@ -295,6 +295,11 @@ observability backend.
   liveness only. Does not load OpenEMR globals; returns
   `{"status":"ok","service":"clinical-copilot","time":…}` with
   `Cache-Control: no-store`.
+- [`public/prewarm.php`](../interface/modules/custom_modules/oe-module-clinical-copilot/public/prewarm.php)
+  → [`DbPrewarmRunLog`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/DbPrewarmRunLog.php):
+  whether the morning pre-warm sweep is enabled on the site and the last
+  run's date and status counts (no patient data). Added 2026-09-18 with the
+  sweep itself, which is not turned on on the droplet (ALERTS.md § 6).
 - [`public/ready.php`](../interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php)
   → [`Ops/ReadinessProbes::readiness()`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Ops/ReadinessProbes.php),
   three real probes, each bounded to 2 s (`connect_timeout` 1 s):

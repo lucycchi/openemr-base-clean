@@ -39,7 +39,7 @@ require every briefing to complete.
 
 | Layer | Where | Count | Runs against | When | Cost |
 |---|---|---|---|---|---|
-| Unit | `tests/Tests/Isolated/Modules/ClinicalCopilot/` | 15 classes, 161 tests (601 assertions) | Fakes; no DB, no network | Every commit (`openemr-cmd pit`) | seconds |
+| Unit | `tests/Tests/Isolated/Modules/ClinicalCopilot/` | 23 classes, 218 tests (772 assertions) | Fakes; no DB, no network | Every commit (`openemr-cmd pit`) | seconds |
 | Eval, recorded | `tests/evals/cases/01–08` | 8 cases | A fixed fact set and a hand-written model reply replayed through `Verifier` + `OmissionGuard` | Every commit | seconds, free |
 | Eval, live | `tests/evals/cases/09–15` | 7 cases, 22 model calls | Real seed charts, real OpenAI | Before every submission; whenever `Prompt::VERSION` changes | ~1 min, ~22k tokens (~$0.006) |
 | UI smoke | `tests/evals/smoke.php` | 10 patients + 1 refusal | Selenium through the real dashboard | Before every deploy | ~2 min |

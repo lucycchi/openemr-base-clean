@@ -136,7 +136,7 @@ use it:
 |---|---|---|
 | Encounters per physician per day | 20 | `USERS.md` |
 | Clinic days per month | 22 | |
-| Cold briefings per encounter | 1.5 | One at chart open; a second when the chart changes during the visit (new med / lab → new facts hash). Re-opens with unchanged facts are cache hits. |
+| Cold briefings per encounter | 1.5 | One at chart open; a second when the chart changes during the visit (new med / lab → new facts hash). Re-opens with unchanged facts are cache hits. With the morning pre-warm turned on (built 2026-09-18, off on the droplet), the first of these moves off the physician's wait into the 06:00 sweep at the same model cost, plus one extra cold briefing per scheduled patient who does not show; the per-encounter total is unchanged to within that no-show fraction. |
 | Follow-up questions per encounter | 0.45 | 30% of briefings get a follow-up (`KEY_METRICS.md` target >20%; load-test "mixed" scenario 30%), 1.5 questions when they do |
 | Cold briefing cost | $0.000202 | Measured, § 1.1 |
 | Follow-up cost | $0.000132 | Measured, § 1.1 |
