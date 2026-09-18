@@ -25,11 +25,13 @@ no cron; [design](../docs/designs/copilot-morning-prewarm.md),
 | 5b | [DASHBOARD.md](DASHBOARD.md) · [ALERTS.md](ALERTS.md) · [BASELINES.md](BASELINES.md) | The Langfuse dashboard (with screenshots), the three paging alerts with runbooks and the proven webhook delivery, and the 10/50-user load baselines with CPU/memory. |
 | 6 | [DESIGN.md](DESIGN.md) | The design record: problem, premises, approaches considered, the engineering review's 22 decisions, failure-mode table, test plan, implementation tasks. Where a decision came from. |
 | 7 | [AUDIT.md](../AUDIT.md) | The security / performance / architecture / data-quality / HIPAA audit of the OpenEMR base that the design was built against. |
+| 8 | [SECURITY.md](SECURITY.md) | Security scan of the Co-Pilot code (2026-09-18): the three Low findings explained in plain language, what held up, the six base vulnerabilities fixed on this branch, what the Co-Pilot still inherits, and a glossary. |
 
 ## Elsewhere in the repo
 
 | Path | What |
 |---|---|
+| [SCALING.md](SCALING.md) | Plain-language guide, for a non-technical reader, to serving several hundred physicians: what breaks first (measured), the Co-Pilot changes recommended in order, how OpenEMR's deployment grows from one droplet to a load-balanced setup, and a glossary of every term. |
 | [AI_COST_ANALYSIS.md](AI_COST_ANALYSIS.md) | Actual development spend (OpenAI from the audit log, Claude Code from session transcripts, infrastructure) and projected production cost at 100 / 1K / 10K / 100K users with the architectural change each tier needs. |
 | [EVALS.md](EVALS.md) | The test suite with results: scope, five layers, the dataset shape, pass/fail rules, all 15 cases, latest local and deployed numbers, what the suite found, and the design decisions behind it. |
 | [tests/evals/README.md](../tests/evals/README.md) | The eval suite: 15 cases, the failure mode each guards, how to run, how to read results. |
