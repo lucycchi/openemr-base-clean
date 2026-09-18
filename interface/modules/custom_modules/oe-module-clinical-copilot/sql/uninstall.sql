@@ -10,3 +10,4 @@
 --
 
 DROP TABLE IF EXISTS `copilot_briefing_cache`;
+DROP TABLE IF EXISTS `copilot_prewarm`;

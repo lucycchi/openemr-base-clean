@@ -132,6 +132,11 @@ final readonly class LangfuseTracer implements Tracer
             }
         }
         $scores['tool_ok'] = $toolOk;
+        // Pre-warm hit rate: present only on chart opens that were evaluated
+        // against a receipt, so sites without the sweep score nothing here.
+        if (is_string($t->metadata['warm_result'] ?? null)) {
+            $scores['warm_hit'] = $t->metadata['warm_result'] === 'hit';
+        }
         return $scores;
     }
 

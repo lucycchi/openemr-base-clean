@@ -23,7 +23,7 @@ final readonly class PrewarmSummary
     public int $errored;
 
     /** @param list<PrewarmRow> $rows */
-    public function __construct(public array $rows)
+    public function __construct(public string $runId, public array $rows)
     {
         $this->scheduled = count($rows);
         $this->warmed = $this->count(PrewarmStatus::Warmed);

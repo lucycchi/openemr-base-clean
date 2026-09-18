@@ -32,19 +32,25 @@ final readonly class Prewarmer
         private Closure $authorizationFor,
         private BriefingNarrator $narrator,
         private DateTimeZone $tz,
+        private PrewarmReceipts $receipts = new NullPrewarmReceipts(),
     ) {
     }
 
     public function run(DateTimeImmutable $day, ?int $onlyPid, bool $dryRun): PrewarmSummary
     {
         $clock = FixedClock::startOfDay($day->format('Y-m-d'), $this->tz);
+        $runId = CorrelationId::generate();
         $rows = [];
         foreach ($this->select($day, $onlyPid) as $appointment) {
-            $rows[] = $dryRun
+            $row = $dryRun
                 ? new PrewarmRow($appointment, PrewarmStatus::Skipped, null, CorrelationId::generate(), 0, false)
                 : $this->warm($appointment, $clock);
+            // Written per row, not at the end, so a crash mid-sweep still
+            // leaves a receipt for every patient it reached.
+            $this->receipts->record($runId, $row);
+            $rows[] = $row;
         }
-        return new PrewarmSummary($rows);
+        return new PrewarmSummary($runId, $rows);
     }
 
     /**
@@ -76,19 +82,21 @@ final readonly class Prewarmer
         $correlationId = CorrelationId::generate();
         $started = hrtime(true);
         $factsHash = null;
+        $factLines = null;
         try {
             $assembler = new FactAssembler($this->chart, ($this->authorizationFor)($appointment->providerUsername), $clock);
             $assembled = $assembler->assemble($appointment->pid, null);
             $factsHash = $assembled->facts()->hash();
+            $factLines = $assembled->facts()->lines();
             $result = $this->narrator->brief($assembled, $appointment->pid, $correlationId);
             $status = $result->fromCache ? PrewarmStatus::AlreadyCached : PrewarmStatus::Warmed;
-            return new PrewarmRow($appointment, $status, $factsHash, $correlationId, $this->elapsedMs($started), !$result->fromCache);
+            return new PrewarmRow($appointment, $status, $factsHash, $correlationId, $this->elapsedMs($started), !$result->fromCache, null, $factLines);
         } catch (\RuntimeException | \LogicException $e) {
             // One patient's upstream, data or ACL failure (LlmException,
             // SqlQueryException, AccessDeniedException, Guzzle transport errors
             // are all RuntimeException) must not stop the sweep. A PHP \Error
             // or ErrorException is a bug and propagates so the run fails loudly.
-            return new PrewarmRow($appointment, PrewarmStatus::Error, $factsHash, $correlationId, $this->elapsedMs($started), false, $e->getMessage());
+            return new PrewarmRow($appointment, PrewarmStatus::Error, $factsHash, $correlationId, $this->elapsedMs($started), false, $e->getMessage(), $factLines);
         }
     }
 

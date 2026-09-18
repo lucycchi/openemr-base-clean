@@ -24,6 +24,8 @@ final readonly class PrewarmRow
         public int $durationMs,
         public bool $modelCalled,
         public ?string $error = null,
+        /** @var list<string>|null FactSet::lines() of what was narrated; null when nothing was assembled */
+        public ?array $factLines = null,
     ) {
     }
 }

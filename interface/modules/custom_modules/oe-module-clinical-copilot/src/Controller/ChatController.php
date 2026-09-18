@@ -34,6 +34,7 @@ use OpenEMR\Modules\ClinicalCopilot\ChatAction;
 use OpenEMR\Modules\ClinicalCopilot\ChatRequest;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\CorrelationId;
+use OpenEMR\Modules\ClinicalCopilot\DbPrewarmReceipts;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
 use OpenEMR\Modules\ClinicalCopilot\InvalidRequest;
 use OpenEMR\Modules\ClinicalCopilot\NarrationPipeline;
@@ -47,8 +48,11 @@ use OpenEMR\Modules\ClinicalCopilot\Ops\StepRecorder;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
 use OpenEMR\Modules\ClinicalCopilot\PanelPayload;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
+use OpenEMR\Modules\ClinicalCopilot\PrewarmReceipts;
 use OpenEMR\Modules\ClinicalCopilot\Pricing;
+use OpenEMR\Modules\ClinicalCopilot\Prompt;
 use OpenEMR\Modules\ClinicalCopilot\VerificationResult;
+use OpenEMR\Modules\ClinicalCopilot\WarmOutcome;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -63,13 +67,16 @@ final class ChatController
     private int $llmMs = 0;
     private bool $llmCalled = false;
     private int $llmAttempts = 0;
+    private readonly PrewarmReceipts $receipts;
+    private ?WarmOutcome $warm = null;
 
-    public function __construct(?LoggerInterface $logger = null, ?Request $request = null, ?Config $config = null, ?Tracer $tracer = null)
+    public function __construct(?LoggerInterface $logger = null, ?Request $request = null, ?Config $config = null, ?Tracer $tracer = null, ?PrewarmReceipts $receipts = null)
     {
         $this->correlationId = CorrelationId::generate();
         $this->logger = new CorrelatedLogger($logger ?? ServiceContainer::getLogger(), $this->correlationId);
         $this->request = $request ?? HttpRestRequest::createFromGlobals();
         $this->config = $config ?? Config::fromEnvironment();
+        $this->receipts = $receipts ?? new DbPrewarmReceipts($this->config->openAiModel);
         $this->steps = new StepRecorder();
         $this->tracer = $tracer ?? ($this->config->hasLangfuse()
             ? new LangfuseTracer(new Client(), $this->config->langfuseHost, $this->config->langfusePublicKey, $this->config->langfuseSecretKey)
@@ -160,7 +167,7 @@ final class ChatController
 
         $config = $this->config;
         $payload = match ($chat->action) {
-            ChatAction::Brief => $this->brief($assembled, $config, $pid),
+            ChatAction::Brief => $this->brief($assembled, $config, $pid, $user),
             ChatAction::Ask => $this->ask($chat, $assembled, $config, $pid),
         };
 
@@ -189,7 +196,7 @@ final class ChatController
             'cost_usd' => $costUsd,
             'llm_attempts' => $this->llmAttempts,
             'llm_retried' => $this->llmAttempts > 1,
-        ];
+        ] + ($this->warm?->toLogContext() ?? []);
         // One line per failed tool with the real reason (the user-facing
         // status label above is deliberately vague), then one line per request
         // with the ordered steps and their timings.
@@ -226,11 +233,16 @@ final class ChatController
     }
 
     /** @return array<string, mixed> */
-    private function brief(AssembledFacts $assembled, Config $config, PatientId $pid): array
+    private function brief(AssembledFacts $assembled, Config $config, PatientId $pid, string $user): array
     {
         if (!$config->hasOpenAi()) {
             return PanelPayload::briefing($assembled, $this->unconfigured($assembled), $this->correlationId);
         }
+        $this->warm = $this->steps->measure(
+            'warm_lookup',
+            fn() => $this->warmOutcome($assembled, $config, $pid, $user),
+            static fn(?WarmOutcome $w) => $w?->toLogContext() ?? ['warm_result' => null],
+        );
         $t = hrtime(true);
         $pipeline = $this->pipeline($config, $assembled, $pid);
         $result = $pipeline->brief($assembled);
@@ -238,6 +250,23 @@ final class ChatController
         $this->llmCalled = !$result->fromCache;
         $this->llmAttempts = $pipeline->llmAttempts();
         return PanelPayload::briefing($assembled, $result, $this->correlationId);
+    }
+
+    /**
+     * Compare this open with the day's pre-warm receipt. Null (no outcome,
+     * no score) when the sweep is off for this site and nothing was warmed by
+     * hand, so a site without pre-warm does not report a 0% hit rate.
+     */
+    private function warmOutcome(AssembledFacts $assembled, Config $config, PatientId $pid, string $user): ?WarmOutcome
+    {
+        $today = ServiceContainer::getClock()->now()->format('Y-m-d');
+        $receipt = $this->receipts->latestFor($today, $pid, $user);
+        if ($receipt === null && !$config->prewarmEnabled) {
+            return null;
+        }
+        $outcome = WarmOutcome::evaluate($receipt, $assembled, $user, Prompt::VERSION, $config->openAiModel);
+        $this->logger->notice('copilot warm', $outcome->toLogContext() + ['pid' => $pid->value, 'user' => $user]);
+        return $outcome;
     }
 
     /** @return array<string, mixed> */

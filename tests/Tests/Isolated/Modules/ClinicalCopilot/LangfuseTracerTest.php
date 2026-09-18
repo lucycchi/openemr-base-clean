@@ -166,6 +166,22 @@ final class LangfuseTracerTest extends TestCase
         self::assertSame(['request_ok' => true, 'verification_pass' => false, 'tool_ok' => true], $this->scores());
     }
 
+    public function testAWarmResultInMetadataBecomesAWarmHitScore(): void
+    {
+        $trace = new RequestTrace('corr-abc', 'copilot.brief', 'physician', 1_700_000_000_000, 400, ['http_status' => 200, 'verification_pass' => true, 'warm_result' => 'hit'], 'gpt-4o-mini', 0, 0, 0, null, []);
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($trace);
+
+        self::assertSame(['request_ok' => true, 'verification_pass' => true, 'tool_ok' => true, 'warm_hit' => true], $this->scores());
+    }
+
+    public function testAWarmMissScoresFalseAndNoWarmResultScoresNothing(): void
+    {
+        $trace = new RequestTrace('corr-abc', 'copilot.brief', 'physician', 1_700_000_000_000, 400, ['http_status' => 200, 'verification_pass' => true, 'warm_result' => 'miss'], 'gpt-4o-mini', 0, 0, 0, null, []);
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($trace);
+
+        self::assertFalse($this->scores()['warm_hit']);
+    }
+
     public function testAnAccessDenialScoresRequestOkTrueWithNoVerificationScore(): void
     {
         $trace = new RequestTrace('corr-abc', 'copilot.brief', 'receptionist', 1_700_000_000_000, 5, ['http_status' => 403, 'denied' => true], null, 0, 0, 0, 'access denied', []);

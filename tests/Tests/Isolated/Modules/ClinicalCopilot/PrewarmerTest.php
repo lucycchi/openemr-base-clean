@@ -26,6 +26,8 @@ use OpenEMR\Modules\ClinicalCopilot\FixedClock;
 use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
+use OpenEMR\Modules\ClinicalCopilot\PrewarmReceipts;
+use OpenEMR\Modules\ClinicalCopilot\PrewarmRow;
 use OpenEMR\Modules\ClinicalCopilot\PrewarmStatus;
 use OpenEMR\Modules\ClinicalCopilot\ScheduledAppointment;
 use OpenEMR\Modules\ClinicalCopilot\ScheduleSource;
@@ -57,6 +59,8 @@ final class PrewarmerTest extends TestCase
     private array $authorizedAs = [];
     private DateTimeZone $tz;
     private DateTimeImmutable $day;
+    /** @var list<array{string, PrewarmRow}> run id and row, as recorded */
+    public array $recorded = [];
 
     protected function setUp(): void
     {
@@ -99,7 +103,22 @@ final class PrewarmerTest extends TestCase
             $this->authorizedAs[] = $username;
             return new FakeAuthorization();
         };
-        return new Prewarmer($schedule, $this->chart, $authorizationFor, $narrator, $this->tz);
+        $receipts = new class ($this) implements PrewarmReceipts {
+            public function __construct(private readonly PrewarmerTest $test)
+            {
+            }
+
+            public function record(string $runId, PrewarmRow $row): void
+            {
+                $this->test->recorded[] = [$runId, $row];
+            }
+
+            public function latestFor(string $ymd, PatientId $pid, string $openerUsername): ?\OpenEMR\Modules\ClinicalCopilot\PrewarmReceipt
+            {
+                return null;
+            }
+        };
+        return new Prewarmer($schedule, $this->chart, $authorizationFor, $narrator, $this->tz, $receipts);
     }
 
     /** @internal called by the anonymous narrator */
@@ -211,5 +230,42 @@ final class PrewarmerTest extends TestCase
         self::assertSame($this->narrated[0][1], $row->correlationId);
         self::assertTrue($row->modelCalled);
         self::assertGreaterThanOrEqual(0, $row->durationMs);
+    }
+
+    public function testEveryRowIsRecordedAsAReceiptUnderOneRunId(): void
+    {
+        $this->appointments = [$this->appointment(1, 7, 'drsmith'), $this->appointment(2, 8, 'drjones')];
+        $this->narratorThrows = null;
+
+        $summary = $this->prewarmer()->run($this->day, null, false);
+
+        self::assertCount(2, $this->recorded);
+        self::assertSame($this->recorded[0][0], $this->recorded[1][0]);
+        self::assertSame($summary->runId, $this->recorded[0][0]);
+        self::assertSame($summary->rows, array_map(fn(array $r) => $r[1], $this->recorded));
+    }
+
+    public function testSkippedAndErroredRowsAreRecordedToo(): void
+    {
+        $this->appointments = [$this->appointment(1, 7, 'drsmith')];
+
+        $this->prewarmer()->run($this->day, null, true);
+        $this->narratorThrows = new \RuntimeException('upstream down');
+        $this->prewarmer()->run($this->day, null, false);
+
+        self::assertSame([PrewarmStatus::Skipped, PrewarmStatus::Error], array_map(fn(array $r) => $r[1]->status, $this->recorded));
+        self::assertNotSame($this->recorded[0][0], $this->recorded[1][0]);
+    }
+
+    public function testAWarmedRowCarriesTheFactLinesForTheReceipt(): void
+    {
+        $this->appointments = [$this->appointment(1, 7, 'drsmith')];
+
+        $summary = $this->prewarmer()->run($this->day, null, false);
+
+        $expected = (new FactAssembler($this->chart, new FakeAuthorization(), new FixedClock($this->day->setTime(0, 0))))
+            ->assemble(new PatientId(7), null)->facts()->lines();
+        self::assertSame($expected, $summary->rows[0]->factLines);
+        self::assertNotSame([], $expected);
     }
 }

@@ -45,6 +45,20 @@ final readonly class FactSet
         return array_values($this->byId);
     }
 
+    /**
+     * One line per fact, sorted, with the service named so a later diff can
+     * tell a sensitivity-filtered encounter from a real chart change. This is
+     * the receipt's record of what was warmed; it is not what is hashed.
+     *
+     * @return list<string> "id\tservice\tcategory\tvalue"
+     */
+    public function lines(): array
+    {
+        $lines = array_map(fn(Fact $f) => $f->id . "\t" . $f->service . "\t" . $f->category->value . "\t" . $f->value, $this->byId);
+        sort($lines);
+        return $lines;
+    }
+
     // Order-independent so a re-assembly that merely reorders rows is a cache hit.
     public function hash(): string
     {

@@ -56,6 +56,7 @@ final class Bootstrap
             static fn(string $username): Authorization => new AclAuthorization($username),
             $config->hasOpenAi() ? new PipelineNarrator($config) : new UnconfiguredNarrator(),
             $tz,
+            new DbPrewarmReceipts($config->openAiModel),
         );
         $event->setCommand(PrewarmCommand::class, new PrewarmCommand($config, $prewarmer, ServiceContainer::getClock(), $tz));
     }
