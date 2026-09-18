@@ -16,8 +16,12 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use DateTimeImmutable;
 
+/**
+ * Where the pre-warm gets its list of "who is coming in tomorrow".
+ * DbScheduleSource reads OpenEMR's appointment table; tests hand in a fixed list.
+ */
 interface ScheduleSource
 {
-    /** @return list<ScheduledAppointment> */
+    /** All appointments on the given calendar day. @return list<ScheduledAppointment> */
     public function appointmentsOn(DateTimeImmutable $day): array;
 }

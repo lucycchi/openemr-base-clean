@@ -24,6 +24,13 @@ use OpenEMR\Modules\ClinicalCopilot\Sentence;
 use OpenEMR\Modules\ClinicalCopilot\VerificationResult;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * OmissionGuard: a must-surface fact is reported only when no *kept*
+ * sentence cites it. Fixture: a new allergy and a new med (both must
+ * surface) plus an active med (must not). Also proves a citation inside a
+ * *stripped* sentence does not count — otherwise a hallucinated sentence
+ * could silence the guard.
+ */
 final class OmissionGuardTest extends TestCase
 {
     /**
@@ -31,6 +38,7 @@ final class OmissionGuardTest extends TestCase
      */
     public static function setUpBeforeClass(): void
     {
+        // Same job as Support\ModuleAutoload::register(), inlined (this test predates the helper).
         $loaders = ClassLoader::getRegisteredLoaders();
         $loader = reset($loaders);
         if (!$loader instanceof ClassLoader) {

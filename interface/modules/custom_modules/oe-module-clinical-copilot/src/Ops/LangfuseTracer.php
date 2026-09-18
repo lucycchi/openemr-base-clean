@@ -17,6 +17,12 @@ namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
 
+/**
+ * Ships a RequestTrace to Langfuse's batch ingestion API as one trace, one
+ * span per step, one generation (the LLM call) and a few boolean scores.
+ * Fire-and-forget with a 2s timeout: if Langfuse is slow or down the
+ * clinical request still succeeds and the trace is simply lost.
+ */
 final readonly class LangfuseTracer implements Tracer
 {
     public function __construct(
@@ -31,6 +37,8 @@ final readonly class LangfuseTracer implements Tracer
     {
         $now = gmdate('Y-m-d\TH:i:s\Z');
         $start = self::iso($t->startedAtMs);
+        // The batch is a list of events; ids are derived from the correlation
+        // id so a retried POST is idempotent on Langfuse's side.
         $batch = [[
             'id' => $t->correlationId . '-trace',
             'type' => 'trace-create',
@@ -63,6 +71,8 @@ final readonly class LangfuseTracer implements Tracer
                 ],
             ];
         }
+        // A "generation" is Langfuse's object for an LLM call; it carries
+        // model, token usage and cost so the dashboard can chart spend.
         if ($t->model !== null) {
             $batch[] = [
                 'id' => $t->correlationId . '-gen',
@@ -115,7 +125,7 @@ final readonly class LangfuseTracer implements Tracer
         }
     }
 
-    /** @return array<string, bool> */
+    /** The boolean scores attached to every trace; each one becomes an alertable rate. @return array<string, bool> */
     private static function scores(RequestTrace $t): array
     {
         $httpStatus = is_int($t->metadata['http_status'] ?? null) ? $t->metadata['http_status'] : 200;
@@ -140,6 +150,7 @@ final readonly class LangfuseTracer implements Tracer
         return $scores;
     }
 
+    /** Unix milliseconds -> "2026-09-18T14:03:07.123Z". */
     private static function iso(int $ms): string
     {
         return gmdate('Y-m-d\TH:i:s', intdiv($ms, 1000)) . sprintf('.%03dZ', $ms % 1000);

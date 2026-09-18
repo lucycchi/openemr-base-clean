@@ -15,6 +15,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * A request the copilot refuses to process: bad JSON, unknown action, missing
+ * patient id, question too long, and so on. Carries the HTTP status the
+ * controller should reply with (400 by default; 405 for wrong method, etc.)
+ * so the parsing code decides the status, not the controller.
+ */
 final class InvalidRequest extends \InvalidArgumentException
 {
     public function __construct(string $message, public readonly int $httpStatus = 400)

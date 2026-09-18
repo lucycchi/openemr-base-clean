@@ -25,6 +25,14 @@ use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\GuzzleException;
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * LanguageModel backed by OpenAI's chat completions API in strict
+ * JSON-schema mode. Owns the retry policy (at most one retry, only for
+ * timeouts / 429 / 5xx, inside a fixed total time budget) and maps every
+ * failure mode onto one of the LlmException subclasses so the pipeline never
+ * sees a raw HTTP exception. The HTTP client is injected, so tests use a
+ * Guzzle MockHandler instead of the network.
+ */
 final class OpenAiClient implements LanguageModel
 {
     private const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
@@ -52,6 +60,9 @@ final class OpenAiClient implements LanguageModel
     /** @param array<string, mixed> $schema JSON schema for the strict response */
     public function complete(string $system, string $user, string $schemaName, array $schema): LlmCompletion
     {
+        // response_format=json_schema + strict=true makes the API guarantee the
+        // reply parses as the schema (or returns a refusal). temperature=0 for
+        // repeatability — the same facts should produce the same briefing.
         $body = [
             'model' => $this->model,
             'messages' => [
@@ -70,6 +81,9 @@ final class OpenAiClient implements LanguageModel
             $headers['X-Correlation-Id'] = $this->correlationId;
         }
 
+        // Retry loop. Each pass either returns, `continue`s for the single
+        // retry, or throws. The per-request timeout shrinks as the total
+        // budget is used up so the two together can never exceed 25s.
         $started = microtime(true);
         $attempt = 0;
         while (true) {
@@ -98,6 +112,8 @@ final class OpenAiClient implements LanguageModel
                 }
                 throw (new LlmTimeout('Connection failed or timed out', 0, $e))->withAttempts($attempt);
             } catch (BadResponseException $e) {
+                // 4xx/5xx. Retry once on rate-limit or server error, with a
+                // small random jitter so many web workers do not retry in lockstep.
                 $status = $e->getResponse()->getStatusCode();
                 $retryable = $status === 429 || $status >= 500;
                 if ($retryable && $attempt === 1) {
@@ -114,6 +130,13 @@ final class OpenAiClient implements LanguageModel
         }
     }
 
+    /**
+     * Unpacks a 200 response. The structured output is *nested JSON*: the
+     * outer body is OpenAI's envelope, and choices[0].message.content is a
+     * JSON string that must be decoded again. Every level is narrowed with
+     * is_array/is_string rather than trusted; a refusal field means the
+     * model declined and is surfaced as LlmRefusal.
+     */
     private function parse(ResponseInterface $response, int $attempts): LlmCompletion
     {
         try {

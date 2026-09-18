@@ -21,6 +21,11 @@ use OpenEMR\Modules\ClinicalCopilot\FactSet;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * FactSet::lines() vs hash(): lines are sorted and include the service name
+ * (for the receipt's audit record); hash() deliberately does NOT include the
+ * service, so the two are pinned separately to stop one drifting into the other.
+ */
 final class FactSetTest extends TestCase
 {
     /**

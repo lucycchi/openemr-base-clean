@@ -19,6 +19,11 @@ use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 
+/**
+ * CorrelatedLogger must add correlation_id to every entry's context and
+ * pass level/message through unchanged. The inner logger is an anonymous
+ * class that just records what it receives.
+ */
 final class CorrelatedLoggerTest extends TestCase
 {
     /**

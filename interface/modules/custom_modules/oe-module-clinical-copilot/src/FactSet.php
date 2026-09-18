@@ -14,9 +14,15 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * The complete set of facts for one briefing, indexed by id. Two important
+ * derived values live here: lines() (a human-readable record for receipts)
+ * and hash() (the content fingerprint that feeds the cache key). Insertion
+ * order is preserved for all(), but hash() is order-independent.
+ */
 final readonly class FactSet
 {
-    /** @var array<string, Fact> */
+    /** Fact id -> Fact. @var array<string, Fact> */
     private array $byId;
 
     /** @param list<Fact> $facts */
@@ -34,6 +40,7 @@ final readonly class FactSet
         return isset($this->byId[$id]);
     }
 
+    /** Throws on an unknown id; callers should check has() first unless the id came from this set. */
     public function get(string $id): Fact
     {
         return $this->byId[$id] ?? throw new \OutOfBoundsException("Unknown fact id $id");
@@ -60,6 +67,8 @@ final readonly class FactSet
     }
 
     // Order-independent so a re-assembly that merely reorders rows is a cache hit.
+    // Note this deliberately omits the service name that lines() includes: an
+    // encounter hidden by ACL and a genuinely missing encounter hash the same.
     public function hash(): string
     {
         $lines = array_map(fn(Fact $f) => $f->id . "\t" . $f->category->value . "\t" . $f->value, $this->byId);

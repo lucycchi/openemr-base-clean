@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Mutual exclusion for the pre-warm command, so two cron ticks (or a cron
+ * tick plus a manual run) never warm the same schedule at the same time.
+ * FileRunLock is the production implementation.
+ */
 interface RunLock
 {
     /** True when this process now holds the lock; false when another does. */

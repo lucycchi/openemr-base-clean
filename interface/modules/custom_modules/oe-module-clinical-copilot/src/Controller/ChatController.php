@@ -56,6 +56,16 @@ use OpenEMR\Modules\ClinicalCopilot\WarmOutcome;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
+/**
+ * HTTP handler behind public/chat.php. One instance per request. It does the
+ * web-layer work — session, CSRF, ACL, parsing, JSON response — and then
+ * delegates to FactAssembler and NarrationPipeline for the real logic.
+ * Every exit path (success, refusal, crash) produces three things: a JSON
+ * body with a correlation id, a structured log line, and a trace.
+ *
+ * Constructor arguments are all optional so production can `new` it with
+ * no arguments while tests inject a fake request, logger and tracer.
+ */
 final class ChatController
 {
     private readonly string $correlationId;
@@ -64,6 +74,8 @@ final class ChatController
     private readonly Config $config;
     private readonly Tracer $tracer;
     private readonly StepRecorder $steps;
+    // Mutable per-request bookkeeping, filled in by brief()/ask() and read
+    // when the trace and audit entry are built at the end of handle().
     private int $llmMs = 0;
     private bool $llmCalled = false;
     private int $llmAttempts = 0;
@@ -83,6 +95,7 @@ final class ChatController
             : new NullTracer());
     }
 
+    /** Public entry point: wraps handle() in a last-resort catch so a crash still yields JSON + a trace. */
     public function handleRequest(): void
     {
         $started = hrtime(true);
@@ -113,6 +126,12 @@ final class ChatController
         }
     }
 
+    /**
+     * The request pipeline, in order: parse body -> CSRF -> logged in? ->
+     * patient in session? -> assemble facts (ACL) -> brief or ask ->
+     * log + audit + trace -> respond. Each check returns early with the
+     * right status; nothing later runs on a failed check.
+     */
     private function handle(int|float $started, int $startedAtMs): void
     {
         $session = SessionWrapperFactory::getInstance()->getActiveSession();
@@ -135,6 +154,8 @@ final class ChatController
             $this->respond(['error' => 'Not authenticated', 'correlation_id' => $this->correlationId], 401);
             return;
         }
+        // The patient comes from the server-side session (the chart the user
+        // has open), never from the request body — the client cannot pick a pid.
         $pidValue = PatientSessionUtil::getPid();
         if ($pidValue <= 0) {
             $this->respond(['error' => 'No patient selected', 'correlation_id' => $this->correlationId], 400);
@@ -165,12 +186,16 @@ final class ChatController
             return;
         }
 
+        // Dispatch on the enum; `match` with no default means PHPStan flags a
+        // new ChatAction case that is not handled here.
         $config = $this->config;
         $payload = match ($chat->action) {
             ChatAction::Brief => $this->brief($assembled, $config, $pid, $user),
             ChatAction::Ask => $this->ask($chat, $assembled, $config, $pid),
         };
 
+        // From here down is bookkeeping: pull the numbers out of the payload
+        // (narrowing each with is_*), compute cost, then emit log/audit/trace.
         $outcome = $payload['narration'] ?? $payload['answer'] ?? null;
         $outcome = is_array($outcome) ? $outcome : [];
         $httpStatus = isset($payload['error']) ? 400 : 200;
@@ -232,9 +257,13 @@ final class ChatController
         $this->respond($payload, $httpStatus);
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * action=brief. Records the pre-warm hit/miss outcome, then runs the
+     * pipeline (which serves from cache when it can). @return array<string, mixed>
+     */
     private function brief(AssembledFacts $assembled, Config $config, PatientId $pid, string $user): array
     {
+        // No API key: still return the facts (with must-surface ones listed) and a status label.
         if (!$config->hasOpenAi()) {
             return PanelPayload::briefing($assembled, $this->unconfigured($assembled), $this->correlationId);
         }
@@ -269,9 +298,13 @@ final class ChatController
         return $outcome;
     }
 
-    /** @return array<string, mixed> */
+    /** action=ask. @return array<string, mixed> */
     private function ask(ChatRequest $chat, AssembledFacts $assembled, Config $config, PatientId $pid): array
     {
+        // Stale-conversation guard: the panel sends the facts_hash it was
+        // briefed with. If the chart changed since (new lab filed, etc.), the
+        // answer would be based on facts the clinician has not seen — refuse
+        // and tell the panel to re-brief.
         if ($chat->factsHash !== $assembled->facts()->hash()) {
             return PanelPayload::chartChanged($assembled, $this->correlationId);
         }
@@ -298,13 +331,14 @@ final class ChatController
         return array_map(static fn($s) => $s->toLogContext(), $this->steps->all());
     }
 
+    /** BriefingResult for a server with no API key: empty narration, but the omission guard still lists must-surface facts. */
     private function unconfigured(AssembledFacts $assembled): BriefingResult
     {
         $omitted = (new OmissionGuard())->omitted(new VerificationResult([], []), $assembled->facts());
         return new BriefingResult([], 0, $omitted, 'AI summary unavailable: not configured on this server', false, false, 0, 0);
     }
 
-    /** @param array<string, mixed> $payload */
+    /** Writes the JSON response. Every response carries X-Correlation-Id so a user report can be matched to logs. @param array<string, mixed> $payload */
     private function respond(array $payload, int $status): void
     {
         http_response_code($status);

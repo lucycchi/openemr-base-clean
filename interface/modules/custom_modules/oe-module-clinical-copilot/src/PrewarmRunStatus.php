@@ -15,6 +15,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Last-run summary as read back from the run-log table, for the
+ * prewarm.php status endpoint and the dashboard. toArray() gives the
+ * snake_case JSON shape documented in contracts/prewarm.response.schema.json.
+ */
 final readonly class PrewarmRunStatus
 {
     public function __construct(

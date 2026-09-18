@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * "Null object" implementation: records nothing and never finds a receipt.
+ * Used when the receipts table is not installed, so the rest of the code
+ * can call the interface unconditionally instead of checking for null.
+ */
 final readonly class NullPrewarmReceipts implements PrewarmReceipts
 {
     public function record(string $runId, PrewarmRow $row): void

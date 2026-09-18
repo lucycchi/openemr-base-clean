@@ -17,6 +17,11 @@ namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support;
 use OpenEMR\Modules\ClinicalCopilot\BriefingCache;
 use OpenEMR\Modules\ClinicalCopilot\CachedNarration;
 
+/**
+ * In-memory BriefingCache. $entries is public so a test can pre-seed a hit,
+ * assert what was stored, or count entries; $generatedAt is what every hit
+ * reports as its timestamp.
+ */
 final class FakeBriefingCache implements BriefingCache
 {
     /** @var array<string, array<string, mixed>> */

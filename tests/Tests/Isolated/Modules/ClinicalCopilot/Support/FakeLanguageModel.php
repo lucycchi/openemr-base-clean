@@ -18,6 +18,12 @@ use OpenEMR\Modules\ClinicalCopilot\Llm\LanguageModel;
 use OpenEMR\Modules\ClinicalCopilot\Llm\LlmCompletion;
 use OpenEMR\Modules\ClinicalCopilot\Llm\LlmException;
 
+/**
+ * Scripted LanguageModel. A test sets $reply (the decoded JSON the "model"
+ * returns) or $throw (an LlmException to raise), then inspects $calls and
+ * the last* fields to assert what the pipeline sent. Token counts are fixed
+ * at 10 prompt / 5 completion. No network, no randomness.
+ */
 final class FakeLanguageModel implements LanguageModel
 {
     /** @var array<string, mixed> */

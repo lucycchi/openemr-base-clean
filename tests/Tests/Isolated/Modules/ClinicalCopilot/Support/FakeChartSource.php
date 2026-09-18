@@ -22,6 +22,12 @@ use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\ProblemRecord;
 
+/**
+ * ChartSource fed from public arrays. Tests build EncounterRecord /
+ * MedicationRecord / etc. objects by hand and assign them; $reads counts
+ * how many of the five accessors were called so a test can prove the
+ * assembler reads each table exactly once.
+ */
 final class FakeChartSource implements ChartSource
 {
     public int $reads = 0;

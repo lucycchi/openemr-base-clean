@@ -14,7 +14,16 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * "May the current user see this?" — the one question the copilot asks the
+ * permission system. An interface so tests can plug in a fake that says
+ * yes/no without OpenEMR's real ACL tables.
+ */
 interface Authorization
 {
+    /**
+     * @param string $section  ACL section, e.g. 'patients' or 'sensitivities'
+     * @param string $value    ACL object within it, e.g. 'med' or 'high'
+     */
     public function canView(string $section, string $value): bool;
 }

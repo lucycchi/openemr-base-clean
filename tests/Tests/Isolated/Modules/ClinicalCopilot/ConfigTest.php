@@ -20,6 +20,11 @@ use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * The COPILOT_PREWARM_ENABLED kill switch: off when unset, on only for an
+ * explicit truthy value ("1", "true", "yes", "on", case- and
+ * whitespace-insensitive). Sets $_ENV directly and cleans up in tearDown.
+ */
 final class ConfigTest extends TestCase
 {
     /**

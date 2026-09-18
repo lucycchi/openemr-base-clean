@@ -2,7 +2,10 @@
 
 /**
  * Smoke: run the real FactAssembler (OpenEMR adapters) for the busiest seed
- * patients as admin and as a restricted user.
+ * patients as admin and as a restricted user. Manual, DB-backed check that
+ * the SQL in OpenEmrChartSource and the ACL wiring behave on real seed data
+ * (no model call). Superseded by run.php --live and smoke.php for CI-style
+ * use, but handy for eyeballing fact output.
  * Run: openemr-cmd e "su -s /bin/sh apache -c 'php /var/www/localhost/htdocs/openemr/tests/evals/spike/assemble_smoke.php'"
  */
 

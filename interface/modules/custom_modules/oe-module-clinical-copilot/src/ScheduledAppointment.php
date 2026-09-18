@@ -17,6 +17,12 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use DateTimeImmutable;
 
+/**
+ * One calendar entry the pre-warm should act on: which patient, which
+ * provider will open the chart (the warm is done *as* that user so ACL
+ * filtering matches), and the day. Rejects an empty provider because a warm
+ * with no viewer identity could never produce a cache hit.
+ */
 final readonly class ScheduledAppointment
 {
     public function __construct(

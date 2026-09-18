@@ -18,6 +18,11 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 use DateTimeImmutable;
 use OpenEMR\Common\Database\QueryUtils;
 
+/**
+ * Production ScheduleSource: reads OpenEMR's calendar table for a given day,
+ * joined to the provider's user row so the pre-warm knows which username's
+ * ACL view to warm under. Rows with no patient or no provider are dropped.
+ */
 final readonly class DbScheduleSource implements ScheduleSource
 {
     // Cancelled, no-show and cancelled-under-24h from list_options.apptstat.
@@ -26,6 +31,7 @@ final readonly class DbScheduleSource implements ScheduleSource
 
     public function appointmentsOn(DateTimeImmutable $day): array
     {
+        // Build "?,?,?" for the NOT IN list so the statuses are bound, not interpolated.
         $placeholders = implode(',', array_fill(0, count(self::EXCLUDED_STATUSES), '?'));
         $rows = QueryUtils::fetchRecords(
             "SELECT e.pc_eid, e.pc_pid, u.username
@@ -39,6 +45,7 @@ final readonly class DbScheduleSource implements ScheduleSource
               ORDER BY e.pc_startTime, e.pc_eid",
             [$day->format('Y-m-d'), ...self::EXCLUDED_STATUSES]
         );
+        // pc_pid is a string column in OpenEMR; accept only positive integers.
         $appointments = [];
         foreach ($rows as $r) {
             $pid = Row::str($r, 'pc_pid');

@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * What BriefingCache::get() returns on a hit: the raw model JSON as it was
+ * stored, plus when it was generated so the panel can show "summary from
+ * 02:14 this morning".
+ */
 final readonly class CachedNarration
 {
     /**

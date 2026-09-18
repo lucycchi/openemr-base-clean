@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * One visit from the chart. $sensitivity is OpenEMR's per-encounter
+ * confidentiality level ('normal', 'high', ...); the chart source uses it to
+ * drop encounters the current user is not cleared to see.
+ */
 final readonly class EncounterRecord
 {
     public function __construct(

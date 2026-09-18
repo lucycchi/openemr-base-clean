@@ -37,6 +37,20 @@ use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * The JSON Schema contracts in the module's contracts/ directory are the
+ * source of truth for every wire shape. This test keeps code and contracts
+ * in lockstep from three directions:
+ *   1. every contract file is itself a valid, strict schema and loads by name;
+ *   2. the schemas Prompt sends to OpenAI ARE the contract files (not a
+ *      hand-maintained copy that could drift);
+ *   3. every real payload the module produces (PanelPayload variants,
+ *      ReadinessReport, prewarm status, error bodies, each Fact) validates
+ *      against its contract, and the fact contract's category enum lists
+ *      every FactCategory case.
+ * The chat.request contract is exercised the other way: sample bodies must
+ * be accepted/rejected as ChatRequestTest expects.
+ */
 final class ContractsTest extends TestCase
 {
     /**
@@ -49,7 +63,7 @@ final class ContractsTest extends TestCase
 
     private const CORRELATION_ID = '763e45ddfc57b76bccc793509358ad89';
 
-    /** @param array<string, mixed> $document */
+    /** Validates $document against contracts/<contract>.schema.json and fails with the validator's error list. @param array<string, mixed> $document */
     private static function assertConforms(string $contract, array $document): void
     {
         $validator = new Validator();

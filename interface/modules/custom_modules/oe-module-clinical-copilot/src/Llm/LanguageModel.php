@@ -14,10 +14,21 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Llm;
 
+/**
+ * The only thing the pipeline knows about "an LLM": give it a system prompt,
+ * a user prompt and a JSON schema, get back parsed JSON plus token counts.
+ * OpenAiClient is the production implementation; tests use FakeLanguageModel.
+ */
 interface LanguageModel
 {
+    /** Model name, e.g. "gpt-4o-mini". Part of the cache key. */
     public function model(): string;
 
-    /** @param array<string, mixed> $schema JSON schema for the strict response */
+    /**
+     * One structured-output call. Must either return a completion whose data
+     * matches $schema, or throw a subclass of LlmException.
+     *
+     * @param array<string, mixed> $schema JSON schema for the strict response
+     */
     public function complete(string $system, string $user, string $schemaName, array $schema): LlmCompletion;
 }

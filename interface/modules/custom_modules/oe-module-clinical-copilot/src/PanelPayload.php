@@ -15,9 +15,15 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Builds the JSON bodies chat.php returns to panel.js. Three shapes share a
+ * common base (correlation id, prior visit date, facts hash, the full fact
+ * list) and add a 'narration', an 'answer', or a 'chart_changed' flag. The
+ * exact shapes are pinned by the schemas in ../contracts/ and by ContractsTest.
+ */
 final class PanelPayload
 {
-    /** @return array<string, mixed> */
+    /** Response to action=brief. @return array<string, mixed> */
     public static function briefing(AssembledFacts $assembled, BriefingResult $briefing, string $correlationId): array
     {
         return self::base($assembled, $correlationId) + [
@@ -34,7 +40,7 @@ final class PanelPayload
         ];
     }
 
-    /** @return array<string, mixed> */
+    /** Response to action=ask when the chart is unchanged. @return array<string, mixed> */
     public static function answer(AssembledFacts $assembled, AnswerResult $answer, string $correlationId): array
     {
         return self::base($assembled, $correlationId) + [
@@ -49,13 +55,21 @@ final class PanelPayload
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Response to action=ask when the facts_hash the panel sent no longer
+     * matches the chart: no answer is given, the panel must re-brief first.
+     * @return array<string, mixed>
+     */
     public static function chartChanged(AssembledFacts $assembled, string $correlationId): array
     {
         return self::base($assembled, $correlationId) + ['chart_changed' => true];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Fields common to every response. The full fact list is always sent so
+     * the panel can render citations by id and show the "facts only" view
+     * when the narration is empty. @return array<string, mixed>
+     */
     private static function base(AssembledFacts $assembled, string $correlationId): array
     {
         return [

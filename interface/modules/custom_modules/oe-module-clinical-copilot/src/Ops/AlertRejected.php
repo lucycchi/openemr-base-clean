@@ -15,6 +15,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/**
+ * Thrown by AlertReceiver when an incoming webhook is refused (bad token,
+ * bad signature, oversized, not JSON...). Carries the HTTP status alerts.php
+ * should answer with, so the endpoint stays a thin shell.
+ */
 final class AlertRejected extends \RuntimeException
 {
     public function __construct(string $message, public readonly int $httpStatus)

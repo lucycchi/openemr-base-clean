@@ -9,6 +9,10 @@
 -- @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
 --
 
+-- #IfNotTable / #EndIf are OpenEMR upgrade-script directives (not SQL): the
+-- block runs only when the named table is absent, so the script is safe to
+-- re-run on every module enable.
+
 #IfNotTable copilot_briefing_cache
 -- Verified briefing narrations keyed by facts hash + prompt version + model.
 -- Holds fact ids and narration text only; no direct identifiers.
@@ -18,7 +22,7 @@ CREATE TABLE IF NOT EXISTS `copilot_briefing_cache` (
     `facts_hash` CHAR(64) NOT NULL,
     `prompt_version` VARCHAR(32) NOT NULL,
     `model` VARCHAR(64) NOT NULL,
-    `narration_json` MEDIUMTEXT NOT NULL,
+    `narration_json` MEDIUMTEXT NOT NULL,          -- raw model JSON; re-verified on every read
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`cache_key`),
     KEY `idx_pid` (`pid`)
@@ -41,13 +45,14 @@ CREATE TABLE IF NOT EXISTS `copilot_prewarm` (
     `prompt_version` VARCHAR(32) NOT NULL,
     `model` VARCHAR(64) NOT NULL,
     `fact_lines_json` MEDIUMTEXT NOT NULL,
-    `status` ENUM('warmed','already_cached','skipped','error') NOT NULL,
+    `status` ENUM('warmed','already_cached','skipped','error') NOT NULL, -- mirrors PrewarmStatus.php
     `duration_ms` INT(11) NOT NULL DEFAULT 0,
     `model_called` TINYINT(1) NOT NULL DEFAULT 0,
     `correlation_id` CHAR(32) NOT NULL,
     `error` VARCHAR(500) NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    -- Serves DbPrewarmReceipts::latestFor(): "receipt for this patient today, preferring this provider".
     KEY `idx_day_pid_provider` (`target_date`, `pid`, `provider_username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 #EndIf

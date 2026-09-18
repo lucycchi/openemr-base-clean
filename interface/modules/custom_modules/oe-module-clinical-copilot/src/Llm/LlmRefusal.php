@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Llm;
 
+/** The model returned a refusal instead of content — typically a safety filter. Label shown to the user is below. */
 final class LlmRefusal extends LlmException
 {
     public function statusLabel(): string

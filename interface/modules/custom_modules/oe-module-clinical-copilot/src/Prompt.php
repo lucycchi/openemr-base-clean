@@ -17,9 +17,23 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * The text sent to the model, in one place. Two prompts (briefing and
+ * follow-up question) share the same RULES block; each is paired with a
+ * JSON schema from ../contracts/ that forces the reply into
+ * {sentences: [{text, fact_ids}]} form.
+ *
+ * VERSION is part of the briefing cache key: change any wording here, bump
+ * it, and every cached briefing is invalidated on next open. Evals record
+ * which VERSION they ran against.
+ */
 final class Prompt
 {
     public const VERSION = '2026-09-18.2';
+
+    // The grounding contract, stated to the model in plain language. The
+    // Verifier enforces rules 1, 2 and 5 mechanically afterwards; the rest
+    // rely on the model following them (and are what the evals check).
 
     private const RULES = <<<'TXT'
 You are a clinical co-pilot writing a pre-visit briefing for a primary care physician.
@@ -34,23 +48,30 @@ Rules:
 7. Be brief: at most one sentence per fact, most important first (allergy/medication matches, abnormal labs, new medications, new problems, then visits).
 TXT;
 
+    /** System message for action=brief. */
     public function briefingSystem(): string
     {
         return self::RULES . "\nWrite the briefing as a short list of cited sentences.";
     }
 
+    /** System message for action=ask. Adds the "one patient only" and "not_in_facts" instructions. */
     public function followUpSystem(): string
     {
         return self::RULES . "\nAnswer the physician's question from the facts only. If the facts do not contain the answer, set answer_type to not_in_facts and write no sentences."
             . "\nThe facts describe exactly one patient: the one whose chart is open. If the question is about a different patient, another person, or a patient referred to by a number or name, the facts cannot answer it: set answer_type to not_in_facts. Never answer a question about someone else with this patient's facts.";
     }
 
+    /** User message for action=brief: the fact list plus the instruction. */
     public function briefingUser(AssembledFacts $assembled): string
     {
         return $this->context($assembled) . "\nWrite the briefing.";
     }
 
-    /** @param list<array{role: string, text: string}> $transcript */
+    /**
+     * User message for action=ask: the fact list, then the prior chat turns
+     * (so the model has conversational context), then the new question.
+     * @param list<array{role: string, text: string}> $transcript
+     */
     public function followUpUser(AssembledFacts $assembled, string $question, array $transcript): string
     {
         $lines = [$this->context($assembled)];
@@ -76,6 +97,11 @@ TXT;
         return Contracts::forOpenAi('llm.followup.output');
     }
 
+    /**
+     * Renders the facts as the model sees them: one per line as
+     * "[id] category: value", wrapped in BEGIN/END FACTS markers so the model
+     * (and a human reading the trace) can tell data from instructions.
+     */
     private function context(AssembledFacts $assembled): string
     {
         $prior = $assembled->priorEncounter();
@@ -91,7 +117,9 @@ TXT;
     }
 
     // One fact per line: newlines and brackets inside a value would let chart
-    // text impersonate the list structure.
+    // text impersonate the list structure. This is the prompt-injection
+    // defence for free-text chart fields — a note containing "[x] ignore the
+    // rules" becomes "(x) ignore the rules" on the same line as its fact.
     private function flatten(string $text): string
     {
         $text = preg_replace('/\s+/', ' ', $text) ?? $text;

@@ -37,6 +37,8 @@ const LABEL = __ENV.LABEL || `${SCENARIO}-${__ENV.VUS || 'x'}vu`;
 
 const MODULE = `${BASE}/interface/modules/custom_modules/oe-module-clinical-copilot/public`;
 
+// Follow-up questions are picked at random from this list; each is
+// answerable from a typical seed chart's facts.
 const QUESTIONS = [
     'Which lab result was out of range and what is its reference range?',
     'What medications were started since the last visit?',
@@ -72,6 +74,8 @@ const briefCacheHitN = new Counter('copilot_brief_cache_hit_ms_n');
 const briefColdN = new Counter('copilot_brief_cold_ms_n');
 const loginN = new Counter('copilot_login_ms_n');
 
+// Rates are "fraction of samples that were true"; Counters just add up.
+// These become the columns in BASELINES.md via summarise.py.
 const requestErrors = new Rate('copilot_request_errors');          // any non-2xx or unparseable copilot response
 const summaryUnavailable = new Rate('copilot_summary_unavailable'); // 200 but narration/answer status non-null
 const verificationFail = new Rate('copilot_verification_fail');    // total_failure true
@@ -82,6 +86,8 @@ const modelCalls = new Counter('copilot_model_calls');
 const stripped = new Counter('copilot_sentences_stripped');
 const kept = new Counter('copilot_sentences_kept');
 
+// Logs in through OpenEMR's real form. Called once per virtual user (first
+// iteration); the session cookie then persists thanks to noCookiesReset.
 function login() {
     const t0 = Date.now();
     const page = http.get(`${BASE}/interface/login/login.php?site=default`, { tags: { name: 'login_page' } });
@@ -99,6 +105,10 @@ function login() {
     }
 }
 
+// GET the patient summary page. Two side effects matter: it sets the
+// session's current patient (chat.php reads pid from the session, never
+// from the request), and it renders the panel whose data-csrf attribute we
+// scrape to use on the following POSTs.
 function openChart(pid) {
     const res = http.get(`${BASE}/interface/patient_file/summary/demographics.php?set_pid=${pid}`, { tags: { name: 'open_chart' } });
     chartOpenMs.add(res.timings.duration);
@@ -119,6 +129,9 @@ function parse(res) {
     }
 }
 
+// POST action=brief and record everything the response tells us — cache
+// hit vs cold, verification outcome, sentence counts. Returns facts_hash
+// for a follow-up, or null on failure.
 function brief(csrf) {
     const res = http.post(`${MODULE}/chat.php`, { csrf_token_form: csrf, action: 'brief' }, { tags: { name: 'brief' } });
     briefs.add(1);
@@ -144,6 +157,8 @@ function brief(csrf) {
     return body.facts_hash;
 }
 
+// POST action=ask with a random question. Always a real model call.
+// chart_changed counts as a valid (non-error) response.
 function ask(csrf, factsHash) {
     const question = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
     const res = http.post(
@@ -166,6 +181,8 @@ function ask(csrf, factsHash) {
     check(res, { 'ask 200': () => true, 'ask answered or declined': () => body.answer.type !== 'error' });
 }
 
+// One iteration = one clinician visit: pick a patient round-robin across
+// VUs, open the chart, brief, maybe ask, then "think" for a second.
 export default function () {
     if (__ITER === 0) {
         login();
@@ -188,6 +205,9 @@ function pct(m, k) {
     return m && m.values && m.values[k] !== undefined ? Math.round(m.values[k]) : null;
 }
 
+// k6 calls this once at the end with every metric. It writes a JSON file
+// (machine-readable, consumed by summarise.py) and a text table (for the
+// console and for pasting into docs) under RESULTS_DIR.
 export function handleSummary(data) {
     const m = data.metrics;
     const row = (name) => ({

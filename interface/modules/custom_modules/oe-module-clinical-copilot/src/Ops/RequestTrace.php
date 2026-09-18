@@ -14,6 +14,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/**
+ * Everything observability wants to know about one completed request,
+ * assembled by the controller and handed to a Tracer. Immutable snapshot:
+ * total duration, per-step timings, which model was called and how many
+ * tokens it used, the estimated cost, and a status label if it failed.
+ */
 final readonly class RequestTrace
 {
     /**

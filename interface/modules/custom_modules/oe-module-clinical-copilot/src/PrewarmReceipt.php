@@ -16,6 +16,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * One persisted row from the pre-warm receipts table. Compared to
+ * PrewarmRow (the in-memory version) it also carries the prompt version,
+ * model, cache key and created-at timestamp, because those are what
+ * WarmOutcome compares against at chart open to explain a hit or miss.
+ */
 final readonly class PrewarmReceipt
 {
     /** @param list<string> $factLines FactSet::lines() at warm time; empty when nothing was assembled */

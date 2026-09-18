@@ -12,6 +12,11 @@ from pathlib import Path
 
 
 def stats_summary(path: Path) -> dict:
+    """Reduce a sample-stats.sh CSV to avg/peak CPU and memory per container kind.
+
+    Containers are bucketed into "app" (openemr) and "db" (mysql/mariadb) by
+    name; host load1 is tracked separately. Returns {} if the file is missing.
+    """
     per = {}
     load = []
     if not path.exists():
@@ -44,6 +49,8 @@ def stats_summary(path: Path) -> dict:
 
 
 def main() -> None:
+    # Every run in the matrix shares a stamp prefix; load them all, attach the
+    # matching stats CSV, and print two Markdown tables.
     stamp = sys.argv[1]
     results = Path(sys.argv[2] if len(sys.argv) > 2 else "tests/load/results")
     runs = []

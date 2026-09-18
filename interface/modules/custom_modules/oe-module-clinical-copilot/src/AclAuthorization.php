@@ -20,6 +20,11 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use OpenEMR\Common\Acl\AclMain;
 
+/**
+ * Production Authorization: delegates to OpenEMR's ACL system (AclMain)
+ * for a named user. The username is fixed at construction so the same
+ * object cannot be accidentally reused for a different viewer.
+ */
 final readonly class AclAuthorization implements Authorization
 {
     public function __construct(private string $username)

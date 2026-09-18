@@ -27,6 +27,13 @@ use OpenEMR\Modules\ClinicalCopilot\Sentence;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * PanelPayload: the exact JSON shape sent to panel.js for each of the three
+ * responses (briefing, answer, chart_changed). Pins field names, that the
+ * full fact list is always present, that omitted facts are sent by id,
+ * that a cached briefing carries generated_at, and that a status label
+ * passes through untouched.
+ */
 final class PanelPayloadTest extends TestCase
 {
     /**

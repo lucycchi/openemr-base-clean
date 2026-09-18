@@ -14,6 +14,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/**
+ * ReadinessStore persisted as a small JSON file inside the OpenEMR site
+ * directory. Written with an exclusive lock and 0600 permissions, and
+ * symlinks are refused on both read and write, so another local user cannot
+ * feed the endpoint a forged "all ok" result.
+ */
 final readonly class FileReadinessStore implements ReadinessStore
 {
     public function __construct(private string $path)
@@ -33,6 +39,8 @@ final readonly class FileReadinessStore implements ReadinessStore
 
     public function get(): ?array
     {
+        // Any structural problem (missing, symlink, bad JSON, wrong shape)
+        // reads as "no cached result" and triggers a fresh check.
         if (is_link($this->path) || !is_file($this->path)) {
             return null;
         }

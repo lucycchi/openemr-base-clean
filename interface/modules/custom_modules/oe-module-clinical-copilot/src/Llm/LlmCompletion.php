@@ -14,9 +14,13 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Llm;
 
+/**
+ * A successful model reply: the decoded JSON body plus the token usage the
+ * provider reported (used for cost tracking) and how many HTTP attempts it took.
+ */
 final readonly class LlmCompletion
 {
-    /** @param array<string, mixed> $data */
+    /** @param array<string, mixed> $data  Decoded JSON that already passed schema validation. */
     public function __construct(
         public array $data,
         public int $promptTokens,

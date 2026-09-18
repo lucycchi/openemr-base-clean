@@ -10,6 +10,7 @@ DURATION=${1:?duration seconds}
 INTERVAL=${2:-2}
 echo "ts,container,cpu_pct,mem_used_mib,mem_limit_mib,mem_pct,load1"
 end=$(( $(date +%s) + DURATION ))
+# One CSV row per matching container per tick.
 while [ "$(date +%s)" -lt "$end" ]; do
   ts=$(date +%s)
   load1=$(cut -d' ' -f1 /proc/loadavg)

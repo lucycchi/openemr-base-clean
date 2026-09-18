@@ -24,6 +24,14 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 use DateTimeImmutable;
 use OpenEMR\Common\Database\QueryUtils;
 
+/**
+ * The real ChartSource: five SQL queries against OpenEMR's legacy tables
+ * (form_encounter, prescriptions, lists, procedure_*), each mapped straight
+ * into the module's typed records. All the schema quirks — '0000-00-00'
+ * placeholder dates, string-typed numeric columns, sentinel end dates —
+ * are absorbed here so nothing upstream has to know about them. All values
+ * are bound parameters (the `?` placeholders); no string interpolation.
+ */
 final class OpenEmrChartSource implements ChartSource
 {
     public function encounters(PatientId $pid): array
@@ -45,6 +53,8 @@ final class OpenEmrChartSource implements ChartSource
 
     public function medications(PatientId $pid): array
     {
+        // NULLIF turns the '0000-00-00' placeholder into NULL so the
+        // provenance logic sees "no start date recorded".
         $rows = QueryUtils::fetchRecords(
             "SELECT id, drug, NULLIF(start_date, '0000-00-00') AS start_date, date_added, active, end_date
              FROM prescriptions WHERE patient_id = ? AND drug <> ''",
@@ -52,6 +62,7 @@ final class OpenEmrChartSource implements ChartSource
         );
         $out = [];
         foreach ($rows as $r) {
+            // "Active" means the active flag is set AND there is no real end date.
             $end = Row::str($r, 'end_date');
             $ended = $end !== '' && $end !== '0000-00-00';
             [$started, $provenance] = $this->datedWithProvenance(Row::str($r, 'start_date'), Row::str($r, 'date_added'));
@@ -68,6 +79,8 @@ final class OpenEmrChartSource implements ChartSource
 
     public function allergies(PatientId $pid): array
     {
+        // OpenEMR keeps allergies and problems in the same `lists` table,
+        // distinguished by `type`. Only allergies with no end date are current.
         $rows = QueryUtils::fetchRecords(
             "SELECT id, title, begdate, date FROM lists
              WHERE pid = ? AND type = 'allergy' AND title <> '' AND (enddate IS NULL OR enddate = '0000-00-00')",
@@ -83,6 +96,10 @@ final class OpenEmrChartSource implements ChartSource
 
     public function labs(PatientId $pid): array
     {
+        // Three-table join: order -> report -> result. The REGEXP keeps only
+        // results that are plain numbers (drops "positive", "<5", etc.).
+        // COALESCE picks the first real date from result, report, collection,
+        // then order, since different labs populate different ones.
         $rows = QueryUtils::fetchRecords(
             "SELECT pr.procedure_result_id, po.encounter_id, pr.result_code, pr.result_text, pr.result, pr.units,
                     COALESCE(NULLIF(pr.date, '0000-00-00 00:00:00'), NULLIF(prp.date_report, '0000-00-00 00:00:00'),
@@ -138,11 +155,13 @@ final class OpenEmrChartSource implements ChartSource
         return [$this->date(''), DateProvenance::Unknown];
     }
 
+    /** True for a real date; false for empty or the '0000-00-00' placeholder. */
     private function hasDate(string $s): bool
     {
         return $s !== '' && !str_starts_with($s, '0000-00-00');
     }
 
+    /** Parses a DB date string; missing/placeholder dates become the Unix epoch (a sentinel that sorts before everything). */
     private function date(string $s): DateTimeImmutable
     {
         if ($s === '' || str_starts_with($s, '0000-00-00')) {

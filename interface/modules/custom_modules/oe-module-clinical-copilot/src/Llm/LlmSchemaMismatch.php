@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Llm;
 
+/** The reply was not valid JSON or did not match the requested schema. Label shown to the user is below. */
 final class LlmSchemaMismatch extends LlmException
 {
     public function statusLabel(): string

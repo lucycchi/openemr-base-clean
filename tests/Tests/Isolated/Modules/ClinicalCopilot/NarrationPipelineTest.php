@@ -31,6 +31,22 @@ use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeLanguageModel;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * NarrationPipeline with a scripted model and an in-memory cache. This is
+ * the behavioural spec for the safety pipeline:
+ *   - uncited sentences are stripped and must-surface facts appended;
+ *   - every stage is recorded as a step, and a model failure is a failed
+ *     step carrying the real reason (with retry attempts);
+ *   - the cache: same facts -> no second model call; a hit reports its
+ *     generated_at while a fresh one does not; the key includes facts
+ *     hash + Prompt::VERSION + model; failures and total-failures are
+ *     never cached;
+ *   - the prompt delimits facts and flattens newlines/brackets;
+ *   - JSON debris and inline [ids] are scrubbed from sentence text;
+ *   - follow-ups are verified (an invented "20 mg" is stripped), never
+ *     cached, refused pre-model for another patient, and pass through
+ *     not_in_facts.
+ */
 final class NarrationPipelineTest extends TestCase
 {
     /**
@@ -55,6 +71,7 @@ final class NarrationPipelineTest extends TestCase
         return new NarrationPipeline($this->llm, new Verifier(), new OmissionGuard(), $this->cache);
     }
 
+    /** Three facts (new med, new allergy with a newline in it, an encounter) and a prior visit. */
     private function assembled(): AssembledFacts
     {
         return new AssembledFacts(new FactSet([

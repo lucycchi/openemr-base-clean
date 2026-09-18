@@ -18,6 +18,11 @@ use OpenEMR\Modules\ClinicalCopilot\FileRunLock;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * FileRunLock against a real temp file: a second holder is refused until
+ * the first releases, and a missing parent directory is created. Uses the
+ * OS temp dir with a random suffix so parallel test runs do not collide.
+ */
 final class FileRunLockTest extends TestCase
 {
     /**

@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/** Tracer that does nothing — used when Langfuse keys are not set, so callers never branch on "is tracing on?". */
 final class NullTracer implements Tracer
 {
     public function record(RequestTrace $trace): void

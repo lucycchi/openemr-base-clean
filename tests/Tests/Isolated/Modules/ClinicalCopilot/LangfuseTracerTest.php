@@ -27,6 +27,16 @@ use OpenEMR\Modules\ClinicalCopilot\Ops\Step;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * LangfuseTracer against a Guzzle MockHandler: inspects the ingestion batch
+ * it POSTs. Pins the basic-auth header, the trace/span/generation event
+ * structure (one span per step, in order; generation only when a model was
+ * called, marked ERROR on failure, carrying cost), and the boolean score
+ * rules that the alert thresholds depend on — request_ok, tool_ok,
+ * verification_pass, warm_hit — including that a 403 denial is "ok" and
+ * that a site without pre-warm emits no warm_hit score. A transport
+ * failure must be swallowed, never thrown into the clinical request.
+ */
 final class LangfuseTracerTest extends TestCase
 {
     /**
@@ -103,7 +113,7 @@ final class LangfuseTracerTest extends TestCase
         self::assertSame('DEFAULT', $batch[1]['body']['level']);
     }
 
-    /** @return list<array<string, mixed>> batch events of the given types, in order */
+    /** Filters the captured batch to events of the given types (e.g. 'span-create'). @return list<array<string, mixed>> batch events of the given types, in order */
     private function types(string ...$types): array
     {
         $batch = $this->sentBody()['batch'];

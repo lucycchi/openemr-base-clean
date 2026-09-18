@@ -33,6 +33,16 @@ use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
+/**
+ * PrewarmCommand driven through Symfony's CommandTester with a real
+ * Prewarmer wired to anonymous-class fakes for the schedule, narrator and
+ * lock (each calls back into the test so it can count and script
+ * behaviour). Covers: the kill switch and --force; --date parsing
+ * (today/tomorrow in the site zone, explicit date, garbage rejected before
+ * the schedule is read); --dry-run narrates nothing; the summary line;
+ * exit code 1 when any row errored; and the lock — skipped when held
+ * elsewhere, always released, never taken when disabled.
+ */
 final class PrewarmCommandTest extends TestCase
 {
     /**
@@ -56,6 +66,10 @@ final class PrewarmCommandTest extends TestCase
         $this->tz = new DateTimeZone('America/Los_Angeles');
     }
 
+    /**
+     * Assembles the command under test. The clock is frozen at 22:00 on
+     * 2026-09-17 Pacific so "today" and "tomorrow" have known answers.
+     */
     private function command(bool $enabled): CommandTester
     {
         $test = $this;

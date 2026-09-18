@@ -29,6 +29,12 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * `bin/console copilot:prewarm` — the CLI wrapper around Prewarmer, meant to
+ * run from cron before clinic hours. Responsibilities here are only the
+ * CLI-shaped ones: parse options, honour the kill switch, take the run
+ * lock, print a summary, and pick an exit code. Everything else is Prewarmer.
+ */
 final class PrewarmCommand extends Command
 {
     public const NAME = 'copilot:prewarm';
@@ -56,6 +62,8 @@ final class PrewarmCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        // Kill switch: off by default so a fresh deploy never starts spending
+        // on model calls until someone opts in. Exit 0 so cron stays quiet.
         if (!$this->config->prewarmEnabled && !$input->getOption('force')) {
             $output->writeln('pre-warm disabled on this site (set COPILOT_PREWARM_ENABLED=1, or pass --force for one run)');
             return Command::SUCCESS;
@@ -76,6 +84,7 @@ final class PrewarmCommand extends Command
             $output->writeln('another pre-warm run holds the lock; exiting');
             return Command::SUCCESS;
         }
+        // finally: the lock is released even if the sweep throws.
         $started = hrtime(true);
         try {
             $summary = $this->prewarmer->run($day, $onlyPid, $dryRun);
@@ -84,6 +93,8 @@ final class PrewarmCommand extends Command
         }
         $totalMs = (int) round((hrtime(true) - $started) / 1e6);
 
+        // Per-row lines only with -v; errors always. Then one summary line in
+        // key=value form that the alert rules and dashboard grep for.
         foreach ($summary->rows as $row) {
             $output->writeln($this->rowLine($row), OutputInterface::VERBOSITY_VERBOSE);
             if ($row->status === PrewarmStatus::Error) {
@@ -102,9 +113,11 @@ final class PrewarmCommand extends Command
             $modelCalls,
             $totalMs,
         ));
+        // Non-zero exit if any patient errored, so cron/CI notices.
         return $summary->errored > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 
+    /** Resolves --date to midnight in the site's zone; null means invalid input. */
     private function day(mixed $option): ?DateTimeImmutable
     {
         if (!is_string($option)) {
@@ -119,6 +132,7 @@ final class PrewarmCommand extends Command
         };
     }
 
+    /** Strict parse: "2026-02-30" round-trips to "2026-03-02", so it is rejected. */
     private function calendarDay(string $ymd): ?DateTimeImmutable
     {
         $day = DateTimeImmutable::createFromFormat('!Y-m-d', $ymd, $this->tz);

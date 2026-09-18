@@ -16,6 +16,12 @@ namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support;
 
 use OpenEMR\Modules\ClinicalCopilot\Authorization;
 
+/**
+ * Test Authorization: allows everything unless a test explicitly deny()s a
+ * section/value pair. Lets FactAssemblerTest check that a denied
+ * 'sensitivities/high' hides that encounter (and its labs) without touching
+ * OpenEMR's real ACL tables.
+ */
 final class FakeAuthorization implements Authorization
 {
     /** @var array<string, true> */

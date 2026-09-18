@@ -16,6 +16,12 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use OpenEMR\Common\Database\QueryUtils;
 
+/**
+ * BriefingCache stored in the copilot_briefing_cache table. One instance is
+ * built per request with the patient, facts hash and model already known,
+ * so put() can record those alongside the narration for auditing — the
+ * cache key alone is opaque.
+ */
 final readonly class DbBriefingCache implements BriefingCache
 {
     public function __construct(
@@ -34,6 +40,7 @@ final readonly class DbBriefingCache implements BriefingCache
         if ($row === false) {
             return null;
         }
+        // A corrupt or non-object row is treated as a miss, never an error.
         $json = Row::str($row, 'narration_json');
         try {
             $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
@@ -52,6 +59,7 @@ final readonly class DbBriefingCache implements BriefingCache
 
     public function put(string $key, array $narration): void
     {
+        // Upsert: same key -> replace the JSON and refresh created_at.
         QueryUtils::sqlInsert(
             "INSERT INTO copilot_briefing_cache (cache_key, pid, facts_hash, prompt_version, model, narration_json)
              VALUES (?, ?, ?, ?, ?, ?)

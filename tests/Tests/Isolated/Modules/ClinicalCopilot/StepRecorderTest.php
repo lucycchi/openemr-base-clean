@@ -18,6 +18,11 @@ use OpenEMR\Modules\ClinicalCopilot\Ops\StepRecorder;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * StepRecorder::measure(): returns the closure's result, records steps in
+ * order with detail derived from the result, and on exception records the
+ * error text (including the previous exception) and rethrows the original.
+ */
 final class StepRecorderTest extends TestCase
 {
     /**

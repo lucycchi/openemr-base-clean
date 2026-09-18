@@ -14,10 +14,18 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Llm;
 
+/**
+ * Base class for every way a model call can fail. Each concrete subclass
+ * (timeout, rate limit, refusal, schema mismatch, upstream error) supplies a
+ * short user-facing label; the pipeline catches this base type and never has
+ * to know which one it got. Subclasses have no fields of their own — the
+ * class name IS the error code.
+ */
 abstract class LlmException extends \RuntimeException
 {
     private int $attempts = 1;
 
+    /** Short, safe-to-display reason, e.g. "AI summary unavailable: timed out". Never includes internals. */
     abstract public function statusLabel(): string;
 
     /** HTTP attempts made before giving up: 1, or 2 when the one retry was used. */
@@ -26,6 +34,7 @@ abstract class LlmException extends \RuntimeException
         return $this->attempts;
     }
 
+    /** Fluent setter used by OpenAiClient right before throwing; returns $this. */
     public function withAttempts(int $attempts): static
     {
         $this->attempts = $attempts;

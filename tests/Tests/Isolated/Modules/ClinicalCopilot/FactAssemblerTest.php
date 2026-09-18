@@ -33,6 +33,25 @@ use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FixedClock;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * FactAssembler with FakeChartSource / FakeAuthorization / a fixed clock.
+ * The largest test in the suite because the assembler holds the clinical
+ * rules. Grouped roughly as:
+ *   - ACL: denied medication or encounter permission refuses before any
+ *     chart read; a sensitive encounter (and its labs) is dropped.
+ *   - Prior visit / history boundary: latest encounter strictly before the
+ *     selected encounter's day (or today); same-day and today's encounters
+ *     are not history; the hash is unchanged by check-in creating today's
+ *     encounter or by whether it is selected (pre-warm correctness).
+ *   - Medications / allergies: new vs active relative to the prior visit,
+ *     inactive excluded, no prior visit means nothing is "new", date
+ *     provenance wording (started / first noted / no date), and the
+ *     allergy-drug name match producing a hit fact.
+ *   - Labs: abnormal only with a known range and only since the prior
+ *     visit; delta against the previous result of the same LOINC.
+ *   - Problems, per-category cap with a truncation fact, and fact id /
+ *     hash stability (ids derive from source row, not position).
+ */
 final class FactAssemblerTest extends TestCase
 {
     /**

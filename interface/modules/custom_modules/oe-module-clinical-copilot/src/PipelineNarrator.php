@@ -17,6 +17,11 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use OpenEMR\Modules\ClinicalCopilot\Ops\StepRecorder;
 
+/**
+ * The production BriefingNarrator. Builds a fresh NarrationPipeline per
+ * request via the factory (so each request gets its own HTTP client config,
+ * correlation id and step recorder) and delegates to it.
+ */
 final readonly class PipelineNarrator implements BriefingNarrator
 {
     public function __construct(

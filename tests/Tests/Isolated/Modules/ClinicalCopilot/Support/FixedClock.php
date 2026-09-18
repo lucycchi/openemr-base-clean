@@ -17,6 +17,12 @@ namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support;
 use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 
+/**
+ * Test clock: always returns the instant it was built with. Injected into
+ * FactAssembler so "today" (and therefore the history boundary) is fixed
+ * and assertions about dates are stable. The module has its own FixedClock
+ * with a startOfDay() helper; this is the minimal test-side version.
+ */
 final class FixedClock implements ClockInterface
 {
     public function __construct(private readonly DateTimeImmutable $now)

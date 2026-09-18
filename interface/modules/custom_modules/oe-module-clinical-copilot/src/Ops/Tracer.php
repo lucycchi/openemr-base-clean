@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/**
+ * Sink for one finished request's trace (timings, steps, tokens, cost).
+ * LangfuseTracer ships it to Langfuse; NullTracer discards it when Langfuse
+ * is not configured. Called once, at the very end of a request.
+ */
 interface Tracer
 {
     public function record(RequestTrace $trace): void;

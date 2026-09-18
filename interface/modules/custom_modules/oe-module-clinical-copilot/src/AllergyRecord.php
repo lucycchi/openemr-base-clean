@@ -14,6 +14,10 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * One allergy from the chart. $beginDateProvenance says whether $beginDate is
+ * a true onset date or just the day the allergy was first entered.
+ */
 final readonly class AllergyRecord
 {
     public function __construct(

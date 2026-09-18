@@ -21,6 +21,13 @@ use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FixedClock;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Readiness with scripted probes and a fixed clock. Covers the three
+ * states (ready / not_ready / degraded), the 60-second cache (probes must
+ * not re-run at +30s, must at +61s — this is what stops ready.php being
+ * used to burn OpenAI quota), and that a probe throwing is reported as a
+ * failed dependency rather than crashing the endpoint.
+ */
 final class ReadinessTest extends TestCase
 {
     /**
@@ -44,7 +51,11 @@ final class ReadinessTest extends TestCase
         return $this->calls[$name] ?? 0;
     }
 
-    /** @return array<string, callable(): ?string> */
+    /**
+     * Builds the three named probes; each counts its own invocations in
+     * $this->calls and returns null (ok) or "<name> unreachable".
+     * @return array<string, callable(): ?string>
+     */
     private function probes(bool $db = true, bool $openai = true, bool $langfuse = true): array
     {
         $probe = fn(string $name, bool $ok) => function () use ($name, $ok): ?string {

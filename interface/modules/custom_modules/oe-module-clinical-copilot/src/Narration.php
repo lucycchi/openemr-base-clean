@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * The model's output after parsing but before verification: an ordered list
+ * of Sentence objects (text + the fact ids each one cites). Immutable —
+ * "readonly" means every property is set once in the constructor.
+ */
 final readonly class Narration
 {
     /** @param list<Sentence> $sentences */

@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Everything the panel needs to render a briefing, plus the metadata the
+ * controller logs. $totalFailure is true when the model produced sentences
+ * but the Verifier stripped every one — the panel then shows facts only.
+ */
 final readonly class BriefingResult
 {
     /**

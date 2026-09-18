@@ -14,10 +14,17 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Key/value store for generated briefings. The key comes from
+ * NarrationPipeline::cacheKey() (facts hash + prompt version + model), so a
+ * hit is only possible when nothing that influenced the output has changed.
+ * DbBriefingCache is the production implementation; tests use an in-memory fake.
+ */
 interface BriefingCache
 {
+    /** Returns null on a miss. */
     public function get(string $key): ?CachedNarration;
 
-    /** @param array<string, mixed> $narration */
+    /** Stores the raw decoded model JSON (not the verified sentences). @param array<string, mixed> $narration */
     public function put(string $key, array $narration): void;
 }

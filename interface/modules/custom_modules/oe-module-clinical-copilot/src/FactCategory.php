@@ -14,6 +14,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * What kind of thing a Fact is. Drives two decisions: how the prompt groups
+ * facts, and — via mustSurface() — which ones the OmissionGuard refuses to
+ * let the model leave out. String-backed because the category is emitted in
+ * the JSON payload to the panel.
+ */
 enum FactCategory: string
 {
     case PriorVisit = 'prior_visit';
@@ -29,6 +35,13 @@ enum FactCategory: string
     case ProblemNew = 'problem_new';
     case Truncation = 'truncation';
 
+    /**
+     * Must this fact appear in the briefing even if the model skipped it?
+     * "Yes" for anything new, changed or abnormal; "no" for background
+     * context the model may reasonably summarise away. The `match` lists
+     * every case with no default, so adding a new category is a compile-time
+     * (PHPStan) error until someone decides which side it belongs on.
+     */
     public function mustSurface(): bool
     {
         return match ($this) {

@@ -24,6 +24,15 @@ use OpenEMR\Modules\ClinicalCopilot\Command\PrewarmCommand;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
+/**
+ * The module's integration with OpenEMR core. openemr.bootstrap.php creates
+ * one of these at startup and calls subscribeToEvents(); from then on the
+ * module reacts to two core events:
+ *   - the patient summary page rendering (inject the panel HTML), and
+ *   - the CLI command runner collecting commands (register copilot:prewarm).
+ * This is the only class that touches core globals, sessions or `new` on
+ * DB-backed classes; everything below it is injected.
+ */
 final class Bootstrap
 {
     private const MODULE_PATH = '/interface/modules/custom_modules/oe-module-clinical-copilot';
@@ -35,6 +44,7 @@ final class Bootstrap
         $this->logger = $logger ?? ServiceContainer::getLogger();
     }
 
+    /** `$this->method(...)` is PHP's first-class-callable syntax — it passes the method as a callback. */
     public function subscribeToEvents(): void
     {
         $this->dispatcher->addListener(RenderEvent::EVENT_SECTION_LIST_RENDER_BEFORE, $this->renderPanel(...));
@@ -48,6 +58,9 @@ final class Bootstrap
      */
     public function registerCommands(CommandRunnerFilterEvent $event): void
     {
+        // Composition root for the CLI: wire real DB/ACL/OpenAI implementations
+        // into the Prewarmer. Falls back to UnconfiguredNarrator when no API
+        // key is set so `--dry-run` still works.
         $config = Config::fromEnvironment();
         $tz = new \DateTimeZone(date_default_timezone_get());
         $prewarmer = new Prewarmer(
@@ -62,6 +75,11 @@ final class Bootstrap
         $event->setCommand(PrewarmCommand::class, new PrewarmCommand($config, $prewarmer, ServiceContainer::getClock(), $tz, $lock));
     }
 
+    /**
+     * Fires while the patient summary page is being built. Echoes the panel
+     * markup (server-rendered card + a <script> that fetches the briefing).
+     * The CSRF token is embedded so panel.js can POST to chat.php.
+     */
     public function renderPanel(RenderEvent $event): void
     {
         $pid = $event->getPid();
@@ -80,6 +98,11 @@ final class Bootstrap
         }
     }
 
+    /**
+     * The panel's static skeleton. Every dynamic value is HTML-escaped before
+     * interpolation. panel.js reads data-endpoint and data-csrf from the root
+     * div and fills the empty containers.
+     */
     private function panelHtml(string $base, string $csrf): string
     {
         $endpoint = htmlspecialchars($base . '/public/chat.php', ENT_QUOTES);

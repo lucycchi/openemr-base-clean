@@ -14,9 +14,14 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Outcome of a follow-up question. $answerType is one of 'cited'
+ * (answer grounded in facts), 'not_in_facts' (model or scope check said
+ * the chart cannot answer it), or 'error' (model call failed; see $status).
+ */
 final readonly class AnswerResult
 {
-    /** @param list<Sentence> $sentences kept sentences */
+    /** @param list<Sentence> $sentences kept sentences (after the Verifier) */
     public function __construct(
         public string $answerType,
         public array $sentences,

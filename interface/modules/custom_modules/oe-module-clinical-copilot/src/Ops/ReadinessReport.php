@@ -14,6 +14,13 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/**
+ * Result of a readiness check, ready to serialise for ready.php. Three
+ * states: 'ready' (all deps ok), 'degraded' (only optional deps like
+ * Langfuse are down — still HTTP 200), 'not_ready' (a required dep such as
+ * the database or OpenAI is down — HTTP 503, which a load balancer treats
+ * as "take me out of rotation").
+ */
 final readonly class ReadinessReport
 {
     /**

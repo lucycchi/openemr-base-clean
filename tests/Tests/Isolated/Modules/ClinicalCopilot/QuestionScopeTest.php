@@ -20,6 +20,11 @@ use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * The other-patient regex. Table-driven: questions that name a different
+ * patient/pid/chart/record number must be caught; the open patient's own
+ * number, doses, and years must not be false positives.
+ */
 final class QuestionScopeTest extends TestCase
 {
     /**

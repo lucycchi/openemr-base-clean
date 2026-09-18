@@ -19,12 +19,21 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use Symfony\Component\HttpFoundation\InputBag;
 
+/**
+ * The parsed, validated form of a POST to chat.php. This is the
+ * "parse, don't validate" boundary: raw request fields go in once, and
+ * everything downstream works with typed properties that are guaranteed
+ * sane (action is an enum, question is trimmed and bounded, facts_hash is a
+ * real sha256, transcript is a clean list). Any problem throws
+ * InvalidRequest with the right HTTP status; the constructor is private so
+ * an instance can only exist via fromBag().
+ */
 final readonly class ChatRequest
 {
     private const KNOWN_KEYS = ['csrf_token_form', 'action', 'question', 'facts_hash', 'transcript'];
-    private const QUESTION_MAX = 500;
-    private const TURN_TEXT_MAX = 1000;
-    private const TURNS_KEPT = 10;
+    private const QUESTION_MAX = 500;   // chars; longer questions are truncated, not rejected
+    private const TURN_TEXT_MAX = 1000; // chars per prior chat turn
+    private const TURNS_KEPT = 10;      // only the most recent N turns are sent to the model
 
     /**
      * @param list<array{role: string, text: string}> $transcript
@@ -44,6 +53,8 @@ final readonly class ChatRequest
      */
     public static function fromBag(InputBag $bag): self
     {
+        // Reject unknown fields outright rather than ignoring them — it
+        // surfaces client bugs and blocks parameter-smuggling.
         foreach ($bag->keys() as $key) {
             if (!in_array($key, self::KNOWN_KEYS, true)) {
                 throw new InvalidRequest('Unexpected field in request');
@@ -58,6 +69,7 @@ final readonly class ChatRequest
         if ($action === null) {
             throw new InvalidRequest('Unknown action');
         }
+        // 'brief' needs nothing else; the remaining checks are for 'ask'.
         if ($action === ChatAction::Brief) {
             return new self($csrf, $action, null, null, []);
         }
@@ -65,6 +77,8 @@ final readonly class ChatRequest
         if ($question === '') {
             throw new InvalidRequest('Question is required');
         }
+        // The panel echoes back the facts_hash from its last briefing so the
+        // server can detect that the chart changed underneath the conversation.
         $hash = $bag->getString('facts_hash');
         if (!preg_match('/^[0-9a-f]{64}$/', $hash)) {
             throw new InvalidRequest('facts_hash is required');
@@ -72,7 +86,12 @@ final readonly class ChatRequest
         return new self($csrf, $action, $question, $hash, self::parseTranscript($bag->getString('transcript', '[]')));
     }
 
-    /** @return list<array{role: string, text: string}> */
+    /**
+     * Decodes the prior chat turns the panel sends as a JSON string. Malformed
+     * JSON or malformed turns are dropped silently (an empty transcript is a
+     * valid state); role is restricted to user/assistant and text is bounded.
+     * @return list<array{role: string, text: string}>
+     */
     private static function parseTranscript(string $raw): array
     {
         try {

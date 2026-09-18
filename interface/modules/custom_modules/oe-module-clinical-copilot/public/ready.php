@@ -20,6 +20,8 @@ require_once __DIR__ . "/../../../../globals.php";
 
 use OpenEMR\Modules\ClinicalCopilot\Ops\ReadinessProbes;
 
+// check() returns a cached report when one is <60s old, else runs the probes.
+// 200 = ready or degraded, 503 = a required dependency is down.
 $report = ReadinessProbes::readiness()->check();
 http_response_code($report->httpStatus());
 header("Content-Type: application/json");

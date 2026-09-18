@@ -1,3 +1,10 @@
+/* Clinical Co-Pilot panel styles. Everything is scoped under #copilot-panel so
+   nothing leaks into the surrounding OpenEMR chart page, and the colours are
+   Bootstrap 4's own alert/badge palette so the card matches the rest of the UI.
+   Structure: .copilot-narration (AI summary) above .copilot-facts (the table),
+   then .copilot-ask (question form) and .copilot-thread (chat turns).
+   .copilot-chip is the fact-id badge; -ref = cited in a sentence, -hit = hovered.
+   .copilot-must bolds facts the OmissionGuard says must surface. */
 #copilot-panel .copilot-narration { margin-bottom: .75rem; }
 #copilot-panel .copilot-narration .copilot-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: #6c757d; margin-bottom: .25rem; }
 #copilot-panel .copilot-narration p { margin: 0 0 .35rem 0; }

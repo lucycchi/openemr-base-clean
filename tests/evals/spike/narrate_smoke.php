@@ -2,6 +2,9 @@
 
 /**
  * Live smoke: real facts -> OpenAI -> verifier -> omission guard -> cache, twice.
+ * The "twice" proves the second call is a cache hit. Manual developer tool
+ * for a first end-to-end run on a new environment; run.php --live is the
+ * repeatable version.
  * Requires OPENAI_API_KEY in the environment (.env). Costs a few hundred tokens.
  * Run: openemr-cmd e "su -s /bin/sh apache -c 'php /var/www/localhost/htdocs/openemr/tests/evals/spike/narrate_smoke.php [pid]'"
  */

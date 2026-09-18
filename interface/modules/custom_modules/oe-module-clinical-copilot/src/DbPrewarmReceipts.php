@@ -16,6 +16,11 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use OpenEMR\Common\Database\QueryUtils;
 
+/**
+ * PrewarmReceipts stored in the copilot_prewarm table. record() denormalises
+ * everything needed later to explain a hit/miss (prompt version, model, the
+ * cache key the warm produced) so the comparison at chart open needs no joins.
+ */
 final readonly class DbPrewarmReceipts implements PrewarmReceipts
 {
     public function __construct(private string $model)
@@ -36,6 +41,8 @@ final readonly class DbPrewarmReceipts implements PrewarmReceipts
                 $row->appointment->pid->value,
                 $row->appointment->providerUsername,
                 $hash,
+                // Same formula as NarrationPipeline::cacheKey(), stored so a
+                // later reader can check whether that exact key is still in the cache.
                 $hash === null ? null : hash('sha256', $hash . '|' . Prompt::VERSION . '|' . $this->model),
                 Prompt::VERSION,
                 $this->model,
@@ -65,6 +72,8 @@ final readonly class DbPrewarmReceipts implements PrewarmReceipts
         if ($row === false) {
             return null;
         }
+        // Narrow the stored JSON and status back into typed values; an
+        // unrecognised status (e.g. from a newer schema) is treated as no receipt.
         $lines = json_decode(Row::str($row, 'fact_lines_json'), true);
         $status = PrewarmStatus::tryFrom(Row::str($row, 'status'));
         if ($status === null) {

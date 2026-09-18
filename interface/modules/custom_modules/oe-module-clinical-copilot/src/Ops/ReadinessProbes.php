@@ -21,10 +21,19 @@ use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 
+/**
+ * Builds the production Readiness checker with its three probes. Each probe
+ * is a closure returning null when healthy or a short reason string when
+ * not. Kept out of Readiness itself so that class stays pure and testable
+ * with fake probes.
+ */
 final class ReadinessProbes
 {
     public static function readiness(?Config $config = null): Readiness
     {
+        // Short timeouts: a readiness endpoint must answer quickly even when a
+        // dependency is hanging. http_errors=false so a 4xx/5xx is a status
+        // code to inspect rather than an exception.
         $config ??= Config::fromEnvironment();
         $http = new Client(['timeout' => 2.0, 'connect_timeout' => 1.0, 'http_errors' => false]);
         return new Readiness([

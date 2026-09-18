@@ -19,6 +19,14 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Normal ranges for the handful of common labs the copilot knows how to
+ * flag, keyed by LOINC code. A value outside [low, high] becomes a
+ * LabAbnormal fact (which must surface). Deliberately small and hard-coded:
+ * these are conservative adult reference ranges, not a clinical rules engine.
+ * VERSION is bumped whenever a range changes so evals can record which table
+ * they ran against.
+ */
 final class ReferenceRanges
 {
     public const VERSION = '2026-09-15.1';
@@ -43,7 +51,7 @@ final class ReferenceRanges
         '3016-3' => [0.4, 4.0, 'm[IU]/L'],    // TSH
     ];
 
-    /** @return array{float, float, string}|null */
+    /** Returns [low, high, units] for a known LOINC, or null if the copilot has no range for it. @return array{float, float, string}|null */
     public function for(string $loinc): ?array
     {
         return self::RANGES[$loinc] ?? null;

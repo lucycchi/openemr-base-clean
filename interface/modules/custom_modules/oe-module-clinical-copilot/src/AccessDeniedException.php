@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Thrown when the logged-in user is not allowed to see the requested chart
+ * (or a restricted part of it). The controller turns it into HTTP 403.
+ * It has no body of its own; the type name is the whole signal.
+ */
 final class AccessDeniedException extends \RuntimeException
 {
 }

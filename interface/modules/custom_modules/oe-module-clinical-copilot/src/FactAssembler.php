@@ -17,6 +17,18 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 
+/**
+ * Turns raw chart records into the FactSet the model is shown. This is the
+ * clinical logic of the feature, and it is entirely deterministic:
+ *   - enforce ACL (throws AccessDeniedException; hides sensitive encounters),
+ *   - find the "prior visit" and use its date as the "since" boundary,
+ *   - classify each medication/allergy/problem as new or pre-existing,
+ *   - flag abnormal labs (ReferenceRanges) and lab-to-lab deltas,
+ *   - flag allergy/medication name matches,
+ *   - cap each category and add a "N more not shown" fact when it overflows.
+ * The clock is injected so "today" is controllable (the pre-warm pins it to
+ * midnight; tests pin it to a fixed date).
+ */
 final class FactAssembler
 {
     public function __construct(
@@ -27,14 +39,19 @@ final class FactAssembler
     ) {
     }
 
+    /** @param ?int $currentEncounterId  The encounter the clinician has selected, if any; shifts the history boundary to that day. */
     public function assemble(PatientId $pid, ?int $currentEncounterId): AssembledFacts
     {
+        // Coarse gate first: no medical-record or encounter-note permission -> nothing at all.
         foreach ([['patients', 'med'], ['encounters', 'notes']] as [$section, $value]) {
             if (!$this->auth->canView($section, $value)) {
                 throw new AccessDeniedException("Not authorized: $section/$value");
             }
         }
 
+        // Fine-grained gate: encounters tagged with a sensitivity level the
+        // user is not cleared for are dropped, and remembered so their labs
+        // are dropped too (a lab result would otherwise leak the visit).
         $hiddenEncounterIds = [];
         $encounters = [];
         foreach ($this->chart->encounters($pid) as $e) {
@@ -44,6 +61,8 @@ final class FactAssembler
             }
             $encounters[] = $e;
         }
+        // Newest first. `<=>` on arrays compares element by element, so ties
+        // on date break on id — a deterministic order matters for the hash.
         usort($encounters, fn(EncounterRecord $a, EncounterRecord $b) => [$b->date, $b->id] <=> [$a->date, $a->id]);
 
         // The briefing is history only: encounters on or after the day being
@@ -55,6 +74,8 @@ final class FactAssembler
             $encounters,
             static fn(EncounterRecord $e) => [$e->date, $e->id] < $boundary
         ));
+        // The prior visit is the newest remaining encounter; its date is the
+        // "since" boundary that decides what counts as new below.
         $prior = $encounters[0] ?? null;
 
         $facts = [];
@@ -74,6 +95,7 @@ final class FactAssembler
                 : FactCategory::MedicationActive);
         }
 
+        // Every allergy becomes a fact; new ones since the prior visit are flagged.
         $allergies = $this->chart->allergies($pid);
         foreach ($allergies as $a) {
             $facts[] = $this->fact('AllergyIntoleranceService', $a->id, 'title', $this->dated($a->title, 'onset', $a->beginDate, $a->beginDateProvenance), $this->isNew($a->beginDate, $since)
@@ -81,6 +103,8 @@ final class FactAssembler
                 : FactCategory::AllergyActive);
         }
 
+        // Cross-check: any active drug whose name contains the allergy's
+        // first word becomes a must-surface AllergyMedicationHit fact.
         foreach ($allergies as $a) {
             foreach ($activeMeds as $m) {
                 if ($this->allergyMatchesDrug($a->title, $m->drug)) {
@@ -100,10 +124,13 @@ final class FactAssembler
             fn(LabRecord $l) => !isset($hiddenEncounterIds[$l->encounterId])
         ));
         usort($labs, fn(LabRecord $a, LabRecord $b) => [$b->date, $b->id] <=> [$a->date, $a->id]);
+        // Only labs since the prior visit produce facts, but older labs stay
+        // in the sorted list so previousResult() can find the value to diff against.
         foreach ($labs as $i => $l) {
             if (!$this->isNew($l->date, $since)) {
                 continue;
             }
+            // Abnormal: outside the reference range for a LOINC we know.
             $range = $this->ranges->for($l->loinc);
             if ($range !== null && ($l->value < $range[0] || $l->value > $range[1])) {
                 $direction = $l->value < $range[0] ? 'below' : 'above';
@@ -115,6 +142,7 @@ final class FactAssembler
                     FactCategory::LabAbnormal,
                 );
             }
+            // Delta: same test, earlier result with a different value.
             $previous = $this->previousResult($labs, $i);
             if ($previous !== null && $previous->value !== $l->value) {
                 $diff = $l->value - $previous->value;
@@ -181,7 +209,7 @@ final class FactAssembler
         return $kept;
     }
 
-    /** @param list<LabRecord> $labs sorted newest first */
+    /** The next-older result with the same LOINC code, or null. @param list<LabRecord> $labs sorted newest first */
     private function previousResult(array $labs, int $index): ?LabRecord
     {
         $current = $labs[$index];
@@ -193,6 +221,7 @@ final class FactAssembler
         return null;
     }
 
+    /** 7.90 -> "7.9", 150.00 -> "150": trailing zeros would otherwise become literals the Verifier must match. */
     private function num(float $v): string
     {
         return rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
@@ -216,6 +245,7 @@ final class FactAssembler
         };
     }
 
+    /** "New" = strictly after the prior visit. With no prior visit nothing is new (it is all baseline). */
     private function isNew(DateTimeImmutable $date, ?DateTimeImmutable $since): bool
     {
         return $since !== null && $date > $since;

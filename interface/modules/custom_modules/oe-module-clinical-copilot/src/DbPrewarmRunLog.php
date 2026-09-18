@@ -17,10 +17,18 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use OpenEMR\Common\Database\QueryUtils;
 
+/**
+ * Reads the most recent pre-warm run's totals out of the receipts table.
+ * There is no separate "runs" table: a run is just every receipt row sharing
+ * a run_id, so the summary is a GROUP BY over those rows.
+ */
 final readonly class DbPrewarmRunLog
 {
+    /** Null if the pre-warm has never run on this server. */
     public function lastRun(): ?PrewarmRunStatus
     {
+        // Sub-select finds the newest run_id; the outer query counts its rows
+        // by status. SUM(status = 'x') is MySQL's idiom for "count where".
         $row = QueryUtils::querySingleRow(
             "SELECT run_id, target_date,
                     MAX(created_at) AS finished_at,

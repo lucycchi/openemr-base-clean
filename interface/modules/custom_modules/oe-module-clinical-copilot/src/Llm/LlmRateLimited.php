@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Llm;
 
+/** HTTP 429 from the provider (or the retry budget exhausted on 429s). Label shown to the user is below. */
 final class LlmRateLimited extends LlmException
 {
     public function statusLabel(): string

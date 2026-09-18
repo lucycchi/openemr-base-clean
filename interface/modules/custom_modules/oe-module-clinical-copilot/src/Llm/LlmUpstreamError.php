@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Llm;
 
+/** Any other non-2xx response from the provider (5xx, auth failure, etc.). Label shown to the user is below. */
 final class LlmUpstreamError extends LlmException
 {
     public function statusLabel(): string

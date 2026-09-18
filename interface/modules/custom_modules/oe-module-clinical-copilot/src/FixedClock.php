@@ -19,6 +19,12 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Psr\Clock\ClockInterface;
 
+/**
+ * A PSR-20 clock that always returns the same instant. Production code
+ * injects a real clock; the pre-warm command and tests use this so "today"
+ * and "tomorrow" are deterministic (and so a cron run can be replayed for a
+ * specific date with --date).
+ */
 final readonly class FixedClock implements ClockInterface
 {
     public function __construct(private DateTimeImmutable $now)

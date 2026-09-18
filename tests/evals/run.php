@@ -24,6 +24,9 @@ declare(strict_types=1);
 $live = in_array('--live', $argv, true);
 $root = dirname(__DIR__, 2);
 
+// Two bootstraps. Live mode needs the full OpenEMR runtime (database, site
+// config) so it loads globals.php as an authenticated CLI script; recorded
+// mode only needs Composer's autoloader.
 if ($live) {
     $ignoreAuth = 1;
     $_GET['site'] = 'default';
@@ -42,6 +45,7 @@ use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
 use OpenEMR\Modules\ClinicalCopilot\Sentence;
 use OpenEMR\Modules\ClinicalCopilot\Verifier;
 
+// The module is not in composer.json's autoload map (see Support/ModuleAutoload.php).
 $loaders = ClassLoader::getRegisteredLoaders();
 reset($loaders)->addPsr4('OpenEMR\\Modules\\ClinicalCopilot\\', $root . '/interface/modules/custom_modules/oe-module-clinical-copilot/src/');
 
@@ -56,7 +60,7 @@ function loadCase(string $path): array
     return $data;
 }
 
-/** @param list<array<string, mixed>> $rows */
+/** Builds a FactSet from the "facts" array in a recorded case file. @param list<array<string, mixed>> $rows */
 function factsFrom(array $rows): FactSet
 {
     $facts = [];
@@ -73,7 +77,7 @@ function factsFrom(array $rows): FactSet
     return new FactSet($facts);
 }
 
-/** @param array<string, mixed> $data */
+/** Builds a Narration from the "narration" fixture in a recorded case file (same shape as model output). @param array<string, mixed> $data */
 function narrationFrom(array $data): Narration
 {
     $sentences = [];
@@ -92,6 +96,8 @@ function narrationFrom(array $data): Narration
  */
 function compare(array $expect, array $actual): array
 {
+    // Each key in a case's "expect" block is either a special assertion
+    // (handled below) or a plain equality check against the run's output.
     $mismatches = [];
     foreach ($expect as $key => $want) {
         if ($key === 'no_ungrounded_kept') {
@@ -126,6 +132,7 @@ function compare(array $expect, array $actual): array
     return $mismatches;
 }
 
+// ---- Main loop: one case file = one eval ----------------------------------
 $verifier = new Verifier();
 $guard = new OmissionGuard();
 $results = [];
@@ -142,6 +149,8 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         continue;
     }
 
+    // A case yields one or more "runs" (live cases run once per selected
+    // patient); every run is compared against the same expectations.
     $started = hrtime(true);
     $runs = [];
     if (!$isLive) {
@@ -186,6 +195,7 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     ];
 }
 
+// ---- Aggregate metrics over live runs (latency percentiles, strip counts) --
 $liveRuns = [];
 foreach ($results as $r) {
     foreach ($r['runs'] ?? [] as $run) {
@@ -212,6 +222,8 @@ if ($liveRuns !== []) {
         'tokens_total' => array_sum(array_map(fn(array $r) => (int) ($r['tokens'] ?? 0), $liveRuns)),
     ];
 }
+// results.json is committed so a reviewer can see the last run without an
+// API key; EVAL_RESULTS overrides the path (used for results-deployed.json).
 $summary = ['ran_at' => gmdate('c'), 'live' => $live, 'pass' => $pass, 'fail' => $fail, 'metrics' => $metrics, 'cases' => $results];
 $out = getenv('EVAL_RESULTS') ?: __DIR__ . '/results.json';
 file_put_contents($out, json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
@@ -224,6 +236,8 @@ exit($fail === 0 ? 0 : 1);
  */
 function runLive(array $case, Verifier $verifier, OmissionGuard $guard): array
 {
+    // Real chart source, real ACL (as 'admin'), real OpenAI client — the
+    // same objects production uses, minus the HTTP controller.
     $config = \OpenEMR\Modules\ClinicalCopilot\Config::fromEnvironment();
     if (!$config->hasOpenAi()) {
         throw new RuntimeException('OPENAI_API_KEY is not set');
@@ -251,6 +265,8 @@ function runLive(array $case, Verifier $verifier, OmissionGuard $guard): array
         };
         $pipeline = new \OpenEMR\Modules\ClinicalCopilot\NarrationPipeline($llm, $verifier, $guard, $cache);
         $t = hrtime(true);
+        // Follow-up cases ask a question; "{other_pid}" in the question is
+        // replaced with a real different patient's id to test the scope guard.
         if (($case['mode'] ?? 'briefing') === 'followup') {
             $question = str_replace('{other_pid}', (string) otherPatient($pid), (string) $case['question']);
             $a = $pipeline->answer($assembled, $question, [], new \OpenEMR\Modules\ClinicalCopilot\PatientId($pid));
@@ -331,7 +347,12 @@ function otherPatient(int $pid): int
     return (int) ($row['pid'] ?? 0);
 }
 
-/** @return list<int> */
+/**
+ * Resolves a case's "patients" selector ("busiest:3", "abnormal:5") to
+ * concrete pids from the seed database, so cases describe *kinds* of
+ * patients rather than hard-coding ids that differ between databases.
+ * @return list<int>
+ */
 function selectPatients(string $spec): array
 {
     [$kind, $n] = explode(':', $spec) + [1 => '3'];

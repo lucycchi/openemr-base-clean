@@ -16,9 +16,15 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/**
+ * A normalised alert: name, severity, measured value and threshold, pulled
+ * out of whatever JSON the sender used. Every field defaults to 'unknown' /
+ * null rather than failing, because the point of the endpoint is to log
+ * and audit that an alert arrived even if its shape is unexpected.
+ */
 final readonly class AlertEvent
 {
-    /** @param array<string, mixed> $payload */
+    /** @param array<string, mixed> $payload  The full original body, kept for the audit log. */
     public function __construct(
         public string $name,
         public string $severity,
@@ -59,12 +65,13 @@ final readonly class AlertEvent
         );
     }
 
+    /** Regex-extract a number from human text like "... is 0.42 (threshold: 0.5)". */
     private static function fromBody(string $body, string $pattern): ?string
     {
         return preg_match($pattern, $body, $m) ? $m[1] : null;
     }
 
-    /** @return array<string, scalar|list<string>|null> */
+    /** PSR-3 context. Only the payload's *keys* are logged, not its values, to avoid echoing arbitrary sender data. @return array<string, scalar|list<string>|null> */
     public function toLogContext(): array
     {
         return [
@@ -79,6 +86,7 @@ final readonly class AlertEvent
         ];
     }
 
+    /** One-line summary written to OpenEMR's audit log table. */
     public function auditComment(): string
     {
         return sprintf(
@@ -91,6 +99,7 @@ final readonly class AlertEvent
         ) . ($this->monitorId === null ? '' : ' monitor=' . $this->monitorId);
     }
 
+    /** Non-empty string, trimmed and capped at 120 chars; anything else -> 'unknown'. */
     private static function str(mixed $v): string
     {
         return is_string($v) && trim($v) !== '' ? mb_substr(trim($v), 0, 120) : 'unknown';
@@ -101,6 +110,7 @@ final readonly class AlertEvent
         return is_int($v) || is_float($v) ? (float) $v : (is_string($v) && is_numeric($v) ? (float) $v : null);
     }
 
+    /** Prints 5.0 as "5" and 0.420000 as "0.42". */
     private static function fmt(float $v): string
     {
         return $v === floor($v) ? (string) (int) $v : rtrim(rtrim(number_format($v, 6, '.', ''), '0'), '.');

@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Totals for one pre-warm run, derived from its rows. The counters are
+ * computed once in the constructor (readonly properties can be assigned
+ * there) so callers get plain ints rather than re-filtering the list.
+ */
 final readonly class PrewarmSummary
 {
     public int $scheduled;

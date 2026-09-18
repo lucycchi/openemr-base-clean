@@ -14,6 +14,10 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * One entry from the patient's problem list, as read from the chart.
+ * Plain immutable data; FactAssembler turns it into a Fact.
+ */
 final readonly class ProblemRecord
 {
     public function __construct(

@@ -33,6 +33,7 @@ use OpenEMR\Modules\ClinicalCopilot\Ops\AlertRejected;
 use OpenEMR\Modules\ClinicalCopilot\Ops\CorrelatedLogger;
 use Symfony\Component\HttpFoundation\Request;
 
+// Symfony Request wraps $_SERVER/$_POST/php://input in a typed object.
 $request = Request::createFromGlobals();
 $correlationId = CorrelationId::generate();
 $logger = new CorrelatedLogger(ServiceContainer::getLogger(), $correlationId);
@@ -47,6 +48,8 @@ if ($request->getMethod() !== 'POST') {
     return;
 }
 
+// Authentication + parsing are delegated to AlertReceiver (pure, unit-tested);
+// this file only maps its exceptions to HTTP status codes.
 $token = $request->headers->get('X-Alert-Token') ?? '';
 $signature = $request->headers->get('x-langfuse-signature') ?? '';
 $config = Config::fromEnvironment();

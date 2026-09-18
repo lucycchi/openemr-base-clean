@@ -14,8 +14,14 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Makes a random 32-hex-char id for one request. It is written into every
+ * log line, the Langfuse trace, and the response headers, so a single id
+ * ties together everything that happened for one chart open or question.
+ */
 final class CorrelationId
 {
+    /** 16 random bytes, hex-encoded — cryptographically random, no timestamp leak. */
     public static function generate(): string
     {
         return bin2hex(random_bytes(16));

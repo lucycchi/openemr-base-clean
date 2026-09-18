@@ -15,6 +15,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Stand-in narrator used when OPENAI_API_KEY is not set. Lets the module
+ * load and the panel render on a server with no AI configured; the first
+ * attempt to brief throws, and the controller reports "not configured"
+ * instead of crashing at boot.
+ */
 final readonly class UnconfiguredNarrator implements BriefingNarrator
 {
     public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId): BriefingResult

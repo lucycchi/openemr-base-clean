@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * The two things chat.php can be asked to do. A string-backed enum: the
+ * value is what arrives in the JSON request body ("action": "brief"), and
+ * ChatAction::from() rejects anything else at the boundary.
+ */
 enum ChatAction: string
 {
     case Brief = 'brief';

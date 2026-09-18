@@ -17,6 +17,12 @@ namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LoggerInterface;
 
+/**
+ * PSR-3 logger decorator that stamps every log entry with the request's
+ * correlation id. Code that receives this logger just calls ->info() etc.;
+ * it never has to remember to pass the id itself. `$context +` means the
+ * caller's own context keys win if they happen to include 'correlation_id'.
+ */
 final class CorrelatedLogger extends AbstractLogger
 {
     public function __construct(private readonly LoggerInterface $inner, private readonly string $correlationId)

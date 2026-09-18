@@ -14,6 +14,13 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * All deployment settings the module reads, parsed once from environment
+ * variables into typed, immutable fields. Nothing else in the module calls
+ * getenv(); tests construct this directly with literal values. Empty string
+ * means "not set" for the string fields; has*() helpers answer the common
+ * "is this integration configured?" questions.
+ */
 final readonly class Config
 {
     public function __construct(
@@ -33,6 +40,7 @@ final readonly class Config
     ) {
     }
 
+    /** The production constructor. Defaults: gpt-4o-mini, Langfuse cloud host. */
     public static function fromEnvironment(): self
     {
         return new self(
@@ -59,6 +67,7 @@ final readonly class Config
         return $this->langfusePublicKey !== '' && $this->langfuseSecretKey !== '';
     }
 
+    /** "1", "true", "yes", "on" (any case) are true; everything else, including unset, is false. */
     private static function envFlag(string $name): bool
     {
         return in_array(strtolower(self::env($name)), ['1', 'true', 'yes', 'on'], true);
@@ -70,6 +79,7 @@ final readonly class Config
         return is_numeric($v) ? (float) $v : null;
     }
 
+    /** Reads $_ENV first, then getenv(), trimmed; '' when unset. */
     private static function env(string $name): string
     {
         $v = $_ENV[$name] ?? getenv($name);

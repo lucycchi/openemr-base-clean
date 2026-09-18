@@ -18,6 +18,8 @@
 
 declare(strict_types=1);
 
+// Boot OpenEMR as an unauthenticated CLI script: we need its DB connection
+// to pick patients, but the browser session does its own real login below.
 $ignoreAuth = 1;
 $_GET['site'] = 'default';
 $sessionAllowWrite = true;
@@ -31,6 +33,7 @@ $count = (int) ($argv[2] ?? 10);
 $module = '/interface/modules/custom_modules/oe-module-clinical-copilot/public';
 $failures = 0;
 
+/** Prints one result line and bumps the global failure count. */
 function check(string $name, bool $ok, string $detail = ''): void
 {
     global $failures;
@@ -38,6 +41,7 @@ function check(string $name, bool $ok, string $detail = ''): void
     printf("%-52s %s %s\n", $name, $ok ? 'OK  ' : 'FAIL', $detail);
 }
 
+// 1. Plain HTTP checks on the two unauthenticated endpoints.
 foreach (['health.php' => 200, 'ready.php' => 200] as $file => $want) {
     $ctx = stream_context_create(['http' => ['ignore_errors' => true, 'timeout' => 10]]);
     $body = (string) file_get_contents("$base$module/$file", false, $ctx);
@@ -50,8 +54,15 @@ foreach (['health.php' => 200, 'ready.php' => 200] as $file => $want) {
     check($file, $status === $want, "HTTP $status " . substr($body, 0, 80));
 }
 
+// 2. Pick the N patients with the most encounters — the richest charts.
 $pids = array_map(fn(array $r) => (int) $r['pid'], QueryUtils::fetchRecords("SELECT pid FROM form_encounter GROUP BY pid ORDER BY COUNT(*) DESC LIMIT $count"));
 
+/**
+ * Drives a logged-in Selenium session to the patient's summary page (and
+ * selects their latest encounter, mirroring what a clinician does), waits
+ * for the panel's status to leave "loading…", then reads counts out of the
+ * DOM with JavaScript. Returns what a human would see, not API output.
+ */
 function openPanel(Client $c, string $base, int $pid): array
 {
     $enc = (int) (QueryUtils::querySingleRow("SELECT encounter FROM form_encounter WHERE pid = ? ORDER BY date DESC, encounter DESC LIMIT 1", [$pid])['encounter'] ?? 0);
@@ -70,6 +81,7 @@ function openPanel(Client $c, string $base, int $pid): array
     return ['status' => $status, 'facts' => $facts, 'sentences' => $sentences, 'alert' => $stripped];
 }
 
+/** Opens a fresh browser session against the Selenium grid and logs in through the real form. */
 function login(string $base, string $user, string $pass): Client
 {
     $c = Client::createSeleniumClient('http://selenium:4444/wd/hub', null, $base);
@@ -80,6 +92,7 @@ function login(string $base, string $user, string $pass): Client
     return $c;
 }
 
+// 3. As admin every chart should brief ("ref <id>" status) with facts shown.
 $admin = login($base, 'admin', 'pass');
 foreach ($pids as $pid) {
     $r = openPanel($admin, $base, $pid);
@@ -88,6 +101,7 @@ foreach ($pids as $pid) {
 }
 $admin->quit();
 
+// 4. As a receptionist (no clinical ACL) the same chart must be refused with no facts.
 $recep = login($base, 'receptionist', 'receptionist');
 $r = openPanel($recep, $base, $pids[0]);
 check("receptionist pid {$pids[0]} refused", str_contains($r['status'], 'not authorized') && $r['facts'] === 0, $r['status']);

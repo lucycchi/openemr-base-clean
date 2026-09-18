@@ -25,6 +25,14 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\InputBag;
 
+/**
+ * ChatRequest parsing. The headline test is table-driven and dual-checks
+ * each body against the JSON Schema contract AND the PHP parser, asserting
+ * they agree — so the contract file and the code cannot silently diverge.
+ * The rest pin individual rules: question trimming/cap, transcript
+ * filtering to the last 10 well-formed turns, malformed JSON -> empty
+ * transcript, and that a missing CSRF token is 403 not 400.
+ */
 final class ChatRequestTest extends TestCase
 {
     /**
@@ -65,11 +73,13 @@ final class ChatRequestTest extends TestCase
     #[DataProvider('bodies')]
     public function testParserAgreesWithTheContract(array $body, bool $contractAccepts): void
     {
+        // 1. The contract's verdict (justinrainbow/json-schema validator).
         $validator = new Validator();
         $document = json_decode(json_encode($body, JSON_THROW_ON_ERROR));
         $validator->validate($document, Contracts::schema('chat.request'));
         self::assertSame($contractAccepts, $validator->isValid(), 'contract verdict differs from the provider expectation');
 
+        // 2. The parser's verdict. Form fields arrive as strings, hence the cast.
         $bag = new InputBag(array_map(static fn($v) => is_int($v) ? (string) $v : $v, $body));
         if ($contractAccepts) {
             self::assertSame($body['action'], ChatRequest::fromBag($bag)->action->value);

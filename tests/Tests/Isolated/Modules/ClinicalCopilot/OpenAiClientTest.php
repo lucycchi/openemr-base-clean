@@ -30,6 +30,16 @@ use OpenEMR\Modules\ClinicalCopilot\Llm\OpenAiClient;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * OpenAiClient against Guzzle's MockHandler (queued canned responses, no
+ * network). A history middleware captures each outgoing request so tests
+ * can assert on the exact body/headers sent. Covers: decoding the nested
+ * structured output + usage; strict json_schema and bearer auth on the
+ * wire; the correlation id riding as `user` and X-Correlation-Id; the
+ * retry policy (429/5xx/timeout retried once, 4xx not, attempt counts
+ * reported on both success and failure); and that refusals and
+ * unparseable content map to their typed exceptions.
+ */
 final class OpenAiClientTest extends TestCase
 {
     /**
@@ -60,6 +70,7 @@ final class OpenAiClientTest extends TestCase
         return $body;
     }
 
+    /** Builds a client whose HTTP stack replays $this->mock and records every request into $this->history. */
     private function client(): OpenAiClient
     {
         $this->history = new \ArrayObject();
@@ -79,6 +90,7 @@ final class OpenAiClientTest extends TestCase
         return ['type' => 'object', 'properties' => ['sentences' => ['type' => 'array', 'items' => ['type' => 'string']]], 'required' => ['sentences'], 'additionalProperties' => false];
     }
 
+    /** A minimal 200 response in OpenAI's envelope with $content as the (string) structured output. */
     private function completion(string $content): Response
     {
         return new Response(200, [], json_encode([

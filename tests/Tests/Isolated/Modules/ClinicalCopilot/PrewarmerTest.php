@@ -36,6 +36,17 @@ use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeChartSource;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Prewarmer with anonymous-class fakes that call back into the test to
+ * record what they were asked. Covers selection (dedupe per
+ * patient+provider, --pid filter, dry-run never narrates), that each
+ * patient is narrated *as the scheduled provider* (ACL view), that the
+ * clock is pinned to the target day so a check-in encounter does not
+ * change the hash, cache-hit vs warmed classification, one patient's
+ * failure not stopping the sweep, and that every row — including skipped
+ * and errored — is written as a receipt under a single run id with the
+ * fact lines attached.
+ */
 final class PrewarmerTest extends TestCase
 {
     /**
@@ -121,7 +132,7 @@ final class PrewarmerTest extends TestCase
         return new Prewarmer($schedule, $this->chart, $authorizationFor, $narrator, $this->tz, $receipts);
     }
 
-    /** @internal called by the anonymous narrator */
+    /** Records what the narrator was handed and returns a canned result (throws / reports cache-hit when the test says so). @internal called by the anonymous narrator */
     public function narrate(AssembledFacts $assembled, PatientId $pid, string $correlationId): BriefingResult
     {
         if ($this->narratorThrows !== null) {

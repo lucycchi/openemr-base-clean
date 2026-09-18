@@ -15,6 +15,13 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Turns token counts into an estimated USD cost for logs and traces.
+ * Two sources of rates: a small built-in list-price table, and optional
+ * per-deployment overrides from Config (environment variables). Overrides
+ * win when set; otherwise the table is used; if the model is in neither,
+ * cost is unknown (null) rather than guessed.
+ */
 final readonly class Pricing
 {
     /**
@@ -49,10 +56,11 @@ final readonly class Pricing
         if ($input === null || $output === null) {
             return null;
         }
+        // Rates are per million tokens; round to micro-dollars.
         return round(($promptTokens * $input + $completionTokens * $output) / 1_000_000, 6);
     }
 
-    /** @return array{?float, ?float} */
+    /** [input rate, output rate], each possibly null. Override ?? list price. @return array{?float, ?float} */
     private function ratesFor(string $model): array
     {
         $list = self::LIST_USD_PER_MILLION[$model] ?? [null, null];

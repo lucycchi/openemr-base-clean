@@ -27,6 +27,12 @@ use OpenEMR\Modules\ClinicalCopilot\Prompt;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * BriefingPipelineFactory wiring: the pipeline it builds must derive its
+ * cache key from the configured model + Prompt::VERSION, and must record
+ * steps into the recorder the caller passed in (not a private one), so
+ * the controller's trace sees the pipeline's timings.
+ */
 final class BriefingPipelineFactoryTest extends TestCase
 {
     /**

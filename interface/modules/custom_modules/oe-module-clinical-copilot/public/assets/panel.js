@@ -11,9 +11,13 @@
  * @copyright Copyright (c) 2026 Lucy Chi
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
+// Wrapped in an IIFE (immediately-invoked function) so nothing leaks into the
+// global scope of the chart page, which already has plenty of legacy JS.
 (function () {
     'use strict';
 
+    // The root <div> is server-rendered by Bootstrap::panelHtml(); it carries
+    // the chat.php URL and the CSRF token as data-* attributes.
     const panel = document.getElementById('copilot-panel');
     if (!panel) {
         return;
@@ -30,6 +34,8 @@
         thread: document.getElementById('copilot-thread'),
     };
 
+    // Display heading for each FactCategory value, in the order the sections
+    // are shown (most clinically urgent first). Must match FactCategory.php.
     const CATEGORY_LABELS = {
         allergy_medication_hit: 'Allergy / medication matches',
         lab_abnormal: 'Abnormal labs since last visit',
@@ -46,8 +52,13 @@
     };
     const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
 
+    // Per-page state. factsHash is echoed back on every question so the server
+    // can detect that the chart changed; transcript is the chat history the
+    // server is stateless about (it is re-sent on each turn).
     const state = { factsHash: null, factsById: {}, transcript: [] };
 
+    // Tiny DOM builder. All text goes through textContent / createTextNode,
+    // never innerHTML with data, so chart text cannot inject markup.
     function el(tag, attrs, children) {
         const node = document.createElement(tag);
         Object.entries(attrs || {}).forEach(([k, v]) => {
@@ -59,6 +70,9 @@
         return node;
     }
 
+    // A small clickable badge showing a fact id. Hovering it highlights every
+    // place that fact appears (in the summary and in the table) so a clinician
+    // can see exactly which chart row a sentence is citing.
     function chip(id, extraClass) {
         const fact = state.factsById[id];
         const c = el('span', { class: 'copilot-chip ' + (extraClass || ''), text: id, 'data-fact': id });
@@ -77,6 +91,9 @@
         els.status.className = 'small ' + (isError ? 'text-danger' : 'text-muted');
     }
 
+    // Builds the fact table from the response. This is rendered before (and
+    // independently of) the AI summary — it is the deterministic, verified
+    // baseline the clinician can always rely on.
     function renderFacts(payload) {
         state.factsHash = payload.facts_hash;
         state.factsById = {};
@@ -99,6 +116,9 @@
         });
     }
 
+    // One summary sentence followed by chips for the facts it cites. The regex
+    // strips any "[abcd1234]" the model left inline (belt-and-braces; the
+    // server already scrubs these).
     function sentenceNode(s) {
         const p = el('p');
         p.appendChild(document.createTextNode(s.text.replace(/\s*\[[0-9a-f]{8}(?:\s*,\s*[0-9a-f]{8})*\]/g, '') + ' '));
@@ -120,6 +140,10 @@
         return 'generated ' + when + ' · matches chart as of now';
     }
 
+    // Renders the AI summary block. Three branches: the model failed (show the
+    // status label), everything was stripped (say so), or normal. In every
+    // case the "Also on file" list appends must-surface facts the model
+    // skipped, so nothing important is hidden by a bad summary.
     function renderNarration(n) {
         els.narration.innerHTML = '';
         if (n.status) {
@@ -146,6 +170,9 @@
         }
     }
 
+    // POST form-encoded fields to chat.php with the CSRF token and a 30s
+    // client-side timeout. Resolves to {ok, status, json} even for 4xx/5xx so
+    // callers can show the server's error message.
     function post(fields) {
         const body = new URLSearchParams(Object.assign({ csrf_token_form: csrf }, fields));
         const controller = new AbortController();
@@ -166,6 +193,7 @@
         els.thread.appendChild(t);
     }
 
+    // Initial load (and re-load after a chart change): fetch facts + summary.
     function brief() {
         setStatus('loading…');
         post({ action: 'brief' }).then(({ ok, json }) => {
@@ -186,6 +214,7 @@
         });
     }
 
+    // Follow-up question flow.
     els.form.addEventListener('submit', ev => {
         ev.preventDefault();
         const question = els.question.value.trim();
@@ -195,6 +224,8 @@
         els.question.value = '';
         post({ action: 'ask', question, facts_hash: state.factsHash, transcript: JSON.stringify(state.transcript) })
             .then(({ ok, json }) => {
+                // Server says the chart moved since the briefing: wipe the
+                // conversation (its context is stale) and start over.
                 if (json.chart_changed) {
                     renderFacts(json);
                     state.transcript = [];
@@ -207,6 +238,8 @@
                     addTurn('assistant', json.error || 'Unavailable.');
                     return;
                 }
+                // Map the answer to a message. "not_in_facts" and "all
+                // sentences stripped" are distinct outcomes with distinct advice.
                 const a = json.answer;
                 let node;
                 if (a.status) {
@@ -230,5 +263,6 @@
             .finally(() => enableAsk(true));
     });
 
+    // Kick off the first briefing as soon as the script runs.
     brief();
 })();

@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Historical spike B (companion to spike.php): quick queries against the
+ * seed data to check which lab/allergy/medication columns are populated and
+ * what the ACL returns for a restricted user. Not part of the test suite.
+ */
+
 declare(strict_types=1);
 
 $ignoreAuth = 1; $_GET['site'] = 'default'; $sessionAllowWrite = true;

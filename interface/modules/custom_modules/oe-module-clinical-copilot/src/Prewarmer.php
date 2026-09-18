@@ -23,6 +23,14 @@ use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
 
+/**
+ * The overnight sweep. For every (patient, provider) pair on a day's
+ * schedule it assembles the facts *as that provider would see them*, runs
+ * the narrator (which fills the cache), and writes a receipt. When the
+ * provider opens the chart the next morning, the cache key matches and the
+ * briefing is instant. All collaborators are injected, so the sweep is
+ * tested end-to-end with fakes and no database.
+ */
 final readonly class Prewarmer
 {
     /** @param Closure(string): Authorization $authorizationFor builds the ACL view for a username */
@@ -36,8 +44,15 @@ final readonly class Prewarmer
     ) {
     }
 
+    /**
+     * @param ?int $onlyPid  Restrict to one patient (for manual testing); null = whole schedule.
+     * @param bool $dryRun   List who would be warmed without calling the model.
+     */
     public function run(DateTimeImmutable $day, ?int $onlyPid, bool $dryRun): PrewarmSummary
     {
+        // Facts are assembled relative to "now". Pin now to midnight of the
+        // target day so a 02:00 warm and a 09:00 chart open compute the same
+        // "since last visit" window and therefore the same facts hash.
         $clock = FixedClock::startOfDay($day->format('Y-m-d'), $this->tz);
         $runId = CorrelationId::generate();
         $rows = [];
@@ -77,6 +92,7 @@ final readonly class Prewarmer
         return $selected;
     }
 
+    /** Warm one (patient, provider). Never throws for per-patient failures — returns an Error row instead. */
     private function warm(ScheduledAppointment $appointment, FixedClock $clock): PrewarmRow
     {
         $correlationId = CorrelationId::generate();
@@ -88,6 +104,8 @@ final readonly class Prewarmer
             $assembled = $assembler->assemble($appointment->pid, null);
             $factsHash = $assembled->facts()->hash();
             $factLines = $assembled->facts()->lines();
+            // brief() consults the cache first, so an unchanged chart that was
+            // warmed yesterday costs no model call and is reported as such.
             $result = $this->narrator->brief($assembled, $appointment->pid, $correlationId);
             $status = $result->fromCache ? PrewarmStatus::AlreadyCached : PrewarmStatus::Warmed;
             return new PrewarmRow($appointment, $status, $factsHash, $correlationId, $this->elapsedMs($started), !$result->fromCache, null, $factLines);

@@ -19,6 +19,10 @@ use OpenEMR\Modules\ClinicalCopilot\Pricing;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Pricing: list-price maths for a known model, null (not 0) for an unknown
+ * one, and Config overrides taking precedence over the built-in table.
+ */
 final class PricingTest extends TestCase
 {
     /**

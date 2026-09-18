@@ -15,6 +15,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/**
+ * One timed stage of a request ("cache_lookup", "llm.briefing", "verify"...),
+ * as recorded by StepRecorder. $detail holds a few scalars worth keeping
+ * about the outcome (hit/miss, token counts, kept/stripped). Becomes a span
+ * in the Langfuse trace and a log line.
+ */
 final readonly class Step
 {
     /** @param array<string, scalar|null> $detail */
@@ -27,7 +33,7 @@ final readonly class Step
     ) {
     }
 
-    /** @return array<string, scalar|null> */
+    /** Flattens the step into a PSR-3 context array (step name, ms, error, plus $detail). @return array<string, scalar|null> */
     public function toLogContext(): array
     {
         return ['step' => $this->name, 'ms' => $this->durationMs, 'error' => $this->error] + $this->detail;

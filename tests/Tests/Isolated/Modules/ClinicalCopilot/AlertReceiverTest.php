@@ -21,6 +21,15 @@ use OpenEMR\Modules\ClinicalCopilot\Ops\AlertRejected;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * AlertReceiver end to end with a frozen clock: HMAC signatures (valid,
+ * tampered body, stale timestamp = replay, wrong secret), the shared-token
+ * path, the "either credential is enough" rule, the unconfigured/wrong
+ * token/non-object rejections, and payload parsing for both the generic
+ * shape and Langfuse's real monitor-alert shape (value and threshold pulled
+ * out of the message body text). Also pins that log context is bounded
+ * (a 10 KB blob does not reach the logs) and the audit comment is one line.
+ */
 final class AlertReceiverTest extends TestCase
 {
     /**
@@ -41,6 +50,7 @@ final class AlertReceiverTest extends TestCase
         return new AlertReceiver($secret, $signing, static fn(): int => self::NOW);
     }
 
+    /** Produces the "t=<unix>,v1=<hmac>" header exactly as Langfuse would. */
     private static function sign(string $body, int $ts = self::NOW, string $secret = self::SIGNING): string
     {
         return 't=' . $ts . ',v1=' . hash_hmac('sha256', $ts . '.' . $body, $secret);

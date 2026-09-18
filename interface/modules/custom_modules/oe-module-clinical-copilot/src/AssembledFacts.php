@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Output of FactAssembler: the FactSet the model will be shown, plus the most
+ * recent prior encounter (kept separately because the prompt frames the
+ * briefing as "what changed since this visit").
+ */
 final readonly class AssembledFacts
 {
     public function __construct(

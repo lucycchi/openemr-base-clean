@@ -14,6 +14,16 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * What happened to one patient during an overnight pre-warm run. String-backed
+ * because the value is persisted in the receipts table and shown on the
+ * dashboard.
+ *
+ *   Warmed         - called the model and stored a fresh briefing
+ *   AlreadyCached  - a valid briefing was already in the cache; no model call
+ *   Skipped        - not attempted (e.g. no facts, or the run was cut short)
+ *   Error          - the model call failed
+ */
 enum PrewarmStatus: string
 {
     case Warmed = 'warmed';

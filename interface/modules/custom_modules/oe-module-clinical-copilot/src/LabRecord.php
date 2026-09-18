@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * One numeric lab result. Only numeric results are loaded (see
+ * ChartSource::labs) because the abnormal/delta logic needs a float to
+ * compare against ReferenceRanges. $loinc is the standard test code.
+ */
 final readonly class LabRecord
 {
     public function __construct(

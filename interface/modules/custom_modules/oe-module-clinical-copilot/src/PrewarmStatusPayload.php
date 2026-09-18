@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Builds the JSON body for public/prewarm.php: whether pre-warm is enabled,
+ * the last run's counters (or null if it never ran), and the server time.
+ * Kept as a tiny static builder so the endpoint and its test share one shape.
+ */
 final class PrewarmStatusPayload
 {
     /** @return array<string, mixed> */

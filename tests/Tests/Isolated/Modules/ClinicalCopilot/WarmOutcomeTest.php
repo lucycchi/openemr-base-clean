@@ -26,6 +26,15 @@ use OpenEMR\Modules\ClinicalCopilot\WarmOutcome;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * WarmOutcome classification. Builds receipts and "now" fact sets by hand
+ * and checks each WarmMissReason fires in the right situation, in the
+ * right priority order (no row > prompt version > model > hash), plus the
+ * subtle viewer-vs-chart distinction: a different opener whose only
+ * differences are encounter facts or category flips is ViewerDiffers; a
+ * real value change (dose 500 -> 1000) is HashDrift even for a different
+ * opener. Ends by pinning the flat log-context shape.
+ */
 final class WarmOutcomeTest extends TestCase
 {
     /**
@@ -60,7 +69,7 @@ final class WarmOutcomeTest extends TestCase
         return new AssembledFacts(new FactSet($facts), null);
     }
 
-    /** @param list<Fact> $facts */
+    /** A receipt as the pre-warm would have written it for these facts (hash + lines derived from them). @param list<Fact> $facts */
     private function receipt(array $facts, string $provider = 'drsmith', string $prompt = self::PROMPT, string $model = self::MODEL): PrewarmReceipt
     {
         $set = new FactSet($facts);

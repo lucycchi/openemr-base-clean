@@ -21,6 +21,11 @@ use OpenEMR\Modules\ClinicalCopilot\FixedClock;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * The module's FixedClock (used by the pre-warm). Checks startOfDay() gives
+ * midnight in the requested zone with the right offset, and that now() is
+ * stable across calls.
+ */
 final class FixedClockTest extends TestCase
 {
     /**

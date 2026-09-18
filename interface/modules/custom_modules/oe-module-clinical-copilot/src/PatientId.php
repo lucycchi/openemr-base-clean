@@ -14,6 +14,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * A patient id wrapped in its own type. A bare int could be confused with an
+ * encounter id or user id in a call like brief(5, 7); this class makes such a
+ * mix-up a type error. Also guarantees the value is positive, so nothing
+ * downstream has to re-check.
+ */
 final readonly class PatientId
 {
     public function __construct(public int $value)

@@ -14,6 +14,10 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * One medication from the chart. $active mirrors OpenEMR's active flag;
+ * inactive meds are still listed but narrated as such.
+ */
 final readonly class MedicationRecord
 {
     public function __construct(

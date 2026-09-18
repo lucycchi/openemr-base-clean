@@ -20,6 +20,13 @@ use GuzzleHttp\ClientInterface;
 use OpenEMR\Modules\ClinicalCopilot\Llm\OpenAiClient;
 use OpenEMR\Modules\ClinicalCopilot\Ops\StepRecorder;
 
+/**
+ * Composition root for one request: wires the real OpenAI client, the
+ * DB-backed cache, the Verifier and the OmissionGuard into a
+ * NarrationPipeline. Business code never calls `new` on these; only this
+ * factory (and tests, which substitute fakes) does. The Guzzle client is
+ * injectable so tests can use a mock HTTP handler.
+ */
 final readonly class BriefingPipelineFactory
 {
     public function __construct(private ClientInterface $http = new Client())

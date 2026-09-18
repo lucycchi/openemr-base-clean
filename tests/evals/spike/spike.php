@@ -3,6 +3,13 @@
 /**
  * Runtime validation spike for the Clinical Co-Pilot design (T2).
  * Run: openemr-cmd e 'php /var/www/localhost/htdocs/openemr/tests/evals/spike/spike.php'
+ *
+ * Historical, pre-implementation script: before writing the module, this
+ * measured how long OpenEMR's own service classes take to load each chart
+ * section and whether the ACL calls behave as documented. Its findings
+ * (see spike-results.md) drove the decision to write OpenEmrChartSource
+ * with direct SQL rather than go through the service layer. Kept for the
+ * record; not part of the test suite.
  */
 
 declare(strict_types=1);

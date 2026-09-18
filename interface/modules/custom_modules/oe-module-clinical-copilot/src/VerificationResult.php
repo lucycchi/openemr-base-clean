@@ -14,6 +14,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * What the Verifier decided: which sentences survived and which were
+ * stripped. Both lists are kept so the stripped count can be logged and
+ * evaluated (the "0 of 56 stripped" number in the eval results).
+ */
 final readonly class VerificationResult
 {
     /**
@@ -43,6 +48,7 @@ final readonly class VerificationResult
         return count($this->stripped);
     }
 
+    /** True when the model said something but none of it was citable — treated as "no narration". */
     public function isTotalFailure(): bool
     {
         return $this->kept === [] && $this->stripped !== [];

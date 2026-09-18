@@ -14,16 +14,23 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Safe accessors for raw database rows. OpenEMR's query layer returns
+ * untyped associative arrays (every value may be a string, int, null...).
+ * These helpers narrow a column to the type the caller wants, with a
+ * harmless default instead of a TypeError, so the chart source can stay
+ * strictly typed without sprinkling is_string() everywhere.
+ */
 final class Row
 {
-    /** @param array<mixed> $row */
+    /** String column; numbers are stringified, anything else becomes ''. @param array<mixed> $row */
     public static function str(array $row, string $key): string
     {
         $v = $row[$key] ?? null;
         return is_string($v) ? $v : (is_int($v) || is_float($v) ? (string) $v : '');
     }
 
-    /** @param array<mixed> $row */
+    /** Integer column; numeric strings are accepted, anything else becomes 0. @param array<mixed> $row */
     public static function int(array $row, string $key): int
     {
         $v = $row[$key] ?? null;
@@ -36,7 +43,7 @@ final class Row
         return 0;
     }
 
-    /** @param array<mixed> $row */
+    /** Float column; ints and numeric strings are accepted, anything else becomes 0.0. @param array<mixed> $row */
     public static function float(array $row, string $key): float
     {
         $v = $row[$key] ?? null;

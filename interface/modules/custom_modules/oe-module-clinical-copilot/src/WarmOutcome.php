@@ -15,6 +15,14 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Answers, at chart open, "did the pre-warm pay off, and if not, why?".
+ * Compares the receipt written by last night's sweep against the facts
+ * assembled right now. A hit means the cache key will match; a miss is
+ * classified into a WarmMissReason so the dashboard can distinguish
+ * "the chart genuinely changed" from "we warmed as the wrong user" or
+ * "someone bumped the prompt version". Pure comparison, no I/O.
+ */
 final readonly class WarmOutcome
 {
     // The only services the sensitivity filter can add or remove facts for;
@@ -35,6 +43,10 @@ final readonly class WarmOutcome
     ) {
     }
 
+    /**
+     * Decision order: no receipt -> prompt changed -> model changed -> hash
+     * equal (hit) -> diff the fact lines to decide viewer-vs-chart drift.
+     */
     public static function evaluate(?PrewarmReceipt $receipt, AssembledFacts $assembled, string $openerUsername, string $promptVersion, string $model): self
     {
         if ($receipt === null) {
@@ -53,6 +65,8 @@ final readonly class WarmOutcome
             return new self(true, null, $receipt, [], []);
         }
 
+        // Hash differs. Diff the recorded fact lines against today's to find
+        // which ids were added, removed or changed.
         $warmed = self::byId($receipt->factLines);
         $now = self::byId($assembled->facts()->lines());
         $changedIds = [];
@@ -64,6 +78,8 @@ final readonly class WarmOutcome
         $newIds = array_values(array_diff(array_keys($now), array_keys($warmed)));
         $goneIds = array_values(array_diff(array_keys($warmed), array_keys($now)));
 
+        // If a *different* user is opening and every difference is one the
+        // sensitivity filter could cause, blame the viewer, not the chart.
         $reason = $openerUsername !== $receipt->providerUsername && self::onlyViewerEffects($changedIds, $warmed, $now)
             ? WarmMissReason::ViewerDiffers
             : WarmMissReason::HashDrift;
@@ -71,6 +87,7 @@ final readonly class WarmOutcome
     }
 
     /**
+     * Parses FactSet::lines() ("id\tservice\tcategory\tvalue") into a map keyed by id.
      * @param list<string> $lines
      * @return array<string, array{service: string, category: string, value: string}>
      */
@@ -95,6 +112,8 @@ final readonly class WarmOutcome
      */
     private static function onlyViewerEffects(array $changedIds, array $warmed, array $now): bool
     {
+        // Every changed id must be either from a viewer-sensitive service, or a
+        // category-only change with identical value text. One real change -> false.
         foreach ($changedIds as $id) {
             $service = ($now[$id] ?? $warmed[$id])['service'];
             if (in_array($service, self::VIEWER_SENSITIVE_SERVICES, true)) {

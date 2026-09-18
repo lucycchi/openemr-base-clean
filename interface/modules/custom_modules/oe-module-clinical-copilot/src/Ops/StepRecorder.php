@@ -15,9 +15,15 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/**
+ * Collects timed Steps for one request. The pipeline wraps each stage in
+ * measure(); the controller reads all() at the end to build the trace and
+ * the log lines. One recorder per request — it is created fresh by the
+ * factory, never shared.
+ */
 final class StepRecorder
 {
-    /** @var list<Step> */
+    /** Steps in the order they ran. @var list<Step> */
     private array $steps = [];
 
     /**
@@ -33,6 +39,8 @@ final class StepRecorder
      */
     public function measure(string $name, \Closure $fn, ?\Closure $detail = null): mixed
     {
+        // Wall-clock start (for the trace timeline) and a monotonic start (for
+        // an accurate duration that clock adjustments cannot skew).
         $startedAtMs = (int) round(microtime(true) * 1000);
         $started = hrtime(true);
         try {
@@ -45,7 +53,7 @@ final class StepRecorder
         return $result;
     }
 
-    /** @param array<string, scalar|null> $detail */
+    /** Records a step that was not run through measure() (e.g. an instant decision like a scope refusal). @param array<string, scalar|null> $detail */
     public function add(string $name, int $startedAtMs, int $durationMs, ?string $error = null, array $detail = []): void
     {
         $this->steps[] = new Step($name, $startedAtMs, $durationMs, $error, $detail);
@@ -63,6 +71,7 @@ final class StepRecorder
         return array_values(array_filter($this->steps, static fn(Step $s): bool => $s->error !== null));
     }
 
+    /** "LlmTimeout: ... (caused by ConnectException: ...)" — short class names, no stack trace. */
     public static function describe(\Throwable $e): string
     {
         $text = (new \ReflectionClass($e))->getShortName() . ': ' . $e->getMessage();

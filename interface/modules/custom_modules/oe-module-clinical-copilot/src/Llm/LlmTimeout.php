@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Llm;
 
+/** The HTTP call exceeded the configured timeout. Label shown to the user is below. */
 final class LlmTimeout extends LlmException
 {
     public function statusLabel(): string

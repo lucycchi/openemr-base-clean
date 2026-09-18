@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/** In-memory ReadinessStore. Lives only for the current process; used by tests and as a fallback. */
 final class ReadinessCache implements ReadinessStore
 {
     /** @var array{at: int, dependencies: array<string, string>}|null */

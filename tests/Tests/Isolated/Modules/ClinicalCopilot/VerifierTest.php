@@ -24,6 +24,16 @@ use OpenEMR\Modules\ClinicalCopilot\Sentence;
 use OpenEMR\Modules\ClinicalCopilot\Verifier;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * The Verifier's three rules, one or two tests each:
+ *   - no citation -> stripped; unknown id -> stripped;
+ *   - a number/date in the text must appear in a cited fact (7.8 kept,
+ *     9.1 stripped; right date kept, wrong date stripped), and may come
+ *     from any of several cited facts;
+ *   - inline "[id]" echoes are not mistaken for numeric literals, even
+ *     when the id happens to be all digits;
+ *   - all-stripped is a total failure, but an empty narration is not.
+ */
 final class VerifierTest extends TestCase
 {
     /**
@@ -31,6 +41,7 @@ final class VerifierTest extends TestCase
      */
     public static function setUpBeforeClass(): void
     {
+        // Same job as Support\ModuleAutoload::register(), inlined (this test predates the helper).
         $loaders = ClassLoader::getRegisteredLoaders();
         $loader = reset($loaders);
         if (!$loader instanceof ClassLoader) {

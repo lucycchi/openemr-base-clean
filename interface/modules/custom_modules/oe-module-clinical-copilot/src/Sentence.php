@@ -14,9 +14,14 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * One sentence of generated text plus the ids of the facts it claims to be
+ * based on. The Verifier keeps a sentence only if every id in $factIds
+ * exists in the FactSet; a sentence with no valid citation is stripped.
+ */
 final readonly class Sentence
 {
-    /** @param list<string> $factIds */
+    /** @param list<string> $factIds  8-char hex ids from Fact::id */
     public function __construct(
         public string $text,
         public array $factIds,

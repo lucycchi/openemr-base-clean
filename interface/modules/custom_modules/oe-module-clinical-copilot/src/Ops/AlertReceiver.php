@@ -22,10 +22,17 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
+/**
+ * Authenticates and parses an incoming alert webhook (from Langfuse or any
+ * other monitor) for public/alerts.php. Two ways to be accepted, either is
+ * enough: a shared bearer-style token (X-Alert-Token), or a Langfuse-style
+ * HMAC signature "t=<unix>,v1=<hex>" over "<t>.<body>" with a 5-minute
+ * replay window. All comparisons use hash_equals (constant time).
+ */
 final readonly class AlertReceiver
 {
-    private const MAX_BODY_BYTES = 65536;
-    private const MAX_SKEW_SECONDS = 300;
+    private const MAX_BODY_BYTES = 65536;   // 64 KiB; alerts are small
+    private const MAX_SKEW_SECONDS = 300;   // signature timestamp must be within ±5 min of now
 
     /** @var \Closure(): int */
     private \Closure $now;
@@ -42,6 +49,7 @@ final readonly class AlertReceiver
     /** @throws AlertRejected */
     public function receive(string $token, string $body, string $signature = ''): AlertEvent
     {
+        // Order: configured? -> size -> auth (token, else signature) -> JSON shape.
         if ($this->tokenSecret === '' && $this->signingSecret === '') {
             throw new AlertRejected('Alert webhook is not configured', 503);
         }
@@ -63,12 +71,18 @@ final readonly class AlertReceiver
         return AlertEvent::fromPayload($decoded);
     }
 
+    /** True only when a token secret is configured AND the presented token matches it. */
     private function tokenAccepted(string $token): bool
     {
         return $this->tokenSecret !== '' && $token !== '' && hash_equals($this->tokenSecret, $token);
     }
 
-    /** @throws AlertRejected */
+    /**
+     * Verifies the Langfuse-style signature header. The error message is
+     * chosen so a caller who *should* have sent a token is told "Invalid
+     * token" rather than being nudged toward the signature path.
+     * @throws AlertRejected
+     */
     private function requireValidSignature(string $signature, string $body): void
     {
         if ($this->signingSecret === '' || $signature === '') {
@@ -81,6 +95,7 @@ final readonly class AlertReceiver
         if (abs(($this->now)() - $timestamp) > self::MAX_SKEW_SECONDS) {
             throw new AlertRejected('Signature expired', 401);
         }
+        // Recompute HMAC-SHA256 over "<timestamp>.<raw body>" and compare in constant time.
         $expected = hash_hmac('sha256', $timestamp . '.' . $body, $this->signingSecret);
         if (!hash_equals($expected, $v[1])) {
             throw new AlertRejected('Invalid signature', 401);

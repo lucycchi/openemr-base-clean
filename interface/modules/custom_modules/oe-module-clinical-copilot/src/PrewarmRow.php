@@ -14,6 +14,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * In-memory result for one patient in a pre-warm run, produced by Prewarmer
+ * and then persisted as a PrewarmReceipt. $factLines is the human-readable
+ * fact list at warm time; keeping it lets the dashboard show *what* was
+ * summarised even after the chart changes.
+ */
 final readonly class PrewarmRow
 {
     public function __construct(

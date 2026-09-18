@@ -14,6 +14,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Read-only view of one patient's chart, already filtered to what the current
+ * user may see. Five typed lists; nothing else about OpenEMR's schema leaks
+ * past this boundary. OpenEmrChartSource is the real one (SQL); tests use
+ * FakeChartSource with hand-built records.
+ */
 interface ChartSource
 {
     /** @return list<EncounterRecord> */
