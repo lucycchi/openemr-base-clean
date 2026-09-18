@@ -7,8 +7,10 @@
  * requests that caused it.
  *
  * Authentication: Langfuse's signed x-langfuse-signature header verified with
- * LANGFUSE_WEBHOOK_SECRET, or an X-Alert-Token header (or ?token=) equal to
- * ALERT_WEBHOOK_SECRET. No session, no patient data, no chart access.
+ * LANGFUSE_WEBHOOK_SECRET, or an X-Alert-Token header equal to
+ * ALERT_WEBHOOK_SECRET. The token is accepted from the header only: a
+ * ?token= query string would be recorded in proxy and access logs.
+ * No session, no patient data, no chart access.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -45,7 +47,7 @@ if ($request->getMethod() !== 'POST') {
     return;
 }
 
-$token = $request->headers->get('X-Alert-Token') ?? $request->query->getString('token');
+$token = $request->headers->get('X-Alert-Token') ?? '';
 $signature = $request->headers->get('x-langfuse-signature') ?? '';
 $config = Config::fromEnvironment();
 

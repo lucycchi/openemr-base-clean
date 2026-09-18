@@ -42,6 +42,7 @@ same in the app and the CLI.
 | 16 | Restricted user brief | 403 `You are not authorized to view this chart` — ACL enforced in the tool layer, not the menu |
 | 17 | Alert webhook | Simulates a Langfuse alert firing at `alerts.php`; 200, and a `clinical-copilot-alert` audit row (see [ALERTS.md](../ALERTS.md)). Needs `alertToken` |
 | 18 | Alert webhook, wrong token | 401; nothing recorded |
+| 19 | Alert webhook, token in query string | 401 even with the right secret; header only |
 
 Every workflow in [USING_CLINICAL_COPILOT.md](../USING_CLINICAL_COPILOT.md)
 has a request here; nothing needs a manual edit between runs.

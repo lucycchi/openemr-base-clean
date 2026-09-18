@@ -28,7 +28,8 @@ Langfuse alert rule ── webhook POST ──► public/alerts.php
   tampered or replayed body is refused. No custom header is needed in
   Langfuse.
 - **Auth (fallback): shared token.** `X-Alert-Token: <ALERT_WEBHOOK_SECRET>`
-  (or `?token=`) for senders that cannot sign. Either credential is
+  for senders that cannot sign. Header only — a `?token=` query string is
+  not accepted, because URLs end up in proxy and access logs. Either credential is
   sufficient; with neither configured the receiver answers 503. Other
   responses: 400 non-object body, 413 over 64 KiB, 405 non-POST.
 - **Payload:** the receiver is tolerant of shape. It lifts the alert name

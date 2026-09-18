@@ -1,0 +1,29 @@
+meta {
+  name: 19 Alert webhook refuses the token in the query string
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/alerts.php?token={{alertToken}}
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "alert": { "name": "spoofed" } }
+}
+
+assert {
+  res.status: eq 401
+  res.body.error: eq Invalid token
+}
+
+docs {
+  The correct secret is only honoured in the X-Alert-Token header. A ?token=
+  query string is ignored even when it is right, because URLs are written to
+  proxy and access logs.
+}
