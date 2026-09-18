@@ -82,9 +82,14 @@ verification. Each sentence is followed by one or more blue chips such as
   can check any sentence against the record it cites without leaving the
   panel.
 
-If the summary was served from cache (same chart state, same prompt
-version, same model) the label ends in `· cached`. A cache hit makes no
-model call and costs nothing.
+The label always says when the wording was generated. A summary written
+for this request reads `· generated just now`. One served from cache (same
+chart state, same prompt version, same model; for example by the morning
+pre-warm, when that is turned on) reads `· generated 6:02 AM today ·
+matches chart as of now`. The time dates the wording, never the facts: a
+cached summary is re-verified against the live chart every time it is
+shown, and any change to the facts makes it regenerate instead. A cache hit
+makes no model call and costs nothing.
 
 The model only ever writes sentences that reference fact ids; the values
 shown come from the chart, not from the model. A number or date that is
@@ -271,7 +276,8 @@ A short demo script that exercises everything in this document:
    "Lab changes vs prior result" row that already has the delta.
 4. Ask *"What was the patient's blood pressure at the visit before
    last?"* (eval case 10) — `not_in_facts`.
-5. Reload the page: summary label shows `· cached`, no model call.
+5. Reload the page: summary label shows `· generated <time> today · matches
+   chart as of now`, no model call.
 6. Log out, log in as `receptionist` / `receptionist` (dev stack), open
    the same patient: *You are not authorized to view this chart*, empty
    table.

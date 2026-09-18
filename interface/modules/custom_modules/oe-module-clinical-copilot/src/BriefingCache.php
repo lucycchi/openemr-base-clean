@@ -16,8 +16,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 interface BriefingCache
 {
-    /** @return array<string, mixed>|null */
-    public function get(string $key): ?array;
+    public function get(string $key): ?CachedNarration;
 
     /** @param array<string, mixed> $narration */
     public function put(string $key, array $narration): void;

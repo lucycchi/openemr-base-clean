@@ -240,7 +240,7 @@ function runLive(array $case, Verifier $verifier, OmissionGuard $guard): array
         $assembled = $assembler->assemble(new \OpenEMR\Modules\ClinicalCopilot\PatientId($pid), $current ?: null);
         // Fresh in-memory cache per run so every live case really calls the model.
         $cache = new class implements \OpenEMR\Modules\ClinicalCopilot\BriefingCache {
-            public function get(string $key): ?array
+            public function get(string $key): ?\OpenEMR\Modules\ClinicalCopilot\CachedNarration
             {
                 return null;
             }

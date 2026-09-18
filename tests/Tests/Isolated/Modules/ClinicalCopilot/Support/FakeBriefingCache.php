@@ -15,15 +15,18 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support;
 
 use OpenEMR\Modules\ClinicalCopilot\BriefingCache;
+use OpenEMR\Modules\ClinicalCopilot\CachedNarration;
 
 final class FakeBriefingCache implements BriefingCache
 {
     /** @var array<string, array<string, mixed>> */
     public array $entries = [];
+    /** What every stored entry reports as its generation time. */
+    public string $generatedAt = '2026-09-18T06:02:11+00:00';
 
-    public function get(string $key): ?array
+    public function get(string $key): ?CachedNarration
     {
-        return $this->entries[$key] ?? null;
+        return isset($this->entries[$key]) ? new CachedNarration($this->entries[$key], $this->generatedAt) : null;
     }
 
     public function put(string $key, array $narration): void

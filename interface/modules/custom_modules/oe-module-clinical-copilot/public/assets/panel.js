@@ -106,6 +106,20 @@
         return p;
     }
 
+    // "Generated 6:02 AM today · matches chart as of now": a served narration is
+    // always re-verified against the live facts, so the time dates the wording,
+    // never the facts. A narration made in this request says so.
+    function generatedLabel(n) {
+        if (!n.from_cache || !n.generated_at) return 'generated just now';
+        const at = new Date(n.generated_at);
+        if (isNaN(at.getTime())) return 'cached';
+        const now = new Date();
+        const sameDay = at.toDateString() === now.toDateString();
+        const time = at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const when = sameDay ? time + ' today' : at.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
+        return 'generated ' + when + ' · matches chart as of now';
+    }
+
     function renderNarration(n) {
         els.narration.innerHTML = '';
         if (n.status) {
@@ -113,7 +127,7 @@
         } else if (n.total_failure) {
             els.narration.appendChild(el('div', { class: 'copilot-alert copilot-error', text: 'Unable to verify the AI summary for this patient; showing verified chart facts only.' }));
         } else {
-            els.narration.appendChild(el('div', { class: 'copilot-label', text: 'AI summary (every sentence cites verified facts)' + (n.from_cache ? ' · cached' : '') }));
+            els.narration.appendChild(el('div', { class: 'copilot-label', text: 'AI summary (every sentence cites verified facts) · ' + generatedLabel(n) }));
             if (n.sentences.length === 0) {
                 els.narration.appendChild(el('p', { class: 'copilot-muted', text: 'Nothing to summarize.' }));
             }

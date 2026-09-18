@@ -48,10 +48,10 @@ final class NarrationPipeline
         $facts = $assembled->facts();
         $key = $this->cacheKey($assembled);
 
-        $cached = $this->steps->measure('cache_lookup', fn() => $this->cache->get($key), static fn(?array $hit) => ['hit' => $hit !== null]);
+        $cached = $this->steps->measure('cache_lookup', fn() => $this->cache->get($key), static fn(?CachedNarration $hit) => ['hit' => $hit !== null]);
         if ($cached !== null) {
-            $verified = $this->verify($this->narrationFrom($cached), $facts);
-            return new BriefingResult($verified->kept(), $verified->strippedCount(), $this->omitted($verified, $facts), null, true, false, 0, 0);
+            $verified = $this->verify($this->narrationFrom($cached->data), $facts);
+            return new BriefingResult($verified->kept(), $verified->strippedCount(), $this->omitted($verified, $facts), null, true, false, 0, 0, $cached->generatedAt);
         }
 
         try {

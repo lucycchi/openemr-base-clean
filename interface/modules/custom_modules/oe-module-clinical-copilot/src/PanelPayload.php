@@ -29,6 +29,7 @@ final class PanelPayload
                 'from_cache' => $briefing->fromCache,
                 'total_failure' => $briefing->totalFailure,
                 'tokens' => ['prompt' => $briefing->promptTokens, 'completion' => $briefing->completionTokens],
+                'generated_at' => $briefing->generatedAt,
             ],
         ];
     }

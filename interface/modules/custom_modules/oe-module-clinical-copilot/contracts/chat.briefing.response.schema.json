@@ -42,9 +42,10 @@
         },
         "from_cache": { "type": "boolean", "description": "True when the verified narration was served from copilot_briefing_cache; tokens are then zero." },
         "total_failure": { "type": "boolean", "description": "True when every sentence was stripped; the panel shows a distinct 'unable to verify' state and nothing is cached." },
-        "tokens": { "$ref": "#/$defs/tokens" }
+        "tokens": { "$ref": "#/$defs/tokens" },
+        "generated_at": { "type": ["string", "null"], "description": "ISO 8601 time (with offset, site zone) the cached narration was generated, e.g. by the morning pre-warm; null when it was generated in this request. A served narration is always verified against the chart as of now, so this dates the wording, not the facts." }
       },
-      "required": ["sentences", "stripped", "omitted_fact_ids", "status", "from_cache", "total_failure", "tokens"],
+      "required": ["sentences", "stripped", "omitted_fact_ids", "status", "from_cache", "total_failure", "tokens", "generated_at"],
       "additionalProperties": false
     }
   },

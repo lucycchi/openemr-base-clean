@@ -164,6 +164,17 @@ final class NarrationPipelineTest extends TestCase
         self::assertSame(['al0001'], array_map(fn(Fact $f) => $f->id, $result->omitted));
     }
 
+    public function testACachedBriefingReportsWhenItWasGeneratedAndAFreshOneDoesNot(): void
+    {
+        $this->llm->reply = ['sentences' => [['text' => 'Started a medication.', 'fact_ids' => ['rx0001']]]];
+        $fresh = $this->pipeline()->brief($this->assembled());
+
+        $cached = $this->pipeline()->brief($this->assembled());
+
+        self::assertNull($fresh->generatedAt);
+        self::assertSame('2026-09-18T06:02:11+00:00', $cached->generatedAt);
+    }
+
     public function testCacheKeyIncludesFactsHashPromptVersionAndModel(): void
     {
         $this->llm->reply = ['sentences' => [['text' => 'Started a medication.', 'fact_ids' => ['rx0001']]]];

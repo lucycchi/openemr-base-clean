@@ -25,10 +25,10 @@ final readonly class DbBriefingCache implements BriefingCache
     ) {
     }
 
-    public function get(string $key): ?array
+    public function get(string $key): ?CachedNarration
     {
         $row = QueryUtils::querySingleRow(
-            "SELECT narration_json FROM copilot_briefing_cache WHERE cache_key = ?",
+            "SELECT narration_json, created_at FROM copilot_briefing_cache WHERE cache_key = ?",
             [$key]
         );
         if ($row === false) {
@@ -40,8 +40,14 @@ final readonly class DbBriefingCache implements BriefingCache
         } catch (\JsonException) {
             return null;
         }
-        /** @var array<string, mixed>|null */
-        return is_array($data) ? $data : null;
+        if (!is_array($data)) {
+            return null;
+        }
+        // created_at is stored in the session zone (OpenEMR syncs it to the
+        // site's), so it reads as local time and is stamped with that offset.
+        $createdAt = new \DateTimeImmutable(Row::str($row, 'created_at'));
+        /** @var array<string, mixed> $data */
+        return new CachedNarration($data, $createdAt->format(\DateTimeInterface::ATOM));
     }
 
     public function put(string $key, array $narration): void

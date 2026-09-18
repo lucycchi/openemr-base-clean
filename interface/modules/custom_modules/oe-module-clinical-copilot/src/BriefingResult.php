@@ -29,6 +29,8 @@ final readonly class BriefingResult
         public bool $totalFailure,
         public int $promptTokens,
         public int $completionTokens,
+        /** ISO 8601 generation time of a cached narration; null when generated in this request */
+        public ?string $generatedAt = null,
     ) {
     }
 }

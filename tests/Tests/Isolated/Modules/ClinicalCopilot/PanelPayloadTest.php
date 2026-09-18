@@ -91,6 +91,17 @@ final class PanelPayloadTest extends TestCase
         self::assertFalse($narration['from_cache']);
         self::assertFalse($narration['total_failure']);
         self::assertSame(['prompt' => 600, 'completion' => 90], $narration['tokens']);
+        self::assertNull($narration['generated_at']);
+    }
+
+    public function testACachedBriefingCarriesItsGenerationTime(): void
+    {
+        $briefing = new BriefingResult([], 0, [], null, true, false, 0, 0, '2026-09-18T06:02:11-07:00');
+
+        $narration = $this->section(PanelPayload::briefing($this->assembled(null), $briefing, 'corr-1'), 'narration');
+
+        self::assertTrue($narration['from_cache']);
+        self::assertSame('2026-09-18T06:02:11-07:00', $narration['generated_at']);
     }
 
     public function testFirstVisitHasNoPriorAndStatusIsPassedThrough(): void
