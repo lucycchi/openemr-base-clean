@@ -111,6 +111,37 @@ M=/var/www/localhost/htdocs/openemr/interface/modules/custom_modules/oe-module-c
 docker compose exec openemr sh -c "grep -v '^#' $M/install.sql | mariadb -h mysql -uopenemr -p\$MYSQL_PASS openemr && mariadb -h mysql -uopenemr -p\$MYSQL_PASS openemr < $M/register.sql"
 ```
 
+## Morning pre-warm (available, not turned on)
+
+The Co-Pilot can pre-generate briefings for the day's scheduled patients
+before clinic opens, so the first chart open is a cache hit instead of a
+3-6 s model call. Design: [`docs/designs/copilot-morning-prewarm.md`](../../docs/designs/copilot-morning-prewarm.md).
+
+**It is switched off on the droplet.** Nothing in `deploy.sh` or the compose
+files installs the cron, and the command itself is inert unless enabled:
+
+- `COPILOT_PREWARM_ENABLED` is unset. With it unset, `copilot:prewarm`
+  prints "pre-warm disabled on this site" and exits 0 without reading the
+  schedule, writing the cache or calling OpenAI.
+- No crontab entry exists on the host.
+
+To run it once by hand (bypasses the switch, one run only):
+
+```bash
+docker compose exec -u apache openemr php /var/www/localhost/htdocs/openemr/bin/console copilot:prewarm --site=default --date=today --force
+```
+
+To turn it on for good: set `COPILOT_PREWARM_ENABLED=1` in the openemr
+service environment, set `gbl_time_zone` in Administration → Globals so
+"start of today" is clinic-local, then add to the host crontab (runs as the
+web user; the CLI refuses root):
+
+```
+0 6 * * 1-5 cd /path/to/docker/vps && docker compose exec -T -u apache openemr php /var/www/localhost/htdocs/openemr/bin/console copilot:prewarm --site=default --date=today >> /var/log/copilot-prewarm.log 2>&1
+```
+
+Remove the crontab line and unset the variable to turn it off again.
+
 ## Redeploy after a push
 
 GitLab CI is not available to student accounts on labs.gauntletai.com (as

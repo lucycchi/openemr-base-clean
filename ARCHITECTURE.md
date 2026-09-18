@@ -350,6 +350,12 @@ image without this module. Seed data moves as an `openemr-cmd` capsule so
 the eval patients match locally and remotely. Module enablement is
 `sql/install.sql` + `sql/register.sql` or the Module Manager UI.
 
+A same-morning pre-warm of the briefing cache from the appointment schedule
+(`copilot:prewarm`, [design](docs/designs/copilot-morning-prewarm.md)) is
+available but not turned on: no cron is installed and the command is inert
+until `COPILOT_PREWARM_ENABLED` is set. See
+[docker/vps/README.md](docker/vps/README.md#morning-pre-warm-available-not-turned-on).
+
 ## Evaluation
 
 The PRD leaves what to test, how many cases, and the pass/fail definition
