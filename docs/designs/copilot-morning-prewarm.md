@@ -126,11 +126,16 @@ the same command.
 
 1. **`FactAssembler` boundary rule.** Introduce one `boundary(): array{DateTimeImmutable,int}`
    = `[startOfDay(D), 0]` where D is the selected encounter's date when
-   `$currentEncounterId` is set, else `clock->now()`; both in `gbl_time_zone`.
-   The controller's clock comes from `ServiceContainer::getClock()`; the
-   step-3 hand-run verifies its zone equals `gbl_time_zone` (if it is UTC,
-   convert in `boundary()` rather than trusting the clock). The command
-   builds `FixedClock` with `new DateTimeZone($GLOBALS['gbl_time_zone'])`.
+   `$currentEncounterId` is set, else `clock->now()`, in the site's PHP
+   zone. **Probed 2026-09-17 (dev container):** `ServiceContainer::getClock()`
+   is `SystemClock::fromSystemTimezone()`, i.e. `date_default_timezone_get()`,
+   which `interface/globals.php` sets from `gbl_time_zone` when that global
+   is configured and leaves at the PHP default (UTC here) when it is empty.
+   So the command builds `FixedClock` in `date_default_timezone_get()` after
+   globals load, never `$GLOBALS['gbl_time_zone']` directly (empty on this
+   site). Both open paths and the command then share one zone, which is what
+   the hash match needs. Runbook: set `gbl_time_zone` on the droplet so
+   "start of today" is clinic-local rather than UTC.
    `priorEncounter()` uses this boundary (today: it uses `[$e->date, $e->id]`
    of the current encounter, which differs from the null path when
    `form_encounter.date` carries a time or two same-day encounters exist).
@@ -161,11 +166,14 @@ the same command.
      new AclAuthorization($username), FixedClock::startOfDay($date, $tz))`
      `->assemble($pid, null)`, then `BriefingPipelineFactory` ->
      `NarrationPipeline::brief()`. `FixedClock` is a tiny `ClockInterface`
-     value object in the module; `$tz` is `gbl_time_zone` from the globals
-     `command-runner` bootstraps. Hand-run check in step 2: confirm
-     `AclMain::aclCheckCore($section, $value, $username)` returns correct
-     results from the CLI with no `authUser` in session (the v1 CLI spike
-     used this path; re-verify before relying on it). Correlation id per row; Monolog processor
+     value object in the module; `$tz` is `date_default_timezone_get()` after
+     `bin/console` loads globals. **Probed 2026-09-17:** with no session user,
+     `AclMain::aclCheckCore($section, $value, 'admin')` returns true for
+     `patients/med`, `encounters/notes`, `sensitivities/high` and false for an
+     unknown username; the explicit-username path works from the CLI. The
+     dev site has only `admin`; re-check a non-admin provider on the droplet.
+     Also: `RootCliGuard` refuses UID 0, so the cron line must run as the web
+     user (`docker exec -u apache`). Correlation id per row; Monolog processor
      already attaches it; add a `source=prewarm` attribute on the Langfuse
      trace and a `prewarm_run_id`.
    - Concurrency: sequential in v1 (80 patients x ~5 s = ~7 min, inside the
@@ -215,7 +223,8 @@ the same command.
 7. **Cron on the droplet** (documented in `clinical_copilot/RUNBOOK.md` or the
    deploy notes): `0 6 * * 1-5 docker exec <openemr> php
    /var/www/localhost/htdocs/openemr/bin/console copilot:prewarm --site=default
-   --date=today >> /var/log/copilot-prewarm.log 2>&1`. The host crontab runs
+   --date=today >> /var/log/copilot-prewarm.log 2>&1` using `docker exec -u
+   apache` (the CLI refuses root). The host crontab runs
    in the host's zone; set the line so 06:00 is site-local (`gbl_time_zone`).
 
 ### Cost and load envelope
