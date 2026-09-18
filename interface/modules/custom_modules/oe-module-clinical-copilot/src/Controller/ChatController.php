@@ -20,6 +20,7 @@ namespace OpenEMR\Modules\ClinicalCopilot\Controller;
 use GuzzleHttp\Client;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Csrf\CsrfUtils;
+use OpenEMR\Common\Database\SqlQueryException;
 use OpenEMR\Common\Http\HttpRestRequest;
 use OpenEMR\Common\Logging\EventAuditLogger;
 use OpenEMR\Common\Session\EncounterSessionUtil;
@@ -289,7 +290,16 @@ final class ChatController
     private function warmOutcome(AssembledFacts $assembled, Config $config, PatientId $pid, string $user): ?WarmOutcome
     {
         $today = ServiceContainer::getClock()->now()->format('Y-m-d');
-        $receipt = $this->receipts->latestFor($today, $pid, $user);
+        try {
+            $receipt = $this->receipts->latestFor($today, $pid, $user);
+        } catch (SqlQueryException $e) {
+            // The receipts table is optional bookkeeping (it arrived in 0.1.1;
+            // a site enabled at 0.1.0 will not have it until Module Manager >
+            // Upgrade runs). A missing or broken table must not take the
+            // briefing down: log it, score nothing, and carry on.
+            $this->logger->warning('copilot warm lookup failed; pre-warm receipts unavailable', ['exception' => $e]);
+            return null;
+        }
         if ($receipt === null && !$config->prewarmEnabled) {
             return null;
         }

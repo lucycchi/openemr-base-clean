@@ -192,6 +192,31 @@ web tree is mounted read-mostly for the `apache` user, so scripts that write
 into it (e.g. `tests/evals/run.php`) should be pointed elsewhere:
 `EVAL_RESULTS=/tmp/results.json php tests/evals/run.php --live`.
 
+### Schema changes need one more step
+
+A recreate ships new code but never re-runs the module's `sql/install.sql`:
+OpenEMR runs it once, on first enable. When a deploy adds a table (the
+0.1.1 deploy on 2026-09-18 added `copilot_prewarm` and every chart open
+returned 500 until it was created by hand), apply the module's upgrade file
+after the container is healthy. Either:
+
+- **Module Manager:** Modules → Manage Modules → Clinical Co-Pilot → *Upgrade*.
+  It applies every `sql/<old>-to-<new>_upgrade.sql` whose version is at or
+  above the recorded `sql_version`, then records the new version. Or
+- **By hand** (no UI round-trip; the same statements, minus OpenEMR's
+  `#IfNotTable` directives, which plain SQL does not understand):
+
+  ```bash
+  M=/var/www/localhost/htdocs/openemr/interface/modules/custom_modules/oe-module-clinical-copilot
+  docker compose exec -T openemr grep -v '^#If\|^#EndIf' $M/sql/0_1_0-to-0_1_1_upgrade.sql \
+    | docker compose exec -T mysql sh -c 'mariadb -uroot -p"$MYSQL_ROOT_PASSWORD" openemr'
+  ```
+
+Every statement is `CREATE TABLE IF NOT EXISTS`, so running it twice is
+harmless. The panel itself no longer hard-fails on the missing table (the
+warm lookup logs a warning and skips scoring), but the pre-warm command and
+`prewarm.php` do need it.
+
 ## Health
 
 - `https://$DOMAIN/meta/health/readyz` — OpenEMR's own readiness.

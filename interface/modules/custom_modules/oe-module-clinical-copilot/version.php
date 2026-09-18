@@ -10,10 +10,14 @@
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
-// OpenEMR's module manager reads these globals to display and compare versions.
-// $v_database is the module's own schema version (0 = sql/install.sql only, no upgrades yet).
+// OpenEMR's Module Manager reads $v_major.$v_minor.$v_patch and compares it
+// with the sql_version it recorded at install; when a sql/<old>-to-<new>_upgrade.sql
+// file names a version at or above the recorded one, "Upgrade" applies it.
+// Bump the patch version whenever sql/ gains a new upgrade file.
+//   0.1.0  install.sql (copilot_briefing_cache, copilot_prewarm on fresh installs)
+//   0.1.1  0_1_0-to-0_1_1_upgrade.sql (copilot_prewarm for sites installed at 0.1.0)
 $v_major = '0';
 $v_minor = '1';
-$v_patch = '0';
+$v_patch = '1';
 $v_tag   = '';
 $v_database = 0;
