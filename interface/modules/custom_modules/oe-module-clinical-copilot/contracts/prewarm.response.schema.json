@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/prewarm.response.schema.json",
+  "title": "prewarm.php response",
+  "description": "Status of the morning pre-warm sweep: whether it is enabled on this site and what the most recent run did. Counts only; no patient references. No authentication, like health.php and ready.php. Alert when enabled is true and no run with today's target_date exists by 06:30 on a clinic day, or when errored > 0.",
+  "type": "object",
+  "properties": {
+    "enabled": { "type": "boolean", "description": "COPILOT_PREWARM_ENABLED on this site. A --force run can leave a last_run while this is false." },
+    "last_run": {
+      "type": ["object", "null"],
+      "description": "The most recent run, or null when none has ever run.",
+      "properties": {
+        "run_id": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+        "target_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "The clinic day the run warmed." },
+        "finished_at": { "type": "string", "description": "When the last receipt of the run was written (ISO 8601, site zone)." },
+        "scheduled": { "type": "integer", "minimum": 0 },
+        "warmed": { "type": "integer", "minimum": 0 },
+        "already_cached": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "errored": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["run_id", "target_date", "finished_at", "scheduled", "warmed", "already_cached", "skipped", "errored"],
+      "additionalProperties": false
+    },
+    "time": { "type": "string", "description": "Server time, ISO 8601 UTC." }
+  },
+  "required": ["enabled", "last_run", "time"],
+  "additionalProperties": false
+}

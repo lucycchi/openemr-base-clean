@@ -22,6 +22,7 @@ use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
 use OpenEMR\Modules\ClinicalCopilot\PrewarmRow;
 use OpenEMR\Modules\ClinicalCopilot\PrewarmStatus;
+use OpenEMR\Modules\ClinicalCopilot\RunLock;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -37,6 +38,7 @@ final class PrewarmCommand extends Command
         private readonly Prewarmer $prewarmer,
         private readonly ClockInterface $clock,
         private readonly DateTimeZone $tz,
+        private readonly RunLock $lock,
     ) {
         parent::__construct(self::NAME);
     }
@@ -68,8 +70,18 @@ final class PrewarmCommand extends Command
         $onlyPid = is_string($pid) && ctype_digit($pid) ? (int) $pid : null;
         $dryRun = (bool) $input->getOption('dry-run');
 
+        // An overlapping cron (a catch-up pass while the 06:00 sweep is still
+        // going) is expected, not an error: say so and leave the first run alone.
+        if (!$this->lock->acquire()) {
+            $output->writeln('another pre-warm run holds the lock; exiting');
+            return Command::SUCCESS;
+        }
         $started = hrtime(true);
-        $summary = $this->prewarmer->run($day, $onlyPid, $dryRun);
+        try {
+            $summary = $this->prewarmer->run($day, $onlyPid, $dryRun);
+        } finally {
+            $this->lock->release();
+        }
         $totalMs = (int) round((hrtime(true) - $started) / 1e6);
 
         foreach ($summary->rows as $row) {

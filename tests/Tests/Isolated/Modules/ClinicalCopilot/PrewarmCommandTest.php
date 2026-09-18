@@ -24,6 +24,7 @@ use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\FixedClock;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
+use OpenEMR\Modules\ClinicalCopilot\RunLock;
 use OpenEMR\Modules\ClinicalCopilot\ScheduledAppointment;
 use OpenEMR\Modules\ClinicalCopilot\ScheduleSource;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeAuthorization;
@@ -46,6 +47,8 @@ final class PrewarmCommandTest extends TestCase
     private array $daysAsked = [];
     private int $narrations = 0;
     private bool $narratorFails = false;
+    public bool $lockHeldElsewhere = false;
+    public int $lockReleases = 0;
     private DateTimeZone $tz;
 
     protected function setUp(): void
@@ -79,7 +82,22 @@ final class PrewarmCommandTest extends TestCase
         $prewarmer = new Prewarmer($schedule, new FakeChartSource(), static fn(string $u) => new FakeAuthorization(), $narrator, $this->tz);
         $config = new Config('sk-test', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', '', prewarmEnabled: $enabled);
         $now = new FixedClock(new DateTimeImmutable('2026-09-17 22:00:00', $this->tz));
-        return new CommandTester(new PrewarmCommand($config, $prewarmer, $now, $this->tz));
+        $lock = new class ($test) implements RunLock {
+            public function __construct(private readonly PrewarmCommandTest $test)
+            {
+            }
+
+            public function acquire(): bool
+            {
+                return !$this->test->lockHeldElsewhere;
+            }
+
+            public function release(): void
+            {
+                $this->test->lockReleases++;
+            }
+        };
+        return new CommandTester(new PrewarmCommand($config, $prewarmer, $now, $this->tz, $lock));
     }
 
     /**
@@ -175,5 +193,38 @@ final class PrewarmCommandTest extends TestCase
         self::assertSame(1, $exit);
         self::assertStringContainsString('errored=1', $tester->getDisplay());
         self::assertStringContainsString('upstream down', $tester->getDisplay());
+    }
+
+    public function testAnotherRunHoldingTheLockMeansThisOneExitsCleanlyWithoutWork(): void
+    {
+        $this->lockHeldElsewhere = true;
+        $tester = $this->command(true);
+
+        $exit = $tester->execute(['--date' => 'today']);
+
+        self::assertSame(0, $exit);
+        self::assertStringContainsString('another pre-warm run holds the lock', $tester->getDisplay());
+        self::assertSame([], $this->daysAsked);
+        self::assertSame(0, $this->lockReleases);
+    }
+
+    public function testTheLockIsReleasedAfterARunEvenWhenRowsErrored(): void
+    {
+        $this->narratorFails = true;
+
+        $this->command(true)->execute(['--date' => 'today']);
+
+        self::assertSame(1, $this->lockReleases);
+    }
+
+    public function testADisabledSiteNeverTakesTheLock(): void
+    {
+        $this->lockHeldElsewhere = true;
+        $tester = $this->command(false);
+
+        $exit = $tester->execute(['--date' => 'today']);
+
+        self::assertSame(0, $exit);
+        self::assertStringContainsString('pre-warm disabled', $tester->getDisplay());
     }
 }

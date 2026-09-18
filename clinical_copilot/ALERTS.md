@@ -161,6 +161,27 @@ construction and would be P0; the collection's request 16 and the eval
 suite check it on every run. A spike of refusals from one user is reviewed
 in the audit log.
 
+### 6. Morning pre-warm (only once it is turned on)
+
+The pre-warm sweep (`copilot:prewarm`, [design](../docs/designs/copilot-morning-prewarm.md))
+is **available but not turned on** on the droplet: no cron is installed and
+`COPILOT_PREWARM_ENABLED` is unset. These rules apply from the day it is
+enabled; until then `prewarm.php` reports `"enabled": false` and nothing
+below fires.
+
+| | |
+|---|---|
+| **Signal** | `GET /interface/modules/custom_modules/oe-module-clinical-copilot/public/prewarm.php` (no auth, counts only, [contract](../interface/modules/custom_modules/oe-module-clinical-copilot/contracts/prewarm.response.schema.json)): `enabled`, and `last_run` with `target_date`, `finished_at`, `scheduled`, `warmed`, `already_cached`, `skipped`, `errored` |
+| **Rule A: did not run** | at 06:30 site-local on a clinic day, `enabled` is true and `last_run.target_date` is not today. The cron did not fire, refused to run as root, or the site was down. Page; the first opens of the day will be cold (3-6 s) rather than instant, nothing is unsafe |
+| **Rule B: ran with errors** | `last_run.errored > 0`. Each errored patient has a receipt row in `copilot_prewarm` with the exception message; the command's stdout (cron log) names them too. Warning; those patients simply get a cold briefing at open |
+| **Rule C: hit rate** | Langfuse: data source **Scores (boolean)**, score **`warm_hit`**, metric **share of `true`**, window the previous clinic day. `warm_hit` is written only on chart opens that had a receipt to compare against (or when the sweep is enabled), so sites without the sweep report nothing. Below 50 % for three days: ticket, and read the reason histogram (`warm_reason` on the trace: `no_row`, `prompt_version`, `model_changed`, `viewer_differs`, `hash_drift`) before changing anything |
+| **Baseline** | dev container, 2026-09-18: 2 scheduled, 2 warmed, 0 errored in 3.8 s; every open of a warmed chart the same morning hit, including after check-in |
+
+The lock file `sites/<site>/documents/copilot/prewarm.lock` is `flock()`-held
+only while a sweep runs; a second invocation prints
+`another pre-warm run holds the lock; exiting` and exits 0, which is expected
+for a catch-up pass and is not an alert.
+
 ## Configuring the rules in Langfuse
 
 Langfuse separates the **destination** (a webhook, configured once under

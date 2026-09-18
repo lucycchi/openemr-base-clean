@@ -58,7 +58,8 @@ final class Bootstrap
             $tz,
             new DbPrewarmReceipts($config->openAiModel),
         );
-        $event->setCommand(PrewarmCommand::class, new PrewarmCommand($config, $prewarmer, ServiceContainer::getClock(), $tz));
+        $lock = new FileRunLock(OEGlobalsBag::getInstance()->getString('OE_SITE_DIR') . '/documents/copilot/prewarm.lock');
+        $event->setCommand(PrewarmCommand::class, new PrewarmCommand($config, $prewarmer, ServiceContainer::getClock(), $tz, $lock));
     }
 
     public function renderPanel(RenderEvent $event): void

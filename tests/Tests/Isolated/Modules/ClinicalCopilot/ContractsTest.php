@@ -29,6 +29,8 @@ use OpenEMR\Modules\ClinicalCopilot\FactCategory;
 use OpenEMR\Modules\ClinicalCopilot\FactSet;
 use OpenEMR\Modules\ClinicalCopilot\Ops\ReadinessReport;
 use OpenEMR\Modules\ClinicalCopilot\PanelPayload;
+use OpenEMR\Modules\ClinicalCopilot\PrewarmRunStatus;
+use OpenEMR\Modules\ClinicalCopilot\PrewarmStatusPayload;
 use OpenEMR\Modules\ClinicalCopilot\Prompt;
 use OpenEMR\Modules\ClinicalCopilot\Sentence;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
@@ -112,6 +114,7 @@ final class ContractsTest extends TestCase
             'health response' => ['health.response'],
             'ready response' => ['ready.response'],
             'alerts response' => ['alerts.response'],
+            'prewarm response' => ['prewarm.response'],
             'llm briefing output' => ['llm.briefing.output'],
             'llm follow-up output' => ['llm.followup.output'],
             'fact' => ['fact'],
@@ -195,6 +198,14 @@ final class ContractsTest extends TestCase
     public function testChartChangedPayloadConformsToContract(): void
     {
         self::assertConforms('chat.chart-changed.response', PanelPayload::chartChanged($this->assembled(), self::CORRELATION_ID));
+    }
+
+    public function testPrewarmStatusConformsToContractWithAndWithoutARun(): void
+    {
+        $lastRun = new PrewarmRunStatus('44fdfdd5e4628b5a9a0c70aa7f8ad394', '2026-09-18', '2026-09-18T06:02:11+00:00', 2, 1, 1, 0, 0);
+        self::assertConforms('prewarm.response', PrewarmStatusPayload::build(true, $lastRun, '2026-09-18T13:00:00+00:00'));
+        self::assertConforms('prewarm.response', PrewarmStatusPayload::build(false, null, '2026-09-18T13:00:00+00:00'));
+        self::assertViolates('prewarm.response', ['enabled' => true, 'time' => '2026-09-18T13:00:00+00:00']);
     }
 
     public function testErrorPayloadConformsToContract(): void
