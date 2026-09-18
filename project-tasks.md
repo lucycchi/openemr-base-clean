@@ -18,7 +18,7 @@ Legend: `[x]` done in this repo already, `[ ]` not started/incomplete,
 
 ---
 
-## Status as of 2026-09-16 (late evening, Early Submission day)
+## Status as of 2026-09-17
 
 Decisions since this file was written: target user, architecture, provider
 (OpenAI), deployment (VPS + flex image), observability (Langfuse Cloud) are
@@ -49,7 +49,7 @@ all decided and recorded in `clinical_copilot/DESIGN.md`
 
 ## Due Wednesday 2026-09-16, 11:59 PM — remaining
 
-- [~] **Langfuse Cloud project**: tracer built and unit-tested; `LANGFUSE_BASE_URL` accepted; v4 OTel migration in `TODOS.md`. Still to do: put `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` in both `.env` files; confirm `/ready` shows `langfuse: ok` and a trace appears; set up the dashboard (requests, error rate, p50/p95, tokens, `verification_pass`) and the three alerts from `KEY_METRICS.md`.
+- [x] **Langfuse Cloud project**: keys live, `/ready` shows `langfuse: ok`, traces per request; dashboard in `clinical_copilot/DASHBOARD.md` (screenshots in `clinical_copilot/images/`); three alerts in `clinical_copilot/ALERTS.md` wired to `public/alerts.php`. v4 OTel migration stays in `TODOS.md`.
 - [ ] **Demo video (3-5 min)**: open patient → latest encounter → Dashboard; show fact table, summary chips, a follow-up, the withheld computed-number answer, receptionist refusal, `/ready`.
 - [ ] Schedule the Technical Interview (Thu/Fri).
 - [ ] Run the Bruno collection 03–16 against the VPS once the deployed admin password is in `environments/vps.bru` (01–02 verified).
@@ -57,10 +57,10 @@ all decided and recorded in `clinical_copilot/DESIGN.md`
 
 ## Due Sunday 2026-09-20, Noon
 
-- [ ] Dashboard regression E2E (Panther) for all seeded patients with the module enabled (mandatory before the branch ships), remaining Panther flows, DB-backed adapter tests.
-- [ ] Load tests at 10 and 50 concurrent users against the deployed agent; p50/p95/p99 and error rate; baseline CPU/memory.
+- [ ] Dashboard regression E2E (Panther) for all seeded patients with the module enabled (mandatory before the branch ships), remaining Panther flows, DB-backed adapter tests. (Not started: only isolated unit tests exist under `tests/Tests/Isolated/Modules/ClinicalCopilot/`.)
+- [x] Load tests at 10 and 50 concurrent users against the deployed agent (k6, `tests/load/`, run `20260917T0245Z`); p50/p95/p99, error rate, CPU/memory in `clinical_copilot/BASELINES.md`.
 - [x] AI cost analysis (`clinical_copilot/AI_COST_ANALYSIS.md`: dev spend from the audit log's `cost_usd` + Claude Code transcripts; 100 / 1K / 10K / 100K users with the cache-hit ratio as the main lever; architectural changes per tier).
-- [ ] Three alerts documented with on-call response (drafted in `KEY_METRICS.md`; wire in Langfuse).
+- [x] Three alerts documented with on-call response (`clinical_copilot/ALERTS.md`; Langfuse rules created, first delivery recorded with monitorId).
 - [ ] Final demo video, social post tagging @GauntletAI, AI interview.
 - [ ] Refresh docs for anything that changed after Wednesday.
 

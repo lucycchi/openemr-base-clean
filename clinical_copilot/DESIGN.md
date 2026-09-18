@@ -571,43 +571,43 @@ processor vs pipeline); keep the processor in its own file.
 Synthesized from this review's findings. Each task derives from a specific
 finding above. Run with Claude Code or Codex; checkbox as you ship.
 
-- [ ] **T1 (P1, human: ~half day / CC: ~1h)** — infra — Provision VPS, trimmed flex compose with fork bind-mount, DNS, TLS
+- [x] **T1 (P1, human: ~half day / CC: ~1h)** — infra — Provision VPS, trimmed flex compose with fork bind-mount, DNS, TLS
   - Surfaced by: Outside voice #1 / D13 — production compose pulls upstream image
   - Files: `docker/vps/docker-compose.yml` (new, from development-easy), VPS
   - Verify: public URL logs in as admin
-- [ ] **T2 (P1, human: ~2h / CC: ~30min)** — spike — Runtime spike script: timing per category, encounter date quality, abnormal-lab and allergy-hit counts, restricted-user refusal
+- [x] **T2 (P1, human: ~2h / CC: ~30min)** — spike — Runtime spike script: timing per category, encounter date quality, abnormal-lab and allergy-hit counts, restricted-user refusal
   - Surfaced by: Validation Spike section; D18
   - Files: `tmp/spike.php`, `tests/evals/seed/*.sql` if hits < 3
   - Verify: script output committed to [`tests/evals/spike-results.md`](../tests/evals/spike-results.md)
-- [ ] **T3 (P1, human: ~1 day / CC: ~1.5h)** — module/src — `FactSet`, `FactAssembler` with ACL, sensitivity on encounters/labs, prior-encounter rule (6A), date bounds + caps (9A), identifier stripping (4A), stable ids (7A), allergy cross-check, computed deltas (D16)
+- [x] **T3 (P1, human: ~1 day / CC: ~1.5h)** — module/src — `FactSet`, `FactAssembler` with ACL, sensitivity on encounters/labs, prior-encounter rule (6A), date bounds + caps (9A), identifier stripping (4A), stable ids (7A), allergy cross-check, computed deltas (D16)
   - Surfaced by: Issues 3, 4, 6, 7, 9; D16, D18, D19
   - Files: `oe-module-clinical-copilot/src/{FactSet,Fact,FactAssembler}.php`
   - Verify: `FactAssemblerTest` (Sun) + smoke (Wed)
-- [ ] **T4 (P1, human: ~half day / CC: ~45min)** — module/src — `Verifier` (ID-only rules) and `OmissionGuard`, with unit tests
+- [x] **T4 (P1, human: ~half day / CC: ~45min)** — module/src — `Verifier` (ID-only rules) and `OmissionGuard`, with unit tests
   - Surfaced by: Issue 1, Issue 10, D16
   - Files: `src/{Verifier,OmissionGuard}.php`, `tests/Tests/Isolated/Modules/ClinicalCopilot/*Test.php`
   - Verify: `openemr-cmd pit`
-- [ ] **T5 (P1, human: ~half day / CC: ~45min)** — module/src — `OpenAiClient` (Guzzle, Structured Outputs, typed failures, one retry) and `NarrationPipeline` (modes, cache with prompt-version key, `not_in_facts`)
+- [x] **T5 (P1, human: ~half day / CC: ~45min)** — module/src — `OpenAiClient` (Guzzle, Structured Outputs, typed failures, one retry) and `NarrationPipeline` (modes, cache with prompt-version key, `not_in_facts`)
   - Surfaced by: Issues 2, 8; D17, D20
   - Files: `src/{OpenAiClient,NarrationPipeline,BriefingCache}.php`, `sql/install.sql`
   - Verify: `OpenAiClientTest` (Sun); eval harness (Wed)
-- [ ] **T6 (P1, human: ~1 day / CC: ~1.5h)** — module/public + JS — `chat.php` (session pid, CSRF, ACL), panel JS (async, table first, chips, status lines, chart-changed restart), `Bootstrap` RenderEvent hook
+- [x] **T6 (P1, human: ~1 day / CC: ~1.5h)** — module/public + JS — `chat.php` (session pid, CSRF, ACL), panel JS (async, table first, chips, status lines, chart-changed restart), `Bootstrap` RenderEvent hook
   - Surfaced by: Issues 1, 3; D1
   - Files: `public/chat.php`, `public/assets/panel.js`, `src/Bootstrap.php`, `openemr.bootstrap.php`
   - Verify: smoke (Wed), E2E (Sun)
-- [ ] **T7 (P1, human: ~half day / CC: ~45min)** — observability — Monolog correlation-id processor, Langfuse Cloud traces, `health.php`, `ready.php` (cached, bounded, Langfuse degraded)
+- [x] **T7 (P1, human: ~half day / CC: ~45min)** — observability — Monolog correlation-id processor, Langfuse Cloud traces, `health.php`, `ready.php` (cached, bounded, Langfuse degraded)
   - Surfaced by: Issue 5; D14, D15
   - Files: `src/{CorrelationIdProcessor,LangfuseClient}.php`, `public/{health,ready}.php`
   - Verify: curl both endpoints; trace visible in Langfuse
-- [ ] **T8 (P1, human: ~half day / CC: ~45min)** — tests/evals — Eval harness with the eight cases, recorded fixtures, `--live`, `results.json`, `smoke.sh`
+- [x] **T8 (P1, human: ~half day / CC: ~45min)** — tests/evals — Eval harness with the eight cases, recorded fixtures, `--live`, `results.json`, `smoke.sh`
   - Surfaced by: Test review; D10, D21
   - Files: `tests/evals/{run.php,cases/*.json,fixtures/*,smoke.sh}`
   - Verify: recorded run green; live run writes results.json
-- [ ] **T9 (P1, human: ~half day / CC: ~30min)** — docs — [`USERS.md`](../USERS.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md) (with 500-word summary), [`KEY_METRICS.md`](../KEY_METRICS.md); supersede note atop [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md); update [`project-tasks.md`](../project-tasks.md)
+- [x] **T9 (P1, human: ~half day / CC: ~30min)** — docs — [`USERS.md`](../USERS.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md) (with 500-word summary), [`KEY_METRICS.md`](../KEY_METRICS.md); supersede note atop [`AI_INTEGRATION_PLAN.md`](../AI_INTEGRATION_PLAN.md); update [`project-tasks.md`](../project-tasks.md)
   - Surfaced by: PRD hard gates; design doc Next Steps 6
   - Files: repo root
   - Verify: each file exists and traces to this doc
-- [ ] **T10 (P2, human: ~1 day / CC: ~1.5h)** — tests — Dashboard regression E2E (mandatory before branch ships), remaining Panther flows, DB-backed ACL/sensitivity/prior-encounter tests, `FactAssemblerTest`, `OpenAiClientTest`, `NarrationPipelineTest`
+- [~] **T10 (P2, human: ~1 day / CC: ~1.5h)** — tests — Dashboard regression E2E (mandatory before branch ships), remaining Panther flows, DB-backed ACL/sensitivity/prior-encounter tests, `FactAssemblerTest`, `OpenAiClientTest`, `NarrationPipelineTest`
   - Surfaced by: Test review REGRESSION rule; D21
   - Files: `tests/Tests/E2e/ClinicalCopilot*.php`, `tests/Tests/Services/ClinicalCopilot/*`
   - Verify: `openemr-cmd et`, `openemr-cmd ut`
