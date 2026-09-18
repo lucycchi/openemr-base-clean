@@ -157,7 +157,12 @@ the same command.
 3. **`PrewarmCommand`** (`src/Command/PrewarmCommand.php`, registered from
    `Bootstrap` via `CommandRunnerFilterEvent::setCommand()`), invoked as
    `php bin/console copilot:prewarm --site=default --date=tomorrow|today|YYYY-MM-DD
-   [--pid=N] [--dry-run]` (`--concurrency` is a follow-up).
+   [--pid=N] [--dry-run] [--force]` (`--concurrency` is a follow-up).
+   - Kill switch: `Config::prewarmEnabled` from env `COPILOT_PREWARM_ENABLED`
+     (default off). When off the command prints "pre-warm disabled on this
+     site" and exits 0 without touching the schedule, the cache or OpenAI;
+     `--force` bypasses it for a one-off manual run. The switch stays off on
+     the droplet until the user turns it on (decision 2026-09-17).
    - Selector: `openemr_postcalendar_events` rows where `pc_eventDate = :date`,
      `pc_pid <> ''`, `pc_apptstatus NOT IN ('x', '?')` (cancelled / no-show),
      `pc_aid` joined to `users.username`, grouped by `(pc_pid, pc_aid)` so a
@@ -220,8 +225,10 @@ the same command.
    request. Contract: `chat.briefing.response.schema.json` gains the optional
    field; regenerate fixtures.
 
-7. **Cron on the droplet** (documented in `clinical_copilot/RUNBOOK.md` or the
-   deploy notes): `0 6 * * 1-5 docker exec <openemr> php
+7. **Cron on the droplet: documented, not installed.** Nothing in the deploy
+   path adds the crontab entry; installing it is a separate manual action,
+   and `COPILOT_PREWARM_ENABLED` must also be set for it to do anything. The
+   line to document (runbook or deploy notes): `0 6 * * 1-5 docker exec <openemr> php
    /var/www/localhost/htdocs/openemr/bin/console copilot:prewarm --site=default
    --date=today >> /var/log/copilot-prewarm.log 2>&1` using `docker exec -u
    apache` (the CLI refuses root). The host crontab runs
@@ -300,8 +307,8 @@ path.
 4. `copilot_prewarm` table + receipt writes; chart-open lookup and
    `copilot.warm` event + Langfuse score. (CC: 45 min)
 5. Panel `generated_at` label + response contract + fixtures. (CC: 20 min)
-6. Flock, summary line, exit codes; cron line on the droplet; RUNBOOK +
-   ALERTS updates. (CC: 30 min)
+6. Flock, summary line, exit codes, kill switch; cron line documented in
+   RUNBOOK (not installed); ALERTS updates. (CC: 30 min)
 7. After one clinic week: read the reason histogram; pick follow-ups on
    evidence.
 
