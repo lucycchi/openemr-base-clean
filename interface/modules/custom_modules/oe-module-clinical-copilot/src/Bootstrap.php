@@ -18,7 +18,9 @@ use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\OEGlobalsBag;
+use OpenEMR\Events\Command\CommandRunnerFilterEvent;
 use OpenEMR\Events\PatientDemographics\RenderEvent;
+use OpenEMR\Modules\ClinicalCopilot\Command\PrewarmCommand;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -36,6 +38,26 @@ final class Bootstrap
     public function subscribeToEvents(): void
     {
         $this->dispatcher->addListener(RenderEvent::EVENT_SECTION_LIST_RENDER_BEFORE, $this->renderPanel(...));
+        $this->dispatcher->addListener(CommandRunnerFilterEvent::EVENT_NAME, $this->registerCommands(...));
+    }
+
+    /**
+     * bin/console has loaded globals by the time this fires, so the site's
+     * PHP zone (set from gbl_time_zone when configured) is the zone the
+     * panel's own clock uses: pinning the pre-warm to it keeps the hashes equal.
+     */
+    public function registerCommands(CommandRunnerFilterEvent $event): void
+    {
+        $config = Config::fromEnvironment();
+        $tz = new \DateTimeZone(date_default_timezone_get());
+        $prewarmer = new Prewarmer(
+            new DbScheduleSource(),
+            new OpenEmrChartSource(),
+            static fn(string $username): Authorization => new AclAuthorization($username),
+            $config->hasOpenAi() ? new PipelineNarrator($config) : new UnconfiguredNarrator(),
+            $tz,
+        );
+        $event->setCommand(PrewarmCommand::class, new PrewarmCommand($config, $prewarmer, ServiceContainer::getClock(), $tz));
     }
 
     public function renderPanel(RenderEvent $event): void

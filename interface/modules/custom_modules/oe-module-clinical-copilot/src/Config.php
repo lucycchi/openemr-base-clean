@@ -28,6 +28,8 @@ final readonly class Config
         public string $alertWebhookSecret = '',
         /** Langfuse webhook signing secret (lf-whs-…) used to verify x-langfuse-signature. */
         public string $langfuseWebhookSecret = '',
+        /** Kill switch for the scheduled pre-warm; off unless COPILOT_PREWARM_ENABLED is truthy. */
+        public bool $prewarmEnabled = false,
     ) {
     }
 
@@ -43,6 +45,7 @@ final readonly class Config
             self::envFloat('OPENAI_OUTPUT_USD_PER_M'),
             self::env('ALERT_WEBHOOK_SECRET'),
             self::env('LANGFUSE_WEBHOOK_SECRET'),
+            self::envFlag('COPILOT_PREWARM_ENABLED'),
         );
     }
 
@@ -54,6 +57,11 @@ final readonly class Config
     public function hasLangfuse(): bool
     {
         return $this->langfusePublicKey !== '' && $this->langfuseSecretKey !== '';
+    }
+
+    private static function envFlag(string $name): bool
+    {
+        return in_array(strtolower(self::env($name)), ['1', 'true', 'yes', 'on'], true);
     }
 
     private static function envFloat(string $name): ?float
