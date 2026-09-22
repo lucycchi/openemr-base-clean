@@ -33,112 +33,128 @@
       "description": "The verbatim text this citation points at."
     },
     "bbox": {
-      "type": "object",
-      "description": "Where on the source page a value was anchored. Coordinates are PDF points with a top-left origin, regardless of whether the page had a text layer (PyMuPDF words) or was OCRed (tesseract word boxes converted from pixels using the rasterization scale).",
-      "properties": {
-        "page": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "1-based page number."
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Where on the source page a value was anchored. Coordinates are PDF points with a top-left origin, regardless of whether the page had a text layer (PyMuPDF words) or was OCRed (tesseract word boxes converted from pixels using the rasterization scale).",
+          "properties": {
+            "page": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "1-based page number."
+            },
+            "x0": {
+              "type": "number"
+            },
+            "y0": {
+              "type": "number"
+            },
+            "x1": {
+              "type": "number"
+            },
+            "y1": {
+              "type": "number"
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "top-left"
+              ]
+            },
+            "units": {
+              "type": "string",
+              "enum": [
+                "pt"
+              ]
+            },
+            "page_w": {
+              "type": "number",
+              "description": "Page width in points, so a viewer can scale the box to any render size."
+            },
+            "page_h": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "page",
+            "x0",
+            "y0",
+            "x1",
+            "y1",
+            "origin",
+            "units",
+            "page_w",
+            "page_h"
+          ],
+          "additionalProperties": false
         },
-        "x0": {
-          "type": "number"
-        },
-        "y0": {
-          "type": "number"
-        },
-        "x1": {
-          "type": "number"
-        },
-        "y1": {
-          "type": "number"
-        },
-        "origin": {
-          "type": "string",
-          "enum": [
-            "top-left"
-          ]
-        },
-        "units": {
-          "type": "string",
-          "enum": [
-            "pt"
-          ]
-        },
-        "page_w": {
-          "type": "number",
-          "description": "Page width in points, so a viewer can scale the box to any render size."
-        },
-        "page_h": {
-          "type": "number"
+        {
+          "type": "null"
         }
-      },
-      "required": [
-        "page",
-        "x0",
-        "y0",
-        "x1",
-        "y1",
-        "origin",
-        "units",
-        "page_w",
-        "page_h"
       ],
-      "additionalProperties": false
+      "description": "Where on the source page a value was anchored. Coordinates are PDF points with a top-left origin, regardless of whether the page had a text layer (PyMuPDF words) or was OCRed (tesseract word boxes converted from pixels using the rasterization scale)."
     },
     "row_bbox": {
-      "type": "object",
-      "description": "The whole table row that supports a document value (analyte, value, unit together), for the viewer to outline.",
-      "properties": {
-        "page": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "1-based page number."
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "The whole table row that supports a document value (analyte, value, unit together), for the viewer to outline.",
+          "properties": {
+            "page": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "1-based page number."
+            },
+            "x0": {
+              "type": "number"
+            },
+            "y0": {
+              "type": "number"
+            },
+            "x1": {
+              "type": "number"
+            },
+            "y1": {
+              "type": "number"
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "top-left"
+              ]
+            },
+            "units": {
+              "type": "string",
+              "enum": [
+                "pt"
+              ]
+            },
+            "page_w": {
+              "type": "number",
+              "description": "Page width in points, so a viewer can scale the box to any render size."
+            },
+            "page_h": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "page",
+            "x0",
+            "y0",
+            "x1",
+            "y1",
+            "origin",
+            "units",
+            "page_w",
+            "page_h"
+          ],
+          "additionalProperties": false
         },
-        "x0": {
-          "type": "number"
-        },
-        "y0": {
-          "type": "number"
-        },
-        "x1": {
-          "type": "number"
-        },
-        "y1": {
-          "type": "number"
-        },
-        "origin": {
-          "type": "string",
-          "enum": [
-            "top-left"
-          ]
-        },
-        "units": {
-          "type": "string",
-          "enum": [
-            "pt"
-          ]
-        },
-        "page_w": {
-          "type": "number",
-          "description": "Page width in points, so a viewer can scale the box to any render size."
-        },
-        "page_h": {
-          "type": "number"
+        {
+          "type": "null"
         }
-      },
-      "required": [
-        "page",
-        "x0",
-        "y0",
-        "x1",
-        "y1",
-        "origin",
-        "units",
-        "page_w",
-        "page_h"
       ],
-      "additionalProperties": false
+      "description": "The whole table row that supports a document value (analyte, value, unit together), for the viewer to outline."
     },
     "anchored": {
       "type": "boolean"
@@ -166,6 +182,11 @@
   "then": {
     "required": [
       "bbox"
-    ]
+    ],
+    "properties": {
+      "bbox": {
+        "type": "object"
+      }
+    }
   }
 }

@@ -1,0 +1,120 @@
+"""FastAPI surface of the sidecar.
+
+POST /run       the graph (contracts run.request / run.response / run.error)
+GET  /health    liveness, model and parser versions
+POST /eval/anchor   test-only (COPILOT_EVAL_ENDPOINTS=1): a fixture path
+                    and a recorded proposal through anchor.py, no model call
+
+The sidecar holds no PHI at rest: documents arrive as bytes in the request
+and leave as extractions in the response; the idempotency cache keeps
+responses (no bytes) in memory for ten minutes keyed by correlation id
+and document hash. Logs carry only allowlisted fields (see logging_setup).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import time
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ValidationError
+
+from . import extractor, supervisor
+from .llm import PROMPT_VERSION
+from .logging_setup import setup_logging
+from .schemas import IntakeFormProposal, LabReportProposal, RunError, RunRequest, RunResponse
+
+setup_logging()
+app = FastAPI(title="clinical-copilot-sidecar", docs_url=None, redoc_url=None)
+
+IDEMPOTENCY_TTL_S = 600
+_cache: dict[str, tuple[float, dict]] = {}
+
+
+def _cache_key(req: RunRequest) -> str:
+    h = hashlib.sha256()
+    h.update(req.correlation_id.encode())
+    h.update(req.mode.encode())
+    h.update((req.question or "").encode())
+    for d in req.documents:
+        h.update(f"{d.document_id}:{d.status}:{d.sha3_512}".encode())
+    return h.hexdigest()
+
+
+def _error(correlation_id: str, code: str, status: int) -> JSONResponse:
+    return JSONResponse(status_code=status, content=RunError(correlation_id=correlation_id, code=code).model_dump())
+
+
+@app.get("/health")
+def health() -> dict:
+    return {"status": "ok", "prompt_version": PROMPT_VERSION, "model": os.environ.get("OPENAI_MODEL", "gpt-4o-mini"), "parser": "pymupdf+tesseract"}
+
+
+@app.post("/run")
+async def run(request: Request) -> JSONResponse:
+    try:
+        body = await request.json()
+    except Exception:
+        return _error("unknown", "bad_request", 400)
+    try:
+        req = RunRequest.model_validate(body)
+    except ValidationError:
+        return _error(str(body.get("correlation_id", "unknown")) if isinstance(body, dict) else "unknown", "bad_request", 422)
+
+    key = _cache_key(req)
+    now = time.monotonic()
+    hit = _cache.get(key)
+    if hit and now - hit[0] < IDEMPOTENCY_TTL_S:
+        return JSONResponse(content=hit[1])
+
+    state = supervisor.RunState(mode=req.mode, correlation_id=req.correlation_id, facts_hash=req.facts_hash, question=req.question, documents=req.documents)
+    try:
+        state = supervisor.run(state)
+    except Exception:  # never leak a traceback; the code is the message
+        return _error(req.correlation_id, "internal", 500)
+    resp = RunResponse(correlation_id=req.correlation_id, extractions=state.extractions, chunks=state.chunks, handoffs=state.handoffs, usage=state.usage)
+    payload = json.loads(resp.model_dump_json(by_alias=True))
+    _cache[key] = (now, payload)
+    for k in [k for k, (t, _) in _cache.items() if now - t >= IDEMPOTENCY_TTL_S]:
+        _cache.pop(k, None)
+    return JSONResponse(content=payload)
+
+
+# ---- Test-only endpoints ---------------------------------------------------
+
+FIXTURES_ROOT = Path(os.environ.get("COPILOT_FIXTURES_DIR", "/fixtures")).resolve()
+
+
+class AnchorEvalRequest(BaseModel):
+    fixture: str
+    doc_type: str
+    proposal: dict
+    document_id: int = 1
+
+
+if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
+
+    @app.post("/eval/anchor")
+    def eval_anchor(req: AnchorEvalRequest) -> dict:
+        path = (FIXTURES_ROOT / req.fixture).resolve()
+        if FIXTURES_ROOT not in path.parents and path != FIXTURES_ROOT:
+            raise HTTPException(400, "fixture outside the fixtures directory")
+        if not path.is_file():
+            raise HTTPException(404, "fixture not found")
+        model = LabReportProposal if req.doc_type == "lab_pdf" else IntakeFormProposal
+        proposal = model.model_validate(req.proposal)
+        outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), "eval-anchor", proposal=proposal)
+        return json.loads(outcome.extraction.model_dump_json())
+
+    @app.post("/eval/extract")
+    def eval_extract(req: AnchorEvalRequest) -> dict:
+        """Live variant: the real parser and the real model on a fixture; returns the extraction and the raw proposal so it can be recorded as model.json."""
+        path = (FIXTURES_ROOT / req.fixture).resolve()
+        if FIXTURES_ROOT not in path.parents or not path.is_file():
+            raise HTTPException(404, "fixture not found")
+        outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), "eval-extract")
+        return {"extraction": json.loads(outcome.extraction.model_dump_json()), "proposal": json.loads(outcome.proposal_raw) if outcome.proposal_raw else None, "usage": [u.model_dump() for u in outcome.usage]}

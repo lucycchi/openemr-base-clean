@@ -56,6 +56,31 @@
       "items": {
         "$ref": "#/$defs/lab_result"
       }
+    },
+    "unextracted": {
+      "type": "array",
+      "description": "Table rows that look like results (a number in the result column and a unit) which no extracted result anchored to, after one targeted retry. Surfaced to the physician as unverified rows so an omission by the model is visible, never silent.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "text": {
+            "type": "string"
+          },
+          "row_bbox": {
+            "$ref": "citation.schema.json#/properties/row_bbox/oneOf/0"
+          }
+        },
+        "required": [
+          "page",
+          "text",
+          "row_bbox"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "required": [
@@ -66,7 +91,8 @@
     "reported_date",
     "reported_date_citation",
     "lab_name",
-    "results"
+    "results",
+    "unextracted"
   ],
   "additionalProperties": false,
   "$defs": {

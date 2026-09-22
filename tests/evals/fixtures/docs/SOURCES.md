@@ -31,6 +31,50 @@ Chi: fictional data, terms allow use), `chosen` (a fixture is built from it),
 | candidate | eSign.com patient intake form (PDF / Word) | https://esign.com/intake-forms/patient/ | Word version lets fields be typed. |
 | candidate | Ninja Forms patient intake template | https://ninjaforms.com/templates/templates/patient-intake-form/ | Web form; would need printing. |
 
+## Structured chart data (synthetic; supplies the values typed into the forms above)
+
+Use these for the answers, not the layout: a patient's rows become the lab
+values or intake answers rendered into a template, so `truth.json` is a
+transform of the source rows rather than something typed by hand.
+
+| Status | Source | URL | Notes |
+|---|---|---|---|
+| candidate | Synthea (synthetic patient generator) | https://github.com/synthetichealth/synthea | `observations.csv` (LOINC, value, unit), `medications.csv`, `allergies.csv`, `conditions.csv`; also FHIR R4 and C-CDA output. C-CDA imports into OpenEMR through the Carecoordination module, so chart-vs-document contradictions can be set up on purpose. Clinically coherent. |
+| candidate | SyntheticMass pre-built downloads (1k / 100k Synthea patients) | https://synthea.mitre.org/downloads | Same data as above without running the generator. |
+| candidate | Synthea Coherent Data Set | https://synthea.mitre.org/downloads | ~1.3k Synthea patients plus generated clinical notes, DICOM, ECG. Notes are the closest synthetic free text tied to structured data. |
+| candidate | EMRBots | http://www.emrbots.org/ | CSV of 100 / 10k / 100k synthetic patients; labs table has `LabName`, `LabValue`, `LabUnits`, `LabDateTime` with plain-text analyte names ("CBC: HEMOGLOBIN"), a second naming convention to test. |
+| candidate | MTSamples (Kaggle mirror: tboyle10/medicaltranscriptions) | https://mtsamples.com/ | ~5,000 sample H&Ps, consults, SOAP notes with fictional identifiers; source for chief-concern and family-history free text on intake forms. Check individual notes for oddly specific detail. |
+| candidate | Asclepius synthetic clinical notes | https://huggingface.co/datasets/starmpcc/Asclepius-Synthetic-Clinical-Notes | ~158k LLM-generated notes; free text only, for free-text intake content. |
+| candidate | Public FHIR sandboxes (HAPI, SMART Health IT) | https://hapi.fhir.org/ , https://launch.smarthealthit.org/ | Synthea-loaded synthetic patients already shaped as FHIR `Observation` / `MedicationRequest` / `AllergyIntolerance`. |
+| candidate | CMS DE-SynPUF (synthetic Medicare claims) | https://www.cms.gov/data-research/statistics-trends-and-reports/medicare-claims-synthetic-public-use-files | Diagnoses, procedures, prescriptions; no lab values. Problem lists and med histories only. |
+| candidate | Kaggle prasad22/healthcare-dataset | https://www.kaggle.com/datasets/prasad22/healthcare-dataset | Synthetic but columns are independent random draws (medication does not match condition). Names and demographics only; never clinical truth. |
+
+## Real de-identified data (reference only; excluded from fixtures by the rule above)
+
+Listed so nobody re-discovers them: real people, so no file or row from
+these becomes a fixture. Their use is checking that synthetic values and
+layouts look realistic.
+
+| Status | Source | URL | Notes |
+|---|---|---|---|
+| rejected | MIMIC-IV / MIMIC-IV demo / MIMIC-IV-Note | https://physionet.org/content/mimiciv/ | Real ICU/ED patients; credentialed access (CITI, DUA). `labevents` is the reference for what a lab row looks like at scale. |
+| rejected | eICU Collaborative Research Database | https://physionet.org/content/eicu-crd/ | Real; same credentialing as MIMIC. |
+| rejected | n2c2 / i2b2 clinical NLP datasets | https://n2c2.dbmi.hms.harvard.edu/ | Real discharge summaries; DUA per dataset. |
+| rejected | NHANES laboratory data | https://wwwn.cdc.gov/nchs/nhanes/ | CDC survey participants, public, no DUA. Not patients, but real people: use for realistic CBC/CMP/lipid value distributions and reference-range edge cases when filling a template, never as content. |
+| rejected | UCI / Kaggle tabular classics (Diabetes 130-US, CKD, Indian Liver, Pima, Heart Disease) | (various) | Real de-identified; a handful of labs each. |
+
+## Filled forms and scanned documents
+
+No public corpus of filled patient intake forms is known. Kaggle sets titled
+"medical form OCR" or "lab report OCR" are small and of unclear provenance,
+rejected for the same reason as the Scribd copies. FUNSD
+(https://guillaumejaume.github.io/FUNSD/) and RVL-CDIP are scanned-form
+datasets with layout ground truth but non-medical; only useful for
+sanity-checking OCR and anchoring on messy real scans before the hand-filled
+intake. The route is therefore: Synthea patient → answers drawn from their
+`medications.csv` / `allergies.csv` / `conditions.csv` → typed into a blank
+form above → one copy printed, hand-filled and scanned.
+
 ## How a chosen source becomes a fixture
 
 1. Fill the form (or edit the sample) with invented answers tied to a seed
