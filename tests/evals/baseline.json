@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T05:59:02+00:00",
+    "ran_at": "2026-09-22T07:19:51+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -39,11 +39,30 @@
         "08-semantic-inversion-known-limitation": {
             "schema_valid": "pass",
             "citation_present": "pass"
+        },
+        "16-anchor-lab-layout1": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
+        },
+        "17-anchor-lab-layout1-scan": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
+        },
+        "18-anchor-hundred-in-three-columns": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
         }
     },
     "rates": {
         "schema_valid": 100,
         "citation_present": 100,
-        "factually_consistent": 100
+        "factually_consistent": 100,
+        "anchor_correct": 100
     }
 }

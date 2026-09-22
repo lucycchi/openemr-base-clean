@@ -1,0 +1,30 @@
+{
+  "id": "18-anchor-hundred-in-three-columns",
+  "guards": "invariant",
+  "failure_mode": "Codex review case: '100' appears as the LDL result, inside another row's reference range and in a prior column. Only the LDL result may anchor; a swapped proposal (Glucose=100, Total Cholesterol=100) must come back unverified.",
+  "mode": "anchor",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-layout2.pdf",
+  "model_output": "lab-layout2.model.json",
+  "truth": "lab-layout2.truth.json",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "anchor_correct": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "status": "extracted",
+    "unextracted": 0
+  },
+  "swapped": [
+    {
+      "analyte": "Glucose",
+      "value": "100"
+    },
+    {
+      "analyte": "Total Cholesterol",
+      "value": "100"
+    }
+  ]
+}

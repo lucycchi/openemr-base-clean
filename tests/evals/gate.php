@@ -61,10 +61,12 @@ $resultsPath = tempnam(sys_get_temp_dir(), 'copilot-gate-') ?: throw new Runtime
 $cmd = sprintf('EVAL_RESULTS=%s %s %s%s 2>&1', escapeshellarg($resultsPath), escapeshellarg(PHP_BINARY), escapeshellarg(__DIR__ . '/run.php'), $runLive ? ' --live' : '');
 passthru($cmd, $harnessExit);
 echo "\n";
-$summary = json_decode((string) file_get_contents($resultsPath), true, 64, JSON_THROW_ON_ERROR);
+$rawResults = (string) file_get_contents($resultsPath);
 @unlink($resultsPath);
+$summary = $rawResults === '' ? null : json_decode($rawResults, true, 64);
 if (!is_array($summary) || !is_array($summary['cases'] ?? null)) {
-    fwrite(STDERR, "gate: harness produced no results\n");
+    // The harness crashed before writing results (exit $harnessExit above): refuse, never pass by accident.
+    fwrite(STDERR, "gate: harness produced no results (harness exit $harnessExit)\nGATE: FAIL (push refused)\n");
     exit(1);
 }
 

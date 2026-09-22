@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T06:02:37+00:00",
+    "ran_at": "2026-09-22T07:19:51+00:00",
     "cases": {
         "09-live-seed-patients-zero-strips": {
             "citation_present": "pass",
@@ -38,12 +38,28 @@
             "citation_present": "pass",
             "factually_consistent": "pass",
             "no_phi_in_logs": "pass"
+        },
+        "19-live-extract-lab-layout1": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass",
+            "no_phi_in_logs": "pass"
+        },
+        "20-live-extract-lab-layout1-scan": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass",
+            "no_phi_in_logs": "pass"
         }
     },
     "rates": {
         "citation_present": 100,
         "factually_consistent": 100,
         "no_phi_in_logs": 100,
-        "safe_refusal": 100
+        "safe_refusal": 100,
+        "schema_valid": 100,
+        "anchor_correct": 100
     }
 }

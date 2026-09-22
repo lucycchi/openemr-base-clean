@@ -102,7 +102,136 @@ function narrationFrom(array $data): Narration
 const RUBRICS = ['schema_valid', 'citation_present', 'factually_consistent', 'safe_refusal', 'no_phi_in_logs', 'routing_correct', 'anchor_correct'];
 
 /** Modes whose runner has not landed yet; a non-pending case in one of these fails every rubric it declares. */
-const UNIMPLEMENTED_MODES = ['extract', 'anchor', 'retrieve', 'route', 'answer'];
+const UNIMPLEMENTED_MODES = ['retrieve', 'route', 'answer'];
+
+/** Sidecar test endpoints (COPILOT_EVAL_ENDPOINTS=1 on the dev compose service). */
+function sidecarUrl(): string
+{
+    $v = getenv('COPILOT_SIDECAR_URL');
+    return is_string($v) && $v !== '' ? rtrim($v, '/') : 'http://copilot-sidecar:8000';
+}
+
+/**
+ * Runs an anchor-mode (recorded proposal, no model) or extract-mode (real
+ * parser and model) case through the sidecar and scores it against the
+ * fixture's truth.json. Returns one run in the shape compare() and
+ * evaluateRubrics() understand.
+ *
+ * anchor_correct: every true result is anchored on its true page, and no
+ * result is anchored to a value that is not that analyte's printed result.
+ * The optional "swapped" list is re-anchored and must come back unverified.
+ *
+ * @param array<string, mixed> $case
+ * @return array<string, mixed>
+ */
+function runDocumentCase(array $case, string $mode): array
+{
+    $fixturesDir = __DIR__ . '/fixtures/docs/';
+    $truth = json_decode((string) file_get_contents($fixturesDir . (string) $case['truth']), true, 32, JSON_THROW_ON_ERROR);
+    if (!is_array($truth)) {
+        throw new RuntimeException('bad truth file');
+    }
+    $body = ['fixture' => (string) $case['fixture'], 'doc_type' => (string) $case['doc_type'], 'document_id' => 1];
+    if ($mode === 'anchor') {
+        $body['proposal'] = json_decode((string) file_get_contents($fixturesDir . (string) $case['model_output']), true, 32, JSON_THROW_ON_ERROR);
+    } else {
+        $body['proposal'] = new stdClass(); // extract mode: the sidecar calls the model itself
+    }
+    $t = hrtime(true);
+    $response = sidecarPost('/eval/' . $mode, $body);
+    $ms = (int) round((hrtime(true) - $t) / 1e6);
+    $extraction = $mode === 'anchor' ? $response : ($response['extraction'] ?? null);
+    if (!is_array($extraction)) {
+        throw new RuntimeException('sidecar returned no extraction');
+    }
+    $run = ['status' => $extraction['status'] ?? null, 'ms' => $ms, 'schema_errors' => [], 'anchor_errors' => [], 'ungrounded_tokens' => [], 'uncited_kept' => 0, 'leaked_identifiers' => []];
+    $usage = is_array($response['usage'] ?? null) ? $response['usage'] : [];
+    $run['tokens'] = array_sum(array_map(fn($u) => (int) ($u['input'] ?? 0) + (int) ($u['output'] ?? 0), $usage));
+    $run['model_calls'] = count($usage);
+    if (($extraction['status'] ?? null) !== 'extracted' || !is_array($extraction['extraction'] ?? null)) {
+        $run['anchor_errors'][] = 'extraction failed: ' . json_encode($extraction['failure_reason'] ?? null);
+        return $run;
+    }
+    $doc = $extraction['extraction'];
+    $run['schema_errors'] = schemaErrors((string) $case['doc_type'] === 'lab_pdf' ? 'lab-report' : 'intake-form', json_decode(json_encode($doc, JSON_THROW_ON_ERROR)));
+    $run['unextracted'] = count(is_array($doc['unextracted'] ?? null) ? $doc['unextracted'] : []);
+    $results = is_array($doc['results'] ?? null) ? $doc['results'] : [];
+    $run['results'] = count($results);
+    $run['anchored'] = count(array_filter($results, fn($r) => (($r['citation']['anchored'] ?? false) === true)));
+    $run['uncited_kept'] = count(array_filter($results, fn($r) => !is_array($r['citation'] ?? null)));
+
+    // anchor_correct against truth: match each true result by analyte (OCR may
+    // mangle a name; fall back to value+unit within the same page).
+    $byAnalyte = [];
+    foreach ($results as $r) {
+        $byAnalyte[normName((string) ($r['analyte'] ?? ''))][] = $r;
+    }
+    foreach (is_array($truth['results'] ?? null) ? $truth['results'] : [] as $want) {
+        $cands = $byAnalyte[normName((string) $want['analyte'])] ?? [];
+        if ($cands === []) {
+            $cands = array_values(array_filter($results, fn($r) => normNum((string) ($r['value'] ?? '')) === normNum((string) $want['value']) && (($r['citation']['bbox']['page'] ?? null) === $want['page'])));
+        }
+        if ($cands === []) {
+            $run['anchor_errors'][] = sprintf('%s missing', $want['analyte']);
+            continue;
+        }
+        $got = $cands[0];
+        if (normNum((string) ($got['value'] ?? '')) !== normNum((string) $want['value'])) {
+            $run['ungrounded_tokens'][] = sprintf('%s=%s (truth %s)', $want['analyte'], $got['value'] ?? '', $want['value']);
+        }
+        if (($got['citation']['anchored'] ?? false) !== true) {
+            $run['anchor_errors'][] = sprintf('%s not anchored', $want['analyte']);
+        } elseif (($got['citation']['bbox']['page'] ?? null) !== $want['page']) {
+            $run['anchor_errors'][] = sprintf('%s anchored on page %s, truth page %s', $want['analyte'], json_encode($got['citation']['bbox']['page'] ?? null), $want['page']);
+        }
+    }
+    if (($doc['collection_date'] ?? null) !== ($truth['collection_date'] ?? null)) {
+        $run['ungrounded_tokens'][] = sprintf('collection_date=%s (truth %s)', json_encode($doc['collection_date'] ?? null), json_encode($truth['collection_date'] ?? null));
+    }
+    if (($doc['collection_date_citation']['anchored'] ?? false) !== true) {
+        $run['anchor_errors'][] = 'collection date not anchored';
+    }
+    // Swapped proposals must come back unverified (the Codex "100 in three columns" rule).
+    foreach (is_array($case['swapped'] ?? null) ? $case['swapped'] : [] as $swap) {
+        $proposal = ['patient_name_on_report' => null, 'collection_date' => $truth['collection_date'] ?? null, 'reported_date' => null, 'lab_name' => null,
+            'results' => [['analyte' => $swap['analyte'], 'value' => $swap['value'], 'unit' => $swap['unit'] ?? 'mg/dL', 'reference_range' => null, 'abnormal_flag' => null, 'page' => 1]]];
+        $sw = sidecarPost('/eval/anchor', ['fixture' => (string) $case['fixture'], 'doc_type' => 'lab_pdf', 'document_id' => 1, 'proposal' => $proposal]);
+        $anchored = $sw['extraction']['results'][0]['citation']['anchored'] ?? null;
+        if ($anchored !== false) {
+            $run['anchor_errors'][] = sprintf('swapped %s=%s was anchored (must be unverified)', $swap['analyte'], $swap['value']);
+        }
+    }
+    return $run;
+}
+
+/** @param array<string, mixed> $body @return array<string, mixed> */
+function sidecarPost(string $path, array $body): array
+{
+    $ctx = stream_context_create(['http' => ['method' => 'POST', 'header' => "Content-Type: application/json\r\n", 'content' => json_encode($body, JSON_THROW_ON_ERROR), 'timeout' => 120, 'ignore_errors' => true]]);
+    $raw = file_get_contents(sidecarUrl() . $path, false, $ctx);
+    if ($raw === false) {
+        throw new RuntimeException('sidecar unreachable at ' . sidecarUrl() . ' (is the copilot-sidecar container running with COPILOT_EVAL_ENDPOINTS=1?)');
+    }
+    $decoded = json_decode($raw, true, 64, JSON_THROW_ON_ERROR);
+    if (!is_array($decoded)) {
+        throw new RuntimeException('sidecar returned a non-object');
+    }
+    return $decoded;
+}
+
+function normName(string $s): string
+{
+    return preg_replace('/[^a-z0-9]/', '', strtolower(str_replace(['1', 'l', 'I'], ['1', '1', '1'], $s))) ?? '';
+}
+
+function normNum(string $s): string
+{
+    $s = trim(str_replace(',', '', $s));
+    if (preg_match('/^-?\d+(\.\d+)?$/', $s)) {
+        return rtrim(rtrim($s, '0'), '.') ?: '0';
+    }
+    return strtolower($s);
+}
 
 /** @return list<string> validation errors, empty when $data conforms to the named contract */
 function schemaErrors(string $contract, mixed $data): array
@@ -230,7 +359,9 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     // patient); every run is compared against the same expectations.
     $started = hrtime(true);
     $runs = [];
-    if (!$isLive) {
+    if ($mode === 'anchor' || $mode === 'extract') {
+        $runs[] = runDocumentCase($case, $mode);
+    } elseif (!$isLive) {
         $factRows = is_array($case['facts'] ?? null) ? array_values($case['facts']) : [];
         $facts = factsFrom($factRows);
         $narrationData = is_array($case['narration'] ?? null) ? $case['narration'] : [];
