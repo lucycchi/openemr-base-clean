@@ -128,7 +128,7 @@ the value; the row bbox is stored separately as `row_bbox` for the viewer.
 `LabReport`: `patient_name_on_report: str` (compared to the session patient, never stored), `collection_date: date` (required, cited), `reported_date?: date` (cited if present), `lab_name?: str` (metadata, no citation), `results: list[LabResult]` (min 1).
 `LabResult`: `analyte: str` (required), `loinc?: str` (from `loinc_map.json`), `value: str` (required, verbatim), `unit?: str`, `reference_range?: str`, `abnormal_flag?: enum{H, L, HH, LL, A, N}`, `citation: Citation` (required), `unit_mismatch: bool`.
 `IntakeForm`: `demographics: {name?, dob?, sex?, phone?}` (each with its own citation; none stored, only compared), `chief_concern?: str` (cited if present), `medications: list[{name, dose?, frequency?, citation}]`, `allergies: list[{substance, reaction?, citation}]`, `family_history: list[{relative, condition, citation}]`, `form_date?: date` (cited if present). Empty lists are valid; a blank field is `null`, never "".
-All models Pydantic v2 `extra="forbid"`; exported to `contracts/*.schema.json`; pytest asserts equality; PHP validates every sidecar response against the committed JSON before persisting.
+All models Pydantic v2 `extra="forbid"`; the contracts are hand-written JSON Schema (task 1.2) and the models conform to them, proven by shared accept/reject examples on both sides (decision revised from "export and assert equality"; see ENGINEERING_REQUIREMENTS.md § 3); PHP validates every sidecar response against the committed JSON before persisting.
 
 ### Anchoring rules (task 2.4)
 

@@ -1,0 +1,28 @@
+{
+  "accept": [
+    {
+      "mode": "extract",
+      "correlation_id": "abcdefgh-1",
+      "facts_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "question": null,
+      "documents": [
+        {
+          "document_id": 1,
+          "doc_type": "lab_pdf",
+          "status": "stored",
+          "sha3_512": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes_base64": "JVBERi0="
+        }
+      ]
+    }
+  ],
+  "reject": [
+    {
+      "mode": "route",
+      "correlation_id": "abcdefgh-1",
+      "facts_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "question": null,
+      "documents": []
+    }
+  ]
+}

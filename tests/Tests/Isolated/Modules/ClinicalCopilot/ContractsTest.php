@@ -139,6 +139,13 @@ final class ContractsTest extends TestCase
             'run request' => ['run.request'],
             'run response' => ['run.response'],
             'run error' => ['run.error'],
+            'documents request' => ['documents.request'],
+            'documents list response' => ['documents.list.response'],
+            'documents upload response' => ['documents.upload.response'],
+            'documents extract response' => ['documents.extract.response'],
+            'documents error response' => ['documents.error.response'],
+            'llm lab proposal output' => ['llm.lab-proposal.output'],
+            'llm intake proposal output' => ['llm.intake-proposal.output'],
         ];
     }
 

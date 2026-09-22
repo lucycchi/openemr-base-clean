@@ -1,0 +1,20 @@
+{
+  "accept": [
+    {
+      "from": "supervisor",
+      "to": "intake_extractor",
+      "reason": "stored_document",
+      "state_keys_changed": [],
+      "ms": 3
+    }
+  ],
+  "reject": [
+    {
+      "from": "supervisor",
+      "to": "nowhere",
+      "reason": "stored_document",
+      "state_keys_changed": [],
+      "ms": 0
+    }
+  ]
+}

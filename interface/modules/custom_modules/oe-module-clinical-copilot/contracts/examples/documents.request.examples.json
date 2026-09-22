@@ -1,0 +1,50 @@
+{
+  "accept": [
+    {
+      "csrf_token_form": "tok",
+      "action": "list"
+    },
+    {
+      "csrf_token_form": "tok",
+      "action": "upload",
+      "doc_type": "lab_pdf"
+    },
+    {
+      "csrf_token_form": "tok",
+      "action": "extract",
+      "document_id": "42"
+    }
+  ],
+  "reject": [
+    {
+      "action": "list"
+    },
+    {
+      "csrf_token_form": "tok",
+      "action": "delete"
+    },
+    {
+      "csrf_token_form": "tok",
+      "action": "upload"
+    },
+    {
+      "csrf_token_form": "tok",
+      "action": "upload",
+      "doc_type": "referral"
+    },
+    {
+      "csrf_token_form": "tok",
+      "action": "extract"
+    },
+    {
+      "csrf_token_form": "tok",
+      "action": "extract",
+      "document_id": "0"
+    },
+    {
+      "csrf_token_form": "tok",
+      "action": "list",
+      "pid": "3"
+    }
+  ]
+}

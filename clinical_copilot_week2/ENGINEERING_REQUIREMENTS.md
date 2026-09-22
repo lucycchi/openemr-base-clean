@@ -14,7 +14,8 @@ Paths are relative to the repository root; `<module>/` is
 |---|---|---|---|
 | 1 | [Test design for boundaries, invariants, and regression](#1-test-design-for-boundaries-invariants-and-regression) | Done, enforced by the push gate | 2026-09-22 |
 | 2 | [Correlation id across every service boundary](#2-correlation-id-across-every-service-boundary) | Done, enforced by the push gate (sidecar gap found and fixed during the audit) | 2026-09-22 |
-| 3–9 | Contracts, dashboard, API collection, health/ready, alerts, baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
+| 3 | [Canonical contracts as the source of truth](#3-canonical-contracts-as-the-source-of-truth) | Done, enforced by the push gate (documents endpoint and PHP-side gaps found and fixed during the audit) | 2026-09-22 |
+| 4–9 | Dashboard, API collection, health/ready, alerts, baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
 
 ---
 
@@ -277,6 +278,151 @@ Phase 8 deploy.
 
 ---
 
+## 3. Canonical contracts as the source of truth
+
+> Produce canonical API/event/schema contracts from cleaned requirements.
+> Define strict schemas (Pydantic, Zod, or equivalent) for every tool input
+> and output. Contracts must be the source of truth, not the implementation.
+
+### How it is met
+
+**One contract per boundary, written by hand, before the code.** 27 JSON
+Schema (draft 2020-12) files in [`<module>/contracts/`](../interface/modules/custom_modules/oe-module-clinical-copilot/contracts/README.md),
+each with a stable `$id`, a description that states the HTTP status codes
+and authentication for its endpoint, `additionalProperties: false`, and
+closed enums for every code that is logged. DESIGN task 1.2 wrote the Week
+2 schemas from the brief's requirements before any fixture or code existed.
+
+| Boundary | Contract(s) | Strict schema in code |
+|---|---|---|
+| browser → `chat.php` | `chat.request` | `ChatRequest` (typed parse at the boundary) |
+| browser → `documents.php` | `documents.request` | `DocumentRequest` |
+| `chat.php` → browser | `chat.briefing/answer/chart-changed/error.response`, `fact`, `sentence` | `PanelPayload` |
+| `documents.php` → browser | `documents.list/upload/extract/error.response` | `DocumentController` payloads |
+| PHP → OpenAI | `llm.briefing.output`, `llm.followup.output` | the contract file itself is the `response_format` |
+| PHP → sidecar | `run.request` | `SidecarClient` |
+| sidecar → PHP | `run.response`, `run.error`, `lab-report`, `intake-form`, `citation`, `handoff` | Pydantic `extra="forbid"` models on the sidecar; typed value objects on PHP |
+| sidecar → OpenAI | `llm.lab-proposal.output`, `llm.intake-proposal.output` | the contract file is the `response_format`; `LabReportProposal` / `IntakeFormProposal` validate the reply |
+| operators | `health/ready/prewarm/alerts.response` | `ReadinessReport`, `PrewarmStatusPayload` |
+
+**The contract, not the implementation, decides.** Three mechanisms make
+that literal rather than aspirational:
+
+1. *At runtime:* `SidecarClient` validates every sidecar reply against
+   `run.response` before anything is parsed or persisted
+   ([Contracts::violations](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Contracts.php)),
+   and both LLM callers send the contract file to the provider as a strict
+   `response_format`, so the model is held to the file too
+   ([sidecar/copilot_sidecar/contracts.py](../interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/contracts.py)).
+2. *In the tests:* every contract has an examples file,
+   [`contracts/examples/<name>.examples.json`](../interface/modules/custom_modules/oe-module-clinical-copilot/contracts/examples/),
+   with documents it must accept and reject. The sidecar's
+   `test_contracts.py` runs them against the JSON Schema and the Pydantic
+   model; PHP's `ContractExamplesTest` runs the same files against the
+   JSON Schema and the typed parsers; `ChatRequestTest` and
+   `DocumentRequestTest` require the parser and the schema to give the same
+   verdict on every request body. Any drift on either side fails the gate.
+3. *In the eval gate:* the `schema_valid` rubric validates real outputs
+   (extractions, retrieval chunks, verified narration, and, since this
+   audit, the real `documents.php` responses in PHI cases 36-38) against the
+   contract files.
+
+### Decisions and trade-offs
+
+1. **Hand-written JSON Schema, not a Pydantic or PHP export.** An exported
+   schema is by definition derived from the implementation, which is the
+   inversion the requirement forbids; a hand-written file can be reviewed
+   against the brief and read by someone with neither language. *Trade-off:*
+   two artefacts to keep in step (file and model) instead of one. The shared
+   examples are how they are kept in step.
+2. **Behavioural equivalence, not textual equality.** Pydantic's export and
+   a hand-written draft 2020-12 document never match byte for byte, and a
+   PHP value object has no schema to export at all. So conformance is
+   proven by behaviour: the same documents accepted and rejected by the
+   file, the Python model and the PHP parser. *Trade-off:* the proof is
+   only as good as the examples; the rule is that every rejected example
+   breaks exactly one rule, so a missing rule is one line to add.
+3. **Validate, then parse, on the PHP side.** PHP's typed parsers follow
+   "parse, don't validate" and are deliberately tolerant (they ignore keys
+   they do not use). That tolerance is a liability at a service boundary,
+   so the contract runs first as a gate and the parser second as
+   extraction. *Trade-off:* one JSON-Schema validation per sidecar call, a
+   few milliseconds against a call that takes seconds.
+4. **The model's proposal is a contract too.** The sidecar first built the
+   OpenAI `response_format` by exporting the Pydantic proposal model; Week 1
+   had done it contract-first. The audit made the sidecar match: the
+   proposal contracts are files, loaded at runtime, and the Pydantic models
+   validate the reply. *Trade-off:* keywords OpenAI's strict mode refuses
+   (`minLength`, `minimum`, `pattern`) are stripped before sending and
+   enforced on the reply instead; the file states the full rule, the
+   provider sees a subset.
+5. **One dialect both validators enforce.** The PHP validator
+   (justinrainbow/json-schema 6) accepts documents that `if`/`then` would
+   reject; the audit's examples exposed this on the citation contract (an
+   anchored document citation without a bounding box passed PHP). The rule
+   was rewritten as `anyOf`/`not`, which both validators enforce, and the
+   README now names the constructs to use. *Trade-off:* slightly less
+   readable schemas than `if`/`then`; the description on each branch says
+   what it means.
+6. **Enums, not free strings, for anything logged.** Handoff reasons,
+   failure reasons, error reasons, document status and type are closed sets
+   in the contract, mirrored by PHP enums and Python `Literal`s, and
+   asserted equal where the drift risk is highest (`fact.category` =
+   `FactCategory::cases()`). The handoff enum already names `critic`, the
+   Phase 10 worker, so adding it later is a code change, not a contract
+   change. *Trade-off:* a new reason code is a contract change first; that
+   is the point.
+7. **Multipart files are described, not schematised.** `documents.request`
+   covers the form fields; the PDF part is stated in the description and
+   enforced by the parser (`DocumentRequestTest` proves upload without a
+   file is refused even when the fields conform). *Trade-off:* one rule
+   lives outside the schema, named in the schema.
+8. **No per-contract version field.** Contracts change in git with the code
+   that consumes them; a change to what a model is asked to return bumps
+   the prompt version so cached results are invalidated, and a change that
+   the browser must see ships in the same deploy (the panel is served by
+   the same module). A breaking change to a boundary that had independent
+   consumers would be a new file name. *Trade-off:* no runtime negotiation;
+   acceptable while both sides deploy together.
+9. **Test-only endpoints stay in code.** The sidecar's `/eval/*` models are
+   inline Pydantic and have no contract file: they exist only under
+   `COPILOT_EVAL_ENDPOINTS=1`, are never deployed, and their consumer is the
+   harness in this repository. *Trade-off:* a grader looking for them in
+   `contracts/` finds a sentence, not a file.
+
+### Verify it
+
+```bash
+openemr-cmd e 'php vendor/bin/phpunit -c phpunit-isolated.xml --filter "Contract|DocumentRequest|ChatRequest|SidecarClient"'
+cd docker/development-easy && docker compose exec -T copilot-sidecar python -m pytest -q tests/test_contracts.py
+openemr-cmd e 'php tests/evals/run.php --live'    # cases 36-38: schema_valid on the real documents.php responses
+```
+
+To see the gate work: add `"debug": 1` to an accepted document in
+`contracts/examples/run.response.examples.json` and run either suite; or
+add a reason code to `graph.py` without adding it to `handoff.schema.json`
+and watch PHP refuse the reply as `schema_mismatch`.
+
+### What the audit found and fixed (2026-09-22)
+
+- `documents.php` had no contract although `DocumentRequest` cited one by
+  name; its four response shapes were untyped. Five contracts added, with
+  examples, a request test and harness validation of the real responses.
+- PHP parsed sidecar replies without validating them, so a reply the
+  contract rejects (unknown key, reason outside the enum) was accepted; the
+  README claimed otherwise. Runtime validation added and tested.
+- The sidecar built the model's `response_format` from a Pydantic export.
+  Two proposal contracts added and loaded at runtime instead.
+- The examples exposed two latent drifts the same day: the Pydantic
+  proposal models accepted empty strings and page 0 that the contracts
+  forbid (fixed at the source with `Field` constraints), and the PHP
+  validator did not enforce the citation contract's `if`/`then` (rewritten
+  as `anyOf`).
+
+Not yet on the droplet; ships with the Phase 8 deploy.
+
+---
+
 ## Where the code lives
 
 | Concern | Path |
@@ -285,5 +431,5 @@ Phase 8 deploy.
 | Eval cases and fixtures | [tests/evals/cases/](../tests/evals/cases/), [tests/evals/fixtures/](../tests/evals/fixtures/) |
 | PHP module (controllers, facts, verifier, ids, logging, tracing) | [`<module>/src/`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/) |
 | Python sidecar (parser, anchoring, graph, retrieval, logging) | [`<module>/sidecar/`](../interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/README.md) |
-| Contracts (JSON Schema, the source of truth for every boundary) | [`<module>/contracts/`](../interface/modules/custom_modules/oe-module-clinical-copilot/contracts/README.md) |
+| Contracts (JSON Schema, the source of truth for every boundary) and their shared examples | [`<module>/contracts/`](../interface/modules/custom_modules/oe-module-clinical-copilot/contracts/README.md), [`contracts/examples/`](../interface/modules/custom_modules/oe-module-clinical-copilot/contracts/examples/) |
 | PHPUnit tests for the module | [tests/Tests/Isolated/Modules/ClinicalCopilot/](../tests/Tests/Isolated/Modules/ClinicalCopilot/), [tests/Tests/Services/Modules/ClinicalCopilot/](../tests/Tests/Services/Modules/ClinicalCopilot/) |

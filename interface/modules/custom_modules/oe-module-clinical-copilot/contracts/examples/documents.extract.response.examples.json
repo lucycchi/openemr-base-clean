@@ -1,0 +1,112 @@
+{
+  "accept": [
+    {
+      "document_id": 42,
+      "doc_type": "lab_pdf",
+      "status": "extracted",
+      "failure_reason": null,
+      "confidence": 0.9,
+      "results_persisted": 20,
+      "unverified": 0,
+      "unextracted": 0,
+      "handoffs": [
+        {
+          "from": "supervisor",
+          "to": "intake_extractor",
+          "reason": "stored_document",
+          "state_keys_changed": [],
+          "ms": 3
+        }
+      ],
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    },
+    {
+      "document_id": 42,
+      "doc_type": "lab_pdf",
+      "status": "failed",
+      "failure_reason": "unreadable",
+      "confidence": 0,
+      "results_persisted": 0,
+      "unverified": 0,
+      "unextracted": 0,
+      "handoffs": [],
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    },
+    {
+      "document_id": 42,
+      "status": "extracted",
+      "confidence": 0.9,
+      "already": true,
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    }
+  ],
+  "reject": [
+    {
+      "document_id": 42,
+      "doc_type": "lab_pdf",
+      "status": "stored",
+      "failure_reason": null,
+      "confidence": 0.9,
+      "results_persisted": 20,
+      "unverified": 0,
+      "unextracted": 0,
+      "handoffs": [
+        {
+          "from": "supervisor",
+          "to": "intake_extractor",
+          "reason": "stored_document",
+          "state_keys_changed": [],
+          "ms": 3
+        }
+      ],
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    },
+    {
+      "document_id": 42,
+      "doc_type": "lab_pdf",
+      "status": "extracted",
+      "failure_reason": null,
+      "confidence": 0.9,
+      "results_persisted": 20,
+      "unverified": 0,
+      "unextracted": 0,
+      "handoffs": [
+        {
+          "from": "supervisor",
+          "to": "nowhere",
+          "reason": "stored_document",
+          "state_keys_changed": [],
+          "ms": 3
+        }
+      ],
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    },
+    {
+      "document_id": 42,
+      "doc_type": "lab_pdf",
+      "status": "extracted",
+      "failure_reason": null,
+      "confidence": 1.5,
+      "results_persisted": 20,
+      "unverified": 0,
+      "unextracted": 0,
+      "handoffs": [
+        {
+          "from": "supervisor",
+          "to": "intake_extractor",
+          "reason": "stored_document",
+          "state_keys_changed": [],
+          "ms": 3
+        }
+      ],
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    },
+    {
+      "document_id": 42,
+      "status": "extracted",
+      "already": false,
+      "confidence": 0.9,
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    }
+  ]
+}

@@ -169,24 +169,34 @@
     "anchored"
   ],
   "additionalProperties": false,
-  "if": {
-    "properties": {
-      "source_type": {
-        "const": "document"
-      },
-      "anchored": {
-        "const": true
+  "anyOf": [
+    {
+      "description": "Not an anchored document citation: no bounding box is required.",
+      "not": {
+        "properties": {
+          "source_type": {
+            "const": "document"
+          },
+          "anchored": {
+            "const": true
+          }
+        },
+        "required": [
+          "source_type",
+          "anchored"
+        ]
+      }
+    },
+    {
+      "description": "An anchored document citation must carry the bounding box that proves it.",
+      "required": [
+        "bbox"
+      ],
+      "properties": {
+        "bbox": {
+          "type": "object"
+        }
       }
     }
-  },
-  "then": {
-    "required": [
-      "bbox"
-    ],
-    "properties": {
-      "bbox": {
-        "type": "object"
-      }
-    }
-  }
+  ]
 }

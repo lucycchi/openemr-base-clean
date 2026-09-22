@@ -1,7 +1,7 @@
 <?php
 
 /**
- * HTTP client for the week 2 sidecar: builds run.request, parses run.response into typed objects, maps every failure to a SidecarException code. No patient identifier is ever put on the wire.
+ * HTTP client for the week 2 sidecar: builds run.request, validates the reply against the run.response contract before parsing it into typed objects, maps every failure to a SidecarException code. No patient identifier is ever put on the wire.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -18,6 +18,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use OpenEMR\Modules\ClinicalCopilot\Config;
+use OpenEMR\Modules\ClinicalCopilot\Contracts;
 
 final class SidecarClient
 {
@@ -85,6 +86,12 @@ final class SidecarClient
         }
         $decoded = json_decode((string) $response->getBody(), true);
         if (!is_array($decoded)) {
+            throw new SidecarException('schema_mismatch');
+        }
+        // The contract is the gate, not the parser: anything the schema rejects
+        // (an unknown key, a reason code outside the enum, a malformed chunk id)
+        // is refused here, before any of it is typed or persisted.
+        if (Contracts::violations('run.response', $decoded) !== []) {
             throw new SidecarException('schema_mismatch');
         }
         /** @var array<string, mixed> $decoded */

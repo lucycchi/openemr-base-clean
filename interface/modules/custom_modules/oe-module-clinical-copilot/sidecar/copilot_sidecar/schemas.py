@@ -1,16 +1,21 @@
 """Pydantic models for the sidecar's wire contracts.
 
 The JSON Schema files in ../contracts/ are the source of truth (written by
-hand first). These models must accept and reject the same documents; the
-pytest in tests/test_contracts.py holds them to that. Two families:
+hand first). These models must accept and reject the same documents as the
+files; tests/test_contracts.py holds them to that through the shared
+examples in contracts/examples/ (the PHP side runs the same examples). Two
+families:
 
 * Contract models (Citation, LabReport, IntakeForm, Handoff, Usage,
   RunRequest, RunResponse, RunError): what crosses the PHP <-> sidecar
   boundary.
 * Proposal models (LabReportProposal, IntakeFormProposal): what the language
-  model is asked to return. They carry values only; citations, bounding
-  boxes, LOINC codes and the anchored flag are attached by anchor.py, never
-  by the model. This is the "model proposes, code anchors" rule.
+  model returns. The request to the model carries the contract file
+  (llm.lab-proposal.output, llm.intake-proposal.output) via contracts.py,
+  and these models validate the reply. They carry values only; citations,
+  bounding boxes, LOINC codes and the anchored flag are attached by
+  anchor.py, never by the model. This is the "model proposes, code anchors"
+  rule.
 """
 
 from __future__ import annotations
@@ -220,12 +225,12 @@ class RunError(Strict):
 
 
 class LabResultProposal(Strict):
-    analyte: str
-    value: str
+    analyte: str = Field(min_length=1)
+    value: str = Field(min_length=1)
     unit: str | None
     reference_range: str | None
     abnormal_flag: AbnormalFlag | None
-    page: int
+    page: int = Field(ge=1)
 
 
 class LabReportProposal(Strict):
@@ -237,22 +242,22 @@ class LabReportProposal(Strict):
 
 
 class IntakeMedicationProposal(Strict):
-    name: str
+    name: str = Field(min_length=1)
     dose: str | None
     frequency: str | None
-    page: int
+    page: int = Field(ge=1)
 
 
 class IntakeAllergyProposal(Strict):
-    substance: str
+    substance: str = Field(min_length=1)
     reaction: str | None
-    page: int
+    page: int = Field(ge=1)
 
 
 class IntakeFamilyHistoryProposal(Strict):
-    relative: str
-    condition: str
-    page: int
+    relative: str = Field(min_length=1)
+    condition: str = Field(min_length=1)
+    page: int = Field(ge=1)
 
 
 class IntakeFormProposal(Strict):
@@ -265,29 +270,3 @@ class IntakeFormProposal(Strict):
     medications: list[IntakeMedicationProposal]
     allergies: list[IntakeAllergyProposal]
     family_history: list[IntakeFamilyHistoryProposal]
-
-
-def openai_strict_schema(model: type[BaseModel]) -> dict:
-    """Pydantic JSON schema reduced to what OpenAI strict mode accepts.
-
-    Strict mode wants every property listed in required, additionalProperties
-    false everywhere, and no validation keywords it does not understand.
-    """
-    schema = model.model_json_schema()
-
-    def scrub(node: object) -> object:
-        if isinstance(node, dict):
-            out = {}
-            for k, v in node.items():
-                if k in {"minLength", "maxLength", "minItems", "maxItems", "format", "pattern", "minimum", "maximum", "title", "default"}:
-                    continue
-                out[k] = scrub(v)
-            if out.get("type") == "object" and "properties" in out:
-                out["required"] = list(out["properties"].keys())
-                out["additionalProperties"] = False
-            return out
-        if isinstance(node, list):
-            return [scrub(x) for x in node]
-        return node
-
-    return scrub(schema)  # type: ignore[return-value]

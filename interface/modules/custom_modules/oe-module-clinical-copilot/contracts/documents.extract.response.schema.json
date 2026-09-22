@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/documents.extract.response.schema.json",
+  "title": "documents.php extract response",
+  "description": "200 for action=extract. Either the outcome of a run through the sidecar (status extracted or failed, with what was persisted and the supervisor's handoffs), or a short form with already=true when the document had been extracted before (nothing runs again). A sidecar transport failure is 502 with documents.error.response (reason, document_id, status=stored) and the file can be retried.",
+  "type": "object",
+  "oneOf": [
+    {
+      "description": "The document was run through the sidecar in this request.",
+      "required": [
+        "document_id",
+        "doc_type",
+        "status",
+        "failure_reason",
+        "confidence",
+        "results_persisted",
+        "unverified",
+        "unextracted",
+        "handoffs",
+        "correlation_id"
+      ],
+      "not": {
+        "required": [
+          "already"
+        ]
+      }
+    },
+    {
+      "description": "Already extracted earlier; nothing ran.",
+      "required": [
+        "document_id",
+        "status",
+        "confidence",
+        "already",
+        "correlation_id"
+      ],
+      "properties": {
+        "status": {
+          "const": "extracted"
+        }
+      },
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "doc_type"
+            ]
+          },
+          {
+            "required": [
+              "handoffs"
+            ]
+          },
+          {
+            "required": [
+              "results_persisted"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "document_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "lab_pdf",
+        "intake_form"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "extracted",
+        "failed"
+      ]
+    },
+    "failure_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Why the last extraction failed, a fixed code from run.response (encrypted, unreadable, too_many_pages, model_error, schema_mismatch, timeout) or a sidecar transport code (unavailable, timeout); null when stored or extracted."
+    },
+    "confidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Share of extracted fields the anchor step could prove; a number after a run, possibly null on the already-extracted short form."
+    },
+    "results_persisted": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Lab results or intake items written to the chart with citations."
+    },
+    "unverified": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Proposed values the anchor step could not find on the page; surfaced as extraction_unverified facts."
+    },
+    "unextracted": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Printed result rows the model did not propose; surfaced as extraction_unverified facts."
+    },
+    "handoffs": {
+      "type": "array",
+      "items": {
+        "$ref": "handoff.schema.json"
+      }
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Correlation id of the request; quote it when reporting a problem.",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "already": {
+      "const": true
+    }
+  },
+  "required": [
+    "document_id",
+    "status",
+    "confidence",
+    "correlation_id"
+  ],
+  "additionalProperties": false
+}

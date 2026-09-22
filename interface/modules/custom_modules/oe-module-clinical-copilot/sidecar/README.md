@@ -16,7 +16,8 @@ architecture: [W2_ARCHITECTURE.md](../../../../../clinical_copilot_week2/W2_ARCH
 | `copilot_sidecar/anchor.py` | Row-level anchoring: a value counts only if it is found in the same row as its analyte and unit |
 | `copilot_sidecar/llm.py` | The model call (Structured Outputs), prompts, `PROMPT_VERSION` |
 | `copilot_sidecar/retrieve.py` | Hybrid retrieval: BM25 + committed embeddings, RRF, relevance floor, Cohere rerank when a key is set |
-| `copilot_sidecar/schemas.py` | Pydantic models mirroring `../contracts/*.schema.json` |
+| `copilot_sidecar/schemas.py` | Pydantic models conforming to `../contracts/*.schema.json`, held to them by the shared examples |
+| `copilot_sidecar/contracts.py` | Loads a contract file at runtime; the proposal contracts are what OpenAI is asked to fill (`response_format`, strict) |
 | `copilot_sidecar/logging_setup.py` | JSON log lines restricted to an allowlist; the correlation id bound per request |
 | `corpus/` | Six guideline summaries (own words), `manifest.json`, the committed index |
 | `tools/` | `generate_fixtures.py` (synthetic PDFs), `build_index.py` |

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/documents.upload.response.schema.json",
+  "title": "documents.php upload response",
+  "description": "201 for a newly stored PDF, 200 with existing=true when the same bytes were already stored for this patient (the earlier document is reused, and re-pointed if it had been deleted). Rejections (too large, not a PDF) use documents.error.response with a reason.",
+  "type": "object",
+  "properties": {
+    "document_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "lab_pdf",
+        "intake_form"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "stored",
+        "extracted",
+        "failed"
+      ],
+      "description": "stored for a new upload; an existing document keeps its status."
+    },
+    "existing": {
+      "type": "boolean"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Correlation id of the request; quote it when reporting a problem.",
+      "pattern": "^[0-9a-f]{32}$"
+    }
+  },
+  "required": [
+    "document_id",
+    "doc_type",
+    "status",
+    "existing",
+    "correlation_id"
+  ],
+  "additionalProperties": false
+}

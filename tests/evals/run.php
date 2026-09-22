@@ -714,6 +714,17 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         foreach (array_diff(is_array($sidecar['extra_keys_seen'] ?? null) ? $sidecar['extra_keys_seen'] : [], is_array($sidecar['allowlist'] ?? null) ? $sidecar['allowlist'] : []) as $k) {
             $disallowed[] = 'sidecar:' . (string) $k;
         }
+        // The real controllers' responses must conform to the documents.* contracts.
+        $schemaErrors = [];
+        foreach (['upload' => 'documents.upload.response', 'extract' => 'documents.extract.response', 'list' => 'documents.list.response'] as $step => $contract) {
+            if (!array_key_exists($step, $out['bodies'])) {
+                $schemaErrors[] = "$step: no response body";
+                continue;
+            }
+            foreach (Contracts::violations($contract, $out['bodies'][$step]) as $e) {
+                $schemaErrors[] = "$step ($contract): $e";
+            }
+        }
         $runs[] = [
             'status' => $out['status'],
             'answer_type' => $out['answer_type'],
@@ -723,7 +734,7 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
             'trace_payloads' => count($out['traces']),
             'sidecar_log_lines' => count($sidecarLines),
             'uncorrelated_log_lines' => $uncorrelated,
-            'schema_errors' => [],
+            'schema_errors' => $schemaErrors,
             'ungrounded_tokens' => [],
             'uncited_kept' => 0,
         ];

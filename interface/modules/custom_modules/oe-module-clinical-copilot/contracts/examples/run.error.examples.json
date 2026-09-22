@@ -1,0 +1,14 @@
+{
+  "accept": [
+    {
+      "correlation_id": "abcdefgh-1",
+      "code": "timeout"
+    }
+  ],
+  "reject": [
+    {
+      "correlation_id": "x",
+      "code": "boom"
+    }
+  ]
+}

@@ -26,6 +26,17 @@ are scheduled as tasks 9.1 and 9.2 in
 
 ## Clinical Co-Pilot
 
+- **PHPStan level 10 is not clean for the Co-Pilot code (measured 2026-09-22: 544 errors repo-wide, all in
+  Co-Pilot files).** Roughly: `tests/evals/run.php` 217, `tests/evals/spike/*` 67, `tests/evals/smoke.php` 35,
+  `tests/evals/gate.php` 14, `src/FactAssembler.php` 29, `src/Documents/DocumentIngestService.php` 11,
+  `src/OpenEmrChartSource.php` 9, and a long tail. Mostly `mixed` from decoded JSON and `sqlStatement` rows
+  that is cast instead of narrowed, and global functions in the harness scripts. Files added on 2026-09-22
+  (contracts, sidecar client, the three contract tests) are clean; the pre-existing files are not. Fix at
+  the source (typed parse of case files and rows; a namespace for the harness) rather than a baseline;
+  budget half a day after the Week 2 deadline. The pre-commit hook would refuse every commit that touches
+  these files until then, which is why it is not installed.
+
+
 ### Server-side conversation persistence
 
 **What:** Store chat threads in a table keyed by (pid, encounter_id, user_id) instead of holding the transcript in the browser.

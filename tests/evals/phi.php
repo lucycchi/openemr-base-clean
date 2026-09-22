@@ -34,7 +34,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 /**
  * @param array<string, mixed> $case  keys: fixture, doc_type, question, pid (optional)
- * @return array{logs: list<string>, traces: list<string>, log_keys: list<string>, status: ?string, answer_type: ?string, document_id: ?int}
+ * @return array{logs: list<string>, traces: list<string>, log_keys: list<string>, status: ?string, answer_type: ?string, document_id: ?int, bodies: array<string, mixed>}
  */
 function runPhiCase(array $case): array
 {
@@ -68,19 +68,25 @@ function runPhiCase(array $case): array
     $documentId = null;
     $status = null;
     $answerType = null;
+    $bodies = [];
     try {
         // Upload through the real controller.
         $req = Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'upload', 'doc_type' => (string) $case['doc_type']], [], ['file' => new UploadedFile($tmp, basename($fixture), 'application/pdf', null, true)]);
         ob_start();
         (new DocumentController($logger, $req, null, $tracer))->handleRequest();
         $body = json_decode((string) ob_get_clean(), true);
+        $bodies['upload'] = $body;
         $documentId = is_array($body) && is_int($body['document_id'] ?? null) ? $body['document_id'] : null;
         if ($documentId !== null) {
             $req = Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'extract', 'document_id' => (string) $documentId]);
             ob_start();
             (new DocumentController($logger, $req, null, $tracer))->handleRequest();
             $body = json_decode((string) ob_get_clean(), true);
+            $bodies['extract'] = $body;
             $status = is_array($body) && is_string($body['status'] ?? null) ? $body['status'] : null;
+            ob_start();
+            (new DocumentController($logger, Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'list']), null, $tracer))->handleRequest();
+            $bodies['list'] = json_decode((string) ob_get_clean(), true);
         }
         if (is_string($case['question'] ?? null)) {
             // Brief first (the ask needs the facts hash), then ask through the real controller.
@@ -108,7 +114,7 @@ function runPhiCase(array $case): array
             $keys[$k] = true;
         }
     }
-    return ['logs' => $logs, 'traces' => $traces, 'log_keys' => array_keys($keys), 'status' => $status, 'answer_type' => $answerType, 'document_id' => $documentId];
+    return ['logs' => $logs, 'traces' => $traces, 'log_keys' => array_keys($keys), 'status' => $status, 'answer_type' => $answerType, 'document_id' => $documentId, 'bodies' => $bodies];
 }
 
 function removeDocument(int $id): void

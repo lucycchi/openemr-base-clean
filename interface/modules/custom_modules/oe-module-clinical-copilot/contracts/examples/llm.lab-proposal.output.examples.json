@@ -1,0 +1,93 @@
+{
+  "accept": [
+    {
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "09/15/2026",
+      "reported_date": null,
+      "lab_name": "Synthetic Labs",
+      "results": [
+        {
+          "analyte": "Glucose",
+          "value": "92",
+          "unit": "mg/dL",
+          "reference_range": "70-99",
+          "abnormal_flag": null,
+          "page": 1
+        }
+      ]
+    },
+    {
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "09/15/2026",
+      "reported_date": null,
+      "lab_name": "Synthetic Labs",
+      "results": []
+    }
+  ],
+  "reject": [
+    {
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "09/15/2026",
+      "reported_date": null,
+      "lab_name": "Synthetic Labs",
+      "results": [
+        {
+          "analyte": "Glucose",
+          "value": "92",
+          "unit": "mg/dL",
+          "reference_range": "70-99",
+          "abnormal_flag": "X",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "09/15/2026",
+      "reported_date": null,
+      "lab_name": "Synthetic Labs",
+      "results": [
+        {
+          "analyte": "Glucose",
+          "value": "92",
+          "unit": "mg/dL",
+          "reference_range": "70-99",
+          "abnormal_flag": null,
+          "page": 1,
+          "citation": {}
+        }
+      ]
+    },
+    {
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "09/15/2026",
+      "reported_date": null,
+      "results": [
+        {
+          "analyte": "Glucose",
+          "value": "92",
+          "unit": "mg/dL",
+          "reference_range": "70-99",
+          "abnormal_flag": null,
+          "page": 1
+        }
+      ]
+    },
+    {
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "09/15/2026",
+      "reported_date": null,
+      "lab_name": "Synthetic Labs",
+      "results": [
+        {
+          "analyte": "Glucose",
+          "value": "92",
+          "unit": "mg/dL",
+          "reference_range": "70-99",
+          "abnormal_flag": null,
+          "page": 0
+        }
+      ]
+    }
+  ]
+}

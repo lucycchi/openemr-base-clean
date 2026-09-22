@@ -19,8 +19,9 @@ from dataclasses import dataclass
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
+from . import contracts
 from .logging_setup import correlation_id
-from .schemas import IntakeFormProposal, LabReportProposal, Usage, openai_strict_schema
+from .schemas import IntakeFormProposal, LabReportProposal, Usage
 
 log = logging.getLogger("copilot.llm")
 
@@ -101,10 +102,9 @@ def propose(doc_type: str, page_text: str, client: OpenAI | None = None, extra_t
                 {"role": "system", "content": SYSTEM},
                 {"role": "user", "content": f"{task}{extra_task}\n\n<<<DOCUMENT_TEXT\n{page_text}\nDOCUMENT_TEXT>>>"},
             ],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {"name": schema_model.__name__, "strict": True, "schema": openai_strict_schema(schema_model)},
-            },
+            # The contract file is what the model is asked to fill; the Pydantic
+            # proposal model validates the reply (they agree by tests/test_contracts.py).
+            response_format=contracts.openai_response_format(contracts.PROPOSAL_CONTRACT[doc_type]),
         )
     except Exception as exc:  # network, auth, rate limit; the caller maps to failure_reason
         log.info("model_call failed", extra={"model": model_name(), "kind": "chat", "page": page, "ms": int((time.monotonic() - started) * 1000), "exception_class": type(exc).__name__})

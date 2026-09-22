@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/documents.request.schema.json",
+  "title": "documents.php request body",
+  "description": "Multipart or form-encoded POST body accepted by public/documents.php. upload also carries one multipart file part named `file` (a PDF of at most 20 MB); the file is outside this schema because JSON Schema cannot describe a multipart part, and DocumentRequest::fromBag refuses upload without it (400). The patient id is taken from the OpenEMR session only. ACL: list needs patients/docs view; upload and extract need patients/docs write or addonly (403 otherwise). Missing or wrong CSRF token: 403.",
+  "type": "object",
+  "properties": {
+    "csrf_token_form": {
+      "type": "string",
+      "description": "OpenEMR CSRF token for the session, as embedded in the panel markup.",
+      "minLength": 1
+    },
+    "action": {
+      "type": "string",
+      "description": "list: the patient's Co-Pilot documents with status. upload: store a PDF (deduplicated per patient by sha3-512; 200 with existing=true when the same file was already stored, else 201). extract: run the sidecar on a stored document and persist the cited facts.",
+      "enum": [
+        "list",
+        "upload",
+        "extract"
+      ]
+    },
+    "document_id": {
+      "type": "string",
+      "description": "extract only. The OpenEMR document id returned by upload or list, as a decimal string.",
+      "pattern": "^[1-9][0-9]{0,18}$"
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "lab_pdf",
+        "intake_form"
+      ],
+      "description": "upload only. What the PDF is; decides the extraction contract (lab-report or intake-form)."
+    }
+  },
+  "required": [
+    "csrf_token_form",
+    "action"
+  ],
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "description": "list needs nothing else.",
+      "properties": {
+        "action": {
+          "const": "list"
+        }
+      }
+    },
+    {
+      "description": "upload needs the doc_type (and the multipart file).",
+      "properties": {
+        "action": {
+          "const": "upload"
+        }
+      },
+      "required": [
+        "doc_type"
+      ]
+    },
+    {
+      "description": "extract needs the document_id.",
+      "properties": {
+        "action": {
+          "const": "extract"
+        }
+      },
+      "required": [
+        "document_id"
+      ]
+    }
+  ]
+}

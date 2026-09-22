@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/llm.lab-proposal.output.schema.json",
+  "title": "LLM lab-report proposal",
+  "description": "What the extraction model is asked to return for one page of a lab PDF (sent by the sidecar as response_format.json_schema with strict: true, so OpenAI enforces it). Values only, as printed: no citations, no coordinates, no LOINC codes; anchor.py attaches those after proving each value in its own row. Every field is required and unknown is null. Keywords OpenAI strict mode rejects (minimum, minLength, pattern) are stripped before sending and enforced by the Pydantic model on the reply.",
+  "type": "object",
+  "properties": {
+    "patient_name_on_report": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Name printed on the report, compared with the chart and never stored."
+    },
+    "collection_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "As printed (any format); the anchor step normalises it."
+    },
+    "reported_date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lab_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "analyte": {
+            "type": "string",
+            "minLength": 1
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The printed result, verbatim, including qualifiers such as < or >."
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference_range": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "abnormal_flag": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "H",
+                  "L",
+                  "HH",
+                  "LL",
+                  "A",
+                  "N"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based page the value was read from, as labelled in the page markers of the document text."
+          }
+        },
+        "required": [
+          "analyte",
+          "value",
+          "unit",
+          "reference_range",
+          "abnormal_flag",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "patient_name_on_report",
+    "collection_date",
+    "reported_date",
+    "lab_name",
+    "results"
+  ],
+  "additionalProperties": false
+}

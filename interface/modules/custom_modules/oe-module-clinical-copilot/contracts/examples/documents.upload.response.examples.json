@@ -1,0 +1,33 @@
+{
+  "accept": [
+    {
+      "document_id": 42,
+      "doc_type": "lab_pdf",
+      "status": "stored",
+      "existing": false,
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    },
+    {
+      "document_id": 42,
+      "doc_type": "intake_form",
+      "status": "extracted",
+      "existing": true,
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    }
+  ],
+  "reject": [
+    {
+      "document_id": 42,
+      "doc_type": "lab_pdf",
+      "status": "stored",
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    },
+    {
+      "document_id": "42",
+      "doc_type": "lab_pdf",
+      "status": "stored",
+      "existing": false,
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    }
+  ]
+}

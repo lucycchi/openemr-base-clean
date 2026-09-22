@@ -31,6 +31,10 @@ final readonly class DocumentRequest
     ) {
     }
 
+    /**
+     * @param InputBag<string|int|float|bool|null> $bag
+     * @throws InvalidRequest
+     */
     public static function fromBag(InputBag $bag, ?UploadedFile $file): self
     {
         foreach ($bag->keys() as $key) {

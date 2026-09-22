@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T17:52:29+00:00",
+    "ran_at": "2026-09-22T18:42:20+00:00",
     "cases": {
         "09-live-seed-patients-zero-strips": {
             "citation_present": "pass",
@@ -61,14 +61,17 @@
             "no_phi_in_logs": "pass"
         },
         "36-phi-lab-upload-logs": {
+            "schema_valid": "pass",
             "no_phi_in_logs": "pass",
             "factually_consistent": "pass"
         },
         "37-phi-intake-upload-logs": {
+            "schema_valid": "pass",
             "no_phi_in_logs": "pass",
             "factually_consistent": "pass"
         },
         "38-phi-question-logs": {
+            "schema_valid": "pass",
             "no_phi_in_logs": "pass",
             "factually_consistent": "pass"
         }

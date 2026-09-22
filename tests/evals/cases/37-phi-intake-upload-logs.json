@@ -3,7 +3,7 @@
   "guards": "invariant",
   "theme": "authorization",
   "live": true,
-  "failure_mode": "An intake form carries a name, a date of birth, a phone number and a chief concern: none may appear in logs or traces; the mismatch flag is recorded as a fixed phrase only; the sidecar's log lines for the same document must pass the same scan and every one must carry the request's correlation id, so the run can be reconstructed from logs alone.",
+  "failure_mode": "An intake form carries a name, a date of birth, a phone number and a chief concern: none may appear in logs or traces; the mismatch flag is recorded as a fixed phrase only; the sidecar's log lines for the same document must pass the same scan and every one must carry the request's correlation id, so the run can be reconstructed from logs alone. The upload, extract and list responses of the real controller must conform to the documents.* contracts.",
   "mode": "phi_logs",
   "fixture": "intake-full.pdf",
   "doc_type": "intake_form",
@@ -17,6 +17,7 @@
     "/medications/0/name"
   ],
   "rubrics": {
+    "schema_valid": true,
     "no_phi_in_logs": true,
     "factually_consistent": true
   },

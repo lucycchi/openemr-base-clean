@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/documents.list.response.schema.json",
+  "title": "documents.php list response",
+  "description": "200 for action=list: every Co-Pilot document of the patient in the session, newest first. Filenames are the physician's own upload names and stay inside the session; they are never logged.",
+  "type": "object",
+  "properties": {
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "doc_type": {
+            "type": "string",
+            "enum": [
+              "lab_pdf",
+              "intake_form"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "stored",
+              "extracted",
+              "failed"
+            ]
+          },
+          "failure_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the last extraction failed, a fixed code from run.response (encrypted, unreadable, too_many_pages, model_error, schema_mismatch, timeout) or a sidecar transport code (unavailable, timeout); null when stored or extracted."
+          },
+          "confidence": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Share of extracted fields the anchor step could prove on the page; null until extracted."
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uploaded_at": {
+            "type": "string",
+            "description": "MySQL datetime of the upload (server time)."
+          }
+        },
+        "required": [
+          "document_id",
+          "doc_type",
+          "status",
+          "failure_reason",
+          "confidence",
+          "filename",
+          "uploaded_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Correlation id of the request; quote it when reporting a problem.",
+      "pattern": "^[0-9a-f]{32}$"
+    }
+  },
+  "required": [
+    "documents",
+    "correlation_id"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,89 @@
+{
+  "accept": [
+    {
+      "source_type": "document",
+      "source_id": "1",
+      "page_or_section": "1",
+      "field_or_chunk_id": "/results/0/value",
+      "quote_or_value": "92",
+      "anchored": true,
+      "bbox": {
+        "page": 1,
+        "x0": 10,
+        "y0": 10,
+        "x1": 50,
+        "y1": 20,
+        "origin": "top-left",
+        "units": "pt",
+        "page_w": 612,
+        "page_h": 792
+      }
+    },
+    {
+      "source_type": "document",
+      "source_id": "1",
+      "page_or_section": "1",
+      "field_or_chunk_id": "/results/0/value",
+      "quote_or_value": "92",
+      "anchored": false
+    },
+    {
+      "source_type": "guideline",
+      "source_id": "1",
+      "page_or_section": "1",
+      "field_or_chunk_id": "/results/0/value",
+      "quote_or_value": "92",
+      "anchored": true
+    }
+  ],
+  "reject": [
+    {
+      "source_type": "document",
+      "source_id": "1",
+      "page_or_section": "1",
+      "field_or_chunk_id": "/results/0/value",
+      "quote_or_value": "92",
+      "anchored": true,
+      "bbox": null
+    },
+    {
+      "source_type": "chart",
+      "source_id": "1",
+      "page_or_section": "1",
+      "field_or_chunk_id": "/results/0/value",
+      "quote_or_value": "92",
+      "anchored": true,
+      "bbox": {
+        "page": 1,
+        "x0": 10,
+        "y0": 10,
+        "x1": 50,
+        "y1": 20,
+        "origin": "top-left",
+        "units": "pt",
+        "page_w": 612,
+        "page_h": 792
+      },
+      "extra": 1
+    },
+    {
+      "source_type": "document",
+      "source_id": "",
+      "page_or_section": "1",
+      "field_or_chunk_id": "/results/0/value",
+      "quote_or_value": "92",
+      "anchored": true,
+      "bbox": {
+        "page": 1,
+        "x0": 10,
+        "y0": 10,
+        "x1": 50,
+        "y1": 20,
+        "origin": "top-left",
+        "units": "pt",
+        "page_w": 612,
+        "page_h": 792
+      }
+    }
+  ]
+}

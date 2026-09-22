@@ -15,11 +15,17 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+use JsonSchema\Constraints\Constraint;
+use JsonSchema\Validator;
+
 /**
- * Loads the JSON Schema files in ../contracts/. The same schema is used two
+ * Loads the JSON Schema files in ../contracts/. The same schema is used three
  * ways: as a strict "response_format" sent to OpenAI (so the model is forced
- * to emit that shape) and as a validator for what comes back / what we
- * return to the panel. Schemas are cached per process after first load.
+ * to emit that shape), as the runtime gate on what the sidecar returns
+ * (violations(), called by SidecarClient before anything is parsed), and as
+ * the test oracle for what we return to the panel. Schemas are cached per
+ * process after first load. Decisions and trade-offs:
+ * clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md section 3.
  */
 final class Contracts
 {
@@ -53,6 +59,32 @@ final class Contracts
         }
         $decoded->{'$id'} = 'file://' . $real;
         return self::$loaded[$name] = $decoded;
+    }
+
+    /**
+     * Every way $data violates the named contract, empty when it conforms.
+     * Sibling $ref values (handoff, lab-report, ...) resolve from disk. Arrays
+     * are round-tripped through JSON so the validator sees objects and lists
+     * exactly as the wire did.
+     *
+     * @return list<string>
+     */
+    public static function violations(string $name, mixed $data): array
+    {
+        $decoded = json_decode(json_encode($data, JSON_THROW_ON_ERROR), false, 512, JSON_THROW_ON_ERROR);
+        $validator = new Validator();
+        $validator->validate($decoded, self::schema($name), Constraint::CHECK_MODE_NORMAL);
+        $out = [];
+        foreach ($validator->getErrors() as $error) {
+            if (!is_array($error)) {
+                $out[] = 'invalid';
+                continue;
+            }
+            $property = is_string($error['property'] ?? null) ? $error['property'] : '';
+            $message = is_string($error['message'] ?? null) ? $error['message'] : 'invalid';
+            $out[] = $property === '' ? $message : $property . ': ' . $message;
+        }
+        return $out;
     }
 
     /**
