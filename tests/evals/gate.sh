@@ -48,6 +48,23 @@ if grep -lq '"mode": *"\(extract\|anchor\|retrieve\|route\)"' "$(git rev-parse -
     exit 1
 fi
 
+# Unit layers first, deterministic and fast: the sidecar's pytest (schemas vs
+# contracts, anchoring, supervisor routing, HTTP surface) when its container is
+# up, and the module's isolated PHPUnit suite. A failure here refuses the push
+# before the golden cases run.
+if [ "$stage" != "self-test" ]; then
+    sidecar=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E -- 'copilot-sidecar' | head -1)
+    log=$(mktemp)
+    if [ -n "$sidecar" ]; then
+        echo "gate: sidecar pytest ($sidecar)"
+        if docker exec "$sidecar" python -m pytest -q -p no:cacheprovider >"$log" 2>&1; then tail -1 "$log"; else tail -25 "$log"; echo "gate: sidecar pytest failed (push refused)" >&2; rm -f "$log"; exit 1; fi
+    fi
+    echo "gate: module isolated PHPUnit"
+    # The exit code of phpunit must survive: no pipes inside the container command.
+    if openemr-cmd e "cd /var/www/localhost/htdocs/openemr && vendor/bin/phpunit -c phpunit-isolated.xml --filter ClinicalCopilot --no-coverage" >"$log" 2>&1; then grep -E "^OK|^Tests:" "$log" | tail -1; else tail -25 "$log"; echo "gate: module PHPUnit failed (push refused)" >&2; rm -f "$log"; exit 1; fi
+    rm -f "$log"
+fi
+
 args=""
 for a in "${extra[@]}"; do args+=" $(printf '%q' "$a")"; done
 exec openemr-cmd e "su -s /bin/sh apache -c 'cd /var/www/localhost/htdocs/openemr && php tests/evals/gate.php$args'"

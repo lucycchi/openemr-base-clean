@@ -250,11 +250,11 @@ Goal: `lab-layout1.pdf` goes upload → extract → persisted lab rows → fact 
 - [x] 2.10 Deploy with `deploy.sh`; run the slice on the droplet by hand; screenshot the highlight. Flip the first `anchor` case and first `extract` live case from pending.
 - [x] 2.11 Persistence integration tests (DB-backed): rollback leaves zero lab rows when the last result insert fails; two concurrent uploads of the same file for one patient yield one document (unique index); `failed` → retry → `extracted` leaves exactly one set of rows.
 
-### Phase 3: Contracts and sidecar tests (Tuesday, ~1.5 h)
+### Phase 3: Contracts and sidecar tests (Tuesday, ~1.5 h) — done 2026-09-22: 27 pytest + 225 isolated PHPUnit run inside the gate; copilot:attach registered; DB-backed negative auth tests (receptionist has no docs ACL in the seed; the front-desk persona needs patients/docs addonly, note for 9.1)
 
-- [ ] 3.1 pytest: schema export equals the committed JSON; anchoring over the fixtures; test-only `/eval/anchor` and `/eval/retrieve` endpoints behind `COPILOT_EVAL_ENDPOINTS=1` (dev only) so `run.php` drives every case from the openemr container.
-- [ ] 3.2 `copilot:attach <pid> <file> <lab_pdf|intake_form>` registered in `Bootstrap::registerCommands()` next to `copilot:prewarm`.
-- [ ] 3.3 Negative authorization tests: forged document id from another patient, viewer without `patients/docs`, wrong session pid, `receptionist` cannot trigger persistence.
+- [x] 3.1 pytest: schema export equals the committed JSON; anchoring over the fixtures; test-only `/eval/anchor` and `/eval/retrieve` endpoints behind `COPILOT_EVAL_ENDPOINTS=1` (dev only) so `run.php` drives every case from the openemr container.
+- [x] 3.2 `copilot:attach <pid> <file> <lab_pdf|intake_form>` registered in `Bootstrap::registerCommands()` next to `copilot:prewarm`.
+- [x] 3.3 Negative authorization tests: forged document id from another patient, viewer without `patients/docs`, wrong session pid, `receptionist` cannot trigger persistence.
 
 ### Phase 4: Intake form (Tuesday, ~2 h)
 

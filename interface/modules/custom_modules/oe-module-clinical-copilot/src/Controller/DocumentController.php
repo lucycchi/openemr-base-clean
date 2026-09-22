@@ -39,6 +39,7 @@ use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentIngestService;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentRequest;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentStatus;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentStore;
+use OpenEMR\Modules\ClinicalCopilot\Documents\ExtractionRunner;
 use OpenEMR\Modules\ClinicalCopilot\Documents\Handoff;
 use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarClient;
 use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarException;
@@ -68,6 +69,7 @@ final class DocumentController
     private readonly DocumentStore $store;
     private readonly DocumentIngestService $ingest;
     private readonly SidecarClient $sidecar;
+    private readonly ExtractionRunner $runner;
 
     public function __construct(?LoggerInterface $logger = null, ?Request $request = null, ?Config $config = null, ?Tracer $tracer = null, ?DocumentStore $store = null, ?DocumentIngestService $ingest = null, ?SidecarClient $sidecar = null)
     {
@@ -82,6 +84,7 @@ final class DocumentController
         $this->store = $store ?? new DocumentStore();
         $this->ingest = $ingest ?? new DocumentIngestService();
         $this->sidecar = $sidecar ?? SidecarClient::fromConfig($this->config);
+        $this->runner = new ExtractionRunner($this->store, $this->sidecar, $this->ingest);
     }
 
     public function handleRequest(): void
@@ -208,32 +211,24 @@ final class DocumentController
         if ($doc['status'] === DocumentStatus::Extracted) {
             return ['document_id' => $doc['document_id'], 'status' => 'extracted', 'confidence' => $doc['confidence'], 'already' => true];
         }
-        if ($doc['status'] === DocumentStatus::Failed) {
-            $this->store->markStored($doc['document_id']); // a retry sends the bytes again
-        }
-        $bytes = $this->store->bytes($doc['document_id']);
         $encounter = EncounterSessionUtil::getEncounter();
         try {
-            $run = $this->steps->measure(
-                'sidecar_extract',
-                fn() => $this->sidecar->extract($this->correlationId, hash('sha256', $doc['hash']), [['document_id' => $doc['document_id'], 'doc_type' => $doc['doc_type'], 'sha3_512' => $doc['hash'], 'bytes' => $bytes]]),
-                static fn($r) => ['handoffs' => count($r->handoffs), 'calls' => $r->chatTokens()['calls']],
+            $outcome = $this->steps->measure(
+                'sidecar_extract_and_persist',
+                fn() => $this->runner->run($pid, $doc, $this->correlationId),
+                static fn(array $o) => ['handoffs' => count($o['run']?->handoffs ?? []), 'calls' => $o['run']?->chatTokens()['calls'] ?? 0, 'status' => $o['persisted']['status']->value],
             );
         } catch (SidecarException $e) {
             $this->logger->warning('copilot sidecar failed', ['code' => $e->errorCode, 'document_id' => $doc['document_id'], 'steps' => $this->steps->all()]);
             $this->tracer->record(new RequestTrace($this->correlationId, 'copilot.documents.extract', $user, $startedAtMs, (int) round((hrtime(true) - $started) / 1e6), ['http_status' => 502, 'sidecar_error' => $e->errorCode, 'document_id' => $doc['document_id']], null, 0, 0, 0, 'sidecar ' . $e->errorCode, $this->steps->all()));
             return ['error' => 'The document service is unavailable; the file is stored and can be retried', 'reason' => $e->errorCode, 'document_id' => $doc['document_id'], 'status' => 'stored', 'http_status' => 502];
         }
-        $extraction = null;
-        foreach ($run->extractions as $x) {
-            if ($x->documentId === $doc['document_id']) {
-                $extraction = $x;
-            }
-        }
-        if ($extraction === null) {
+        $run = $outcome['run'];
+        $extraction = $outcome['extraction'];
+        $persisted = $outcome['persisted'];
+        if ($run === null || $extraction === null) {
             throw new SidecarException('schema_mismatch');
         }
-        $persisted = $this->steps->measure('persist', fn() => $this->ingest->persist($pid, $extraction, $this->correlationId), static fn(array $p) => $p);
         $tokens = $run->chatTokens();
         $llmMs = array_sum(array_map(static fn(Handoff $h): int => $h->from === 'intake_extractor' ? $h->ms : 0, $run->handoffs));
         $cost = Pricing::fromConfig($this->config)->costUsd($this->config->openAiModel, $tokens['prompt'], $tokens['completion']);

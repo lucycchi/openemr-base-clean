@@ -59,7 +59,7 @@ offline deployment; it is not built this week.
 Code: the module at `interface/modules/custom_modules/oe-module-clinical-copilot/`
 (`sidecar/` for Python, `src/Documents/` and `src/Controller/DocumentController.php`
 for PHP, `public/documents.php`, `public/assets/source-viewer.js`, `sql/0_1_1-to-0_1_2_upgrade.sql`).
-Evals and the gate: `tests/evals/` ([README](../tests/evals/README.md)).
+Evals and the gate: `tests/evals/` ([README](../tests/evals/README.md)). CLI: `bin/console copilot:attach <pid> <file.pdf> <lab_pdf|intake_form> --site=default` (run as the web user inside the openemr container) is the brief's `attach_and_extract`.
 Deploy: `docker/vps/` ([README](../docker/vps/README.md)). The full index of
 Week 2 documents, including the ones kept beside code, is
 [README.md](README.md) in this folder.
@@ -77,7 +77,7 @@ Week 2 documents, including the ones kept beside code, is
 | Orchestration | LangGraph StateGraph, deterministic supervisor, handoff log per hop | Decided (Phase 5 mounts the current supervisor functions as graph nodes) |
 | Storage | OpenEMR `Document` class, `procedure_*` lab tables, three module tables (`copilot_document`, `copilot_document_fact`, `copilot_intake`) | Done |
 | Viewer | pdf.js 4.10.38, vendored under `public/assets/vendor/pdfjs/` | Done |
-| Evals / gate | `tests/evals/run.php` + `gate.php`, justinrainbow/json-schema for contract checks, `pre-push` git hook | Done |
+| Evals / gate | `tests/evals/run.php` + `gate.php`, justinrainbow/json-schema for contract checks, `pre-push` git hook; the wrapper also runs the sidecar's pytest and the module's isolated PHPUnit suite | Done |
 | Observability | Langfuse traces per request (Week 1), extended with sidecar handoffs and usage | Done for extraction |
 
 ## Agents: how many, and how they cooperate

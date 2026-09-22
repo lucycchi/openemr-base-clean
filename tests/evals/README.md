@@ -47,6 +47,10 @@ an `OPENAI_API_KEY` (skipped with a note otherwise, never failed). The only
 way a baseline changes is `--update-baseline`; commit the file with the
 change that justified it.
 
+Before the golden cases, the wrapper runs the sidecar's pytest (when its
+container is up) and the module's isolated PHPUnit suite; either failing
+refuses the push.
+
 ```bash
 tests/evals/install-hooks.sh --self-test     # install the pre-push hook and prove it refuses a regression
 tests/evals/gate.sh pre-push                 # what the hook runs (deterministic, seconds)
