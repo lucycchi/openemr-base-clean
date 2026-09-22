@@ -238,7 +238,7 @@ Not related to last week's grader notes. This settles the one unknown every late
 
 Goal: `lab-layout1.pdf` goes upload → extract → persisted lab rows → fact with citation → highlighted cell, on the droplet, before any other case or the corpus exists.
 
-- [ ] 2.1 Fixture generator (reportlab) producing `lab-layout1.pdf` + `truth.json` + recorded `model.json` (the rest of the fixtures come in 4.1).
+- [ ] 2.1 Fixture generator (PyMuPDF/reportlab) producing `lab-layout1.pdf` + `truth.json` + recorded `model.json`; the sourced real-layout fixtures come from `SOURCES.md` once vetted (4b.6).
 - [ ] 2.2 Sidecar skeleton: FastAPI, `pyproject.toml` (with `pytest-json-report`), Dockerfile, `schemas.py` (including `RunError`), `/health`, `/run` in extract mode only per the sidecar contract above, `extract.py` on the chosen stack, `anchor.py` per the anchoring rules. `Handoff`, `Usage {model, kind: chat | embedding | rerank, input, output}` (rerank: one search = `input: 1`).
 - [ ] 2.3 Compose service in `docker/development-easy` and `docker/vps/docker-compose.yml` (`build:` context `./sidecar`, internal network, env `COPILOT_SIDECAR_URL`, `OPENAI_API_KEY`, `COHERE_API_KEY`); `deploy.sh` gains rsync of `sidecar/`, scp of the updated compose file (it already scps the compose file today; the sidecar service is added to that file), builds it, recreates both services (today it recreates only `openemr`), sets the branch to `pdf_reader` (decision: no merge to `audit` this week), and applies `sql/0_1_1-to-0_1_2_upgrade.sql` with plain idempotent SQL (`CREATE TABLE IF NOT EXISTS`, `INSERT ... WHERE NOT EXISTS`; no Module Manager directives) through mariadb in the container. `Readiness` probes the sidecar.
 - [ ] 2.4 SQL 0.1.2 + `install.sql` + `version.php`: `copilot_document {id, document_id, pid, doc_type, hash, status ENUM(stored, extracted, failed), failure_reason, uploaded_by, created_at, UNIQUE(pid, hash)}`, `copilot_document_fact {document_id, field_path, value, unit, loinc, unit_mismatch, bbox JSON, row_bbox JSON, anchored, procedure_result_id NULL}`, `copilot_intake {document_id, field, value, citation JSON}`. No `categories` change (stock "Lab Report" and "Patient Information" are used).
@@ -262,6 +262,20 @@ Goal: `lab-layout1.pdf` goes upload → extract → persisted lab rows → fact 
 - [ ] 4.2 One anchor-mode intake case and the six routing cases written now (routing flips in Phase 5); the remaining 27 cases are Thursday (9.3).
 - [ ] 4.3 Intake persistence: `copilot_intake` rows → `intake_*` fact categories in `FactAssembler` (`intake_med`, `intake_allergy` must-surface); demographics compared to the session patient and a mismatch surfaces as a fact, never stored.
 - [ ] 4.4 Log allowlist cleanup before the PHI cases flip: `ChatController` logs exception class + code, never the message; `StepRecorder` and `LangfuseTracer` replace `prior_visit` with `has_prior_visit`; grep every `logger->` and tracer call in the module against the allowlist.
+
+### Phase 4b: Review console and rating calibration (Tuesday/Wednesday, ~2.5 h)
+
+Internal, dev-only, never customer-facing (industry practice: annotation
+happens in a separate tool; only scores reach the observability platform).
+Served by the sidecar under `COPILOT_EVAL_ENDPOINTS=1`, so it does not exist
+on the droplet.
+
+- [ ] 4b.1 Review page `sidecar/review/`: per document, each extracted field with value, citation, anchored flag and the page crop around its bbox; marks ✓ / ✗ / ~ per field with an optional corrected value; a 1-5 document score with fixed anchors (5 all correct and anchored; 4 all correct, minor unverified/metadata; 3 one clinical field wrong or missing but flagged unverified; 2 a clinical field wrong and presented as verified, or several missed; 1 unusable). Lab and intake scored separately.
+- [ ] 4b.2 System self-rating on the same 1-5 scale, deterministic, in `run.response` beside `confidence`: from anchored fraction, unverified count, unit mismatches and schema validity. Truth-rating (fixtures only) from field-level match against `truth.json`.
+- [ ] 4b.3 Storage: local `sidecar/review/reviews.jsonl` (document id, sha, reviewer, human score, self score, field marks with paths only, corrected values, timestamp); numeric scores mirrored to Langfuse as `human_extraction_score` and `system_self_score` on the document's trace. No document text in either store.
+- [ ] 4b.4 `tests/evals/calibration.php`: per-document pairs, exact-agreement rate, mean absolute difference, and the fields driving disagreement; result recorded as a `KEY_METRICS.md` metric.
+- [ ] 4b.5 Export: a reviewed document's corrections become `<name>.truth.json` and a new anchor-mode case; corrections never feed a prompt automatically. Repeat-review one document a week to measure reviewer drift.
+- [ ] 4b.6 `tests/evals/fixtures/docs/SOURCES.md` holds every candidate source; Lucy vets them (fictional data, terms) and marks the chosen ones; each fixture built from a source records what was changed. Real-form fixtures include at least one hand-filled, scanned intake.
 
 ### Phase 5: Supervisor + two workers (Tuesday, ~2 h)
 
