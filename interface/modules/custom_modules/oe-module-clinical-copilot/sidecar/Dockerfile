@@ -8,6 +8,7 @@ COPY copilot_sidecar ./copilot_sidecar
 RUN pip install --no-cache-dir -e ".[test]"
 COPY tests ./tests
 COPY tools ./tools
+COPY corpus ./corpus
 # contracts/ is bind- or COPY-mounted one level up so anchor.py finds loinc_map.json
 EXPOSE 8000
 CMD ["uvicorn", "copilot_sidecar.app:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -29,7 +29,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final class Prompt
 {
-    public const VERSION = '2026-09-22.2';
+    public const VERSION = '2026-09-22.3';
 
     // The grounding contract, stated to the model in plain language. The
     // Verifier enforces rules 1, 2 and 5 mechanically afterwards; the rest
@@ -57,7 +57,9 @@ TXT;
     /** System message for action=ask. Adds the "one patient only" and "not_in_facts" instructions. */
     public function followUpSystem(): string
     {
-        return self::RULES . "\nAnswer the physician's question from the facts only. If the facts do not contain the answer, set answer_type to not_in_facts and write no sentences."
+        return self::RULES . "\nAnswer the physician's question from two sources only: the chart facts, and any guideline evidence passages provided after them (each passage has a 12-character id)."
+            . "\nA sentence about this patient (a value, a date, a medication) must cite fact ids. A sentence about what a guideline recommends must cite the passage id, quote its numbers exactly, and must not present the recommendation as a fact about this patient. Keep the two kinds of sentence separate; never cite a guideline id for a statement about the patient. Rule 3 above forbids advice of your own; restating what a cited guideline passage says is not your own advice and is expected."
+            . "\nSet answer_type to not_in_facts and write no sentences only when neither the facts nor the guideline passages contain the answer."
             . "\nThe facts describe exactly one patient: the one whose chart is open. If the question is about a different patient, another person, or a patient referred to by a number or name, the facts cannot answer it: set answer_type to not_in_facts. Never answer a question about someone else with this patient's facts.";
     }
 
@@ -72,9 +74,15 @@ TXT;
      * (so the model has conversational context), then the new question.
      * @param list<array{role: string, text: string}> $transcript
      */
-    public function followUpUser(AssembledFacts $assembled, string $question, array $transcript): string
+    public function followUpUser(AssembledFacts $assembled, string $question, array $transcript, ?EvidenceSet $evidence = null): string
     {
         $lines = [$this->context($assembled)];
+        if ($evidence !== null && !$evidence->isEmpty()) {
+            $lines[] = 'Guideline evidence (not facts about this patient; cite by id):';
+            foreach ($evidence->all() as $c) {
+                $lines[] = sprintf('[%s] %s, %s: %s', $c->chunkId, $this->flatten($c->title !== '' ? $c->title : $c->sourceId), $this->flatten($c->section), $this->flatten($c->quote));
+            }
+        }
         if ($transcript !== []) {
             $lines[] = 'Conversation so far:';
             foreach ($transcript as $turn) {

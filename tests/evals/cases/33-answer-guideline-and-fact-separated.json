@@ -1,0 +1,58 @@
+{
+  "id": "33-answer-guideline-and-fact-separated",
+  "guards": "invariant",
+  "failure_mode": "An answer that mixes patient facts and guideline evidence must cite each sentence to the right kind of source: the patient's A1c cites the fact, the target cites the guideline chunk; a sentence quoting a target not in the passage is stripped.",
+  "mode": "answer",
+  "facts": [
+    {
+      "id": "9e41cdd9",
+      "service": "ObservationLabService",
+      "record_id": 901,
+      "field": "result",
+      "value": "Hemoglobin A1c 8.8 % on 2026-09-15 (above reference range 4-5.6 %)",
+      "category": "lab_abnormal"
+    }
+  ],
+  "chunks": [
+    {
+      "chunk_id": "a1b2c3d4e5f6",
+      "source_id": "ada-2025-standards",
+      "title": "ADA Standards 2025",
+      "section": "Glycemic targets",
+      "quote": "An A1C goal below 7 percent is appropriate for many nonpregnant adults without significant hypoglycemia. Less stringent goals, such as below 8 percent, are appropriate for people with limited life expectancy."
+    }
+  ],
+  "narration": {
+    "answer_type": "cited",
+    "sentences": [
+      {
+        "text": "The most recent A1c was 8.8 % on 2026-09-15, above the reference range.",
+        "fact_ids": [
+          "9e41cdd9"
+        ]
+      },
+      {
+        "text": "For many nonpregnant adults the ADA suggests an A1C goal below 7 percent.",
+        "fact_ids": [
+          "a1b2c3d4e5f6"
+        ]
+      },
+      {
+        "text": "Guidelines recommend an A1C goal below 6.5 percent for this patient.",
+        "fact_ids": [
+          "a1b2c3d4e5f6"
+        ]
+      }
+    ]
+  },
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "kept": 2,
+    "stripped": 1,
+    "guideline_cited": 1
+  }
+}

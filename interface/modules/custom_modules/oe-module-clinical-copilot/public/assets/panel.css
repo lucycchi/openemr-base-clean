@@ -48,3 +48,6 @@
 #copilot-panel .copilot-handoffs { font-size: .8rem; color: #495057; margin-top: .25rem; }
 #copilot-panel .copilot-handoffs summary { cursor: pointer; }
 #copilot-panel .copilot-handoffs ol { margin: .25rem 0 0 1.2rem; padding: 0; font-family: monospace; }
+#copilot-panel .copilot-chip-guideline { background: #e2d9f3; color: #3d2a6d; }
+#copilot-panel .copilot-guidelines { font-size: .8rem; padding-left: 1rem; margin: .25rem 0; }
+#copilot-panel .copilot-quote { color: #495057; }

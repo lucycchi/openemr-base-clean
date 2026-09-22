@@ -69,7 +69,7 @@
     // Per-page state. factsHash is echoed back on every question so the server
     // can detect that the chart changed; transcript is the chat history the
     // server is stateless about (it is re-sent on each turn).
-    const state = { factsHash: null, factsById: {}, transcript: [] };
+    const state = { factsHash: null, factsById: {}, guidelinesById: {}, transcript: [] };
 
     // Tiny DOM builder. All text goes through textContent / createTextNode,
     // never innerHTML with data, so chart text cannot inject markup.
@@ -89,8 +89,9 @@
     // can see exactly which chart row a sentence is citing.
     function chip(id, extraClass) {
         const fact = state.factsById[id];
-        const c = el('span', { class: 'copilot-chip ' + (extraClass || ''), text: id, 'data-fact': id });
-        c.title = fact ? (fact.value + '\n' + fact.source) : 'unknown fact';
+        const guideline = state.guidelinesById[id];
+        const c = el('span', { class: 'copilot-chip ' + (extraClass || '') + (guideline ? ' copilot-chip-guideline' : ''), text: guideline ? 'guideline' : id, 'data-fact': id });
+        c.title = fact ? (fact.value + '\n' + fact.source) : (guideline ? (guideline.title + ' > ' + guideline.section) : 'unknown fact');
         c.addEventListener('mouseenter', () => highlight(id, true));
         c.addEventListener('mouseleave', () => highlight(id, false));
         return c;
@@ -378,14 +379,34 @@
                 if (a.status) {
                     node = el('span', { text: a.status });
                 } else if (a.type === 'not_in_facts') {
-                    node = el('span', { text: 'Not in the facts for this briefing window. Check the chart tabs for older records.' });
+                    node = el('span', { text: 'Not in the facts for this briefing window, and no guideline passage in the corpus answers it. Check the chart tabs for older records.' });
                 } else if (a.sentences.length === 0) {
                     node = el('span', { text: a.stripped > 0
                         ? 'The answer was withheld: it contained ' + a.stripped + ' claim' + (a.stripped > 1 ? 's' : '') + ' not supported by the facts on file (for example a computed number). Try asking for the recorded values.'
                         : 'No verifiable answer could be given from the facts on file.' });
                 } else {
+                    // Week 2: sentences citing only guideline chunks are shown apart from
+                    // sentences about the patient, so the two are never read as one claim.
+                    (a.guidelines || []).forEach(g => { state.guidelinesById[g.chunk_id] = g; });
+                    const isGuideline = s => s.fact_ids.length > 0 && s.fact_ids.every(id => state.guidelinesById[id]);
+                    const record = a.sentences.filter(s => !isGuideline(s));
+                    const guide = a.sentences.filter(isGuideline);
                     node = el('div');
-                    a.sentences.forEach(s => node.appendChild(sentenceNode(s)));
+                    if (record.length) {
+                        node.appendChild(el('div', { class: 'copilot-label', text: 'From the record' }));
+                        record.forEach(s => node.appendChild(sentenceNode(s)));
+                    }
+                    if (guide.length) {
+                        node.appendChild(el('div', { class: 'copilot-label', text: 'From guidelines (not this patient\'s record)' }));
+                        guide.forEach(s => node.appendChild(sentenceNode(s)));
+                        const list = el('ul', { class: 'copilot-guidelines' });
+                        (a.guidelines || []).forEach(g => {
+                            const li = el('li', {}, [el('strong', { text: g.title }), ' — ' + String(g.section).split(' > ').pop() + ': ', el('span', { class: 'copilot-quote', text: g.quote })]);
+                            if (g.url) li.appendChild(el('a', { href: g.url, target: '_blank', rel: 'noopener', text: ' source' }));
+                            list.appendChild(li);
+                        });
+                        node.appendChild(list);
+                    }
                     if (a.stripped > 0) node.appendChild(el('div', { class: 'copilot-muted', text: a.stripped + ' unverified sentence(s) removed.' }));
                 }
                 addTurn('assistant', node);

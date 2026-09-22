@@ -144,8 +144,9 @@ final class NarrationPipeline
      * @param list<array{role: string, text: string}> $transcript  Prior turns in this chat, oldest first.
      * @param ?PatientId $open  The chart currently open; used to refuse questions about someone else.
      */
-    public function answer(AssembledFacts $assembled, string $question, array $transcript, ?PatientId $open = null): AnswerResult
+    public function answer(AssembledFacts $assembled, string $question, array $transcript, ?PatientId $open = null, ?EvidenceSet $evidence = null): AnswerResult
     {
+        $evidence ??= EvidenceSet::none();
         // Scope check happens BEFORE the model sees the question. The facts are
         // for the open patient only, so a question naming a different patient
         // would either hallucinate or leak. Refuse it up front and record why.
@@ -156,7 +157,7 @@ final class NarrationPipeline
         try {
             $completion = $this->complete(
                 $this->prompt->followUpSystem(),
-                $this->prompt->followUpUser($assembled, $question, $transcript),
+                $this->prompt->followUpUser($assembled, $question, $transcript, $evidence),
                 'follow_up',
                 $this->prompt->followUpSchema(),
             );
@@ -170,8 +171,16 @@ final class NarrationPipeline
         $type = $completion->data['answer_type'] ?? null;
         $type = $type === 'not_in_facts' ? 'not_in_facts' : 'cited';
         // Same verifier as the briefing — an answer sentence must cite a fact too.
-        $verified = $this->verify($this->narrationFrom($completion->data), $assembled->facts());
-        return new AnswerResult($type, $verified->kept(), $verified->strippedCount(), null, $completion->promptTokens, $completion->completionTokens);
+        $verified = $this->verify($this->narrationFrom($completion->data), $assembled->facts(), $evidence);
+        $citedChunks = [];
+        foreach ($verified->kept() as $s) {
+            foreach ($s->factIds as $id) {
+                if ($evidence->has($id)) {
+                    $citedChunks[$id] = $evidence->get($id);
+                }
+            }
+        }
+        return new AnswerResult($type, $verified->kept(), $verified->strippedCount(), null, $completion->promptTokens, $completion->completionTokens, array_values($citedChunks));
     }
 
     /** HTTP attempts the model call took this request: 0 if no call was made, 2 if the one retry was used. */
@@ -209,11 +218,11 @@ final class NarrationPipeline
      * keeps it only if every fact id it cites exists in the FactSet; the rest
      * are stripped. Records kept/stripped/total_failure for the trace.
      */
-    private function verify(Narration $narration, FactSet $facts): VerificationResult
+    private function verify(Narration $narration, FactSet $facts, ?EvidenceSet $evidence = null): VerificationResult
     {
         return $this->steps->measure(
             'verify',
-            fn() => $this->verifier->verify($narration, $facts),
+            fn() => $this->verifier->verify($narration, $facts, $evidence),
             static fn(VerificationResult $v) => ['kept' => count($v->kept()), 'stripped' => $v->strippedCount(), 'total_failure' => $v->isTotalFailure()],
         );
     }

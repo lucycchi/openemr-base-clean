@@ -95,6 +95,11 @@ class AnchorEvalRequest(BaseModel):
     document_id: int = 1
 
 
+class RetrieveEvalRequest(BaseModel):
+    query: str
+    embedding: list[float] | None = None  # committed query embedding; absent means call the embeddings API
+
+
 class RouteEvalDocument(BaseModel):
     document_id: int = 1
     doc_type: str  # deliberately not the enum: routing must refuse unsupported types itself
@@ -122,6 +127,17 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         proposal = model.model_validate(req.proposal)
         outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), "eval-anchor", proposal=proposal)
         return json.loads(outcome.extraction.model_dump_json())
+
+    @app.post("/eval/retrieve")
+    def eval_retrieve(req: RetrieveEvalRequest) -> dict:
+        """Hybrid retrieval with a supplied query embedding (offline) or a live one."""
+        import numpy as np
+
+        from . import retrieve as retrieve_module
+
+        vec = np.array(req.embedding, dtype=np.float32) if req.embedding else None
+        chunks, usage = retrieve_module.retrieve(req.query, query_vec=vec, embed_query=vec is None)
+        return {"chunks": [c.model_dump() for c in chunks], "usage": [u.model_dump() for u in usage], "reranked": any(u.kind == "rerank" for u in usage)}
 
     @app.post("/eval/route")
     def eval_route(req: RouteEvalRequest) -> dict:

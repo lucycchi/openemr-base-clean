@@ -207,10 +207,11 @@ services:
     restart: always
     volumes:
     - ${OPENEMR_DIR:-../..}/interface/modules/custom_modules/oe-module-clinical-copilot/contracts:/contracts:ro
-    - ${OPENEMR_DIR:-../..}/tests/evals/fixtures/docs:/fixtures:ro
+    - ${OPENEMR_DIR:-../..}/tests/evals/fixtures:/fixtures:ro
     environment:
       COPILOT_CONTRACTS_DIR: /contracts
-      COPILOT_FIXTURES_DIR: /fixtures
+      COPILOT_FIXTURES_DIR: /fixtures/docs
+      COPILOT_QUERIES_DIR: /fixtures/queries
       # Test-only /eval/* endpoints for tests/evals; never set on a deployed stack.
       COPILOT_EVAL_ENDPOINTS: "1"
     # The same root .env the openemr container reads through Dotenv

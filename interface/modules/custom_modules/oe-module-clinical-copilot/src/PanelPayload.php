@@ -51,6 +51,8 @@ final class PanelPayload
                 'stripped' => $answer->strippedCount,
                 'status' => $answer->status,
                 'tokens' => ['prompt' => $answer->promptTokens, 'completion' => $answer->completionTokens],
+                // Week 2: guideline passages the kept sentences cite, rendered apart from the patient's facts.
+                'guidelines' => array_map(static fn(EvidenceChunk $c): array => $c->toArray(), $answer->evidence),
             ],
         ];
     }

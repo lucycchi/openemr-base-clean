@@ -1,0 +1,16 @@
+{
+  "id": "29-retrieve-statin-ldl",
+  "guards": "invariant",
+  "failure_mode": "A statin question must surface the cholesterol guideline first; every chunk carries a source id, section and quote (the citation contract for guideline evidence).",
+  "mode": "retrieve",
+  "query_fixture": "statin-ldl-190",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "top_source_id": "acc-aha-2018-cholesterol",
+    "min_chunks": 1
+  }
+}

@@ -46,6 +46,8 @@ use Composer\Autoload\ClassLoader;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
 use OpenEMR\Modules\ClinicalCopilot\Contracts;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceChunk;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
 use OpenEMR\Modules\ClinicalCopilot\Fact;
 use OpenEMR\Modules\ClinicalCopilot\FactCategory;
 use OpenEMR\Modules\ClinicalCopilot\FactSet;
@@ -102,7 +104,7 @@ function narrationFrom(array $data): Narration
 const RUBRICS = ['schema_valid', 'citation_present', 'factually_consistent', 'safe_refusal', 'no_phi_in_logs', 'routing_correct', 'anchor_correct'];
 
 /** Modes whose runner has not landed yet; a non-pending case in one of these fails every rubric it declares. */
-const UNIMPLEMENTED_MODES = ['retrieve', 'answer'];
+const UNIMPLEMENTED_MODES = [];
 
 /** Sidecar test endpoints (COPILOT_EVAL_ENDPOINTS=1 on the dev compose service). */
 function sidecarUrl(): string
@@ -298,6 +300,51 @@ function runRouteCase(array $case): array
     ];
 }
 
+/**
+ * Retrieve-mode case: the committed query embedding (tests/evals/fixtures/queries)
+ * through the sidecar's hybrid retriever, offline. schema_valid checks every
+ * chunk against run.response's chunk shape; safe_refusal for an off-corpus
+ * query means zero chunks (answer_type not_in_corpus); factually_consistent
+ * means the expected source id is on top and at least min_chunks came back.
+ *
+ * @param array<string, mixed> $case
+ * @return array<string, mixed>
+ */
+function runRetrieveCase(array $case): array
+{
+    $q = json_decode((string) file_get_contents(__DIR__ . '/fixtures/queries/' . (string) $case['query_fixture'] . '.json'), true, 32, JSON_THROW_ON_ERROR);
+    if (!is_array($q)) {
+        throw new RuntimeException('bad query fixture');
+    }
+    $t = hrtime(true);
+    $response = sidecarPost('/eval/retrieve', ['query' => (string) $q['query'], 'embedding' => $q['embedding']]);
+    $chunks = is_array($response['chunks'] ?? null) ? $response['chunks'] : [];
+    $schemaErrors = [];
+    $chunkSchema = Contracts::schema('run.response')->properties->chunks->items;
+    foreach ($chunks as $c) {
+        $v = new Validator();
+        $v->validate(json_decode(json_encode($c, JSON_THROW_ON_ERROR)), $chunkSchema, Constraint::CHECK_MODE_NORMAL);
+        foreach ($v->getErrors() as $e) {
+            $schemaErrors[] = sprintf('%s: %s', (string) ($e['property'] ?? ''), (string) ($e['message'] ?? ''));
+        }
+    }
+    $expect = is_array($case['expect'] ?? null) ? $case['expect'] : [];
+    $run = [
+        'ms' => (int) round((hrtime(true) - $t) / 1e6),
+        'chunks' => count($chunks),
+        'top_source_id' => $chunks[0]['source_id'] ?? null,
+        'reranked' => ($response['reranked'] ?? false) === true,
+        'schema_errors' => $schemaErrors,
+        'uncited_kept' => count(array_filter($chunks, fn($c) => empty($c['source_id']) || empty($c['quote']) || empty($c['chunk_id']))),
+        'ungrounded_tokens' => [],
+        'answer_type' => $chunks === [] ? 'not_in_corpus' : 'cited',
+    ];
+    if (isset($expect['min_chunks']) && count($chunks) < (int) $expect['min_chunks']) {
+        $run['ungrounded_tokens'][] = sprintf('only %d chunks', count($chunks));
+    }
+    return $run;
+}
+
 /** @param array<string, mixed> $body @return array<string, mixed> */
 function sidecarPost(string $path, array $body): array
 {
@@ -404,6 +451,9 @@ function compare(array $expect, array $actual): array
             }
             continue;
         }
+        if ($key === 'min_chunks') {
+            continue; // scored into ungrounded_tokens by runRetrieveCase
+        }
         if ($key === 'max_stripped') {
             $got = $actual['stripped'] ?? null;
             if (!is_int($got) || !is_int($want) || $got > $want) {
@@ -453,8 +503,35 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     // patient); every run is compared against the same expectations.
     $started = hrtime(true);
     $runs = [];
-    if ($mode === 'route') {
+    if ($mode === 'answer' && !$isLive) {
+        // Recorded answer: facts + guideline chunks + a narration fixture through the
+        // extended Verifier. Guideline sentences cite 12-char chunk ids; patient
+        // sentences cite 8-char fact ids; numbers must be verbatim in whichever is cited.
+        $facts = factsFrom(is_array($case['facts'] ?? null) ? array_values($case['facts']) : []);
+        $chunks = [];
+        foreach (is_array($case['chunks'] ?? null) ? $case['chunks'] : [] as $c) {
+            $chunks[] = new EvidenceChunk((string) $c['chunk_id'], (string) $c['source_id'], (string) ($c['section'] ?? ''), (string) $c['quote'], 1.0, (string) ($c['title'] ?? ''));
+        }
+        $evidence = new EvidenceSet($chunks);
+        $narrationData = is_array($case['narration'] ?? null) ? $case['narration'] : [];
+        $verified = $verifier->verify(narrationFrom($narrationData), $facts, $evidence);
+        $keptTexts = array_map(fn(Sentence $s) => $s->text, $verified->kept());
+        $haystackFacts = $facts;
+        $verifiedOut = ['answer_type' => $narrationData['answer_type'] ?? 'cited', 'sentences' => array_map(fn(Sentence $s) => ['text' => $s->text, 'fact_ids' => $s->factIds], $verified->kept())];
+        $quotes = implode("\n", array_map(fn(EvidenceChunk $c) => $c->section . "\n" . $c->quote, $chunks));
+        $runs[] = [
+            'kept' => count($verified->kept()),
+            'stripped' => $verified->strippedCount(),
+            'answer_type' => $chunks === [] && ($narrationData['answer_type'] ?? null) === 'not_in_facts' ? 'not_in_corpus' : ($narrationData['answer_type'] ?? 'cited'),
+            'schema_errors' => schemaErrors('llm.followup.output', json_decode(json_encode($verifiedOut, JSON_THROW_ON_ERROR))),
+            'uncited_kept' => count(array_filter($verified->kept(), fn(Sentence $s) => $s->factIds === [])),
+            'ungrounded_tokens' => array_values(array_filter(ungroundedTokens($keptTexts, $haystackFacts), fn(string $t) => !str_contains($quotes, $t))),
+            'guideline_cited' => count(array_filter($verified->kept(), fn(Sentence $s) => array_filter($s->factIds, fn(string $id) => strlen($id) === 12) !== [])),
+        ];
+    } elseif ($mode === 'route') {
         $runs[] = runRouteCase($case);
+    } elseif ($mode === 'retrieve') {
+        $runs[] = runRetrieveCase($case);
     } elseif ($mode === 'anchor' || $mode === 'extract') {
         $runs[] = runDocumentCase($case, $mode);
     } elseif (!$isLive) {

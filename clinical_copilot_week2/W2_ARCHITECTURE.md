@@ -72,8 +72,8 @@ Week 2 documents, including the ones kept beside code, is
 | Turn page text into fields | gpt-4o-mini, Structured Outputs, one call per page, Pydantic proposal schemas | Decided |
 | Prove each field | `sidecar/copilot_sidecar/anchor.py`: row-level anchoring, header-aware result/prior columns, omission detection, one targeted retry | Decided |
 | Sample data | Synthetic PDFs from `sidecar/tools/generate_fixtures.py` (fictional patient "Test Zeta") plus real blank templates filled with invented answers, vetted in `DOCUMENT_SOURCES.md` | Generator done; sourced forms pending vetting |
-| Guideline evidence | No API. A small local corpus (4-6 public guideline documents: USPSTF, ADA, ACC/AHA BP, AAFP anemia, KDIGO) chunked and indexed by us | Decided; document list chosen in Phase 6 |
-| Retrieval | rank_bm25 (keyword) + OpenAI text-embedding-3-small (dense), reciprocal rank fusion, Cohere Rerank v3.5 | Decided (Cohere key to be created) |
+| Guideline evidence | No API. Six guideline summaries written for this project in our own words (ACC/AHA cholesterol 2018, ACC/AHA hypertension 2017, ADA Standards 2025, KDIGO 2024, anemia in adults, USPSTF screening), `sidecar/corpus/` with a manifest naming publisher, year and URL | Done (30 chunks) |
+| Retrieval | rank_bm25 (keyword, stop words removed) + OpenAI text-embedding-3-small (dense, index committed under `corpus/index/`), reciprocal rank fusion (k=60), a relevance floor so off-corpus questions return nothing, Cohere Rerank v3.5 when `COHERE_API_KEY` is set (recorded in usage; RRF order otherwise) | Done; rerank inactive until the key exists |
 | Orchestration | LangGraph StateGraph (`sidecar/copilot_sidecar/graph.py`), deterministic supervisor, workers injected, handoff log per hop | Done |
 | Storage | OpenEMR `Document` class, `procedure_*` lab tables, three module tables (`copilot_document`, `copilot_document_fact`, `copilot_intake`) | Done |
 | Viewer | pdf.js 4.10.38, vendored under `public/assets/vendor/pdfjs/` | Done |
@@ -90,7 +90,7 @@ text.
 |---|---|---|
 | Supervisor | No (deterministic rules) | Reads the run state: a stored document that has not been extracted goes to the intake-extractor; a question goes to the evidence-retriever; otherwise done. Every decision is one `Handoff {from, to, reason, state_keys_changed, ms}` (`contracts/handoff.schema.json`). |
 | Intake-extractor (worker) | gpt-4o-mini | Parses the PDF, asks the model for values page by page, anchors every value to its row, marks what it cannot anchor as unverified, reports rows it could not extract. Never writes prose. |
-| Evidence-retriever (worker) | Embeddings + rerank, no generation | Hybrid retrieval over the guideline corpus, top 5 chunks with citations (Phase 6). |
+| Evidence-retriever (worker) | Embeddings + rerank, no generation | Hybrid retrieval over the guideline corpus, top 5 chunks with citations. The PHP narrator may cite a chunk id; the Verifier checks the sentence's numbers against the passage (heading + text) exactly as it checks fact ids. |
 | Critic (extension, Phase 10) | Rules first | Rejects uncited claims and action suggestions without guideline support. |
 | Narrator + Verifier (Week 1, PHP) | gpt-4o-mini | The only physician-facing text. Cites fact ids (and, after Phase 6, chunk ids); the Verifier strips anything uncited or with a number not present verbatim in the cited source. |
 

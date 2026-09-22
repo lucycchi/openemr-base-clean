@@ -1,0 +1,185 @@
+{
+ "model": "text-embedding-3-small",
+ "chunks": [
+  {
+   "chunk_id": "e0f60b55960c",
+   "source_id": "acc-aha-2018-cholesterol",
+   "section": "2018 AHA/ACC cholesterol guideline (summary) > Who benefits from statin therapy",
+   "text": "Four groups have the clearest benefit from statin therapy: adults with clinical atherosclerotic cardiovascular disease (ASCVD); adults with LDL cholesterol of 190 mg/dL or higher; adults aged 40 to 75 with diabetes; and adults aged 40 to 75 without diabetes whose 10-year ASCVD risk is 7.5 percent or higher after a clinician-patient risk discussion. For an LDL of 190 mg/dL or higher, high-intensity statin therapy is recommended without a risk calculation."
+  },
+  {
+   "chunk_id": "b2b0d54f0665",
+   "source_id": "acc-aha-2018-cholesterol",
+   "section": "2018 AHA/ACC cholesterol guideline (summary) > Intensity and LDL targets",
+   "text": "High-intensity statin therapy (for example atorvastatin 40 to 80 mg or rosuvastatin 20 to 40 mg) aims to lower LDL by 50 percent or more. Moderate-intensity therapy lowers LDL by 30 to 49 percent. In very high-risk ASCVD, an LDL threshold of 70 mg/dL is used to consider adding ezetimibe and then a PCSK9 inhibitor. In primary prevention with diabetes, moderate-intensity statin is the starting point, escalated to high intensity when several risk factors are present."
+  },
+  {
+   "chunk_id": "edf4ad726ee5",
+   "source_id": "acc-aha-2018-cholesterol",
+   "section": "2018 AHA/ACC cholesterol guideline (summary) > Risk assessment in primary prevention",
+   "text": "For adults 40 to 75 without diabetes and LDL 70 to 189 mg/dL, estimate 10-year ASCVD risk with the pooled cohort equations. Risk below 5 percent is low; 5 to under 7.5 percent is borderline; 7.5 to under 20 percent is intermediate; 20 percent or higher is high. Risk-enhancing factors (family history of premature ASCVD, persistently elevated LDL of 160 mg/dL or higher, metabolic syndrome, chronic kidney disease, chronic inflammatory conditions, persistently elevated triglycerides of 175 mg/dL or higher) favor starting a statin in the borderline and intermediate groups. Coronary artery calcium scoring can help when the decision is uncertain."
+  },
+  {
+   "chunk_id": "48302909b006",
+   "source_id": "acc-aha-2018-cholesterol",
+   "section": "2018 AHA/ACC cholesterol guideline (summary) > Monitoring",
+   "text": "Repeat a lipid panel 4 to 12 weeks after starting or adjusting a statin to confirm the expected LDL response and adherence, then every 3 to 12 months. Baseline ALT is reasonable before starting; routine monitoring of liver enzymes is not required unless symptoms appear."
+  },
+  {
+   "chunk_id": "c6fbd4d579fd",
+   "source_id": "acc-aha-2018-cholesterol",
+   "section": "2018 AHA/ACC cholesterol guideline (summary) > Hypertriglyceridemia",
+   "text": "Fasting or non-fasting triglycerides of 175 mg/dL or higher warrant addressing lifestyle factors, secondary causes and medications; persistent moderate elevation (175 to 499 mg/dL) in adults 40 to 75 with ASCVD risk of 7.5 percent or higher favors starting or intensifying a statin. Severe hypertriglyceridemia of 500 mg/dL or higher raises pancreatitis risk and calls for evaluation of secondary causes and, when 1000 mg/dL or higher, a very low fat diet and fibrate therapy."
+  },
+  {
+   "chunk_id": "a44929b30b4a",
+   "source_id": "acc-aha-2017-hypertension",
+   "section": "2017 ACC/AHA high blood pressure guideline (summary) > Classification",
+   "text": "Normal blood pressure is below 120/80 mm Hg. Elevated is systolic 120 to 129 with diastolic below 80. Stage 1 hypertension is systolic 130 to 139 or diastolic 80 to 89. Stage 2 hypertension is systolic 140 or higher or diastolic 90 or higher. Diagnosis rests on an average of two or more readings on two or more occasions, and out-of-office measurement (home or ambulatory) is recommended to confirm the diagnosis and titrate therapy."
+  },
+  {
+   "chunk_id": "6631e54fccd3",
+   "source_id": "acc-aha-2017-hypertension",
+   "section": "2017 ACC/AHA high blood pressure guideline (summary) > When to start medication",
+   "text": "For stage 1 hypertension, start antihypertensive medication when the patient has clinical cardiovascular disease or an estimated 10-year ASCVD risk of 10 percent or higher; otherwise begin with lifestyle changes and reassess in 3 to 6 months. For stage 2 hypertension, start medication together with lifestyle changes, often with two agents of different classes."
+  },
+  {
+   "chunk_id": "e31f0d3bb000",
+   "source_id": "acc-aha-2017-hypertension",
+   "section": "2017 ACC/AHA high blood pressure guideline (summary) > Treatment target",
+   "text": "A blood pressure target of below 130/80 mm Hg is recommended for adults with known cardiovascular disease or a 10-year ASCVD risk of 10 percent or higher, and is reasonable for others with hypertension."
+  },
+  {
+   "chunk_id": "f8cc7fca0a9c",
+   "source_id": "acc-aha-2017-hypertension",
+   "section": "2017 ACC/AHA high blood pressure guideline (summary) > First-line agents",
+   "text": "First-line agents are thiazide diuretics, calcium channel blockers, ACE inhibitors and angiotensin receptor blockers. In adults with chronic kidney disease stage 3 or higher, or stage 1 or 2 with albuminuria, an ACE inhibitor (or ARB) is reasonable to slow kidney disease progression. ACE inhibitors and ARBs must not be combined."
+  },
+  {
+   "chunk_id": "62b20dbc253a",
+   "source_id": "acc-aha-2017-hypertension",
+   "section": "2017 ACC/AHA high blood pressure guideline (summary) > Follow-up and monitoring",
+   "text": "After starting or changing therapy, reassess monthly until control is reached, then every 3 to 6 months. Check electrolytes and kidney function 2 to 4 weeks after starting an ACE inhibitor, ARB or diuretic. Lifestyle measures with proven effect: weight loss, the DASH diet, sodium reduction below 1500 mg per day, potassium-rich foods, physical activity and limiting alcohol."
+  },
+  {
+   "chunk_id": "8c52b7552d98",
+   "source_id": "ada-2025-standards",
+   "section": "ADA Standards of Care in Diabetes 2025 (summary) > Diagnosis and screening",
+   "text": "Diabetes is diagnosed by A1C of 6.5 percent or higher, fasting plasma glucose of 126 mg/dL or higher, a 2-hour plasma glucose of 200 mg/dL or higher during an oral glucose tolerance test, or a random glucose of 200 mg/dL or higher with symptoms; an abnormal result is confirmed with a second test unless there are unequivocal symptoms. Prediabetes is A1C 5.7 to 6.4 percent, fasting glucose 100 to 125 mg/dL, or 2-hour glucose 140 to 199 mg/dL. Screen all adults from age 35, and earlier for adults with overweight or obesity and one or more risk factors; repeat at least every 3 years if normal."
+  },
+  {
+   "chunk_id": "1aa70f60291d",
+   "source_id": "ada-2025-standards",
+   "section": "ADA Standards of Care in Diabetes 2025 (summary) > Glycemic targets",
+   "text": "An A1C goal below 7 percent is appropriate for many nonpregnant adults without significant hypoglycemia. Less stringent goals, such as below 8 percent, are appropriate for people with limited life expectancy, advanced complications or extensive comorbidities. Measure A1C at least twice a year when at goal and stable, and quarterly when therapy has changed or goals are not met."
+  },
+  {
+   "chunk_id": "7bae0cb1bf09",
+   "source_id": "ada-2025-standards",
+   "section": "ADA Standards of Care in Diabetes 2025 (summary) > Pharmacologic treatment of type 2 diabetes",
+   "text": "Metformin remains a first-line agent alongside lifestyle. Independent of A1C, a GLP-1 receptor agonist or SGLT2 inhibitor with demonstrated benefit is recommended for people with established or high risk of atherosclerotic cardiovascular disease, heart failure or chronic kidney disease. Check kidney function before and periodically during metformin use; metformin is not started when eGFR is below 30 mL/min/1.73m2 and dose is reassessed between 30 and 45."
+  },
+  {
+   "chunk_id": "7042495d860b",
+   "source_id": "ada-2025-standards",
+   "section": "ADA Standards of Care in Diabetes 2025 (summary) > Chronic kidney disease in diabetes",
+   "text": "Assess urinary albumin (urine albumin-to-creatinine ratio) and eGFR at least annually in everyone with type 2 diabetes and in type 1 diabetes of 5 or more years. An SGLT2 inhibitor is recommended for people with type 2 diabetes and CKD with eGFR of 20 or higher to reduce CKD progression and cardiovascular events. An ACE inhibitor or ARB is recommended for nonpregnant people with diabetes and hypertension with albuminuria."
+  },
+  {
+   "chunk_id": "d5717bc19c2c",
+   "source_id": "ada-2025-standards",
+   "section": "ADA Standards of Care in Diabetes 2025 (summary) > Cardiovascular risk management",
+   "text": "Treat blood pressure to a target below 130/80 mm Hg when it can be safely reached. Moderate-intensity statin therapy is recommended for people with diabetes aged 40 to 75 without ASCVD; high-intensity statin therapy for those at higher risk or with ASCVD; consider a statin for people 20 to 39 with additional risk factors."
+  },
+  {
+   "chunk_id": "444dedaed711",
+   "source_id": "kdigo-2024-ckd",
+   "section": "KDIGO 2024 CKD guideline (summary) > Definition and staging",
+   "text": "Chronic kidney disease is defined as abnormalities of kidney structure or function present for more than 3 months with implications for health. It is staged by GFR (G1 90 or higher; G2 60 to 89; G3a 45 to 59; G3b 30 to 44; G4 15 to 29; G5 below 15 mL/min/1.73m2) and by albuminuria (A1 below 30 mg/g; A2 30 to 300 mg/g; A3 above 300 mg/g urine albumin-to-creatinine ratio). An eGFR below 60 for more than 3 months, or albuminuria of 30 mg/g or more, meets the definition regardless of cause."
+  },
+  {
+   "chunk_id": "2b402159126a",
+   "source_id": "kdigo-2024-ckd",
+   "section": "KDIGO 2024 CKD guideline (summary) > Estimating GFR",
+   "text": "Use a validated creatinine-based equation without a race coefficient (CKD-EPI 2021) for initial assessment; add cystatin C when creatinine-based eGFR is likely to be inaccurate (extremes of muscle mass, certain drugs) or when a more accurate estimate would change management, for example around the 60 mL/min threshold or before drug dosing decisions."
+  },
+  {
+   "chunk_id": "1eaedeac4eda",
+   "source_id": "kdigo-2024-ckd",
+   "section": "KDIGO 2024 CKD guideline (summary) > Monitoring frequency",
+   "text": "Monitoring frequency follows risk: low risk (G1 to G2 with A1) once a year; moderately increased risk once a year; high risk twice a year; very high risk (for example G4, or G3b with A3) three to four times a year. A sustained decline in eGFR of more than 5 mL/min/1.73m2 per year, or a confirmed drop of 25 percent or more in category, is progression and warrants review of causes."
+  },
+  {
+   "chunk_id": "05609632a0bd",
+   "source_id": "kdigo-2024-ckd",
+   "section": "KDIGO 2024 CKD guideline (summary) > Referral to nephrology",
+   "text": "Refer for eGFR below 30 mL/min/1.73m2, persistent albuminuria of 300 mg/g or more, rapid progression, persistent hematuria with albuminuria, refractory hypertension or recurrent hyperkalemia, or when the cause is uncertain."
+  },
+  {
+   "chunk_id": "2ef4f3ac2720",
+   "source_id": "kdigo-2024-ckd",
+   "section": "KDIGO 2024 CKD guideline (summary) > Treatment principles",
+   "text": "Blood pressure target of systolic below 120 mm Hg when tolerated in adults with CKD; an ACE inhibitor or ARB for CKD with moderate or severe albuminuria; an SGLT2 inhibitor for CKD with eGFR of 20 or higher with albuminuria, diabetes or heart failure; a statin or statin plus ezetimibe for adults 50 and older with CKD; avoid NSAIDs and adjust renally cleared drugs, including metformin, to eGFR."
+  },
+  {
+   "chunk_id": "6c7155514d45",
+   "source_id": "anemia-adults-primary-care",
+   "section": "Evaluation of anemia in adults in primary care (summary) > Definition",
+   "text": "Anemia is a hemoglobin below the laboratory reference range, commonly below 13.5 g/dL in men and below 12 g/dL in nonpregnant women (WHO thresholds 13 and 12 g/dL). A single mild low value in a well patient is repeated before extensive workup; a new or worsening anemia, or one with symptoms, is evaluated promptly."
+  },
+  {
+   "chunk_id": "fc9aa7050862",
+   "source_id": "anemia-adults-primary-care",
+   "section": "Evaluation of anemia in adults in primary care (summary) > First step: mean corpuscular volume",
+   "text": "Classify by mean corpuscular volume (MCV). Microcytic anemia (MCV below 80 fL) is most often iron deficiency, then thalassemia trait and anemia of chronic disease. Normocytic anemia (80 to 100 fL) includes anemia of chronic disease, chronic kidney disease, early iron deficiency, hemolysis and marrow disorders. Macrocytic anemia (above 100 fL) suggests vitamin B12 or folate deficiency, alcohol use, liver disease, hypothyroidism, certain medications or myelodysplasia."
+  },
+  {
+   "chunk_id": "55ca4af580e8",
+   "source_id": "anemia-adults-primary-care",
+   "section": "Evaluation of anemia in adults in primary care (summary) > Iron deficiency",
+   "text": "Ferritin is the most useful single test: a ferritin below 30 ng/mL indicates iron deficiency; ferritin is an acute-phase reactant, so values up to 100 ng/mL do not exclude deficiency when inflammation or CKD is present, and transferrin saturation below 20 percent supports the diagnosis. Iron deficiency in a man or a postmenopausal woman warrants evaluation of the gastrointestinal tract for blood loss unless another cause is clear. Oral iron is first-line; recheck hemoglobin in 2 to 4 weeks and expect a rise of about 1 g/dL."
+  },
+  {
+   "chunk_id": "81540999bbd3",
+   "source_id": "anemia-adults-primary-care",
+   "section": "Evaluation of anemia in adults in primary care (summary) > B12 and folate",
+   "text": "Vitamin B12 below 200 pg/mL is deficient; 200 to 300 pg/mL is borderline and methylmalonic acid confirms deficiency. Replace B12 orally or by injection and recheck the count in 4 to 8 weeks. Check folate when macrocytosis persists."
+  },
+  {
+   "chunk_id": "e72c11eaf3c2",
+   "source_id": "anemia-adults-primary-care",
+   "section": "Evaluation of anemia in adults in primary care (summary) > When to refer",
+   "text": "Refer to hematology for anemia with abnormal white cell or platelet counts, suspected hemolysis, unexplained macrocytosis, failure to respond to replacement, or a hemoglobin below 8 g/dL without an obvious reversible cause; refer to gastroenterology for iron deficiency needing endoscopic evaluation."
+  },
+  {
+   "chunk_id": "3deedeaa40be",
+   "source_id": "uspstf-screening",
+   "section": "USPSTF screening recommendations (summary) > Prediabetes and type 2 diabetes (2021, grade B)",
+   "text": "Screen adults aged 35 to 70 years who have overweight or obesity for prediabetes and type 2 diabetes; offer or refer patients with prediabetes to effective preventive interventions. Screening is with fasting plasma glucose, A1C, or an oral glucose tolerance test; a reasonable interval is every 3 years."
+  },
+  {
+   "chunk_id": "f19c0071e41f",
+   "source_id": "uspstf-screening",
+   "section": "USPSTF screening recommendations (summary) > Lipid disorders and statin use for primary prevention (2022, grade B and C)",
+   "text": "For adults aged 40 to 75 with one or more cardiovascular risk factors (dyslipidemia, diabetes, hypertension, smoking) and an estimated 10-year cardiovascular risk of 10 percent or higher, initiate a statin (grade B). For the same age group with risk factors and a 10-year risk of 7.5 to under 10 percent, selectively offer a statin (grade C). Evidence is insufficient for adults 76 and older."
+  },
+  {
+   "chunk_id": "76c2931800af",
+   "source_id": "uspstf-screening",
+   "section": "USPSTF screening recommendations (summary) > Hypertension in adults (2021, grade A)",
+   "text": "Screen adults 18 and older for hypertension with office blood pressure measurement, and obtain measurements outside the clinical setting (home or ambulatory monitoring) to confirm the diagnosis before starting treatment. Screen every year for adults 40 and older and for those at increased risk; every 3 to 5 years for adults 18 to 39 at lower risk with a normal prior reading."
+  },
+  {
+   "chunk_id": "446994dc7c5b",
+   "source_id": "uspstf-screening",
+   "section": "USPSTF screening recommendations (summary) > Colorectal cancer (2021, grade A and B)",
+   "text": "Screen adults aged 45 to 75 for colorectal cancer (grade A for 50 to 75, grade B for 45 to 49); selectively screen adults 76 to 85. Options include colonoscopy every 10 years, annual fecal immunochemical testing, or other tests at their recommended intervals."
+  },
+  {
+   "chunk_id": "e1c473200ace",
+   "source_id": "uspstf-screening",
+   "section": "USPSTF screening recommendations (summary) > Breast cancer (2024, grade B)",
+   "text": "Biennial screening mammography for women aged 40 to 74."
+  }
+ ]
+}

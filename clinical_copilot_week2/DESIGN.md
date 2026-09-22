@@ -283,11 +283,11 @@ on the droplet.
 - [x] 5.2 Workers wrap Phase 2 extraction and Phase 6 retrieval. PHP writes handoffs to the Langfuse trace as spans and to the panel drawer; `Pricing` per-kind rates.
 - [x] 5.3 Routing cases flip from pending.
 
-### Phase 6: Hybrid RAG + rerank (Tuesday night, ~2.5 h)
+### Phase 6: Hybrid RAG + rerank (Tuesday night, ~2.5 h) — offline parts done 2026-09-22: 6-document corpus (summaries, manifest), committed BM25 + dense index with RRF and a relevance floor, /eval/retrieve, ask path through the graph with guideline chunks as citation targets, panel split; Cohere rerank wired but inactive until COHERE_API_KEY is set (rerank then reported in usage). 35 cases enforced
 
-- [ ] 6.1 `sidecar/corpus/`: 4-6 documents with `manifest.json` (title, publisher, year, URL, license); section-aware chunking (~400 tokens); `chunk_id = sha256(source_id | section | ordinal)[:12]`; embedding index built by a script and committed under `sidecar/corpus/index/`.
-- [ ] 6.2 `retrieve.py`: BM25 + dense (cosine over the committed index) → RRF k=60 → top 20 → the one reranker → top 5 with `{chunk_id, source_id, section, quote, score}`. Off-corpus → empty → PHP `answer_type: not_in_corpus`.
-- [ ] 6.3 PHP: `Prompt` chunk block; `Verifier` accepts chunk ids and checks numbers/dates against the chunk quote; panel splits record vs guidelines. Write the 4 offline retrieval cases (committed query embeddings) and flip them; the deterministic rerank case and the live ones are Thursday.
+- [x] 6.1 `sidecar/corpus/`: 4-6 documents with `manifest.json` (title, publisher, year, URL, license); section-aware chunking (~400 tokens); `chunk_id = sha256(source_id | section | ordinal)[:12]`; embedding index built by a script and committed under `sidecar/corpus/index/`.
+- [x] 6.2 `retrieve.py`: BM25 + dense (cosine over the committed index) → RRF k=60 → top 20 → the one reranker → top 5 with `{chunk_id, source_id, section, quote, score}`. Off-corpus → empty → PHP `answer_type: not_in_corpus`.
+- [x] 6.3 PHP: `Prompt` chunk block; `Verifier` accepts chunk ids and checks numbers/dates against the chunk quote; panel splits record vs guidelines. Write the 4 offline retrieval cases (committed query embeddings) and flip them; the deterministic rerank case and the live ones are Thursday.
 
 ### Phase 7: End-to-end proof and observability (Wednesday, ~2 h)
 

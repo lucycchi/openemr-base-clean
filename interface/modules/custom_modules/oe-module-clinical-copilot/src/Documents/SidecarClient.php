@@ -55,6 +55,12 @@ final class SidecarClient
         return $this->run($body);
     }
 
+    /** Guideline evidence for a question (mode=answer): no documents, no patient identifiers. */
+    public function answer(string $correlationId, string $factsHash, string $question): RunResult
+    {
+        return $this->run(['mode' => 'answer', 'correlation_id' => $correlationId, 'facts_hash' => $factsHash, 'question' => $question, 'documents' => []]);
+    }
+
     /** @param array<string, mixed> $body */
     private function run(array $body): RunResult
     {

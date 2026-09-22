@@ -63,7 +63,8 @@ def test_same_correlation_id_and_documents_is_served_from_cache(client: TestClie
     # A different document hash under the same id is a different run.
     req["documents"][0]["sha3_512"] = "b" * 128
     c = client.post("/run", json=req).json()
-    assert c["handoffs"] == a["handoffs"]  # same shape, not the same cached object is fine; just must not error
+    # A fresh run (not cached): the same route, timings may differ.
+    assert [(h["from"], h["to"], h["reason"]) for h in c["handoffs"]] == [(h["from"], h["to"], h["reason"]) for h in a["handoffs"]]
 
 
 def test_eval_anchor_refuses_paths_outside_the_fixtures_dir(client: TestClient) -> None:

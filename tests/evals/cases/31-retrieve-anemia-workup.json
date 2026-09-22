@@ -1,0 +1,16 @@
+{
+  "id": "31-retrieve-anemia-workup",
+  "guards": "invariant",
+  "failure_mode": "A low-hemoglobin question must surface the anemia summary, not the CKD or diabetes documents that also mention hemoglobin.",
+  "mode": "retrieve",
+  "query_fixture": "low-hemoglobin-workup",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "top_source_id": "anemia-adults-primary-care",
+    "min_chunks": 1
+  }
+}

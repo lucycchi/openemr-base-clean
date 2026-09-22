@@ -25,8 +25,14 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final class Verifier
 {
-    public function verify(Narration $narration, FactSet $facts): VerificationResult
+    /**
+     * Week 2: $evidence lets a sentence cite guideline chunk ids as well as
+     * fact ids. The rule is the same for both: every cited id must exist,
+     * and every number or date must appear verbatim in something cited.
+     */
+    public function verify(Narration $narration, FactSet $facts, ?EvidenceSet $evidence = null): VerificationResult
     {
+        $evidence ??= EvidenceSet::none();
         $kept = [];
         $stripped = [];
         foreach ($narration->sentences as $sentence) {
@@ -34,8 +40,8 @@ final class Verifier
             // calls $facts->get() on the cited ids.
             if (
                 $sentence->factIds === []
-                || !$this->allKnown($sentence, $facts)
-                || !$this->literalsGrounded($sentence, $facts)
+                || !$this->allKnown($sentence, $facts, $evidence)
+                || !$this->literalsGrounded($sentence, $facts, $evidence)
             ) {
                 $stripped[] = $sentence;
                 continue;
@@ -46,12 +52,12 @@ final class Verifier
     }
 
     // Numbers and ISO dates the model types must appear verbatim in a cited fact.
-    private function literalsGrounded(Sentence $sentence, FactSet $facts): bool
+    private function literalsGrounded(Sentence $sentence, FactSet $facts, EvidenceSet $evidence): bool
     {
         // Models sometimes echo "[id]" or "[id, id]" inline; a cited id is a
         // reference, not a claim.
         $text = preg_replace_callback(
-            '/\[([0-9a-f]{8}(?:\s*,\s*[0-9a-f]{8})*)\]/',
+            '/\[([0-9a-f]{8,12}(?:\s*,\s*[0-9a-f]{8,12})*)\]/',
             function (array $m) use ($sentence): string {
                 $ids = preg_split('/\s*,\s*/', $m[1]) ?: [];
                 return array_diff($ids, $sentence->factIds) === [] ? '' : $m[0];
@@ -65,7 +71,9 @@ final class Verifier
             return true;
         }
         // Concatenate the cited facts' text and require each literal to occur in it.
-        $cited = implode("\n", array_map(fn(string $id) => $facts->get($id)->value, $sentence->factIds));
+        // A cited guideline passage is its heading path (guideline title and
+        // section, which carry the year) plus its text.
+        $cited = implode("\n", array_map(fn(string $id) => $facts->has($id) ? $facts->get($id)->value : $evidence->get($id)->section . "\n" . $evidence->get($id)->quote, $sentence->factIds));
         foreach ($matches[0] as $literal) {
             if (!str_contains($cited, $literal)) {
                 return false;
@@ -75,10 +83,10 @@ final class Verifier
     }
 
     /** Every cited id must be a real fact in this set (guards against invented ids). */
-    private function allKnown(Sentence $sentence, FactSet $facts): bool
+    private function allKnown(Sentence $sentence, FactSet $facts, EvidenceSet $evidence): bool
     {
         foreach ($sentence->factIds as $id) {
-            if (!$facts->has($id)) {
+            if (!$facts->has($id) && !$evidence->has($id)) {
                 return false;
             }
         }

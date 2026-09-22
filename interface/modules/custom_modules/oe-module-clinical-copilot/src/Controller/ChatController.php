@@ -34,6 +34,10 @@ use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
 use OpenEMR\Modules\ClinicalCopilot\ChatAction;
 use OpenEMR\Modules\ClinicalCopilot\ChatRequest;
 use OpenEMR\Modules\ClinicalCopilot\Config;
+use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarClient;
+use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarException;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
+use OpenEMR\Modules\ClinicalCopilot\GuidelineManifest;
 use OpenEMR\Modules\ClinicalCopilot\CorrelationId;
 use OpenEMR\Modules\ClinicalCopilot\DbPrewarmReceipts;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
@@ -80,6 +84,8 @@ final class ChatController
     private int $llmMs = 0;
     private bool $llmCalled = false;
     private int $llmAttempts = 0;
+    /** Week 2: the sidecar's routing decisions for this question (empty for a briefing). @var list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}> */
+    private array $handoffs = [];
     private readonly PrewarmReceipts $receipts;
     private ?WarmOutcome $warm = null;
 
@@ -222,6 +228,8 @@ final class ChatController
             'cost_usd' => $costUsd,
             'llm_attempts' => $this->llmAttempts,
             'llm_retried' => $this->llmAttempts > 1,
+            'guideline_chunks' => is_array($outcome['guidelines'] ?? null) ? count($outcome['guidelines']) : null,
+            'handoffs' => $this->handoffs,
         ] + ($this->warm?->toLogContext() ?? []);
         // One line per failed tool with the real reason (the user-facing
         // status label above is deliberately vague), then one line per request
@@ -321,12 +329,30 @@ final class ChatController
         if (!$config->hasOpenAi()) {
             return ['error' => 'AI is not configured on this server', 'correlation_id' => $this->correlationId];
         }
+        // Week 2: ask the sidecar's graph for guideline evidence first. The
+        // supervisor routes the question to the evidence_retriever; the chunks
+        // come back with citations and the handoff log. A sidecar outage
+        // degrades to a facts-only answer rather than failing the question.
+        $evidence = EvidenceSet::none();
+        $handoffs = [];
+        try {
+            $run = $this->steps->measure(
+                'retrieve_evidence',
+                fn() => SidecarClient::fromConfig($config)->answer($this->correlationId, $assembled->facts()->hash(), (string) $chat->question),
+                static fn($r) => ['chunks' => count($r->chunks), 'handoffs' => count($r->handoffs)],
+            );
+            $evidence = EvidenceSet::fromRun($run->chunks, new GuidelineManifest());
+            $handoffs = array_map(static fn($h) => $h->toArray(), $run->handoffs);
+        } catch (SidecarException $e) {
+            $this->logger->warning('copilot evidence retrieval unavailable; answering from facts only', ['code' => $e->errorCode]);
+        }
         $t = hrtime(true);
         $pipeline = $this->pipeline($config, $assembled, $pid);
-        $answer = $pipeline->answer($assembled, (string) $chat->question, $chat->transcript, $pid);
+        $answer = $pipeline->answer($assembled, (string) $chat->question, $chat->transcript, $pid, $evidence);
         $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
         $this->llmCalled = true;
         $this->llmAttempts = $pipeline->llmAttempts();
+        $this->handoffs = $handoffs;
         return PanelPayload::answer($assembled, $answer, $this->correlationId);
     }
 

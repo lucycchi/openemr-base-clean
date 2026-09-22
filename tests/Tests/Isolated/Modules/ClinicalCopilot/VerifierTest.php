@@ -180,4 +180,41 @@ final class VerifierTest extends TestCase
 
         self::assertSame([$sentence], $result->kept());
     }
+
+    // ---- Week 2: guideline chunks as citation targets --------------------
+
+    private function evidence(): \OpenEMR\Modules\ClinicalCopilot\EvidenceSet
+    {
+        return new \OpenEMR\Modules\ClinicalCopilot\EvidenceSet([
+            new \OpenEMR\Modules\ClinicalCopilot\EvidenceChunk('a1b2c3d4e5f6', 'ada-2025-standards', 'Glycemic targets', 'An A1C goal below 7 percent is appropriate for many nonpregnant adults without significant hypoglycemia.', 0.9, 'ADA Standards 2025'),
+        ]);
+    }
+
+    public function testASentenceMayCiteAGuidelineChunkAndItsNumbersAreCheckedAgainstTheQuote(): void
+    {
+        $facts = new FactSet([]);
+        $ok = new Narration([new Sentence('Guidelines suggest an A1C goal below 7 percent for many adults.', ['a1b2c3d4e5f6'])]);
+        $result = (new Verifier())->verify($ok, $facts, $this->evidence());
+        self::assertCount(1, $result->kept());
+
+        $wrong = new Narration([new Sentence('Guidelines suggest an A1C goal below 6.5 percent.', ['a1b2c3d4e5f6'])]);
+        $result = (new Verifier())->verify($wrong, $facts, $this->evidence());
+        self::assertCount(0, $result->kept(), '6.5 is not in the cited passage');
+    }
+
+    public function testAnUnknownChunkIdIsStrippedAndWithoutEvidenceChunkIdsAreUnknown(): void
+    {
+        $facts = new FactSet([]);
+        $n = new Narration([new Sentence('Guidelines say something.', ['ffffffffffff'])]);
+        self::assertCount(0, (new Verifier())->verify($n, $facts, $this->evidence())->kept());
+        $n2 = new Narration([new Sentence('Guidelines suggest an A1C goal below 7 percent.', ['a1b2c3d4e5f6'])]);
+        self::assertCount(0, (new Verifier())->verify($n2, $facts)->kept(), 'no evidence set: a chunk id is an unknown citation');
+    }
+
+    public function testInlineTwelveCharIdsAreTreatedAsReferencesNotNumbers(): void
+    {
+        $facts = new FactSet([]);
+        $n = new Narration([new Sentence('A1C goal below 7 percent [a1b2c3d4e5f6].', ['a1b2c3d4e5f6'])]);
+        self::assertCount(1, (new Verifier())->verify($n, $facts, $this->evidence())->kept());
+    }
 }

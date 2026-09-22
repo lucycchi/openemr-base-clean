@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T09:13:41+00:00",
+    "ran_at": "2026-09-22T09:35:55+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -87,6 +87,41 @@
         "28-route-document-and-question": {
             "routing_correct": "pass",
             "schema_valid": "pass"
+        },
+        "29-retrieve-statin-ldl": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "30-retrieve-a1c-target": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "31-retrieve-anemia-workup": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "32-retrieve-off-corpus-refusal": {
+            "schema_valid": "pass",
+            "safe_refusal": "pass",
+            "factually_consistent": "pass"
+        },
+        "33-answer-guideline-and-fact-separated": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "34-answer-not-in-corpus-refusal": {
+            "schema_valid": "pass",
+            "safe_refusal": "pass",
+            "factually_consistent": "pass"
+        },
+        "35-answer-guideline-id-for-patient-claim": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
         }
     },
     "rates": {
@@ -94,6 +129,7 @@
         "citation_present": 100,
         "factually_consistent": 100,
         "anchor_correct": 100,
-        "routing_correct": 100
+        "routing_correct": 100,
+        "safe_refusal": 100
     }
 }
