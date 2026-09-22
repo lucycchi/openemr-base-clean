@@ -307,6 +307,19 @@ final class NarrationPipeline
                         $ids[] = $id;
                     }
                 }
+                // Week 2: models sometimes cite a guideline passage inline
+                // ("[e0f60b55960c]") and leave fact_ids empty because the field
+                // is named for facts. A bracketed id is a citation; recover it
+                // so the Verifier judges the sentence against what was cited.
+                if (preg_match_all('/\[([0-9a-f]{8,12}(?:\s*,\s*[0-9a-f]{8,12})*)\]/', $item['text'], $m)) {
+                    foreach ($m[1] as $group) {
+                        foreach (preg_split('/\s*,\s*/', $group) ?: [] as $id) {
+                            if (!in_array($id, $ids, true)) {
+                                $ids[] = $id;
+                            }
+                        }
+                    }
+                }
                 $sentences[] = new Sentence($this->scrub($item['text'], $ids), $ids);
             }
         }

@@ -141,11 +141,13 @@
     function sourceLink(f) {
         const c = f.citation;
         const anchored = c.anchored === true;
-        const a = el('a', { href: '#', class: 'copilot-source' + (anchored ? '' : ' copilot-source-unverified'), title: anchored ? 'Show where this was read on the document' : 'Could not be verified against the page; open the document' }, [anchored ? 'source p.' + (c.page_or_section || '?') : 'unverified, open source']);
+        // A mismatch flag is about the whole document, not a cell: link to the document, no verification badge.
+        const flag = f.category === 'document_mismatch';
+        const a = el('a', { href: '#', class: 'copilot-source' + (anchored || flag ? '' : ' copilot-source-unverified'), title: flag ? 'Open the document' : (anchored ? 'Show where this was read on the document' : 'Could not be verified against the page; open the document') }, [flag ? 'open document' : (anchored ? 'source p.' + (c.page_or_section || '?') : 'unverified, open source')]);
         a.addEventListener('click', e => {
             e.preventDefault();
             if (!window.copilotSourceViewer) { setStatus('The document viewer is not available.', true); return; }
-            window.copilotSourceViewer.open(docUrl(c.source_id), c, 'Document ' + c.source_id + ', page ' + (c.page_or_section || '?'));
+            window.copilotSourceViewer.open(docUrl(c.source_id), flag ? null : c, 'Document ' + c.source_id + (flag ? '' : ', page ' + (c.page_or_section || '?')));
         });
         return a;
     }

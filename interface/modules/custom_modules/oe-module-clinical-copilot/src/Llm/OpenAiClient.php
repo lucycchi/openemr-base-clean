@@ -38,8 +38,11 @@ final class OpenAiClient implements LanguageModel
     private const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
     // Narration loads asynchronously beside an already-rendered fact table, so
     // this bounds a background call, not the physician's wait for the chart.
-    private const TOTAL_BUDGET_SECONDS = 25.0;
-    private const PER_ATTEMPT_SECONDS = 12.0;
+    // Week 2 (2026-09-22): raised from 25/12 after the live briefing case timed
+    // out three times on dense charts (30+ facts, ~22 sentences take gpt-4o-mini
+    // 12-18 s). Total stays under the panel's 30 s fetch timeout.
+    private const TOTAL_BUDGET_SECONDS = 28.0;
+    private const PER_ATTEMPT_SECONDS = 20.0;
 
     public function __construct(
         private readonly ClientInterface $http,

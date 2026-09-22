@@ -1,0 +1,24 @@
+{
+  "id": "37-phi-intake-upload-logs",
+  "guards": "authorization",
+  "live": true,
+  "failure_mode": "An intake form carries a name, a date of birth, a phone number and a chief concern: none may appear in logs or traces; the mismatch flag is recorded as a fixed phrase only.",
+  "mode": "phi_logs",
+  "fixture": "intake-full.pdf",
+  "doc_type": "intake_form",
+  "truth": "intake-full.truth.json",
+  "phi": [
+    "/demographics/name",
+    "/demographics/dob",
+    "/demographics/phone",
+    "/chief_concern",
+    "/medications/0/name"
+  ],
+  "rubrics": {
+    "no_phi_in_logs": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "status": "extracted"
+  }
+}

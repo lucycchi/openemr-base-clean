@@ -101,10 +101,75 @@ foreach ($pids as $pid) {
 }
 $admin->quit();
 
+// 3b. Week 2: upload a synthetic lab PDF through the panel on a quiet demo
+// patient (not the busiest one, whose briefing the live eval case measures),
+// let the extraction run, open a document citation and check the viewer
+// drew a highlight, then ask a guideline question and check the answer
+// separates record from guidelines and the routing drawer is filled.
+// Cleans up its own upload afterwards.
+$demoPid = (int) (QueryUtils::querySingleRow("SELECT pid FROM patient_data WHERE pid NOT IN (" . implode(',', array_map('intval', $pids)) . ") ORDER BY pid LIMIT 1")['pid'] ?? 0);
+if ($demoPid > 0) {
+    $admin = login($base, 'admin', 'pass');
+    $before = openPanel($admin, $base, $demoPid)['status'];
+    $fixture = realpath(__DIR__ . '/fixtures/docs/lab-layout1.pdf');
+    $admin->getWebDriver()->findElement(\Facebook\WebDriver\WebDriverBy::id('copilot-file'))->setFileDetector(new \Facebook\WebDriver\Remote\LocalFileDetector())->sendKeys(is_string($fixture) ? $fixture : '');
+    $admin->executeScript("document.querySelector('#copilot-upload button').click();");
+    $admin->executeScript("return new Promise(r => { const t0=Date.now(); const i=setInterval(()=>{ const s=document.querySelector('#copilot-upload-status').textContent; if(/Extracted|failed|Failed|already/.test(s) || Date.now()-t0>120000){clearInterval(i); r(1);} },500); });");
+    // The panel re-briefs after an extraction; wait for a new briefing reference, not a fixed time.
+    $admin->executeScript("return new Promise(r => { const t0=Date.now(); const i=setInterval(()=>{ const s=document.querySelector('#copilot-status').textContent; if((s !== arguments[0] && /^ref /.test(s)) || Date.now()-t0>90000){clearInterval(i); r(1);} },500); });", [$before]);
+    sleep(1);
+    $uploadStatus = (string) $admin->executeScript("return document.querySelector('#copilot-upload-status').textContent");
+    check("upload+extract pid $demoPid", str_starts_with($uploadStatus, 'Extracted') && str_contains($uploadStatus, '100% verified'), $uploadStatus);
+    $handoffs = (int) $admin->executeScript("return document.querySelectorAll('#copilot-handoffs li').length");
+    check('routing drawer filled', $handoffs >= 3, "$handoffs hops");
+    $links = (int) $admin->executeScript("return document.querySelectorAll('#copilot-facts .copilot-source').length");
+    check('facts carry document citations', $links > 0, "$links source links");
+    $admin->executeScript("const a=Array.from(document.querySelectorAll('#copilot-facts .copilot-source')).find(x => /^source p\\./.test(x.textContent)); if(a){a.click();}");
+    sleep(4);
+    $marks = (int) $admin->executeScript("return document.querySelectorAll('.copilot-viewer-mark').length");
+    $note = (string) $admin->executeScript("const n=document.querySelector('#copilot-viewer-note'); return n?n.textContent:''");
+    check('click-to-source highlight drawn', $marks === 2 && str_starts_with($note, 'Highlighted'), "marks=$marks $note");
+    $admin->executeScript("window.copilotSourceViewer && window.copilotSourceViewer.close();");
+    $admin->executeScript("document.querySelector('#copilot-question').value='Should this patient be on a statin?'; document.querySelector('#copilot-ask button').click();");
+    $admin->executeScript("return new Promise(r => { const t0=Date.now(); const i=setInterval(()=>{ if(document.querySelectorAll('#copilot-thread .copilot-assistant').length>0 || Date.now()-t0>90000){clearInterval(i); r(1);} },400); });");
+    sleep(1);
+    $answer = (string) $admin->executeScript("const n=document.querySelector('#copilot-thread .copilot-assistant'); return n?n.innerText:''");
+    $guidelineChips = (int) $admin->executeScript("return document.querySelectorAll('#copilot-thread .copilot-chip-guideline').length");
+    check('guideline question answered with cited passages', $guidelineChips > 0 && str_contains($answer, 'From guidelines'), "guideline chips=$guidelineChips " . substr(str_replace("\n", ' ', $answer), 0, 80));
+    $admin->quit();
+    // Remove the upload and its derived rows so the seed data stays as seeded.
+    foreach (QueryUtils::fetchRecords("SELECT document_id FROM copilot_document WHERE pid = ?", [$demoPid]) as $d) {
+        $id = (int) $d['document_id'];
+        foreach (QueryUtils::fetchRecords("SELECT DISTINCT po.procedure_order_id FROM procedure_order po JOIN procedure_report prp ON prp.procedure_order_id = po.procedure_order_id JOIN procedure_result pr ON pr.procedure_report_id = prp.procedure_report_id WHERE pr.document_id = ?", [$id]) as $o) {
+            $oid = (int) $o['procedure_order_id'];
+            QueryUtils::sqlStatementThrowException("DELETE pr FROM procedure_result pr JOIN procedure_report prp ON prp.procedure_report_id = pr.procedure_report_id WHERE prp.procedure_order_id = ?", [$oid]);
+            QueryUtils::sqlStatementThrowException("DELETE FROM procedure_report WHERE procedure_order_id = ?", [$oid]);
+            QueryUtils::sqlStatementThrowException("DELETE FROM procedure_order_code WHERE procedure_order_id = ?", [$oid]);
+            QueryUtils::sqlStatementThrowException("DELETE FROM procedure_order WHERE procedure_order_id = ?", [$oid]);
+        }
+        QueryUtils::sqlStatementThrowException("DELETE FROM copilot_document_fact WHERE document_id = ?", [$id]);
+        QueryUtils::sqlStatementThrowException("DELETE FROM copilot_intake WHERE document_id = ?", [$id]);
+        QueryUtils::sqlStatementThrowException("DELETE FROM copilot_document WHERE document_id = ?", [$id]);
+        $doc = new \Document($id);
+        $url = $doc->get_url_filepath();
+        if (is_string($url) && $url !== '' && file_exists($url)) {
+            @unlink($url);
+        }
+        QueryUtils::sqlStatementThrowException("DELETE FROM documents WHERE id = ?", [$id]);
+    }
+    QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$demoPid]);
+} else {
+    check('week 2 e2e', false, 'no demo patient available');
+}
+
 // 4. As a receptionist (no clinical ACL) the same chart must be refused with no facts.
 $recep = login($base, 'receptionist', 'receptionist');
 $r = openPanel($recep, $base, $pids[0]);
 check("receptionist pid {$pids[0]} refused", str_contains($r['status'], 'not authorized') && $r['facts'] === 0, $r['status']);
+// Week 2: the documents endpoint refuses the same user (no patients/docs ACL).
+$docs = (string) $recep->executeScript("return fetch(document.getElementById('copilot-panel').dataset.documentsEndpoint, {method:'POST', body:new URLSearchParams({csrf_token_form: document.getElementById('copilot-panel').dataset.csrf, action:'list'}), credentials:'same-origin'}).then(r => String(r.status));");
+check('receptionist documents endpoint refused (403)', $docs === '403', "HTTP $docs");
+
 $recep->quit();
 
 printf("\n%s\n", $failures === 0 ? 'SMOKE OK' : "SMOKE FAILED ($failures)");

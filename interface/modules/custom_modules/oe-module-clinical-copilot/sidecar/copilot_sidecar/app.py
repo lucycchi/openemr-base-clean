@@ -147,6 +147,38 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         state = graph.run(req.mode, "eval-route-000", "0" * 64, req.question, req.documents, graph=g)  # type: ignore[arg-type]
         return {"handoffs": [h.model_dump(by_alias=True) for h in state["handoffs"]], "extractions": len(state["extractions"]), "chunks": len(state["chunks"])}
 
+    @app.post("/eval/phi")
+    def eval_phi(req: AnchorEvalRequest) -> dict:
+        """Runs an extraction (recorded proposal when given, else the real model)
+        while capturing every log line the sidecar emits, and returns the
+        lines. The harness scans them for the fixture's identifiers and for
+        fields outside the allowlist (no_phi_in_logs)."""
+        import logging
+
+        from .logging_setup import ALLOWED, AllowlistJsonFormatter
+
+        path = (FIXTURES_ROOT / req.fixture).resolve()
+        if FIXTURES_ROOT not in path.parents or not path.is_file():
+            raise HTTPException(404, "fixture not found")
+        lines: list[str] = []
+        raw_keys: set[str] = set()
+
+        class Capture(logging.Handler):
+            def emit(self, record: logging.LogRecord) -> None:
+                raw_keys.update(k for k in record.__dict__ if k not in logging.LogRecord("x", 0, "", 0, "", None, None).__dict__ and k not in ("message", "asctime"))
+                lines.append(AllowlistJsonFormatter().format(record))
+
+        handler = Capture()
+        root = logging.getLogger()
+        root.addHandler(handler)
+        try:
+            model = LabReportProposal if req.doc_type == "lab_pdf" else IntakeFormProposal
+            proposal = model.model_validate(req.proposal) if req.proposal else None
+            outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), "eval-phi-0000", proposal=proposal)
+        finally:
+            root.removeHandler(handler)
+        return {"status": outcome.extraction.status, "lines": lines, "extra_keys_seen": sorted(raw_keys), "allowlist": sorted(ALLOWED)}
+
     @app.post("/eval/extract")
     def eval_extract(req: AnchorEvalRequest) -> dict:
         """Live variant: the real parser and the real model on a fixture; returns the extraction and the raw proposal so it can be recorded as model.json."""

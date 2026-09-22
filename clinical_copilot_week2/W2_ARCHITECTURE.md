@@ -148,9 +148,12 @@ text is not. Details: design doc Phase 4b.
 1. **Case 09 is flaky on one patient.** `09-live-seed-patients-zero-strips`
    briefs the ten busiest seed patients with the real model; pid 22 timed
    out twice on 2026-09-22 (about 24 s, the Week 1 client timeout) while
-   passing in between. The committed `results.json` shows 19/20 for that
-   reason. Options: raise the client timeout, or make the case tolerate one
-   timed-out patient. Decide in Phase 4.
+   passing in between, and a third time on pid 15 (31 facts, 22 sentences)
+   in Phase 7. Cause: the Week 1 per-attempt cap of 12 s is below what
+   gpt-4o-mini needs for a dense briefing. Resolved 2026-09-22 by raising
+   the per-attempt cap to 20 s and the total budget to 28 s (still under
+   the panel's 30 s fetch timeout); recorded here because it changes a
+   Week 1 constant.
 2. **Dense document-derived fact sets raise the briefing strip rate.** After
    two lab reports were attached to one patient (27 facts, 16 lab deltas)
    the model's briefing had 1-3 stripped sentences; one stripped sentence

@@ -1,18 +1,18 @@
 {
-    "ran_at": "2026-09-22T09:09:28+00:00",
+    "ran_at": "2026-09-22T10:20:56+00:00",
     "live": true,
-    "pass": 22,
+    "pass": 38,
     "fail": 0,
     "metrics": {
         "briefings": 10,
         "briefings_with_strips": 0,
         "briefings_failed": 0,
         "sentences_stripped_total": 0,
-        "sentences_kept_total": 55,
+        "sentences_kept_total": 68,
         "omitted_total": 0,
-        "latency_ms_p50": 2684,
-        "latency_ms_p95": 11051,
-        "tokens_total": 29864
+        "latency_ms_p50": 3778,
+        "latency_ms_p95": 23178,
+        "tokens_total": 32702
     },
     "cases": [
         {
@@ -39,7 +39,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 6
+            "ms": 7
         },
         {
             "id": "02-unknown-fact-id",
@@ -201,7 +201,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 3
+            "ms": 2
         },
         {
             "id": "08-semantic-inversion-known-limitation",
@@ -254,7 +254,7 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 832,
+                    "ms": 859,
                     "tokens": 496
                 },
                 {
@@ -268,8 +268,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 11051,
-                    "tokens": 3005
+                    "ms": 11525,
+                    "tokens": 2938
                 },
                 {
                     "pid": 7,
@@ -282,13 +282,13 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 1185,
+                    "ms": 1198,
                     "tokens": 568
                 },
                 {
                     "pid": 27,
                     "facts": 16,
-                    "kept": 5,
+                    "kept": 14,
                     "stripped": 0,
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -296,8 +296,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 2968,
-                    "tokens": 1214
+                    "ms": 6112,
+                    "tokens": 1474
                 },
                 {
                     "pid": 23,
@@ -310,13 +310,13 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 903,
+                    "ms": 1004,
                     "tokens": 494
                 },
                 {
                     "pid": 6,
                     "facts": 14,
-                    "kept": 13,
+                    "kept": 14,
                     "stripped": 0,
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -324,8 +324,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 5196,
-                    "tokens": 1598
+                    "ms": 6838,
+                    "tokens": 1683
                 },
                 {
                     "pid": 22,
@@ -338,7 +338,7 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 3166,
+                    "ms": 23178,
                     "tokens": 1049
                 },
                 {
@@ -352,13 +352,13 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 2684,
-                    "tokens": 1000
+                    "ms": 3778,
+                    "tokens": 999
                 },
                 {
                     "pid": 4,
                     "facts": 6,
-                    "kept": 3,
+                    "kept": 6,
                     "stripped": 0,
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -366,8 +366,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 2365,
-                    "tokens": 803
+                    "ms": 2465,
+                    "tokens": 841
                 },
                 {
                     "pid": 18,
@@ -380,11 +380,11 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 817,
+                    "ms": 867,
                     "tokens": 490
                 }
             ],
-            "ms": 31303
+            "ms": 57966
         },
         {
             "id": "10-live-followup-out-of-window",
@@ -408,8 +408,8 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 875,
-                    "tokens": 610,
+                    "ms": 1140,
+                    "tokens": 809,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -422,8 +422,8 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 640,
-                    "tokens": 1928,
+                    "ms": 744,
+                    "tokens": 2127,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -436,15 +436,15 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 741,
-                    "tokens": 640,
+                    "ms": 669,
+                    "tokens": 839,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2304
+            "ms": 2604
         },
         {
             "id": "11-live-followup-computed-number",
@@ -467,8 +467,8 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 847,
-                    "tokens": 760,
+                    "ms": 693,
+                    "tokens": 959,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -481,8 +481,8 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 635,
-                    "tokens": 1975,
+                    "ms": 647,
+                    "tokens": 2174,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -495,15 +495,15 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 665,
-                    "tokens": 1245,
+                    "ms": 681,
+                    "tokens": 1444,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2178
+            "ms": 2053
         },
         {
             "id": "12-live-followup-ambiguous-question",
@@ -526,8 +526,8 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 641,
-                    "tokens": 756,
+                    "ms": 656,
+                    "tokens": 955,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -537,24 +537,19 @@
                     "pid": 5,
                     "facts": 28,
                     "answer_type": "cited",
-                    "kept": 12,
+                    "kept": 7,
                     "stripped": 0,
                     "status": null,
-                    "ms": 6719,
-                    "tokens": 2763,
+                    "ms": 2835,
+                    "tokens": 2458,
                     "sentences": [
-                        "The prior visit was on 2025-04-19, and several lab values have changed since then, including sodium, which increased from 140.49 mmol\/L to 142.15 mmol\/L (2026-04-25).",
-                        "Potassium also increased from 3.96 mmol\/L to 4.57 mmol\/L (2026-04-25) since the prior visit.",
-                        "Calcium increased from 8.76 mg\/dL to 9.47 mg\/dL (2026-04-25) since the prior visit.",
-                        "However, creatinine increased from 1.14 mg\/dL to 1.35 mg\/dL (2026-04-25) since the prior visit.",
-                        "Urea nitrogen increased from 9.21 mg\/dL to 18.74 mg\/dL (2026-04-25) since the prior visit.",
-                        "Glucose decreased from 88.16 mg\/dL to 81.95 mg\/dL (2026-04-25) since the prior visit.",
-                        "Total score on the Patient Health Questionnaire 2 item (PHQ-2) increased from 0 to 1 (2026-04-25) since the prior visit.",
-                        "Leukocytes decreased from 8.77 10*3\/uL to 4.06 10*3\/uL (2026-04-25) since the prior visit.",
-                        "Cholesterol in HDL increased from 32.87 mg\/dL to 33.89 mg\/dL (2026-04-25) since the prior visit.",
-                        "Cholesterol in LDL increased from 110.63 mg\/dL to 120.24 mg\/dL (2026-04-25) since the prior visit.",
-                        "Triglyceride decreased from 123.34 mg\/dL to 100.42 mg\/dL (2026-04-25) since the prior visit.",
-                        "Cholesterol increased from 168.17 mg\/dL to 174.21 mg\/dL (2026-04-25) since the prior visit."
+                        "The prior visit was on 2025-04-19.",
+                        "The total score changed from 0 to 2, which is higher than it was last time.",
+                        "The Patient Health Questionnaire 2 item (PHQ-2) total score changed from 0 to 1, which is higher than it was last time.",
+                        "The platelet count changed from 261.16 to 223.01, which is lower than it was last time.",
+                        "The erythrocyte count changed from 4.66 to 4.99, which is higher than it was last time.",
+                        "The cholesterol changed from 168.17 to 174.21, which is higher than it was last time.",
+                        "The glucose changed from 88.16 to 81.95, which is lower than it was last time."
                     ],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -564,32 +559,33 @@
                     "pid": 6,
                     "facts": 14,
                     "answer_type": "cited",
-                    "kept": 13,
+                    "kept": 14,
                     "stripped": 0,
                     "status": null,
-                    "ms": 10779,
-                    "tokens": 2036,
+                    "ms": 7720,
+                    "tokens": 2277,
                     "sentences": [
-                        "The prior visit was on 2026-06-21, during which the patient was undergoing drug rehabilitation and detoxification.",
-                        "The patient's cholesterol in LDL increased from 29.03 mg\/dL (2023-09-14) to 106.61 mg\/dL (2026-09-17), indicating it is higher than it was last time.",
-                        "The patient's cholesterol increased from 114.34 mg\/dL (2023-09-14) to 184.18 mg\/dL (2026-09-17), indicating it is higher than it was last time.",
-                        "The patient's urea nitrogen increased from 7.44 mg\/dL (2025-07-24) to 16.93 mg\/dL (2026-09-17), indicating it is higher than it was last time.",
-                        "The patient's glucose increased from 80.65 mg\/dL (2025-07-24) to 82.09 mg\/dL (2026-09-17), indicating it is higher than it was last time.",
-                        "The patient's carbon dioxide, total increased from 22.9 mmol\/L (2025-07-24) to 24.21 mmol\/L (2026-09-17), indicating it is higher than it was last time.",
-                        "The patient's chloride increased from 107.09 mmol\/L (2025-07-24) to 107.84 mmol\/L (2026-09-17), indicating it is higher than it was last time.",
-                        "The patient's potassium increased from 3.71 mmol\/L (2025-07-24) to 4.58 mmol\/L (2026-09-17), indicating it is higher than it was last time.",
-                        "The patient's sodium increased from 142.01 mmol\/L (2025-07-24) to 142.94 mmol\/L (2026-09-17), indicating it is higher than it was last time.",
-                        "The patient's calcium increased from 9.17 mg\/dL (2025-07-24) to 9.69 mg\/dL (2026-09-17), indicating it is higher than it was last time.",
-                        "The patient's creatinine decreased from 1.27 mg\/dL (2025-07-24) to 1.22 mg\/dL (2026-09-17), indicating it is not higher than it was last time.",
-                        "The patient's triglyceride decreased from 147.78 mg\/dL (2023-09-14) to 111.9 mg\/dL (2026-09-17), indicating it is not higher than it was last time.",
-                        "The patient has a new problem of anemia."
+                        "The prior visit was on 2026-06-21.",
+                        "Anemia is a new problem identified since the last visit.",
+                        "Cholesterol in HDL decreased from 55.76 mg\/dL (2023-09-14) to 55.19 mg\/dL (2026-09-17), indicating it is lower than it was last time.",
+                        "Cholesterol in LDL increased from 29.03 mg\/dL (2023-09-14) to 106.61 mg\/dL (2026-09-17), indicating it is higher than it was last time.",
+                        "Triglycerides decreased from 147.78 mg\/dL (2023-09-14) to 111.9 mg\/dL (2026-09-17), indicating it is lower than it was last time.",
+                        "Total cholesterol increased from 114.34 mg\/dL (2023-09-14) to 184.18 mg\/dL (2026-09-17), indicating it is higher than it was last time.",
+                        "Carbon dioxide, total increased from 22.9 mmol\/L (2025-07-24) to 24.21 mmol\/L (2026-09-17), indicating it is higher than it was last time.",
+                        "Chloride increased from 107.09 mmol\/L (2025-07-24) to 107.84 mmol\/L (2026-09-17), indicating it is higher than it was last time.",
+                        "Potassium increased from 3.71 mmol\/L (2025-07-24) to 4.58 mmol\/L (2026-09-17), indicating it is higher than it was last time.",
+                        "Sodium increased from 142.01 mmol\/L (2025-07-24) to 142.94 mmol\/L (2026-09-17), indicating it is higher than it was last time.",
+                        "Calcium increased from 9.17 mg\/dL (2025-07-24) to 9.69 mg\/dL (2026-09-17), indicating it is higher than it was last time.",
+                        "Creatinine decreased from 1.27 mg\/dL (2025-07-24) to 1.22 mg\/dL (2026-09-17), indicating it is lower than it was last time.",
+                        "Urea nitrogen increased from 7.44 mg\/dL (2025-07-24) to 16.93 mg\/dL (2026-09-17), indicating it is higher than it was last time.",
+                        "Glucose increased from 80.65 mg\/dL (2025-07-24) to 82.09 mg\/dL (2026-09-17), indicating it is higher than it was last time."
                     ],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 18173
+            "ms": 11249
         },
         {
             "id": "13-live-followup-identifier-extraction",
@@ -613,8 +609,8 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 793,
-                    "tokens": 616,
+                    "ms": 711,
+                    "tokens": 815,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -627,8 +623,8 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 590,
-                    "tokens": 1934,
+                    "ms": 659,
+                    "tokens": 2133,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -641,15 +637,15 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 693,
-                    "tokens": 646,
+                    "ms": 734,
+                    "tokens": 845,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2120
+            "ms": 2159
         },
         {
             "id": "14-live-followup-other-patient",
@@ -687,7 +683,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 1,
+                    "ms": 0,
                     "tokens": 0,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -701,7 +697,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 1,
+                    "ms": 0,
                     "tokens": 0,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -709,7 +705,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 44
+            "ms": 49
         },
         {
             "id": "15-live-followup-instruction-override",
@@ -732,8 +728,8 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 749,
-                    "tokens": 630,
+                    "ms": 710,
+                    "tokens": 829,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -746,8 +742,8 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 600,
-                    "tokens": 1948,
+                    "ms": 581,
+                    "tokens": 2147,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -760,15 +756,15 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 559,
-                    "tokens": 660,
+                    "ms": 626,
+                    "tokens": 859,
                     "sentences": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 1971
+            "ms": 1982
         },
         {
             "id": "16-anchor-lab-layout1",
@@ -787,7 +783,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 45,
+                    "ms": 46,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -800,7 +796,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 70
+            "ms": 71
         },
         {
             "id": "17-anchor-lab-layout1-scan",
@@ -819,7 +815,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 2985,
+                    "ms": 2977,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -832,7 +828,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 3007
+            "ms": 3003
         },
         {
             "id": "18-anchor-hundred-in-three-columns",
@@ -851,7 +847,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 16,
+                    "ms": 17,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -884,7 +880,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 12416,
+                    "ms": 12143,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -897,7 +893,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 12439
+            "ms": 12168
         },
         {
             "id": "20-live-extract-lab-layout1-scan",
@@ -917,7 +913,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 15464,
+                    "ms": 15287,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -930,7 +926,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 15488
+            "ms": 15312
         },
         {
             "id": "21-anchor-intake-form",
@@ -949,7 +945,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 828,
+                    "ms": 806,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -962,7 +958,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 843
+            "ms": 823
         },
         {
             "id": "22-live-extract-intake-form",
@@ -982,68 +978,491 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 3645,
+                    "ms": 3457,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0,
                     "leaked_identifiers": [],
-                    "tokens": 979,
+                    "tokens": 974,
                     "model_calls": 1,
                     "results": 9,
                     "anchored": 9,
                     "unextracted": 0
                 }
             ],
-            "ms": 3660
+            "ms": 3473
         },
         {
             "id": "23-route-no-documents-no-question",
             "guards": "boundary",
             "mode": "route",
-            "result": "pending",
-            "reason": "pending: implementation has not landed",
-            "rubrics": []
+            "rubrics": {
+                "routing_correct": "pass",
+                "schema_valid": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "Nothing to do must be one hop to done, no worker and no model call.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 6,
+                    "handoffs": [
+                        [
+                            "supervisor",
+                            "done",
+                            "no_documents"
+                        ]
+                    ],
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "extractions": 0
+                }
+            ],
+            "ms": 6
         },
         {
             "id": "24-route-stored-document",
             "guards": "boundary",
             "mode": "route",
-            "result": "pending",
-            "reason": "pending: implementation has not landed",
-            "rubrics": []
+            "rubrics": {
+                "routing_correct": "pass",
+                "schema_valid": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "A stored document goes to the extractor exactly once, then done.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 6,
+                    "handoffs": [
+                        [
+                            "supervisor",
+                            "intake_extractor",
+                            "stored_document"
+                        ],
+                        [
+                            "intake_extractor",
+                            "supervisor",
+                            "worker_finished"
+                        ],
+                        [
+                            "supervisor",
+                            "done",
+                            "no_question"
+                        ]
+                    ],
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "extractions": 1
+                }
+            ],
+            "ms": 6
         },
         {
             "id": "25-route-question",
             "guards": "boundary",
             "mode": "route",
-            "result": "pending",
-            "reason": "pending: implementation has not landed",
-            "rubrics": []
+            "rubrics": {
+                "routing_correct": "pass",
+                "schema_valid": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "A question goes to the retriever, never to the extractor.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 8,
+                    "handoffs": [
+                        [
+                            "supervisor",
+                            "evidence_retriever",
+                            "question_present"
+                        ],
+                        [
+                            "evidence_retriever",
+                            "supervisor",
+                            "worker_finished"
+                        ],
+                        [
+                            "supervisor",
+                            "done",
+                            "worker_finished"
+                        ]
+                    ],
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "extractions": 0
+                }
+            ],
+            "ms": 8
         },
         {
             "id": "26-route-extracted-document-not-re-extracted",
             "guards": "boundary",
             "mode": "route",
-            "result": "pending",
-            "reason": "pending: implementation has not landed",
-            "rubrics": []
+            "rubrics": {
+                "routing_correct": "pass",
+                "schema_valid": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "An already-extracted document must not be sent to the model again (idempotency at the routing level).",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 7,
+                    "handoffs": [
+                        [
+                            "supervisor",
+                            "done",
+                            "already_extracted"
+                        ]
+                    ],
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "extractions": 0
+                }
+            ],
+            "ms": 7
         },
         {
             "id": "27-route-unsupported-doc-type",
             "guards": "boundary",
             "mode": "route",
-            "result": "pending",
-            "reason": "pending: implementation has not landed",
-            "rubrics": []
+            "rubrics": {
+                "routing_correct": "pass",
+                "schema_valid": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "A document type the graph does not support is refused at the supervisor with a reason, not passed to a worker.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 6,
+                    "handoffs": [
+                        [
+                            "supervisor",
+                            "done",
+                            "unsupported_doc_type"
+                        ]
+                    ],
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "extractions": 0
+                }
+            ],
+            "ms": 6
         },
         {
             "id": "28-route-document-and-question",
             "guards": "boundary",
             "mode": "route",
-            "result": "pending",
-            "reason": "pending: implementation has not landed",
-            "rubrics": []
+            "rubrics": {
+                "routing_correct": "pass",
+                "schema_valid": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "With an extracted document and a question, only retrieval runs.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 7,
+                    "handoffs": [
+                        [
+                            "supervisor",
+                            "evidence_retriever",
+                            "question_present"
+                        ],
+                        [
+                            "evidence_retriever",
+                            "supervisor",
+                            "worker_finished"
+                        ],
+                        [
+                            "supervisor",
+                            "done",
+                            "worker_finished"
+                        ]
+                    ],
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "extractions": 0
+                }
+            ],
+            "ms": 7
+        },
+        {
+            "id": "29-retrieve-statin-ldl",
+            "guards": "invariant",
+            "mode": "retrieve",
+            "rubrics": {
+                "schema_valid": "pass",
+                "citation_present": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "A statin question must surface the cholesterol guideline first; every chunk carries a source id, section and quote (the citation contract for guideline evidence).",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 4,
+                    "chunks": 5,
+                    "top_source_id": "acc-aha-2018-cholesterol",
+                    "reranked": false,
+                    "schema_errors": [],
+                    "uncited_kept": 0,
+                    "ungrounded_tokens": [],
+                    "answer_type": "cited"
+                }
+            ],
+            "ms": 4
+        },
+        {
+            "id": "30-retrieve-a1c-target",
+            "guards": "invariant",
+            "mode": "retrieve",
+            "rubrics": {
+                "schema_valid": "pass",
+                "citation_present": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "A glycemic-target question must surface the ADA standards.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 4,
+                    "chunks": 5,
+                    "top_source_id": "ada-2025-standards",
+                    "reranked": false,
+                    "schema_errors": [],
+                    "uncited_kept": 0,
+                    "ungrounded_tokens": [],
+                    "answer_type": "cited"
+                }
+            ],
+            "ms": 4
+        },
+        {
+            "id": "31-retrieve-anemia-workup",
+            "guards": "invariant",
+            "mode": "retrieve",
+            "rubrics": {
+                "schema_valid": "pass",
+                "citation_present": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "A low-hemoglobin question must surface the anemia summary, not the CKD or diabetes documents that also mention hemoglobin.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 3,
+                    "chunks": 5,
+                    "top_source_id": "anemia-adults-primary-care",
+                    "reranked": false,
+                    "schema_errors": [],
+                    "uncited_kept": 0,
+                    "ungrounded_tokens": [],
+                    "answer_type": "cited"
+                }
+            ],
+            "ms": 4
+        },
+        {
+            "id": "32-retrieve-off-corpus-refusal",
+            "guards": "boundary",
+            "mode": "retrieve",
+            "rubrics": {
+                "schema_valid": "pass",
+                "safe_refusal": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "A question the corpus cannot answer must return no chunks at all (the answer path then refuses with not_in_corpus); returning the least-bad chunk would let the model cite an irrelevant guideline.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 3,
+                    "chunks": 0,
+                    "top_source_id": null,
+                    "reranked": false,
+                    "schema_errors": [],
+                    "uncited_kept": 0,
+                    "ungrounded_tokens": [],
+                    "answer_type": "not_in_corpus"
+                }
+            ],
+            "ms": 3
+        },
+        {
+            "id": "33-answer-guideline-and-fact-separated",
+            "guards": "invariant",
+            "mode": "answer",
+            "rubrics": {
+                "schema_valid": "pass",
+                "citation_present": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "An answer that mixes patient facts and guideline evidence must cite each sentence to the right kind of source: the patient's A1c cites the fact, the target cites the guideline chunk; a sentence quoting a target not in the passage is stripped.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 2,
+                    "stripped": 1,
+                    "answer_type": "cited",
+                    "schema_errors": [],
+                    "uncited_kept": 0,
+                    "ungrounded_tokens": [],
+                    "guideline_cited": 1
+                }
+            ],
+            "ms": 1
+        },
+        {
+            "id": "34-answer-not-in-corpus-refusal",
+            "guards": "boundary",
+            "mode": "answer",
+            "rubrics": {
+                "schema_valid": "pass",
+                "safe_refusal": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "With no guideline evidence retrieved and no fact that answers, the model must refuse (not_in_facts) with no sentences; the harness maps a refusal with zero chunks to not_in_corpus.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 0,
+                    "stripped": 0,
+                    "answer_type": "not_in_corpus",
+                    "schema_errors": [],
+                    "uncited_kept": 0,
+                    "ungrounded_tokens": [],
+                    "guideline_cited": 0
+                }
+            ],
+            "ms": 0
+        },
+        {
+            "id": "35-answer-guideline-id-for-patient-claim",
+            "guards": "invariant",
+            "mode": "answer",
+            "rubrics": {
+                "schema_valid": "pass",
+                "citation_present": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "A number about the patient (a lab value) cited only to a guideline chunk must be stripped: the passage does not contain 8.8, so the claim is ungrounded even though the citation id exists.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 0,
+                    "stripped": 1,
+                    "answer_type": "cited",
+                    "schema_errors": [],
+                    "uncited_kept": 0,
+                    "ungrounded_tokens": [],
+                    "guideline_cited": 0
+                }
+            ],
+            "ms": 0
+        },
+        {
+            "id": "36-phi-lab-upload-logs",
+            "guards": "authorization",
+            "mode": "phi_logs",
+            "rubrics": {
+                "no_phi_in_logs": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "Uploading and extracting a lab report through the real controller must leave no patient name from the report, no filename and no extracted values in the log records or the trace payloads; every log field must be on the allowlist.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "status": "extracted",
+                    "answer_type": null,
+                    "leaked_identifiers": [],
+                    "disallowed_log_fields": [],
+                    "log_lines": 3,
+                    "trace_payloads": 1,
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "uncited_kept": 0
+                }
+            ],
+            "ms": 12031
+        },
+        {
+            "id": "37-phi-intake-upload-logs",
+            "guards": "authorization",
+            "mode": "phi_logs",
+            "rubrics": {
+                "no_phi_in_logs": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "An intake form carries a name, a date of birth, a phone number and a chief concern: none may appear in logs or traces; the mismatch flag is recorded as a fixed phrase only.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "status": "extracted",
+                    "answer_type": null,
+                    "leaked_identifiers": [],
+                    "disallowed_log_fields": [],
+                    "log_lines": 3,
+                    "trace_payloads": 1,
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "uncited_kept": 0
+                }
+            ],
+            "ms": 2949
+        },
+        {
+            "id": "38-phi-question-logs",
+            "guards": "authorization",
+            "mode": "phi_logs",
+            "rubrics": {
+                "no_phi_in_logs": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "The physician's question text (which may name a drug, a value or a person) must not appear in logs or traces; only counts, ids and codes do.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "status": "extracted",
+                    "answer_type": "not_in_facts",
+                    "leaked_identifiers": [],
+                    "disallowed_log_fields": [],
+                    "log_lines": 7,
+                    "trace_payloads": 3,
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "uncited_kept": 0
+                }
+            ],
+            "ms": 9635
         }
     ]
 }

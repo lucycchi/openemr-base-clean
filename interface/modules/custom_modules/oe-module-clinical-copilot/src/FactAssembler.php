@@ -129,7 +129,9 @@ final class FactAssembler
         // Only labs since the prior visit produce facts, but older labs stay
         // in the sorted list so previousResult() can find the value to diff against.
         foreach ($labs as $i => $l) {
-            if (!$this->isNew($l->date, $since)) {
+            // Week 2: a result read from an uploaded document is new information
+            // even for a patient with no prior visit to compare against.
+            if (!$this->isNew($l->date, $since) && !($l->citation !== null && $since === null)) {
                 continue;
             }
             // Abnormal: outside the reference range for a LOINC we know.
@@ -169,14 +171,14 @@ final class FactAssembler
         // Week 2: intake-form entries and document-vs-chart mismatches since the prior visit.
         foreach ($this->chart->intakeRecords($pid) as $r) {
             $category = $r->category();
-            if ($category !== null && $this->isNew($r->uploadedAt, $since)) {
+            if ($category !== null && ($since === null || $this->isNew($r->uploadedAt, $since))) {
                 $facts[] = $this->fact('IntakeForm', $r->id, $r->kind, $r->describe(), $category, $r->citation);
             }
         }
 
         // Week 2: what the document extractor could not verify is shown, not hidden.
         foreach ($this->chart->unverifiedExtractions($pid) as $u) {
-            if ($this->isNew($u->uploadedAt, $since)) {
+            if ($since === null || $this->isNew($u->uploadedAt, $since)) {
                 $facts[] = $this->fact('DocumentExtraction', $u->id, $u->kind, $u->describe(), FactCategory::ExtractionUnverified, $u->citation);
             }
         }
