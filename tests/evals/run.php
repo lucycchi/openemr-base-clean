@@ -242,7 +242,7 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         // Verifier must strip; the output after stripping must conform).
         $schemaErrors = [];
         foreach ($facts->all() as $f) {
-            $row = ['id' => $f->id, 'category' => $f->category->value, 'value' => $f->value, 'source' => sprintf('%s#%d.%s', $f->service, $f->recordId, $f->field), 'must_surface' => $f->category->mustSurface()];
+            $row = ['id' => $f->id, 'category' => $f->category->value, 'value' => $f->value, 'source' => sprintf('%s#%d.%s', $f->service, $f->recordId, $f->field), 'must_surface' => $f->category->mustSurface(), 'citation' => $f->citationOrChart()->toArray()];
             $schemaErrors = [...$schemaErrors, ...schemaErrors('fact', json_decode(json_encode($row, JSON_THROW_ON_ERROR)))];
         }
         $verifiedOut = ['sentences' => array_map(fn(Sentence $s) => ['text' => $s->text, 'fact_ids' => $s->factIds], $verified->kept())];
