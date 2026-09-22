@@ -1,8 +1,8 @@
 {
   "id": "20-live-extract-lab-layout1-scan",
-  "guards": "invariant",
+  "guards": "regression",
   "live": true,
-  "failure_mode": "The scanned report through OCR and the real model.",
+  "failure_mode": "The same omission risk over OCR text, where row order and spacing are noisier: every printed result must survive OCR, the per-page calls and anchoring, with no invented row.",
   "mode": "extract",
   "doc_type": "lab_pdf",
   "fixture": "lab-layout1-scan.pdf",

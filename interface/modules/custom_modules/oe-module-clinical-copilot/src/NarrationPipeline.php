@@ -244,85 +244,17 @@ final class NarrationPipeline
         );
     }
 
-    /**
-     * Cosmetic cleanup of one sentence's text. Models sometimes leak inline
-     * "[id]" citations or JSON punctuation into sentence text. Citations live
-     * in fact_ids, so remove the inline echoes, then trim anything that is not
-     * sentence text from both ends.
-     *
-     * This is NOT the safety gate — the Verifier is. Scrub only tidies what
-     * the verifier will then judge.
-     *
-     * @param list<string> $ids  The fact ids this sentence claims to cite.
-     */
-    private function scrub(string $text, array $ids): string
-    {
-        // Remove bracketed citation lists like "[a1b2c3d4, e5f6a7b8]" when every
-        // token is either one of this sentence's fact_ids or looks like an
-        // 8-char hex fact id. Anything else in brackets is left alone.
-        $text = preg_replace_callback(
-            '/\s*\[([A-Za-z0-9]+(?:\s*,\s*[A-Za-z0-9]+)*)\]/',
-            static function (array $m) use ($ids): string {
-                $tokens = preg_split('/\s*,\s*/', $m[1]) ?: [];
-                $allCited = array_diff($tokens, $ids) === [];
-                $allHexIds = array_filter($tokens, static fn(string $t) => !preg_match('/^[0-9a-f]{8}$/', $t)) === [];
-                return ($allCited || $allHexIds) ? '' : $m[0];
-            },
-            $text
-        ) ?? $text;
-        // Strip leaked JSON scaffolding: leading braces/quotes/`"text":`, trailing braces/quotes/commas.
-        $text = preg_replace('/^[\s{}\[\]",:]*(?:text"?\s*:\s*"?)?/', '', $text) ?? $text;
-        $text = preg_replace('/[\s{}\[\]",:]+$/', '', $text) ?? $text;
-        // Remove space before punctuation ("mg ." -> "mg.") and trim.
-        $text = trim(preg_replace('/\s+([.,;:!?])/', '$1', $text) ?? $text);
-        // Make sure it ends like a sentence.
-        if ($text !== '' && !preg_match('/[.!?]$/', $text)) {
-            $text .= '.';
-        }
-        return $text;
-    }
 
     /**
-     * Convert the model's decoded JSON into a typed Narration (a list of
-     * Sentence objects, each with text + fact ids). This is "parse, don't
-     * validate": the JSON schema should guarantee the shape, but we still
-     * narrow every value with is_array / is_string and silently drop
-     * anything malformed rather than throwing. A malformed item costs one
-     * sentence, not the whole briefing.
+     * Convert the model's decoded JSON into a typed Narration. The parsing,
+     * including the recovery of citations the model wrote inline and the
+     * scrubbing of the sentence text, lives in ModelOutput so the eval
+     * harness exercises exactly the parser production runs.
      *
-     * @param array<string, mixed> $data  Decoded JSON, expected shape {"sentences": [{"text": "...", "fact_ids": ["..."]}]}.
+     * @param array<string, mixed> $data
      */
     private function narrationFrom(array $data): Narration
     {
-        $sentences = [];
-        $raw = $data['sentences'] ?? [];
-        if (is_array($raw)) {
-            foreach ($raw as $item) {
-                if (!is_array($item) || !is_string($item['text'] ?? null)) {
-                    continue;
-                }
-                $ids = [];
-                foreach (is_array($item['fact_ids'] ?? null) ? $item['fact_ids'] : [] as $id) {
-                    if (is_string($id)) {
-                        $ids[] = $id;
-                    }
-                }
-                // Week 2: models sometimes cite a guideline passage inline
-                // ("[e0f60b55960c]") and leave fact_ids empty because the field
-                // is named for facts. A bracketed id is a citation; recover it
-                // so the Verifier judges the sentence against what was cited.
-                if (preg_match_all('/\[([0-9a-f]{8,12}(?:\s*,\s*[0-9a-f]{8,12})*)\]/', $item['text'], $m)) {
-                    foreach ($m[1] as $group) {
-                        foreach (preg_split('/\s*,\s*/', $group) ?: [] as $id) {
-                            if (!in_array($id, $ids, true)) {
-                                $ids[] = $id;
-                            }
-                        }
-                    }
-                }
-                $sentences[] = new Sentence($this->scrub($item['text'], $ids), $ids);
-            }
-        }
-        return new Narration($sentences);
+        return ModelOutput::narration($data);
     }
 }

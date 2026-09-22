@@ -1,7 +1,7 @@
 {
   "id": "25-route-question",
   "guards": "boundary",
-  "failure_mode": "A question goes to the retriever, never to the extractor.",
+  "failure_mode": "A question must route to the evidence retriever and never to the extractor: sending a question through the document path would spend a model call on parsing and leave the question unanswered.",
   "mode": "route",
   "state": {
     "mode": "answer",

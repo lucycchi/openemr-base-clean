@@ -181,12 +181,42 @@ def intake_full(out: Path) -> None:
     (out / "intake-full-scan.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
 
 
+def malformed(out: Path) -> None:
+    """Inputs the ingestion path must refuse, one per failure reason:
+    corrupt.pdf        a truncated file: the parser cannot open it (unreadable)
+    lab-encrypted.pdf  password-protected (encrypted)
+    lab-6page.pdf      six pages, one over the cap (too_many_pages)
+    lab-blank-scan.pdf a scanned page with nothing on it (unreadable after OCR)
+    """
+    good = fitz.open()
+    p = good.new_page(width=612, height=792)
+    p.insert_text((50, 60), "SYNTHETIC LABS INC", fontsize=13)
+    p.insert_text((50, 80), f"Patient: {PATIENT}  Collected: 2026-09-15", fontsize=9)
+    p.insert_text((50, 110), "Glucose 92 mg/dL 70-99", fontsize=10)
+    (out / "corrupt.pdf").write_bytes(good.tobytes()[: len(good.tobytes()) // 3])
+    (out / "lab-encrypted.pdf").write_bytes(good.tobytes(encryption=fitz.PDF_ENCRYPT_AES_256, user_pw="secret", owner_pw="secret"))
+    long_doc = fitz.open()
+    for i in range(6):
+        pg = long_doc.new_page(width=612, height=792)
+        pg.insert_text((50, 60), f"SYNTHETIC LABS INC page {i + 1} of 6", fontsize=11)
+        pg.insert_text((50, 100), "Glucose 92 mg/dL 70-99", fontsize=10)
+    long_doc.save(out / "lab-6page.pdf", garbage=4, deflate=True)
+    blank = fitz.open()
+    page = blank.new_page(width=612, height=792)
+    pix = page.get_pixmap(dpi=100)
+    scan = fitz.open()
+    sp = scan.new_page(width=612, height=792)
+    sp.insert_image(sp.rect, stream=pix.tobytes("jpeg", jpg_quality=60))
+    scan.save(out / "lab-blank-scan.pdf", garbage=4, deflate=True)
+
+
 def main() -> None:
     out = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
     out.mkdir(parents=True, exist_ok=True)
     lab_layout1(out)
     lab_layout2(out)
     intake_full(out)
+    malformed(out)
     print("wrote", sorted(p.name for p in out.glob("*.pdf")))
 
 

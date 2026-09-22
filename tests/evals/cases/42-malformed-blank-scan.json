@@ -1,0 +1,17 @@
+{
+  "id": "42-malformed-blank-scan",
+  "guards": "boundary",
+  "failure_mode": "A scanned page with nothing on it yields no OCR words: the document must be refused as unreadable rather than extracted as a report with zero results.",
+  "mode": "malformed",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-blank-scan.pdf",
+  "rubrics": {
+    "safe_refusal": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "status": "failed",
+    "reason": "unreadable",
+    "model_calls": 0
+  }
+}

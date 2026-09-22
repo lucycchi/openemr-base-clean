@@ -1,0 +1,35 @@
+{
+  "id": "45-regression-inline-guideline-citation",
+  "guards": "regression",
+  "failure_mode": "Regression found 2026-09-22: the model cited a guideline passage inline ('... [a1b2c3d4e5f6].') and left fact_ids empty because the field is named for facts; every guideline sentence was stripped as uncited. The parser now recovers bracketed ids into fact_ids.",
+  "mode": "answer",
+  "facts": [],
+  "chunks": [
+    {
+      "chunk_id": "a1b2c3d4e5f6",
+      "source_id": "acc-aha-2018-cholesterol",
+      "title": "2018 AHA/ACC Guideline on the Management of Blood Cholesterol (summary)",
+      "section": "2018 AHA/ACC cholesterol guideline (summary) > Who benefits from statin therapy",
+      "quote": "For an LDL of 190 mg/dL or higher, high-intensity statin therapy is recommended without a risk calculation."
+    }
+  ],
+  "narration": {
+    "answer_type": "cited",
+    "sentences": [
+      {
+        "text": "For an LDL of 190 mg/dL or higher, high-intensity statin therapy is recommended without a risk calculation [a1b2c3d4e5f6].",
+        "fact_ids": []
+      }
+    ]
+  },
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "kept": 1,
+    "stripped": 0,
+    "guideline_cited": 1
+  }
+}

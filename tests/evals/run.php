@@ -51,6 +51,7 @@ use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
 use OpenEMR\Modules\ClinicalCopilot\Fact;
 use OpenEMR\Modules\ClinicalCopilot\FactCategory;
 use OpenEMR\Modules\ClinicalCopilot\FactSet;
+use OpenEMR\Modules\ClinicalCopilot\ModelOutput;
 use OpenEMR\Modules\ClinicalCopilot\Narration;
 use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
 use OpenEMR\Modules\ClinicalCopilot\Sentence;
@@ -88,16 +89,16 @@ function factsFrom(array $rows): FactSet
     return new FactSet($facts);
 }
 
-/** Builds a Narration from the "narration" fixture in a recorded case file (same shape as model output). @param array<string, mixed> $data */
+/**
+ * Builds a Narration from the "narration" fixture in a recorded case file.
+ * Delegates to the production parser (ModelOutput), so a case exercises the
+ * same inline-citation recovery and scrubbing the panel gets, not a copy.
+ *
+ * @param array<string, mixed> $data
+ */
 function narrationFrom(array $data): Narration
 {
-    $sentences = [];
-    foreach (is_array($data['sentences'] ?? null) ? $data['sentences'] : [] as $s) {
-        if (is_array($s)) {
-            $sentences[] = new Sentence((string) ($s['text'] ?? ''), array_values(array_map('strval', is_array($s['fact_ids'] ?? null) ? $s['fact_ids'] : [])));
-        }
-    }
-    return new Narration($sentences);
+    return ModelOutput::narration($data);
 }
 
 /** Rubric names the gate understands; a case lists the ones that apply to it. */
@@ -271,6 +272,56 @@ function scoreIntake(array $run, array $doc, array $truth): array
     $run['anchored'] = $anchored;
     $run['unextracted'] = 0;
     return $run;
+}
+
+/**
+ * Malformed-input case: a document the ingestion path must refuse. The parse
+ * step fails before any model call, so this is deterministic. expect.reason is
+ * the failure_reason code the sidecar must return (unreadable, encrypted,
+ * too_many_pages); anything else, including a "successful" extraction, fails.
+ *
+ * @param array<string, mixed> $case
+ * @return array<string, mixed>
+ */
+function runMalformedCase(array $case): array
+{
+    $t = hrtime(true);
+    $response = sidecarPost('/eval/extract', ['fixture' => (string) $case['fixture'], 'doc_type' => (string) $case['doc_type'], 'document_id' => 1, 'proposal' => new stdClass()]);
+    $extraction = is_array($response['extraction'] ?? null) ? $response['extraction'] : [];
+    return [
+        'ms' => (int) round((hrtime(true) - $t) / 1e6),
+        'status' => $extraction['status'] ?? null,
+        'reason' => $extraction['failure_reason'] ?? null,
+        'model_calls' => count(is_array($response['usage'] ?? null) ? $response['usage'] : []),
+        'schema_errors' => [],
+        'ungrounded_tokens' => [],
+        'uncited_kept' => 0,
+        'anchor_errors' => [],
+    ];
+}
+
+/**
+ * Absent-item case: a proposal whose values the document does not contain.
+ * Every item must come back unverified; one anchored item is a failure,
+ * because it means the anchor step accepted an invented value.
+ *
+ * @param array<string, mixed> $case
+ * @return array<string, mixed>
+ */
+function runAbsentCase(array $case): array
+{
+    $t = hrtime(true);
+    $response = sidecarPost('/eval/anchor-absent', ['fixture' => (string) $case['fixture'], 'doc_type' => (string) $case['doc_type'], 'document_id' => 1, 'proposal' => is_array($case['proposal'] ?? null) ? $case['proposal'] : []]);
+    $anchored = is_array($response['anchored'] ?? null) ? $response['anchored'] : [];
+    return [
+        'ms' => (int) round((hrtime(true) - $t) / 1e6),
+        'status' => $response['status'] ?? null,
+        'anchored_absent' => count($anchored),
+        'anchor_errors' => array_map(fn($a) => sprintf('"%s" was anchored but is not in the document', (string) $a), $anchored),
+        'schema_errors' => [],
+        'ungrounded_tokens' => [],
+        'uncited_kept' => 0,
+    ];
 }
 
 /**
@@ -503,7 +554,11 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     // patient); every run is compared against the same expectations.
     $started = hrtime(true);
     $runs = [];
-    if ($mode === 'phi_logs') {
+    if ($mode === 'malformed') {
+        $runs[] = runMalformedCase($case);
+    } elseif ($mode === 'absent') {
+        $runs[] = runAbsentCase($case);
+    } elseif ($mode === 'phi_logs') {
         // Live: the real controllers with a capturing logger and tracer (tests/evals/phi.php).
         require_once __DIR__ . '/phi.php';
         $truth = json_decode((string) file_get_contents(__DIR__ . '/fixtures/docs/' . (string) $case['truth']), true, 32, JSON_THROW_ON_ERROR);

@@ -59,6 +59,8 @@ if [ "$stage" != "self-test" ]; then
         echo "gate: sidecar pytest ($sidecar)"
         if docker exec "$sidecar" python -m pytest -q -p no:cacheprovider >"$log" 2>&1; then tail -1 "$log"; else tail -25 "$log"; echo "gate: sidecar pytest failed (push refused)" >&2; rm -f "$log"; exit 1; fi
     fi
+    echo "gate: case index (every case declares a guards category and a failure mode)"
+    if openemr-cmd e "cd /var/www/localhost/htdocs/openemr && php tests/evals/case-index.php --check" >"$log" 2>&1; then :; else cat "$log"; echo "gate: case index check failed (push refused)" >&2; rm -f "$log"; exit 1; fi
     echo "gate: module isolated PHPUnit"
     # The exit code of phpunit must survive: no pipes inside the container command.
     if openemr-cmd e "cd /var/www/localhost/htdocs/openemr && vendor/bin/phpunit -c phpunit-isolated.xml --filter ClinicalCopilot --no-coverage" >"$log" 2>&1; then grep -E "^OK|^Tests:" "$log" | tail -1; else tail -25 "$log"; echo "gate: module PHPUnit failed (push refused)" >&2; rm -f "$log"; exit 1; fi

@@ -1,8 +1,8 @@
 {
   "id": "19-live-extract-lab-layout1",
-  "guards": "invariant",
+  "guards": "regression",
   "live": true,
-  "failure_mode": "The real parser and model on the 5-page report: every printed result extracted and anchored; the per-page calls must not omit rows (the single-call variant omitted 7 of 20).",
+  "failure_mode": "Regression found 2026-09-22: one model call for a five-page report omitted 7 of 20 printed rows. The extractor now calls per page and retries the rows the omission detector finds, so every printed result must come back from the real model and anchor to its own row.",
   "mode": "extract",
   "doc_type": "lab_pdf",
   "fixture": "lab-layout1.pdf",

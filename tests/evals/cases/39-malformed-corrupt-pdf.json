@@ -1,0 +1,17 @@
+{
+  "id": "39-malformed-corrupt-pdf",
+  "guards": "boundary",
+  "failure_mode": "A truncated file that starts with %PDF: the parser must refuse it as unreadable and the document must be marked failed, with no model call and no partial extraction written.",
+  "mode": "malformed",
+  "doc_type": "lab_pdf",
+  "fixture": "corrupt.pdf",
+  "rubrics": {
+    "safe_refusal": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "status": "failed",
+    "reason": "unreadable",
+    "model_calls": 0
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "40-malformed-encrypted-pdf",
+  "guards": "boundary",
+  "failure_mode": "A password-protected PDF must be refused as encrypted, not silently read as empty; the physician is told the file needs the password rather than shown an empty extraction.",
+  "mode": "malformed",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-encrypted.pdf",
+  "rubrics": {
+    "safe_refusal": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "status": "failed",
+    "reason": "encrypted",
+    "model_calls": 0
+  }
+}

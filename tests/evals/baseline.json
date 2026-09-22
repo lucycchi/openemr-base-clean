@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T10:18:21+00:00",
+    "ran_at": "2026-09-22T15:51:02+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -119,6 +119,36 @@
             "factually_consistent": "pass"
         },
         "35-answer-guideline-id-for-patient-claim": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "39-malformed-corrupt-pdf": {
+            "schema_valid": "pass"
+        },
+        "40-malformed-encrypted-pdf": {
+            "schema_valid": "pass"
+        },
+        "41-malformed-too-many-pages": {
+            "schema_valid": "pass"
+        },
+        "42-malformed-blank-scan": {
+            "schema_valid": "pass"
+        },
+        "43-absent-lab-values-unverified": {
+            "anchor_correct": "pass",
+            "citation_present": "pass"
+        },
+        "44-absent-intake-items-unverified": {
+            "anchor_correct": "pass",
+            "citation_present": "pass"
+        },
+        "45-regression-inline-guideline-citation": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "46-regression-year-in-guideline-heading": {
             "schema_valid": "pass",
             "citation_present": "pass",
             "factually_consistent": "pass"

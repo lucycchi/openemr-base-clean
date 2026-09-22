@@ -128,6 +128,27 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), "eval-anchor", proposal=proposal)
         return json.loads(outcome.extraction.model_dump_json())
 
+    @app.post("/eval/anchor-absent")
+    def eval_anchor_absent(req: AnchorEvalRequest) -> dict:
+        """Anchors a proposal whose items the document does not contain: every
+        one must come back unverified. The harness uses this to prove the
+        anchor step refuses invented values, not only that it accepts real ones."""
+        path = (FIXTURES_ROOT / req.fixture).resolve()
+        if FIXTURES_ROOT not in path.parents or not path.is_file():
+            raise HTTPException(404, "fixture not found")
+        model = LabReportProposal if req.doc_type == "lab_pdf" else IntakeFormProposal
+        outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), "eval-anchor-absent", proposal=model.model_validate(req.proposal))
+        ext = outcome.extraction.extraction
+        if ext is None:
+            return {"status": outcome.extraction.status, "anchored": None}
+        if req.doc_type == "lab_pdf":
+            anchored = [r.analyte for r in ext.results if r.citation.anchored]
+        else:
+            anchored = [m.name for m in ext.medications if m.citation.anchored] + [a.substance for a in ext.allergies if a.citation.anchored] + [f.condition for f in ext.family_history if f.citation.anchored]
+            if ext.chief_concern is not None and ext.chief_concern.citation.anchored:
+                anchored.append(ext.chief_concern.value)
+        return {"status": outcome.extraction.status, "anchored": anchored}
+
     @app.post("/eval/retrieve")
     def eval_retrieve(req: RetrieveEvalRequest) -> dict:
         """Hybrid retrieval with a supplied query embedding (offline) or a live one."""

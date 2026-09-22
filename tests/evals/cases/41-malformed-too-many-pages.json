@@ -1,0 +1,17 @@
+{
+  "id": "41-malformed-too-many-pages",
+  "guards": "boundary",
+  "failure_mode": "A document longer than the page cap must be refused before parsing, so a 200-page fax cannot blow the extraction budget or the request timeout.",
+  "mode": "malformed",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-6page.pdf",
+  "rubrics": {
+    "safe_refusal": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "status": "failed",
+    "reason": "too_many_pages",
+    "model_calls": 0
+  }
+}

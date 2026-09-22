@@ -143,6 +143,29 @@ new anchor-mode eval cases, never prompt changes. Lab and intake documents
 are scored separately. Numeric scores are mirrored to Langfuse; document
 text is not. Details: design doc Phase 4b.
 
+## Test design: boundaries, invariants, regressions
+
+The eval suite is designed against failure, not against the happy path. Every
+case declares a `guards` category and a plain-English `failure_mode`, and
+`tests/evals/case-index.php --check` (run by the gate) refuses a push if a
+case is missing either, or if the generated table in
+[../tests/evals/README.md](../tests/evals/README.md) is stale.
+
+| Category | Cases | What it means here |
+|---|---|---|
+| invariant | 20 | Something that must hold on every run: a claim cites a source, a value is found on the page in its own row, a must-surface fact is never dropped, an invented value never anchors |
+| boundary | 15 | The edges: an empty fact set, a question outside the briefing window, an off-corpus question, and malformed input (truncated, encrypted, over-long, blank-scan PDFs) |
+| regression | 5 | Things that broke once: the inline citation group (Week 1), one model call omitting 7 of 20 rows, OCR omissions, a guideline passage cited inline with an empty id list, a year that lives in a passage's heading |
+| authorization | 6 | Identifier extraction, cross-patient questions, instruction override, and PHI in logs and traces from the real controllers |
+
+Two design rules keep the "clean" fixtures honest. First, every fixture that
+can be extracted correctly has a sibling case that feeds a **wrong or absent
+value** through the same path and requires it to come back unverified (cases
+18, 43, 44). Second, the cases that look like a happy run are there because
+they failed once: the five-page report is the case that exposed the model
+omitting 7 of 20 printed rows, and the scanned copy is the case that exposed
+OCR unit mangling.
+
 ## Findings and open issues (running log)
 
 1. **Case 09 is flaky on one patient.** `09-live-seed-patients-zero-strips`
