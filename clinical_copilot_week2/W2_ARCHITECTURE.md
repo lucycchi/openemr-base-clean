@@ -209,6 +209,18 @@ fail the gate if any sidecar line lacks the request's id.
 
 ## Findings and open issues (running log)
 
+- **2026-09-22, follow-up answers capped at six sentences** (`Prompt::VERSION`
+  `2026-09-22.5`). The live gate refused three pushes on case 12: for the
+  28-fact seed chart, the ambiguous question "Is it higher than it was last
+  time?" made the model enumerate every changed value (10-25 sentences,
+  4-10 s, and past the 20 s limit on a slow provider day) with an unchanged
+  prompt. Measured caps of 3, 6 and 10 sentences (five calls each): medians
+  1.2 s, 3.5 s and 4.5 s against 7-8 s uncapped, all answers still cited.
+  Six was chosen: room for a value, its date, the comparison, a second value
+  and the required guideline sentence; the fact table beside the answer
+  still lists everything and the omission guard is unchanged. Data, script
+  and rejected alternatives: [experiments/answer-length-cap.md](experiments/answer-length-cap.md).
+
 1. **Case 09 is flaky on one patient.** `09-live-seed-patients-zero-strips`
    briefs the ten busiest seed patients with the real model; pid 22 timed
    out twice on 2026-09-22 (about 24 s, the Week 1 client timeout) while

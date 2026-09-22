@@ -10,6 +10,7 @@ eval gate). Week 1 documents stay in [../clinical_copilot_week1/](../clinical_co
 | [DESIGN.md](DESIGN.md) | The approved design record and the phased TODO list, with decisions and the review history (three Claude passes, two Codex passes). Ticked as phases complete. |
 | [DOCUMENT_SOURCES.md](DOCUMENT_SOURCES.md) | Candidate sources for sample lab reports and intake forms, the no-real-patient rule, vetting status, and how a chosen source becomes a fixture. |
 | [STATIC_ANALYSIS.md](STATIC_ANALYSIS.md) | PHPStan level 10 for the Co-Pilot code: where the 544 errors were, the five root causes and their fixes, the decisions (typed readers, honest parser types, spike scripts excluded), and how to keep the run at zero. |
+| [experiments/](experiments/answer-length-cap.md) | Measured decisions with their data and scripts. So far: the follow-up answer-length cap (uncapped vs 3, 6, 10 sentences; five timed calls each; six chosen). |
 | [ENGINEERING_REQUIREMENTS.md](ENGINEERING_REQUIREMENTS.md) | The graded engineering requirements re-audited against the Week 2 code, one by one: how each is met, the decisions and trade-offs, how to verify it, what is open. Test design (1), correlation id (2) and contracts (3) so far. |
 
 ## Documents kept next to what they describe

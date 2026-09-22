@@ -29,7 +29,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final class Prompt
 {
-    public const VERSION = '2026-09-22.4';
+    public const VERSION = '2026-09-22.5';
 
     // The grounding contract, stated to the model in plain language. The
     // Verifier enforces rules 1, 2 and 5 mechanically afterwards; the rest
@@ -61,6 +61,10 @@ TXT;
             . "\nA sentence about this patient (a value, a date, a medication) must cite fact ids. A sentence about what a guideline recommends must cite the passage id in fact_ids (the same list that holds fact ids; passage ids are 12 characters), quote its numbers exactly, and must not present the recommendation as a fact about this patient. Keep the two kinds of sentence separate; never cite a guideline id for a statement about the patient. Rule 3 above forbids advice of your own; restating what a cited guideline passage says is not your own advice and is expected."
             . "\nWhen the question asks whether to start, stop or change a treatment, or asks for a target or threshold, and a guideline passage on that topic is provided, include at least one sentence stating what that passage says, cited to its id, after any sentences about the patient's own values."
             . "\nSet answer_type to not_in_facts and write no sentences only when neither the facts nor the guideline passages contain the answer."
+            // Answer-length cap (decision 2026-09-22, measured on the 28-fact seed chart: uncapped answers to an
+            // ambiguous question ran to 25 sentences and 4-10 s, past the 20 s limit on a slow day; six sentences
+            // answer in ~3.5 s and hold what a clinician reads first). The fact table below the answer still shows everything.
+            . "\nAnswer in at most six sentences: the most recent value, its date, the direct comparison the question asks for, and any guideline sentence the rules above require. Do not enumerate every changed value; the physician has the full fact list beside the answer."
             . "\nThe facts describe exactly one patient: the one whose chart is open. If the question is about a different patient, another person, or a patient referred to by a number or name, the facts cannot answer it: set answer_type to not_in_facts. Never answer a question about someone else with this patient's facts.";
     }
 
