@@ -20,6 +20,8 @@ boundary, an invariant, or a known regression; none is a happy-path demo.
 
 ## The gate (Week 2)
 
+Context for everything in this section: [clinical_copilot_week2/](../../clinical_copilot_week2/README.md) (architecture, design record with the TODO list, document sources).
+
 `gate.php` runs this harness, turns each case's **rubrics** into per-rubric
 pass rates and compares them with a committed baseline. Its exit code is the
 push gate. `install-hooks.sh` installs it as `.git/hooks/pre-push`.

@@ -1,5 +1,7 @@
 # VPS deployment (flex image, single box)
 
+Week 2 adds a second service, `copilot-sidecar`, built on the VPS by `deploy.sh` from the module's `sidecar/` directory; see [clinical_copilot_week2/W2_ARCHITECTURE.md](../../clinical_copilot_week2/W2_ARCHITECTURE.md).
+
 Deploys this fork, including its custom modules, on one VPS. This is a
 dev-flavored deploy chosen for the Wednesday gate; a custom-built image is
 tracked in `TODOS.md`.

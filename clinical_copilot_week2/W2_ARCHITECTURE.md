@@ -54,6 +54,16 @@ the droplet has no RAM to spare for a local cross-encoder, and the PRD names
 Cohere first. `bge-reranker-base` is the documented equivalent for an
 offline deployment; it is not built this week.
 
+## Where things are
+
+Code: the module at `interface/modules/custom_modules/oe-module-clinical-copilot/`
+(`sidecar/` for Python, `src/Documents/` and `src/Controller/DocumentController.php`
+for PHP, `public/documents.php`, `public/assets/source-viewer.js`, `sql/0_1_1-to-0_1_2_upgrade.sql`).
+Evals and the gate: `tests/evals/` ([README](../tests/evals/README.md)).
+Deploy: `docker/vps/` ([README](../docker/vps/README.md)). The full index of
+Week 2 documents, including the ones kept beside code, is
+[README.md](README.md) in this folder.
+
 ## Tools, by step (decided; see the design doc for the decision record)
 
 | Step | Tool | Status |

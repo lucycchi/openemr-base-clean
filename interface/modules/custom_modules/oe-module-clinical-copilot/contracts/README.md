@@ -1,5 +1,7 @@
 # Clinical Co-Pilot contracts
 
+Week 2 contracts (citation, lab-report, intake-form, handoff, run.*) are explained in context in [clinical_copilot_week2/W2_ARCHITECTURE.md](../../../../../clinical_copilot_week2/W2_ARCHITECTURE.md).
+
 JSON Schema (draft 2020-12) for every input and output the agent exchanges
 with the browser, the model provider, and operators. **These files are the
 source of truth.** The PHP implementation conforms to them and is held to
@@ -20,6 +22,7 @@ and `ChatRequestTest.php`, which run on every commit (`openemr-cmd pit`).
 | `llm.followup.output.schema.json` | OpenAI → `OpenAiClient`, follow-up | Same, via `Prompt::followUpSchema()`. |
 | `fact.schema.json` | shared: one row of the fact table | `$ref`'d by the three response contracts; its `category` enum is asserted equal to `FactCategory::cases()`. |
 | `sentence.schema.json` | shared: one cited sentence | `$ref`'d by the response contracts. |
+| `loinc_map.json` | shared (Week 2): analyte name to LOINC and canonical unit | Read by the sidecar's anchor step (`sidecar/copilot_sidecar/anchor.py`) to code results and flag unit mismatches. Not a schema; a coding table. |
 | `citation.schema.json` | shared (Week 2): provenance for one claim or extracted field, with the bounding box for document sources | `$ref`'d by the extraction contracts; `Fact::citation` and the panel render it. Written by hand first; the sidecar's Pydantic export must equal it (pytest). |
 | `lab-report.schema.json` | sidecar → PHP: extraction of a lab PDF | Validated by PHP before persisting; sent to OpenAI as the Structured Output schema by the sidecar. `tests/evals` extract and anchor cases validate fixtures against it. |
 | `intake-form.schema.json` | sidecar → PHP: extraction of an intake form | Same. |
