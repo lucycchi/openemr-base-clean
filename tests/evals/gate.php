@@ -8,7 +8,7 @@
  * exit code is the gate: 0 means push, 1 means refuse. The pre-push hook
  * written by tests/evals/install-hooks.sh calls this script.
  *
- * Rule (docs/designs/week2-multimodal-evidence-agent.md, "Rubrics and
+ * Rule (clinical_copilot_week2/DESIGN.md, "Rubrics and
  * thresholds"): the gate fails if any rubric's pass rate is below its
  * threshold, or if any case that passed a rubric in the baseline now fails
  * it and that rubric's pass rate, computed over the case ids present in both

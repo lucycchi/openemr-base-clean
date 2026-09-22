@@ -275,7 +275,7 @@ on the droplet.
 - [ ] 4b.3 Storage: local `sidecar/review/reviews.jsonl` (document id, sha, reviewer, human score, self score, field marks with paths only, corrected values, timestamp); numeric scores mirrored to Langfuse as `human_extraction_score` and `system_self_score` on the document's trace. No document text in either store.
 - [ ] 4b.4 `tests/evals/calibration.php`: per-document pairs, exact-agreement rate, mean absolute difference, and the fields driving disagreement; result recorded as a `KEY_METRICS.md` metric.
 - [ ] 4b.5 Export: a reviewed document's corrections become `<name>.truth.json` and a new anchor-mode case; corrections never feed a prompt automatically. Repeat-review one document a week to measure reviewer drift.
-- [ ] 4b.6 `tests/evals/fixtures/docs/SOURCES.md` holds every candidate source; Lucy vets them (fictional data, terms) and marks the chosen ones; each fixture built from a source records what was changed. Real-form fixtures include at least one hand-filled, scanned intake.
+- [ ] 4b.6 `clinical_copilot_week2/DOCUMENT_SOURCES.md` holds every candidate source; Lucy vets them (fictional data, terms) and marks the chosen ones; each fixture built from a source records what was changed. Real-form fixtures include at least one hand-filled, scanned intake.
 
 ### Phase 5: Supervisor + two workers (Tuesday, ~2 h)
 

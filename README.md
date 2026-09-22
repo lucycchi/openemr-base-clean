@@ -44,7 +44,7 @@ All Clinical Co-Pilot documentation lives in [clinical_copilot/](clinical_copilo
 | [tests/evals/README.md](tests/evals/README.md) | Eval suite: cases, failure modes, how to run |
 | [docker/vps/README.md](docker/vps/README.md) | Deployment |
 | [TODOS.md](TODOS.md) | Known debt and deferred work, including the two open items from the Week 1 grader feedback |
-| [docs/designs/week2-multimodal-evidence-agent.md](docs/designs/week2-multimodal-evidence-agent.md) | Week 2 plan (approved design doc with the phased TODO list) |
+| [clinical_copilot_week2/](clinical_copilot_week2/README.md) | **Week 2** (multimodal evidence agent): architecture, design record with the TODO list, document sources |
 
 **Deployed:** https://146-190-139-37.sslip.io (login `admin`; demo data). Health: [/health](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php) · [/ready](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php)
 

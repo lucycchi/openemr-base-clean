@@ -4,7 +4,7 @@
 
 Two items from the Week 1 submission review. Both are documentation, both
 are scheduled as tasks 9.1 and 9.2 in
-[docs/designs/week2-multimodal-evidence-agent.md](docs/designs/week2-multimodal-evidence-agent.md).
+[clinical_copilot_week2/DESIGN.md](clinical_copilot_week2/DESIGN.md).
 
 ### Cost analysis: per-tier architectural changes
 
