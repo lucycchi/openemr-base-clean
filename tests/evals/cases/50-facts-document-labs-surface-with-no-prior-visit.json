@@ -1,0 +1,28 @@
+{
+  "id": "50-facts-document-labs-surface-with-no-prior-visit",
+  "guards": "regression",
+  "failure_mode": "Regression found 2026-09-22: the Week 1 rule 'only what changed since the prior visit' hid every document-derived record for a patient with no prior encounter, including a report uploaded a minute earlier. A recorded extraction persisted for a temporary patient with no encounters must yield cited abnormal-lab facts, and the report's printed name (not the patient's) must yield a document_mismatch fact.",
+  "mode": "facts",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-layout1.pdf",
+  "model_output": "lab-layout1.model.json",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "anchor_correct": true
+  },
+  "expect": {
+    "status": "extracted",
+    "has_prior_visit": false,
+    "categories": {
+      "lab_abnormal": 1,
+      "document_mismatch": 1
+    },
+    "cited": [
+      "lab_abnormal"
+    ],
+    "absent": [
+      "extraction_unverified"
+    ]
+  }
+}

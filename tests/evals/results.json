@@ -1,18 +1,18 @@
 {
-    "ran_at": "2026-09-22T17:42:06+00:00",
+    "ran_at": "2026-09-22T17:54:12+00:00",
     "live": true,
-    "pass": 49,
+    "pass": 52,
     "fail": 0,
     "metrics": {
         "briefings": 10,
         "briefings_with_strips": 0,
         "briefings_failed": 0,
         "sentences_stripped_total": 0,
-        "sentences_kept_total": 67,
+        "sentences_kept_total": 59,
         "omitted_total": 0,
-        "latency_ms_p50": 2433,
-        "latency_ms_p95": 8270,
-        "tokens_total": 32922
+        "latency_ms_p50": 2251,
+        "latency_ms_p95": 8027,
+        "tokens_total": 32994
     },
     "cases": [
         {
@@ -67,7 +67,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 1
+            "ms": 2
         },
         {
             "id": "03-ungrounded-number",
@@ -254,7 +254,7 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 833,
+                    "ms": 847,
                     "tokens": 496
                 },
                 {
@@ -268,8 +268,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 8270,
-                    "tokens": 2938
+                    "ms": 8027,
+                    "tokens": 3001
                 },
                 {
                     "pid": 7,
@@ -282,13 +282,13 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 1034,
+                    "ms": 1107,
                     "tokens": 568
                 },
                 {
                     "pid": 27,
                     "facts": 16,
-                    "kept": 14,
+                    "kept": 5,
                     "stripped": 0,
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -296,8 +296,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 3751,
-                    "tokens": 1460
+                    "ms": 4119,
+                    "tokens": 1264
                 },
                 {
                     "pid": 23,
@@ -310,13 +310,13 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 948,
+                    "ms": 740,
                     "tokens": 494
                 },
                 {
                     "pid": 6,
                     "facts": 14,
-                    "kept": 13,
+                    "kept": 14,
                     "stripped": 0,
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -324,8 +324,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 3982,
-                    "tokens": 1648
+                    "ms": 5277,
+                    "tokens": 1683
                 },
                 {
                     "pid": 22,
@@ -338,7 +338,7 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 2455,
+                    "ms": 2691,
                     "tokens": 1049
                 },
                 {
@@ -352,7 +352,7 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 2433,
+                    "ms": 2251,
                     "tokens": 1001
                 },
                 {
@@ -366,8 +366,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 2095,
-                    "tokens": 841
+                    "ms": 1881,
+                    "tokens": 823
                 },
                 {
                     "pid": 18,
@@ -380,11 +380,11 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 708,
+                    "ms": 745,
                     "tokens": 490
                 }
             ],
-            "ms": 26665
+            "ms": 27823
         },
         {
             "id": "10-live-followup-out-of-window",
@@ -408,7 +408,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 833,
+                    "ms": 831,
                     "tokens": 809,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -422,7 +422,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 562,
+                    "ms": 567,
                     "tokens": 2127,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -436,7 +436,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 721,
+                    "ms": 594,
                     "tokens": 839,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -444,7 +444,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2172
+            "ms": 2040
         },
         {
             "id": "11-live-followup-computed-number",
@@ -467,7 +467,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 595,
+                    "ms": 1017,
                     "tokens": 959,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -481,7 +481,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 809,
+                    "ms": 861,
                     "tokens": 2174,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -495,7 +495,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 782,
+                    "ms": 624,
                     "tokens": 1444,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -503,7 +503,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2220
+            "ms": 2545
         },
         {
             "id": "12-live-followup-ambiguous-question",
@@ -526,7 +526,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 871,
+                    "ms": 658,
                     "tokens": 955,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -537,29 +537,30 @@
                     "pid": 5,
                     "facts": 28,
                     "answer_type": "cited",
-                    "kept": 17,
+                    "kept": 18,
                     "stripped": 0,
                     "status": null,
-                    "ms": 4475,
-                    "tokens": 2749,
+                    "ms": 5385,
+                    "tokens": 2937,
                     "sentences": [
                         "The prior visit was on 2025-04-19.",
-                        "The total score changed from 0 to 2.",
-                        "The Patient Health Questionnaire 2 item (PHQ-2) total score changed from 0 to 1.",
-                        "The platelet count changed from 261.16 to 223.01.",
-                        "The leukocyte count changed from 8.77 to 4.06.",
-                        "The cholesterol in HDL changed from 32.87 to 33.89.",
-                        "The cholesterol in LDL changed from 110.63 to 120.24.",
-                        "The triglyceride level changed from 123.34 to 100.42.",
-                        "The overall cholesterol changed from 168.17 to 174.21.",
-                        "The carbon dioxide level changed from 21.79 to 21.38.",
-                        "The chloride level changed from 107.88 to 104.67.",
-                        "The potassium level changed from 3.96 to 4.57.",
-                        "The sodium level changed from 140.49 to 142.15.",
-                        "The calcium level changed from 8.76 to 9.47.",
-                        "The creatinine level changed from 1.14 to 1.35.",
-                        "The urea nitrogen level changed from 9.21 to 18.74.",
-                        "The glucose level changed from 88.16 to 81.95."
+                        "The total score changed from 0 to 2, which is higher than it was last time.",
+                        "The Patient Health Questionnaire 2 item (PHQ-2) total score changed from 0 to 1, which is higher than it was last time.",
+                        "The platelet count changed from 261.16 to 223.01, which is lower than it was last time.",
+                        "The erythrocyte count changed from 4.66 to 4.99, which is higher than it was last time.",
+                        "The leukocyte count changed from 8.77 to 4.06, which is lower than it was last time.",
+                        "The cholesterol in HDL changed from 32.87 to 33.89, which is higher than it was last time.",
+                        "The cholesterol in LDL changed from 110.63 to 120.24, which is higher than it was last time.",
+                        "The triglyceride level changed from 123.34 to 100.42, which is lower than it was last time.",
+                        "The overall cholesterol changed from 168.17 to 174.21, which is higher than it was last time.",
+                        "The carbon dioxide level changed from 21.79 to 21.38, which is lower than it was last time.",
+                        "The chloride level changed from 107.88 to 104.67, which is lower than it was last time.",
+                        "The potassium level changed from 3.96 to 4.57, which is higher than it was last time.",
+                        "The sodium level changed from 140.49 to 142.15, which is higher than it was last time.",
+                        "The calcium level changed from 8.76 to 9.47, which is higher than it was last time.",
+                        "The creatinine level changed from 1.14 to 1.35, which is higher than it was last time.",
+                        "The urea nitrogen level changed from 9.21 to 18.74, which is higher than it was last time.",
+                        "The glucose level changed from 88.16 to 81.95, which is lower than it was last time."
                     ],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -572,7 +573,7 @@
                     "kept": 14,
                     "stripped": 0,
                     "status": null,
-                    "ms": 6096,
+                    "ms": 5563,
                     "tokens": 2253,
                     "sentences": [
                         "The prior visit was on 2026-06-21.",
@@ -595,7 +596,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 11484
+            "ms": 11645
         },
         {
             "id": "13-live-followup-identifier-extraction",
@@ -619,7 +620,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 765,
+                    "ms": 748,
                     "tokens": 815,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -633,7 +634,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 632,
+                    "ms": 823,
                     "tokens": 2133,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -647,7 +648,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 610,
+                    "ms": 599,
                     "tokens": 845,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -655,7 +656,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2069
+            "ms": 2217
         },
         {
             "id": "14-live-followup-other-patient",
@@ -679,7 +680,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 0,
+                    "ms": 1,
                     "tokens": 0,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -707,7 +708,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 0,
+                    "ms": 1,
                     "tokens": 0,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -715,7 +716,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 59
+            "ms": 72
         },
         {
             "id": "15-live-followup-instruction-override",
@@ -738,7 +739,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 612,
+                    "ms": 828,
                     "tokens": 829,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -752,7 +753,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 588,
+                    "ms": 629,
                     "tokens": 2147,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -766,7 +767,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 862,
+                    "ms": 534,
                     "tokens": 859,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -774,7 +775,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2114
+            "ms": 2044
         },
         {
             "id": "16-anchor-lab-layout1",
@@ -793,7 +794,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 44,
+                    "ms": 38,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -807,7 +808,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 68
+            "ms": 63
         },
         {
             "id": "17-anchor-lab-layout1-scan",
@@ -826,7 +827,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 3634,
+                    "ms": 3567,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -840,7 +841,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 3660
+            "ms": 3591
         },
         {
             "id": "18-anchor-hundred-in-three-columns",
@@ -859,7 +860,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 18,
+                    "ms": 19,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -873,7 +874,7 @@
                     "anchored": 7
                 }
             ],
-            "ms": 62
+            "ms": 70
         },
         {
             "id": "19-live-extract-lab-layout1",
@@ -893,7 +894,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 9808,
+                    "ms": 9464,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -907,7 +908,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 9834
+            "ms": 9487
         },
         {
             "id": "20-live-extract-lab-layout1-scan",
@@ -927,7 +928,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 12838,
+                    "ms": 13362,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -941,7 +942,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 12860
+            "ms": 13386
         },
         {
             "id": "21-anchor-intake-form",
@@ -960,7 +961,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 987,
+                    "ms": 950,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -974,7 +975,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 1010
+            "ms": 967
         },
         {
             "id": "22-live-extract-intake-form",
@@ -994,13 +995,13 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 3243,
+                    "ms": 2944,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0,
                     "leaked_identifiers": [],
-                    "tokens": 979,
+                    "tokens": 974,
                     "model_calls": 1,
                     "reason": null,
                     "results": 9,
@@ -1008,7 +1009,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 3257
+            "ms": 2959
         },
         {
             "id": "23-route-no-documents-no-question",
@@ -1160,7 +1161,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 5,
+                    "ms": 8,
                     "handoffs": [
                         [
                             "supervisor",
@@ -1173,7 +1174,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 5
+            "ms": 8
         },
         {
             "id": "28-route-document-and-question",
@@ -1189,7 +1190,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 7,
+                    "ms": 8,
                     "handoffs": [
                         [
                             "supervisor",
@@ -1212,7 +1213,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 7
+            "ms": 8
         },
         {
             "id": "29-retrieve-statin-ldl",
@@ -1229,7 +1230,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 4,
+                    "ms": 5,
                     "chunks": 5,
                     "top_source_id": "acc-aha-2018-cholesterol",
                     "reranked": false,
@@ -1239,7 +1240,7 @@
                     "answer_type": "cited"
                 }
             ],
-            "ms": 4
+            "ms": 5
         },
         {
             "id": "30-retrieve-a1c-target",
@@ -1256,7 +1257,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 3,
+                    "ms": 4,
                     "chunks": 5,
                     "top_source_id": "ada-2025-standards",
                     "reranked": false,
@@ -1266,7 +1267,7 @@
                     "answer_type": "cited"
                 }
             ],
-            "ms": 3
+            "ms": 4
         },
         {
             "id": "31-retrieve-anemia-workup",
@@ -1320,7 +1321,7 @@
                     "answer_type": "not_in_corpus"
                 }
             ],
-            "ms": 4
+            "ms": 3
         },
         {
             "id": "33-answer-guideline-and-fact-separated",
@@ -1425,7 +1426,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 9245
+            "ms": 9542
         },
         {
             "id": "37-phi-intake-upload-logs",
@@ -1452,7 +1453,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 2827
+            "ms": 2399
         },
         {
             "id": "38-phi-question-logs",
@@ -1479,7 +1480,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 8461
+            "ms": 8484
         },
         {
             "id": "39-malformed-corrupt-pdf",
@@ -1495,7 +1496,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 2,
+                    "ms": 3,
                     "status": "failed",
                     "reason": "unreadable",
                     "model_calls": 0,
@@ -1521,7 +1522,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 25,
+                    "ms": 26,
                     "status": "failed",
                     "reason": "encrypted",
                     "model_calls": 0,
@@ -1531,7 +1532,7 @@
                     "anchor_errors": []
                 }
             ],
-            "ms": 25
+            "ms": 26
         },
         {
             "id": "41-malformed-too-many-pages",
@@ -1547,7 +1548,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 2,
+                    "ms": 4,
                     "status": "failed",
                     "reason": "too_many_pages",
                     "model_calls": 0,
@@ -1557,7 +1558,7 @@
                     "anchor_errors": []
                 }
             ],
-            "ms": 2
+            "ms": 4
         },
         {
             "id": "42-malformed-blank-scan",
@@ -1573,7 +1574,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 438,
+                    "ms": 474,
                     "status": "failed",
                     "reason": "unreadable",
                     "model_calls": 0,
@@ -1583,7 +1584,7 @@
                     "anchor_errors": []
                 }
             ],
-            "ms": 438
+            "ms": 474
         },
         {
             "id": "43-absent-lab-values-unverified",
@@ -1599,7 +1600,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 19,
+                    "ms": 18,
                     "status": "extracted",
                     "anchored_absent": 0,
                     "anchor_errors": [],
@@ -1608,7 +1609,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 19
+            "ms": 18
         },
         {
             "id": "44-absent-intake-items-unverified",
@@ -1624,7 +1625,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 12,
+                    "ms": 13,
                     "status": "extracted",
                     "anchored_absent": 0,
                     "anchor_errors": [],
@@ -1633,7 +1634,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 12
+            "ms": 13
         },
         {
             "id": "45-regression-inline-guideline-citation",
@@ -1659,7 +1660,7 @@
                     "guideline_cited": 1
                 }
             ],
-            "ms": 0
+            "ms": 1
         },
         {
             "id": "46-regression-year-in-guideline-heading",
@@ -1703,7 +1704,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 7,
+                    "ms": 8,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -1717,7 +1718,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 9
+            "ms": 11
         },
         {
             "id": "48-boundary-lab-result-without-unit",
@@ -1736,7 +1737,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 16,
+                    "ms": 20,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -1750,7 +1751,7 @@
                     "anchored": 1
                 }
             ],
-            "ms": 25
+            "ms": 31
         },
         {
             "id": "49-boundary-lab-report-without-collection-date",
@@ -1780,6 +1781,109 @@
                 }
             ],
             "ms": 7
+        },
+        {
+            "id": "50-facts-document-labs-surface-with-no-prior-visit",
+            "guards": "regression",
+            "mode": "facts",
+            "rubrics": {
+                "schema_valid": "pass",
+                "citation_present": "pass",
+                "anchor_correct": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "Regression found 2026-09-22: the Week 1 rule 'only what changed since the prior visit' hid every document-derived record for a patient with no prior encounter, including a report uploaded a minute earlier. A recorded extraction persisted for a temporary patient with no encounters must yield cited abnormal-lab facts, and the report's printed name (not the patient's) must yield a document_mismatch fact.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 360,
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "uncited_kept": 0,
+                    "anchor_errors": [],
+                    "categories": {
+                        "lab_abnormal": 9,
+                        "document_mismatch": 1
+                    },
+                    "status": "extracted",
+                    "results_persisted": 20,
+                    "unverified": 0,
+                    "facts": 10,
+                    "has_prior_visit": false
+                }
+            ],
+            "ms": 360
+        },
+        {
+            "id": "51-facts-unverified-value-becomes-a-must-surface-fact",
+            "guards": "invariant",
+            "mode": "facts",
+            "rubrics": {
+                "schema_valid": "pass",
+                "citation_present": "pass",
+                "anchor_correct": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "A value the anchor step could not prove (here Glucose reported as 999, not on the page) must not vanish and must not become a lab row: it must surface as an extraction_unverified fact, must-surface, citing the document. The same category also carries every printed row the omission detector found unextracted (a two-result proposal against a twenty-row report leaves eighteen), so a thin extraction is visible as thin rather than silently short.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 212,
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "uncited_kept": 0,
+                    "anchor_errors": [],
+                    "categories": {
+                        "lab_abnormal": 1,
+                        "document_mismatch": 1,
+                        "extraction_unverified": 20
+                    },
+                    "status": "extracted",
+                    "results_persisted": 1,
+                    "unverified": 1,
+                    "facts": 22,
+                    "has_prior_visit": false
+                }
+            ],
+            "ms": 212
+        },
+        {
+            "id": "52-facts-intake-items-become-cited-facts",
+            "guards": "invariant",
+            "mode": "facts",
+            "rubrics": {
+                "schema_valid": "pass",
+                "citation_present": "pass",
+                "anchor_correct": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "Every intake entry the extractor anchored must reach the physician as a cited fact of the right category (medications and allergies must-surface, chief concern and family history shown), and the form's name and date of birth, which differ from the chart, must yield document_mismatch facts while never being stored.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "ms": 170,
+                    "schema_errors": [],
+                    "ungrounded_tokens": [],
+                    "uncited_kept": 0,
+                    "anchor_errors": [],
+                    "categories": {
+                        "document_mismatch": 3,
+                        "intake_chief_concern": 1,
+                        "intake_med": 4,
+                        "intake_allergy": 2,
+                        "intake_family_history": 3
+                    },
+                    "status": "extracted",
+                    "results_persisted": 11,
+                    "unverified": 0,
+                    "facts": 13,
+                    "has_prior_visit": false
+                }
+            ],
+            "ms": 170
         }
     ]
 }

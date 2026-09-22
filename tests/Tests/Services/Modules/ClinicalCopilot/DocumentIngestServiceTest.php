@@ -210,6 +210,43 @@ class DocumentIngestServiceTest extends TestCase
         self::assertStringContainsString('STOPPED in August', $med->describe());
     }
 
+    /**
+     * Regression (Phase 7, 2026-09-22): the Week 1 rule "only what changed since
+     * the prior visit" hid everything for a patient with no prior encounter,
+     * including a document uploaded a minute ago. Document-derived records are
+     * new information regardless of visit history.
+     */
+    public function testDocumentDerivedFactsSurfaceForAPatientWithNoPriorVisit(): void
+    {
+        $maxPid = (int) QueryUtils::fetchSingleValue("SELECT MAX(pid) AS m FROM patient_data", 'm');
+        $tempPid = $maxPid + 1;
+        QueryUtils::sqlInsert("INSERT INTO patient_data (pid, fname, lname, DOB, sex) VALUES (?, 'Temp', 'NoVisit', '1980-05-05', 'Male')", [$tempPid]);
+        try {
+            $stored = (new DocumentStore())->store(new PatientId($tempPid), DocType::LabPdf, 'novisit.pdf', $this->pdf('novisit-' . bin2hex(random_bytes(4))), 'admin', 1);
+            $this->documentIds[] = $stored['document_id'];
+            $documentId = $stored['document_id'];
+            // One anchored abnormal glucose, one unanchored potassium; the report names "Test Zeta", not Temp NoVisit.
+            (new DocumentIngestService())->persist(new PatientId($tempPid), $this->labExtraction($documentId, false), 'test-corr');
+
+            $assembled = (new \OpenEMR\Modules\ClinicalCopilot\FactAssembler(new OpenEmrChartSource(), new \OpenEMR\Modules\ClinicalCopilot\AclAuthorization('admin'), \OpenEMR\BC\ServiceContainer::getClock()))
+                ->assemble(new PatientId($tempPid), null);
+            self::assertNull($assembled->priorEncounter(), 'the temp patient has no encounters');
+            $byCategory = [];
+            foreach ($assembled->facts()->all() as $f) {
+                $byCategory[$f->category->value][] = $f;
+            }
+            self::assertArrayHasKey('lab_abnormal', $byCategory, 'the abnormal glucose from the document must surface with no prior visit');
+            self::assertSame((string) $documentId, $byCategory['lab_abnormal'][0]->citation?->sourceId);
+            self::assertTrue($byCategory['lab_abnormal'][0]->citation?->anchored);
+            self::assertArrayHasKey('extraction_unverified', $byCategory, 'the unanchored potassium must surface as unverified');
+            self::assertArrayHasKey('document_mismatch', $byCategory, 'the report name does not match the chart');
+            self::assertTrue($byCategory['extraction_unverified'][0]->category->mustSurface());
+        } finally {
+            QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$tempPid]);
+            QueryUtils::sqlStatementThrowException("DELETE FROM patient_data WHERE pid = ?", [$tempPid]);
+        }
+    }
+
     public function testUploadRejectsNonPdf(): void
     {
         $this->expectException(\OpenEMR\Modules\ClinicalCopilot\Documents\UploadRejected::class);

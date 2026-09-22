@@ -153,12 +153,17 @@ case is missing either, or if the generated table in
 
 | Category | Cases | What it means here |
 |---|---|---|
-| invariant | 25 | Something that must hold on every run: a claim cites a source, a value is found on the page in its own row and on the right page, a must-surface fact is never dropped, an invented value never anchors, an identifier never leaves the server (the six authorization and PHI cases carry the theme `authorization`) |
+| invariant | 27 | Something that must hold on every run: a claim cites a source, a value is found on the page in its own row and on the right page, a must-surface fact is never dropped, an invented value never anchors, an identifier never leaves the server (the six authorization and PHI cases carry the theme `authorization`) |
 | boundary | 18 | The edges: an empty fact set, a question outside the briefing window, an off-corpus question, malformed input (truncated, encrypted, over-long, blank-scan PDFs), and missing data inside a document (a blank intake form, a lab row without a unit, a report without a collection date, which must be refused) |
-| regression | 6 | Things that broke once: the inline citation group (Week 1), one model call omitting 7 of 20 rows, OCR mangling a unit, a guideline passage cited inline with an empty id list, a year that lives in a passage's heading |
+| regression | 7 | Things that broke once: the inline citation group (Week 1), one model call omitting 7 of 20 rows, OCR mangling a unit, a guideline passage cited inline with an empty id list, a year that lives in a passage's heading, document facts hidden for a patient with no prior visit |
 
 The categories are the three the brief names; `case-index.php --check` refuses
-any other value.
+any other value. A `facts` mode (cases 50-52) reaches the layer between "the
+sidecar returned JSON" and "the physician sees a cited fact": it persists a
+recorded extraction for a temporary patient with no encounters, assembles
+facts through the real `FactAssembler`, and removes everything; no model, so
+it runs in the default gate. Reverting the no-prior-visit fix makes case 50
+fail `anchor_correct`, which refuses the push.
 
 Two design rules keep the "clean" fixtures honest. First, every fixture that
 can be extracted correctly has a sibling case that feeds a **wrong or absent

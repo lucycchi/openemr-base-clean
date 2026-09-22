@@ -30,10 +30,20 @@ declare(strict_types=1);
 $live = in_array('--live', $argv, true);
 $root = dirname(__DIR__, 2);
 
+// Cases in "facts" mode persist a recorded extraction and assemble facts from
+// the database (no model), so they need the OpenEMR runtime even when not --live.
+$needsDb = $live;
+foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $p) {
+    $c = json_decode((string) file_get_contents($p), true);
+    if (is_array($c) && ($c['mode'] ?? '') === 'facts' && ($c['pending'] ?? false) !== true) {
+        $needsDb = true;
+    }
+}
+
 // Two bootstraps. Live mode needs the full OpenEMR runtime (database, site
 // config) so it loads globals.php as an authenticated CLI script; recorded
 // mode only needs Composer's autoloader.
-if ($live) {
+if ($needsDb) {
     $ignoreAuth = 1;
     $_GET['site'] = 'default';
     $sessionAllowWrite = true;
@@ -405,6 +415,90 @@ function runRetrieveCase(array $case): array
     return $run;
 }
 
+/**
+ * Facts-mode case (database, no model): anchor a recorded proposal through
+ * the sidecar (deterministic), persist it for a temporary patient with no
+ * encounters through DocumentIngestService, assemble facts through the real
+ * FactAssembler and chart source, score the categories and citations, then
+ * remove everything. This is the layer between "the sidecar returned JSON"
+ * and "the physician sees a cited fact", which no other mode reaches.
+ *
+ * expect.categories: {category: minimum count}; expect.cited: categories whose
+ * facts must all carry an anchored document citation; expect.absent: categories
+ * that must not appear.
+ *
+ * @param array<string, mixed> $case
+ * @return array<string, mixed>
+ */
+function runFactsCase(array $case): array
+{
+    $fixturesDir = __DIR__ . '/fixtures/docs/';
+    $proposal = isset($case['proposal']) && is_array($case['proposal']) ? $case['proposal']
+        : json_decode((string) file_get_contents($fixturesDir . (string) $case['model_output']), true, 32, JSON_THROW_ON_ERROR);
+    $t = hrtime(true);
+    $extraction = sidecarPost('/eval/anchor', ['fixture' => (string) $case['fixture'], 'doc_type' => (string) $case['doc_type'], 'document_id' => 1, 'proposal' => $proposal]);
+
+    $maxPid = (int) \OpenEMR\Common\Database\QueryUtils::fetchSingleValue("SELECT MAX(pid) AS m FROM patient_data", 'm');
+    $pid = $maxPid + 1;
+    \OpenEMR\Common\Database\QueryUtils::sqlInsert("INSERT INTO patient_data (pid, fname, lname, DOB, sex) VALUES (?, 'Eval', 'NoVisit', '1980-05-05', 'Male')", [$pid]);
+    $documentId = null;
+    $run = ['ms' => 0, 'schema_errors' => [], 'ungrounded_tokens' => [], 'uncited_kept' => 0, 'anchor_errors' => [], 'categories' => []];
+    try {
+        $patient = new \OpenEMR\Modules\ClinicalCopilot\PatientId($pid);
+        $store = new \OpenEMR\Modules\ClinicalCopilot\Documents\DocumentStore();
+        $type = \OpenEMR\Modules\ClinicalCopilot\Documents\DocType::from((string) $case['doc_type']);
+        $stored = $store->store($patient, $type, (string) $case['fixture'], (string) file_get_contents($fixturesDir . (string) $case['fixture']), 'admin', 1);
+        $documentId = $stored['document_id'];
+        // The sidecar anchored under document_id 1; re-point every citation at the real document id.
+        $json = str_replace('"source_id": "1"', '"source_id": "' . $documentId . '"', json_encode($extraction, JSON_THROW_ON_ERROR));
+        $json = preg_replace('/"document_id":\s*1\b/', '"document_id": ' . $documentId, $json) ?? $json;
+        $decoded = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
+        $result = \OpenEMR\Modules\ClinicalCopilot\Documents\ExtractionResult::fromArray(is_array($decoded) ? $decoded : []);
+        $persisted = (new \OpenEMR\Modules\ClinicalCopilot\Documents\DocumentIngestService())->persist($patient, $result, 'eval-facts');
+        $run['status'] = $persisted['status']->value;
+        $run['results_persisted'] = $persisted['results_persisted'];
+        $run['unverified'] = $persisted['unverified'];
+
+        $assembled = (new \OpenEMR\Modules\ClinicalCopilot\FactAssembler(new \OpenEMR\Modules\ClinicalCopilot\OpenEmrChartSource(), new \OpenEMR\Modules\ClinicalCopilot\AclAuthorization('admin'), \OpenEMR\BC\ServiceContainer::getClock()))->assemble($patient, null);
+        $facts = $assembled->facts()->all();
+        $run['facts'] = count($facts);
+        $run['has_prior_visit'] = $assembled->priorEncounter() !== null;
+        foreach ($facts as $f) {
+            $run['categories'][$f->category->value] = ($run['categories'][$f->category->value] ?? 0) + 1;
+            $row = ['id' => $f->id, 'category' => $f->category->value, 'value' => $f->value, 'source' => sprintf('%s#%d.%s', $f->service, $f->recordId, $f->field), 'must_surface' => $f->category->mustSurface(), 'citation' => $f->citationOrChart()->toArray()];
+            $run['schema_errors'] = [...$run['schema_errors'], ...schemaErrors('fact', json_decode(json_encode($row, JSON_THROW_ON_ERROR)))];
+        }
+        $expect = is_array($case['expect'] ?? null) ? $case['expect'] : [];
+        foreach (is_array($expect['categories'] ?? null) ? $expect['categories'] : [] as $cat => $min) {
+            if (($run['categories'][$cat] ?? 0) < (int) $min) {
+                $run['anchor_errors'][] = sprintf('%s: %d facts, expected at least %d', $cat, $run['categories'][$cat] ?? 0, (int) $min);
+            }
+        }
+        foreach (is_array($expect['absent'] ?? null) ? $expect['absent'] : [] as $cat) {
+            if (($run['categories'][$cat] ?? 0) > 0) {
+                $run['anchor_errors'][] = sprintf('%s: present, expected absent', $cat);
+            }
+        }
+        foreach (is_array($expect['cited'] ?? null) ? $expect['cited'] : [] as $cat) {
+            foreach ($facts as $f) {
+                if ($f->category->value === $cat && !($f->citation !== null && $f->citation->anchored && $f->citation->sourceId === (string) $documentId)) {
+                    $run['anchor_errors'][] = sprintf('%s fact without an anchored citation to document %d', $cat, $documentId);
+                    $run['uncited_kept']++;
+                }
+            }
+        }
+    } finally {
+        if ($documentId !== null) {
+            require_once __DIR__ . '/phi.php';
+            removeDocument($documentId);
+        }
+        \OpenEMR\Common\Database\QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$pid]);
+        \OpenEMR\Common\Database\QueryUtils::sqlStatementThrowException("DELETE FROM patient_data WHERE pid = ?", [$pid]);
+    }
+    $run['ms'] = (int) round((hrtime(true) - $t) / 1e6);
+    return $run;
+}
+
 /** @param array<string, mixed> $body @return array<string, mixed> */
 function sidecarPost(string $path, array $body): array
 {
@@ -511,8 +605,8 @@ function compare(array $expect, array $actual): array
             }
             continue;
         }
-        if ($key === 'min_chunks') {
-            continue; // scored into ungrounded_tokens by runRetrieveCase
+        if ($key === 'min_chunks' || $key === 'categories' || $key === 'absent' || $key === 'cited') {
+            continue; // scored into ungrounded_tokens / anchor_errors by the mode runner
         }
         if ($key === 'max_stripped') {
             $got = $actual['stripped'] ?? null;
@@ -563,7 +657,9 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     // patient); every run is compared against the same expectations.
     $started = hrtime(true);
     $runs = [];
-    if ($mode === 'malformed') {
+    if ($mode === 'facts') {
+        $runs[] = runFactsCase($case);
+    } elseif ($mode === 'malformed') {
         $runs[] = runMalformedCase($case);
     } elseif ($mode === 'absent') {
         $runs[] = runAbsentCase($case);

@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T17:40:25+00:00",
+    "ran_at": "2026-09-22T17:52:29+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -171,6 +171,21 @@
         "49-boundary-lab-report-without-collection-date": {
             "safe_refusal": "pass",
             "schema_valid": "pass"
+        },
+        "50-facts-document-labs-surface-with-no-prior-visit": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass"
+        },
+        "51-facts-unverified-value-becomes-a-must-surface-fact": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass"
+        },
+        "52-facts-intake-items-become-cited-facts": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass"
         }
     },
     "rates": {
