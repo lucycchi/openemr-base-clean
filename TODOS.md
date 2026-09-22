@@ -1,5 +1,29 @@
 # TODOS
 
+## Week 1 grader feedback (open, scheduled for Week 2 Thursday)
+
+Two items from the Week 1 submission review. Both are documentation, both
+are scheduled as tasks 9.1 and 9.2 in
+[docs/designs/week2-multimodal-evidence-agent.md](docs/designs/week2-multimodal-evidence-agent.md).
+
+### Cost analysis: per-tier architectural changes
+
+**What:** The cost analysis has two sections (development spend, projected production). It needs the per-tier view the rubric asks for: 1 clinic (1-5 physicians), group practice (about 50), network (about 500), with monthly model, embedding and rerank spend from measured tokens, pre-warm on and off, cache-hit assumptions, and the architectural change each tier forces (shared cache, a queue for the pre-warm, sidecar replicas, provider rate-limit budget, per-tenant keys).
+
+**Where:** `COST_AND_LATENCY.md` (new in Week 2; also the Week 2 cost and latency report). Inputs: `tests/load/results/`, the scaling plan from commit 99d926a.
+
+**Effort:** S
+**Priority:** P1
+
+### USERS.md: personas and use cases are thin
+
+**What:** Expand the PCP persona (day shape, what they will not read, what "safe to act on" means), add the front-desk uploader persona that Week 2 introduces (permissions, what they see, what they must not see), and add UC4 (a lab PDF arrives before the visit) and UC5 (the intake form contradicts the chart) with the exact click path.
+
+**Where:** `USERS.md`.
+
+**Effort:** S
+**Priority:** P1
+
 ## Clinical Co-Pilot
 
 ### Server-side conversation persistence
