@@ -1,7 +1,6 @@
 {
   "id": "28-route-document-and-question",
   "guards": "boundary",
-  "pending": true,
   "failure_mode": "With an extracted document and a question, only retrieval runs.",
   "mode": "route",
   "state": {

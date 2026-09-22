@@ -102,7 +102,7 @@ function narrationFrom(array $data): Narration
 const RUBRICS = ['schema_valid', 'citation_present', 'factually_consistent', 'safe_refusal', 'no_phi_in_logs', 'routing_correct', 'anchor_correct'];
 
 /** Modes whose runner has not landed yet; a non-pending case in one of these fails every rubric it declares. */
-const UNIMPLEMENTED_MODES = ['retrieve', 'route', 'answer'];
+const UNIMPLEMENTED_MODES = ['retrieve', 'answer'];
 
 /** Sidecar test endpoints (COPILOT_EVAL_ENDPOINTS=1 on the dev compose service). */
 function sidecarUrl(): string
@@ -271,6 +271,33 @@ function scoreIntake(array $run, array $doc, array $truth): array
     return $run;
 }
 
+/**
+ * Route-mode case: the real graph with stubbed workers (sidecar /eval/route).
+ * routing_correct compares the [from, to, reason] sequence with expect.handoffs;
+ * schema_valid validates every handoff against contracts/handoff.schema.json.
+ *
+ * @param array<string, mixed> $case
+ * @return array<string, mixed>
+ */
+function runRouteCase(array $case): array
+{
+    $state = is_array($case['state'] ?? null) ? $case['state'] : [];
+    $t = hrtime(true);
+    $response = sidecarPost('/eval/route', ['mode' => (string) ($state['mode'] ?? 'extract'), 'question' => $state['question'] ?? null, 'documents' => is_array($state['documents'] ?? null) ? array_values($state['documents']) : []]);
+    $handoffs = is_array($response['handoffs'] ?? null) ? $response['handoffs'] : [];
+    $schemaErrors = [];
+    foreach ($handoffs as $h) {
+        $schemaErrors = [...$schemaErrors, ...schemaErrors('handoff', json_decode(json_encode($h, JSON_THROW_ON_ERROR)))];
+    }
+    return [
+        'ms' => (int) round((hrtime(true) - $t) / 1e6),
+        'handoffs' => array_map(fn(array $h) => [(string) $h['from'], (string) $h['to'], (string) $h['reason']], $handoffs),
+        'schema_errors' => $schemaErrors,
+        'ungrounded_tokens' => [],
+        'extractions' => $response['extractions'] ?? null,
+    ];
+}
+
 /** @param array<string, mixed> $body @return array<string, mixed> */
 function sidecarPost(string $path, array $body): array
 {
@@ -426,7 +453,9 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     // patient); every run is compared against the same expectations.
     $started = hrtime(true);
     $runs = [];
-    if ($mode === 'anchor' || $mode === 'extract') {
+    if ($mode === 'route') {
+        $runs[] = runRouteCase($case);
+    } elseif ($mode === 'anchor' || $mode === 'extract') {
         $runs[] = runDocumentCase($case, $mode);
     } elseif (!$isLive) {
         $factRows = is_array($case['facts'] ?? null) ? array_values($case['facts']) : [];

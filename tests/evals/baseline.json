@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T09:07:35+00:00",
+    "ran_at": "2026-09-22T09:13:41+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -63,12 +63,37 @@
             "citation_present": "pass",
             "anchor_correct": "pass",
             "factually_consistent": "pass"
+        },
+        "23-route-no-documents-no-question": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "24-route-stored-document": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "25-route-question": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "26-route-extracted-document-not-re-extracted": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "27-route-unsupported-doc-type": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "28-route-document-and-question": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
         }
     },
     "rates": {
         "schema_valid": 100,
         "citation_present": 100,
         "factually_consistent": 100,
-        "anchor_correct": 100
+        "anchor_correct": 100,
+        "routing_correct": 100
     }
 }

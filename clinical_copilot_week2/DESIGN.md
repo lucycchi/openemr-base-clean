@@ -277,11 +277,11 @@ on the droplet.
 - [ ] 4b.5 Export: a reviewed document's corrections become `<name>.truth.json` and a new anchor-mode case; corrections never feed a prompt automatically. Repeat-review one document a week to measure reviewer drift.
 - [ ] 4b.6 `clinical_copilot_week2/DOCUMENT_SOURCES.md` holds every candidate source; Lucy vets them (fictional data, terms) and marks the chosen ones; each fixture built from a source records what was changed. Real-form fixtures include at least one hand-filled, scanned intake.
 
-### Phase 5: Supervisor + two workers (Tuesday, ~2 h)
+### Phase 5: Supervisor + two workers (Tuesday, ~2 h) — done 2026-09-22: LangGraph StateGraph with deterministic routing, workers injected, /eval/route with stubs, routing cases 23-28 enforced (28 cases total), handoff drawer in the panel
 
-- [ ] 5.1 `graph.py`: LangGraph `StateGraph` with `RunState {mode, facts_hash, question, documents[{id, doc_type, status}], extractions, chunks, handoffs, usage}`. Supervisor is deterministic: `stored` document → `intake_extractor`; question → `evidence_retriever`; else `done`; unsupported doc type → `done` with reason `unsupported_doc_type`. No LLM routing call. Every hop appends `Handoff {from, to, reason, state_keys_changed, ms}`.
-- [ ] 5.2 Workers wrap Phase 2 extraction and Phase 6 retrieval. PHP writes handoffs to the Langfuse trace as spans and to the panel drawer; `Pricing` per-kind rates.
-- [ ] 5.3 Routing cases flip from pending.
+- [x] 5.1 `graph.py`: LangGraph `StateGraph` with `RunState {mode, facts_hash, question, documents[{id, doc_type, status}], extractions, chunks, handoffs, usage}`. Supervisor is deterministic: `stored` document → `intake_extractor`; question → `evidence_retriever`; else `done`; unsupported doc type → `done` with reason `unsupported_doc_type`. No LLM routing call. Every hop appends `Handoff {from, to, reason, state_keys_changed, ms}`.
+- [x] 5.2 Workers wrap Phase 2 extraction and Phase 6 retrieval. PHP writes handoffs to the Langfuse trace as spans and to the panel drawer; `Pricing` per-kind rates.
+- [x] 5.3 Routing cases flip from pending.
 
 ### Phase 6: Hybrid RAG + rerank (Tuesday night, ~2.5 h)
 

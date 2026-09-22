@@ -74,7 +74,7 @@ Week 2 documents, including the ones kept beside code, is
 | Sample data | Synthetic PDFs from `sidecar/tools/generate_fixtures.py` (fictional patient "Test Zeta") plus real blank templates filled with invented answers, vetted in `DOCUMENT_SOURCES.md` | Generator done; sourced forms pending vetting |
 | Guideline evidence | No API. A small local corpus (4-6 public guideline documents: USPSTF, ADA, ACC/AHA BP, AAFP anemia, KDIGO) chunked and indexed by us | Decided; document list chosen in Phase 6 |
 | Retrieval | rank_bm25 (keyword) + OpenAI text-embedding-3-small (dense), reciprocal rank fusion, Cohere Rerank v3.5 | Decided (Cohere key to be created) |
-| Orchestration | LangGraph StateGraph, deterministic supervisor, handoff log per hop | Decided (Phase 5 mounts the current supervisor functions as graph nodes) |
+| Orchestration | LangGraph StateGraph (`sidecar/copilot_sidecar/graph.py`), deterministic supervisor, workers injected, handoff log per hop | Done |
 | Storage | OpenEMR `Document` class, `procedure_*` lab tables, three module tables (`copilot_document`, `copilot_document_fact`, `copilot_intake`) | Done |
 | Viewer | pdf.js 4.10.38, vendored under `public/assets/vendor/pdfjs/` | Done |
 | Evals / gate | `tests/evals/run.php` + `gate.php`, justinrainbow/json-schema for contract checks, `pre-push` git hook; the wrapper also runs the sidecar's pytest and the module's isolated PHPUnit suite | Done |

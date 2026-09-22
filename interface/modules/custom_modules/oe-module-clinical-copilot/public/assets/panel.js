@@ -192,6 +192,23 @@
         });
     }
 
+    // "Why this answer": the supervisor's routing decisions for the last run,
+    // one line per hop, straight from the handoff log the sidecar returned.
+    function renderHandoffs(handoffs) {
+        let box = document.getElementById('copilot-handoffs');
+        if (!box) {
+            box = el('details', { id: 'copilot-handoffs', class: 'copilot-handoffs' }, [el('summary', { text: 'Why this result: routing decisions' })]);
+            els.uploadStatus.insertAdjacentElement('afterend', box);
+        }
+        Array.from(box.querySelectorAll('ol')).forEach(n => n.remove());
+        if (!Array.isArray(handoffs) || handoffs.length === 0) return;
+        const ol = el('ol');
+        handoffs.forEach(h => {
+            ol.appendChild(el('li', { text: h.from + ' → ' + h.to + ' because ' + String(h.reason).replace(/_/g, ' ') + ' (' + h.ms + ' ms' + (h.state_keys_changed && h.state_keys_changed.length ? ', changed ' + h.state_keys_changed.join(', ') : '') + ')' }));
+        });
+        box.appendChild(ol);
+    }
+
     function loadDocuments() {
         return postDocuments({ action: 'list' }).then(r => {
             if (r.ok && Array.isArray(r.json.documents)) renderDocuments(r.json.documents);
@@ -212,6 +229,7 @@
                 els.uploadStatus.textContent = 'Extracted ' + j.results_persisted + ' value(s), ' + Math.round(j.confidence * 100) + '% verified against the page'
                     + (j.unverified ? ', ' + j.unverified + ' unverified' : '') + (j.unextracted ? ', ' + j.unextracted + ' row(s) not extracted' : '') + '. Refreshing the briefing…';
             }
+            renderHandoffs(j.handoffs);
             return loadDocuments().then(brief);
         }).catch(() => { els.uploadStatus.textContent = 'Extraction timed out; the file is stored, retry from the list.'; });
     }

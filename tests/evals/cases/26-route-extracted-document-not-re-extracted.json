@@ -1,7 +1,6 @@
 {
   "id": "26-route-extracted-document-not-re-extracted",
   "guards": "boundary",
-  "pending": true,
   "failure_mode": "An already-extracted document must not be sent to the model again (idempotency at the routing level).",
   "mode": "route",
   "state": {

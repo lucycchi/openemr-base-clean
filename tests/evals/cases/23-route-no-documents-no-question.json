@@ -1,7 +1,6 @@
 {
   "id": "23-route-no-documents-no-question",
   "guards": "boundary",
-  "pending": true,
   "failure_mode": "Nothing to do must be one hop to done, no worker and no model call.",
   "mode": "route",
   "state": {

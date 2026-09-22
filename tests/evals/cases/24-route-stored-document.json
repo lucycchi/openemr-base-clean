@@ -1,7 +1,6 @@
 {
   "id": "24-route-stored-document",
   "guards": "boundary",
-  "pending": true,
   "failure_mode": "A stored document goes to the extractor exactly once, then done.",
   "mode": "route",
   "state": {

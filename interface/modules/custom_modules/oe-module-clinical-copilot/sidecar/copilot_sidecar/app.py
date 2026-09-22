@@ -23,7 +23,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
-from . import extractor, supervisor
+from . import extractor, graph
 from .llm import PROMPT_VERSION
 from .logging_setup import setup_logging
 from .schemas import IntakeFormProposal, LabReportProposal, RunError, RunRequest, RunResponse
@@ -71,12 +71,11 @@ async def run(request: Request) -> JSONResponse:
     if hit and now - hit[0] < IDEMPOTENCY_TTL_S:
         return JSONResponse(content=hit[1])
 
-    state = supervisor.RunState(mode=req.mode, correlation_id=req.correlation_id, facts_hash=req.facts_hash, question=req.question, documents=req.documents)
     try:
-        state = supervisor.run(state)
+        state = graph.run(req.mode, req.correlation_id, req.facts_hash, req.question, req.documents)
     except Exception:  # never leak a traceback; the code is the message
         return _error(req.correlation_id, "internal", 500)
-    resp = RunResponse(correlation_id=req.correlation_id, extractions=state.extractions, chunks=state.chunks, handoffs=state.handoffs, usage=state.usage)
+    resp = RunResponse(correlation_id=req.correlation_id, extractions=state["extractions"], chunks=state["chunks"], handoffs=state["handoffs"], usage=state["usage"])
     payload = json.loads(resp.model_dump_json(by_alias=True))
     _cache[key] = (now, payload)
     for k in [k for k, (t, _) in _cache.items() if now - t >= IDEMPOTENCY_TTL_S]:
@@ -96,6 +95,20 @@ class AnchorEvalRequest(BaseModel):
     document_id: int = 1
 
 
+class RouteEvalDocument(BaseModel):
+    document_id: int = 1
+    doc_type: str  # deliberately not the enum: routing must refuse unsupported types itself
+    status: str
+    sha3_512: str = "0" * 128
+    bytes_base64: str | None = None
+
+
+class RouteEvalRequest(BaseModel):
+    mode: str
+    question: str | None = None
+    documents: list[RouteEvalDocument] = []
+
+
 if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
 
     @app.post("/eval/anchor")
@@ -109,6 +122,14 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         proposal = model.model_validate(req.proposal)
         outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), "eval-anchor", proposal=proposal)
         return json.loads(outcome.extraction.model_dump_json())
+
+    @app.post("/eval/route")
+    def eval_route(req: RouteEvalRequest) -> dict:
+        """The real graph with stubbed workers: returns the handoff log so the
+        harness can score routing without a model or a parser."""
+        g = graph.build_graph(graph.stub_extract, graph.stub_retrieve)
+        state = graph.run(req.mode, "eval-route-000", "0" * 64, req.question, req.documents, graph=g)  # type: ignore[arg-type]
+        return {"handoffs": [h.model_dump(by_alias=True) for h in state["handoffs"]], "extractions": len(state["extractions"]), "chunks": len(state["chunks"])}
 
     @app.post("/eval/extract")
     def eval_extract(req: AnchorEvalRequest) -> dict:

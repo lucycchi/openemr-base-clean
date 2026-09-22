@@ -1,7 +1,6 @@
 {
   "id": "25-route-question",
   "guards": "boundary",
-  "pending": true,
   "failure_mode": "A question goes to the retriever, never to the extractor.",
   "mode": "route",
   "state": {

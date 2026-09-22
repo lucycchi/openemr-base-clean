@@ -45,3 +45,6 @@
 .copilot-viewer-mark { position: absolute; box-sizing: border-box; }
 .copilot-viewer-mark-row { border: 2px solid rgba(13,110,253,.6); background: rgba(13,110,253,.08); }
 .copilot-viewer-mark-value { border: 3px solid #dc3545; background: rgba(220,53,69,.18); }
+#copilot-panel .copilot-handoffs { font-size: .8rem; color: #495057; margin-top: .25rem; }
+#copilot-panel .copilot-handoffs summary { cursor: pointer; }
+#copilot-panel .copilot-handoffs ol { margin: .25rem 0 0 1.2rem; padding: 0; font-family: monospace; }
