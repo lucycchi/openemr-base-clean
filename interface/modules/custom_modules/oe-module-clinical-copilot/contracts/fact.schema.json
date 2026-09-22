@@ -25,7 +25,8 @@
         "lab_abnormal",
         "lab_delta",
         "problem_new",
-        "truncation"
+        "truncation",
+        "extraction_unverified"
       ]
     },
     "value": {
@@ -41,8 +42,19 @@
     "must_surface": {
       "type": "boolean",
       "description": "True when the OmissionGuard guarantees this fact reaches the physician even if the model omits it."
+    },
+    "citation": {
+      "$ref": "citation.schema.json",
+      "description": "Week 2: machine-readable provenance. For a chart fact this repeats source as a chart citation; for a value from an uploaded document it carries the document id, page and bounding box the panel highlights."
     }
   },
-  "required": ["id", "category", "value", "source", "must_surface"],
+  "required": [
+    "id",
+    "category",
+    "value",
+    "source",
+    "must_surface",
+    "citation"
+  ],
   "additionalProperties": false
 }

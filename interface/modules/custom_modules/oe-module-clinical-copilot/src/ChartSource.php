@@ -36,4 +36,7 @@ interface ChartSource
 
     /** @return list<ProblemRecord> active problems only */
     public function problems(PatientId $pid): array;
+
+    /** Week 2: unanchored extracted fields and unextracted rows from this patient's uploaded documents. @return list<UnverifiedExtraction> */
+    public function unverifiedExtractions(PatientId $pid): array;
 }

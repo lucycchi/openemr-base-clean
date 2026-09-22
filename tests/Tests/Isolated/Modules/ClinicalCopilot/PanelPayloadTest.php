@@ -90,7 +90,18 @@ final class PanelPayloadTest extends TestCase
         self::assertSame('corr-123', $payload['correlation_id']);
         self::assertSame('2026-09-01', $payload['prior_visit']);
         self::assertSame($this->assembled($prior)->facts()->hash(), $payload['facts_hash']);
-        self::assertSame(['id' => 'rx0001', 'category' => 'medication_new', 'value' => 'Lisinopril 10 MG', 'source' => 'PrescriptionService#17.drug', 'must_surface' => true], $facts[0]);
+        self::assertSame(
+            [
+                'id' => 'rx0001',
+                'category' => 'medication_new',
+                'value' => 'Lisinopril 10 MG',
+                'source' => 'PrescriptionService#17.drug',
+                'must_surface' => true,
+                // Week 2: a chart fact carries a chart citation so every fact has the same provenance shape.
+                'citation' => ['source_type' => 'chart', 'source_id' => 'PrescriptionService#17', 'page_or_section' => 'drug', 'field_or_chunk_id' => 'rx0001', 'quote_or_value' => 'Lisinopril 10 MG', 'anchored' => true],
+            ],
+            $facts[0]
+        );
         self::assertSame([['text' => 'A new medication was started.', 'fact_ids' => ['rx0001']]], $narration['sentences']);
         self::assertSame(1, $narration['stripped']);
         self::assertSame(['al0001'], $narration['omitted_fact_ids']);

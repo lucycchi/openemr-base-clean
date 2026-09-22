@@ -91,7 +91,7 @@ final class Bootstrap
             $session = SessionWrapperFactory::getInstance()->getActiveSession();
             $csrf = CsrfUtils::collectCsrfToken(session: $session);
             $base = $webroot . self::MODULE_PATH;
-            echo $this->panelHtml($base, $csrf);
+            echo $this->panelHtml($base, $csrf, $webroot, (int) $pid);
         } catch (\RuntimeException $e) {
             // Never let the panel break the chart page.
             $this->logger->error('copilot panel render failed', ['exception' => $e]);
@@ -103,15 +103,20 @@ final class Bootstrap
      * interpolation. panel.js reads data-endpoint and data-csrf from the root
      * div and fills the empty containers.
      */
-    private function panelHtml(string $base, string $csrf): string
+    private function panelHtml(string $base, string $csrf, string $webroot, int $pid): string
     {
         $endpoint = htmlspecialchars($base . '/public/chat.php', ENT_QUOTES);
+        $documents = htmlspecialchars($base . '/public/documents.php', ENT_QUOTES);
+        // OpenEMR's own ACL-checked document retrieval; the viewer fetches bytes from here.
+        $docUrl = htmlspecialchars($webroot . '/controller.php?document&retrieve&patient_id={pid}&document_id={id}&as_file=false', ENT_QUOTES);
         $css = htmlspecialchars($base . '/public/assets/panel.css', ENT_QUOTES);
         $js = htmlspecialchars($base . '/public/assets/panel.js', ENT_QUOTES);
+        $viewer = htmlspecialchars($base . '/public/assets/source-viewer.js', ENT_QUOTES);
         $token = htmlspecialchars($csrf, ENT_QUOTES);
+        $pidAttr = htmlspecialchars((string) $pid, ENT_QUOTES);
         return <<<HTML
 <link rel="stylesheet" href="{$css}">
-<div id="copilot-panel" class="card mb-3" data-endpoint="{$endpoint}" data-csrf="{$token}">
+<div id="copilot-panel" class="card mb-3" data-endpoint="{$endpoint}" data-documents-endpoint="{$documents}" data-doc-url="{$docUrl}" data-pid="{$pidAttr}" data-csrf="{$token}">
   <div class="card-header d-flex justify-content-between align-items-center">
     <span><strong>Clinical Co-Pilot</strong> <small class="text-muted">what changed since last visit</small></span>
     <span id="copilot-status" class="small text-muted">loading chart facts…</span>
@@ -119,6 +124,19 @@ final class Bootstrap
   <div class="card-body">
     <div id="copilot-narration" class="copilot-narration"></div>
     <div id="copilot-facts" class="copilot-facts"></div>
+    <div id="copilot-documents" class="copilot-documents">
+      <h6>Uploaded documents</h6>
+      <ul id="copilot-document-list"></ul>
+      <form id="copilot-upload" class="copilot-upload" autocomplete="off">
+        <select id="copilot-doc-type" class="form-control form-control-sm">
+          <option value="lab_pdf">Lab report (PDF)</option>
+          <option value="intake_form">Intake form (PDF)</option>
+        </select>
+        <input type="file" id="copilot-file" class="form-control-file" accept="application/pdf">
+        <button type="submit" class="btn btn-outline-primary btn-sm">Upload and extract</button>
+      </form>
+      <div id="copilot-upload-status" class="copilot-muted"></div>
+    </div>
     <form id="copilot-ask" class="copilot-ask" autocomplete="off">
       <input type="text" id="copilot-question" class="form-control" maxlength="500" placeholder="Ask about this chart (answers cite facts above)…" disabled>
       <button type="submit" class="btn btn-primary btn-sm" disabled>Ask</button>
@@ -127,6 +145,7 @@ final class Bootstrap
   </div>
 </div>
 <script src="{$js}" defer></script>
+<script type="module" src="{$viewer}"></script>
 HTML;
     }
 }

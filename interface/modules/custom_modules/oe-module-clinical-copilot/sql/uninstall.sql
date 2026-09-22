@@ -11,3 +11,6 @@
 
 DROP TABLE IF EXISTS `copilot_briefing_cache`;
 DROP TABLE IF EXISTS `copilot_prewarm`;
+DROP TABLE IF EXISTS `copilot_document`;
+DROP TABLE IF EXISTS `copilot_document_fact`;
+DROP TABLE IF EXISTS `copilot_intake`;

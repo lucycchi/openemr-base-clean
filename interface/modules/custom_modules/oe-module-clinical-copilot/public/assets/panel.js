@@ -23,8 +23,16 @@
         return;
     }
     const endpoint = panel.dataset.endpoint;
+    const documentsEndpoint = panel.dataset.documentsEndpoint;
+    const docUrlTemplate = panel.dataset.docUrl;
+    const pid = panel.dataset.pid;
     const csrf = panel.dataset.csrf;
     const els = {
+        documentList: document.getElementById('copilot-document-list'),
+        uploadForm: document.getElementById('copilot-upload'),
+        uploadStatus: document.getElementById('copilot-upload-status'),
+        docType: document.getElementById('copilot-doc-type'),
+        file: document.getElementById('copilot-file'),
         status: document.getElementById('copilot-status'),
         narration: document.getElementById('copilot-narration'),
         facts: document.getElementById('copilot-facts'),
@@ -38,6 +46,7 @@
     // are shown (most clinically urgent first). Must match FactCategory.php.
     const CATEGORY_LABELS = {
         allergy_medication_hit: 'Allergy / medication matches',
+        extraction_unverified: 'Unverified values from uploaded documents',
         lab_abnormal: 'Abnormal labs since last visit',
         medication_new: 'New medications',
         medication_changed: 'Changed medications',
@@ -110,9 +119,110 @@
             els.facts.appendChild(el('h6', { text: CATEGORY_LABELS[cat] }));
             const ul = el('ul');
             items.forEach(f => {
-                ul.appendChild(el('li', { class: f.must_surface ? 'copilot-must' : '', 'data-fact': f.id }, [f.value, chip(f.id)]));
+                const children = [f.value, chip(f.id)];
+                if (f.citation && f.citation.source_type === 'document') {
+                    children.push(sourceLink(f));
+                }
+                ul.appendChild(el('li', { class: f.must_surface ? 'copilot-must' : '', 'data-fact': f.id }, children));
             });
             els.facts.appendChild(ul);
+        });
+    }
+
+    // Week 2: a fact that came from an uploaded document links to the page and
+    // cell it was read from (source-viewer.js draws the box). Unverified values
+    // get a dashed link and the viewer says why there is no highlight.
+    function sourceLink(f) {
+        const c = f.citation;
+        const anchored = c.anchored === true;
+        const a = el('a', { href: '#', class: 'copilot-source' + (anchored ? '' : ' copilot-source-unverified'), title: anchored ? 'Show where this was read on the document' : 'Could not be verified against the page; open the document' }, [anchored ? 'source p.' + (c.page_or_section || '?') : 'unverified, open source']);
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            if (!window.copilotSourceViewer) { setStatus('The document viewer is not available.', true); return; }
+            window.copilotSourceViewer.open(docUrl(c.source_id), c, 'Document ' + c.source_id + ', page ' + (c.page_or_section || '?'));
+        });
+        return a;
+    }
+
+    function docUrl(documentId) {
+        return docUrlTemplate.replace('{pid}', encodeURIComponent(pid)).replace('{id}', encodeURIComponent(documentId));
+    }
+
+    // ---- Documents: list, upload, extract ---------------------------------
+
+    function postDocuments(fields, file) {
+        const body = new FormData();
+        body.append('csrf_token_form', csrf);
+        Object.entries(fields).forEach(([k, v]) => body.append(k, v));
+        if (file) body.append('file', file, file.name);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 120000);
+        return fetch(documentsEndpoint, { method: 'POST', body, credentials: 'same-origin', signal: controller.signal })
+            .then(r => r.json().then(j => ({ ok: r.ok, status: r.status, json: j })))
+            .finally(() => clearTimeout(timer));
+    }
+
+    const STATUS_LABEL = { stored: 'stored, not extracted', extracted: 'extracted', failed: 'extraction failed' };
+
+    function renderDocuments(docs) {
+        els.documentList.replaceChildren();
+        if (docs.length === 0) {
+            els.documentList.appendChild(el('li', { class: 'copilot-muted', text: 'No documents uploaded for this patient.' }));
+            return;
+        }
+        docs.forEach(d => {
+            const parts = [d.filename + ' (' + (d.doc_type === 'lab_pdf' ? 'lab report' : 'intake form') + '): ' + (STATUS_LABEL[d.status] || d.status)];
+            if (d.status === 'extracted' && typeof d.confidence === 'number') parts.push(', ' + Math.round(d.confidence * 100) + '% of values verified');
+            if (d.status === 'failed' && d.failure_reason) parts.push(' (' + d.failure_reason.replace(/_/g, ' ') + ')');
+            const li = el('li', { class: 'copilot-doc copilot-doc-' + d.status }, [parts.join('')]);
+            if (d.status !== 'extracted') {
+                const btn = el('button', { type: 'button', class: 'btn btn-link btn-sm p-0 ml-2', text: d.status === 'failed' ? 'Retry extraction' : 'Extract' });
+                btn.addEventListener('click', () => extractDocument(d.document_id));
+                li.appendChild(btn);
+            }
+            const view = el('a', { href: '#', class: 'copilot-source ml-2', text: 'open' });
+            view.addEventListener('click', e => { e.preventDefault(); if (window.copilotSourceViewer) window.copilotSourceViewer.open(docUrl(d.document_id), null, d.filename); });
+            li.appendChild(view);
+            els.documentList.appendChild(li);
+        });
+    }
+
+    function loadDocuments() {
+        return postDocuments({ action: 'list' }).then(r => {
+            if (r.ok && Array.isArray(r.json.documents)) renderDocuments(r.json.documents);
+        }).catch(() => { /* the list is informational; the briefing does not depend on it */ });
+    }
+
+    function extractDocument(documentId) {
+        els.uploadStatus.textContent = 'Extracting… (reading the pages and checking every value against the document)';
+        return postDocuments({ action: 'extract', document_id: String(documentId) }).then(r => {
+            if (!r.ok) {
+                els.uploadStatus.textContent = (r.json && r.json.error) || 'Extraction failed.';
+                return loadDocuments();
+            }
+            const j = r.json;
+            if (j.status === 'failed') {
+                els.uploadStatus.textContent = 'Extraction failed: ' + (j.failure_reason || 'unknown').replace(/_/g, ' ') + '. The file is stored; you can retry.';
+            } else {
+                els.uploadStatus.textContent = 'Extracted ' + j.results_persisted + ' value(s), ' + Math.round(j.confidence * 100) + '% verified against the page'
+                    + (j.unverified ? ', ' + j.unverified + ' unverified' : '') + (j.unextracted ? ', ' + j.unextracted + ' row(s) not extracted' : '') + '. Refreshing the briefing…';
+            }
+            return loadDocuments().then(brief);
+        }).catch(() => { els.uploadStatus.textContent = 'Extraction timed out; the file is stored, retry from the list.'; });
+    }
+
+    if (els.uploadForm) {
+        els.uploadForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const file = els.file.files && els.file.files[0];
+            if (!file) { els.uploadStatus.textContent = 'Choose a PDF first.'; return; }
+            els.uploadStatus.textContent = 'Uploading…';
+            postDocuments({ action: 'upload', doc_type: els.docType.value }, file).then(r => {
+                if (!r.ok) { els.uploadStatus.textContent = (r.json && r.json.error) || 'Upload failed.'; return null; }
+                els.file.value = '';
+                if (r.json.status === 'extracted') { els.uploadStatus.textContent = 'This file was already uploaded and extracted.'; return loadDocuments(); }
+                return extractDocument(r.json.document_id);
+            }).catch(() => { els.uploadStatus.textContent = 'Upload failed.'; });
         });
     }
 
@@ -265,4 +375,5 @@
 
     // Kick off the first briefing as soon as the script runs.
     brief();
+    loadDocuments();
 })();

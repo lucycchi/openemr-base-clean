@@ -37,6 +37,8 @@ final readonly class Config
         public string $langfuseWebhookSecret = '',
         /** Kill switch for the scheduled pre-warm; off unless COPILOT_PREWARM_ENABLED is truthy. */
         public bool $prewarmEnabled = false,
+        /** Week 2 sidecar (extraction, retrieval, supervisor); the compose service name is the default. */
+        public string $sidecarUrl = 'http://copilot-sidecar:8000',
     ) {
     }
 
@@ -54,6 +56,7 @@ final readonly class Config
             self::env('ALERT_WEBHOOK_SECRET'),
             self::env('LANGFUSE_WEBHOOK_SECRET'),
             self::envFlag('COPILOT_PREWARM_ENABLED'),
+            self::env('COPILOT_SIDECAR_URL') ?: 'http://copilot-sidecar:8000',
         );
     }
 

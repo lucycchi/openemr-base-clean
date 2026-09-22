@@ -23,3 +23,25 @@
 #copilot-panel .copilot-turn.copilot-user { border-color: #6c757d; color: #495057; }
 #copilot-panel .copilot-turn.copilot-assistant { border-color: #0d6efd; }
 #copilot-panel .copilot-muted { color: #6c757d; font-size: .8rem; }
+/* Week 2: documents block, source links and the click-to-source viewer. */
+#copilot-panel .copilot-documents { margin-top: .75rem; border-top: 1px solid #dee2e6; padding-top: .5rem; }
+#copilot-panel .copilot-documents ul { list-style: none; padding-left: 0; margin: 0 0 .5rem 0; font-size: .85rem; }
+#copilot-panel .copilot-doc-failed { color: #58151c; }
+#copilot-panel .copilot-upload { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+#copilot-panel .copilot-upload select { width: auto; }
+#copilot-panel .copilot-source { font-size: .75rem; margin-left: .4rem; white-space: nowrap; }
+#copilot-panel .copilot-source-unverified { border-bottom: 1px dashed #b02a37; color: #b02a37; text-decoration: none; }
+.copilot-viewer { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+.copilot-viewer[hidden] { display: none; }
+.copilot-viewer-box { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; letter-spacing: normal; word-spacing: normal; font-size: .95rem; background: #fff; border-radius: .3rem; width: min(96vw, 900px); max-height: 94vh; display: flex; flex-direction: column; box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.3); }
+.copilot-viewer-bar { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem; border-bottom: 1px solid #dee2e6; font-weight: 600; }
+.copilot-viewer-spacer { flex: 1; }
+.copilot-viewer-pageno { font-weight: 400; font-size: .85rem; color: #6c757d; }
+.copilot-viewer-note { padding: .35rem .75rem; font-size: .85rem; background: #d1e7dd; color: #0a3622; }
+.copilot-viewer-note-warn { background: #f8d7da; color: #58151c; }
+.copilot-viewer-stage { position: relative; overflow: auto; flex: 1; background: #6c757d; padding: .5rem; }
+.copilot-viewer-stage canvas { display: block; margin: 0 auto; background: #fff; }
+.copilot-viewer-overlay { position: absolute; top: .5rem; left: 50%; transform: translateX(-50%); pointer-events: none; }
+.copilot-viewer-mark { position: absolute; box-sizing: border-box; }
+.copilot-viewer-mark-row { border: 2px solid rgba(13,110,253,.6); background: rgba(13,110,253,.08); }
+.copilot-viewer-mark-value { border: 3px solid #dc3545; background: rgba(220,53,69,.18); }

@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
+
 /**
  * One numeric lab result. Only numeric results are loaded (see
  * ChartSource::labs) because the abnormal/delta logic needs a float to
@@ -29,6 +31,10 @@ final readonly class LabRecord
         public float $value,
         public string $units,
         public \DateTimeImmutable $date,
+        /** Week 2: set when the result was extracted from an uploaded document. */
+        public ?Citation $citation = null,
+        /** Week 2: the printed unit differed from the canonical unit for the LOINC; skip reference-range comparison. */
+        public bool $unitMismatch = false,
     ) {
     }
 }

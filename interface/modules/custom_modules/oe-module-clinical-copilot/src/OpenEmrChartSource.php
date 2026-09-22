@@ -23,6 +23,8 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use DateTimeImmutable;
 use OpenEMR\Common\Database\QueryUtils;
+use OpenEMR\Modules\ClinicalCopilot\Documents\BBox;
+use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
 
 /**
  * The real ChartSource: five SQL queries against OpenEMR's legacy tables
@@ -103,10 +105,12 @@ final class OpenEmrChartSource implements ChartSource
         $rows = QueryUtils::fetchRecords(
             "SELECT pr.procedure_result_id, po.encounter_id, pr.result_code, pr.result_text, pr.result, pr.units,
                     COALESCE(NULLIF(pr.date, '0000-00-00 00:00:00'), NULLIF(prp.date_report, '0000-00-00 00:00:00'),
-                             NULLIF(po.date_collected, '0000-00-00 00:00:00'), po.date_ordered) AS date
+                             NULLIF(po.date_collected, '0000-00-00 00:00:00'), po.date_ordered) AS date,
+                    cdf.document_id AS doc_id, cdf.field_path, cdf.page, cdf.bbox_json, cdf.row_bbox_json, cdf.unit_mismatch
              FROM procedure_result pr
              JOIN procedure_report prp ON prp.procedure_report_id = pr.procedure_report_id
              JOIN procedure_order po ON po.procedure_order_id = prp.procedure_order_id
+             LEFT JOIN copilot_document_fact cdf ON cdf.procedure_result_id = pr.procedure_result_id
              WHERE po.patient_id = ? AND pr.result REGEXP '^-?[0-9]+(\\\\.[0-9]+)?$' AND pr.result_code <> ''",
             [$pid->value]
         );
@@ -119,9 +123,72 @@ final class OpenEmrChartSource implements ChartSource
                 Row::float($r, 'result'),
                 Row::str($r, 'units'),
                 $this->date(Row::str($r, 'date')),
+                $this->documentCitation($r),
+                (int) ($r['unit_mismatch'] ?? 0) === 1,
             ),
             $rows
         );
+    }
+
+    /**
+     * A document citation for a lab row that came from an uploaded PDF
+     * (copilot_document_fact joined on procedure_result_id), else null.
+     *
+     * @param array<string, mixed> $r
+     */
+    private function documentCitation(array $r): ?Citation
+    {
+        if (!is_numeric($r['doc_id'] ?? null) || !is_string($r['field_path'] ?? null)) {
+            return null;
+        }
+        $bbox = is_string($r['bbox_json'] ?? null) ? json_decode($r['bbox_json'], true) : null;
+        $row = is_string($r['row_bbox_json'] ?? null) ? json_decode($r['row_bbox_json'], true) : null;
+        return new Citation(
+            'document',
+            (string) (int) $r['doc_id'],
+            is_numeric($r['page'] ?? null) ? (string) (int) $r['page'] : '',
+            $r['field_path'],
+            Row::str($r, 'result'),
+            is_array($bbox),
+            is_array($bbox) ? BBox::fromArray($bbox) : null,
+            is_array($row) ? BBox::fromArray($row) : null,
+        );
+    }
+
+    /**
+     * Week 2: fields the extractor could not anchor (and table rows it did not
+     * extract at all) for this patient's documents, so they surface as
+     * unverified rather than vanish. Ordered newest document first.
+     *
+     * @return list<UnverifiedExtraction>
+     */
+    public function unverifiedExtractions(PatientId $pid): array
+    {
+        $rows = QueryUtils::fetchRecords(
+            "SELECT cdf.id, cdf.document_id, cdf.kind, cdf.analyte, cdf.value, cdf.unit, cdf.page, cdf.field_path, cdf.bbox_json, cdf.row_bbox_json, cd.created_at
+             FROM copilot_document_fact cdf
+             JOIN copilot_document cd ON cd.document_id = cdf.document_id
+             JOIN documents d ON d.id = cd.document_id
+             WHERE cd.pid = ? AND cdf.anchored = 0 AND cd.status = 'extracted' AND d.deleted = 0
+             ORDER BY cd.created_at DESC, cdf.id ASC",
+            [$pid->value]
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $row = is_string($r['row_bbox_json'] ?? null) ? json_decode($r['row_bbox_json'], true) : null;
+            $bbox = is_string($r['bbox_json'] ?? null) ? json_decode($r['bbox_json'], true) : null;
+            $out[] = new UnverifiedExtraction(
+                Row::int($r, 'id'),
+                Row::int($r, 'document_id'),
+                Row::str($r, 'kind'),
+                is_string($r['analyte'] ?? null) ? $r['analyte'] : null,
+                Row::str($r, 'value'),
+                is_string($r['unit'] ?? null) ? $r['unit'] : null,
+                $this->date(Row::str($r, 'created_at')),
+                new Citation('document', (string) Row::int($r, 'document_id'), is_numeric($r['page'] ?? null) ? (string) (int) $r['page'] : '', Row::str($r, 'field_path'), Row::str($r, 'value'), false, is_array($bbox) ? BBox::fromArray($bbox) : null, is_array($row) ? BBox::fromArray($row) : null),
+            );
+        }
+        return $out;
     }
 
     public function problems(PatientId $pid): array

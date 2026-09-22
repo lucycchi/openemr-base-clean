@@ -83,6 +83,7 @@ final class PanelPayload
                     'value' => $f->value,
                     'source' => sprintf('%s#%d.%s', $f->service, $f->recordId, $f->field),
                     'must_surface' => $f->category->mustSurface(),
+                    'citation' => $f->citationOrChart()->toArray(),
                 ],
                 $assembled->facts()->all()
             ),

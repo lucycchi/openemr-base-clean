@@ -34,6 +34,8 @@ enum FactCategory: string
     case LabDelta = 'lab_delta';
     case ProblemNew = 'problem_new';
     case Truncation = 'truncation';
+    /** Week 2: a value or row from an uploaded document that could not be verified against the page. */
+    case ExtractionUnverified = 'extraction_unverified';
 
     /**
      * Must this fact appear in the briefing even if the model skipped it?
@@ -51,7 +53,8 @@ enum FactCategory: string
             self::AllergyMedicationHit,
             self::LabAbnormal,
             self::ProblemNew,
-            self::Truncation => true,
+            self::Truncation,
+            self::ExtractionUnverified => true,
             self::PriorVisit,
             self::Encounter,
             self::MedicationActive,

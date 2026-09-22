@@ -30,6 +30,9 @@ use OpenEMR\Modules\ClinicalCopilot\ProblemRecord;
  */
 final class FakeChartSource implements ChartSource
 {
+    /** @var list<\OpenEMR\Modules\ClinicalCopilot\UnverifiedExtraction> */
+    public array $unverified = [];
+
     public int $reads = 0;
     /** @var list<EncounterRecord> */
     public array $encounters = [];
@@ -70,5 +73,11 @@ final class FakeChartSource implements ChartSource
     {
         $this->reads++;
         return $this->problems;
+    }
+
+    /** @return list<\OpenEMR\Modules\ClinicalCopilot\UnverifiedExtraction> */
+    public function unverifiedExtractions(PatientId $pid): array
+    {
+        return $this->unverified;
     }
 }

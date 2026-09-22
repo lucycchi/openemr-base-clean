@@ -29,7 +29,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final class Prompt
 {
-    public const VERSION = '2026-09-18.2';
+    public const VERSION = '2026-09-22.1';
 
     // The grounding contract, stated to the model in plain language. The
     // Verifier enforces rules 1, 2 and 5 mechanically afterwards; the rest

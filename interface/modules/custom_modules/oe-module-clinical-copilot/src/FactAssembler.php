@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
+
 use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 
@@ -131,7 +133,7 @@ final class FactAssembler
                 continue;
             }
             // Abnormal: outside the reference range for a LOINC we know.
-            $range = $this->ranges->for($l->loinc);
+            $range = $l->unitMismatch ? null : $this->ranges->for($l->loinc);
             if ($range !== null && ($l->value < $range[0] || $l->value > $range[1])) {
                 $direction = $l->value < $range[0] ? 'below' : 'above';
                 $facts[] = $this->fact(
@@ -140,6 +142,7 @@ final class FactAssembler
                     'result',
                     sprintf('%s %s %s on %s (%s reference range %s-%s %s)', $l->name, $this->num($l->value), $l->units, $l->date->format('Y-m-d'), $direction, $this->num($range[0]), $this->num($range[1]), $range[2]),
                     FactCategory::LabAbnormal,
+                    $l->citation,
                 );
             }
             // Delta: same test, earlier result with a different value.
@@ -152,6 +155,7 @@ final class FactAssembler
                     'delta',
                     sprintf('%s changed from %s %s (%s) to %s %s (%s): %s %s', $l->name, $this->num($previous->value), $previous->units, $previous->date->format('Y-m-d'), $this->num($l->value), $l->units, $l->date->format('Y-m-d'), $diff > 0 ? 'up' : 'down', $this->num(abs($diff))),
                     FactCategory::LabDelta,
+                    $l->citation,
                 );
             }
         }
@@ -159,6 +163,13 @@ final class FactAssembler
         foreach ($this->chart->problems($pid) as $p) {
             if ($this->isNew($p->beginDate, $since)) {
                 $facts[] = $this->fact('ConditionService', $p->id, 'title', $p->title, FactCategory::ProblemNew);
+            }
+        }
+
+        // Week 2: what the document extractor could not verify is shown, not hidden.
+        foreach ($this->chart->unverifiedExtractions($pid) as $u) {
+            if ($this->isNew($u->uploadedAt, $since)) {
+                $facts[] = $this->fact('DocumentExtraction', $u->id, $u->kind, $u->describe(), FactCategory::ExtractionUnverified, $u->citation);
             }
         }
 
@@ -203,6 +214,7 @@ final class FactAssembler
                 FactCategory::AllergyMedicationHit => 'allergy/medication matches',
                 FactCategory::MedicationChanged => 'changed medications',
                 FactCategory::Truncation => $label,
+                FactCategory::ExtractionUnverified => 'unverified document values',
             };
             $kept[] = $this->fact('FactAssembler', 0, "truncated:$key", "$count additional $label not shown", FactCategory::Truncation);
         }
@@ -227,9 +239,9 @@ final class FactAssembler
         return rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
     }
 
-    private function fact(string $service, int $recordId, string $field, string $value, FactCategory $category): Fact
+    private function fact(string $service, int $recordId, string $field, string $value, FactCategory $category, ?Citation $citation = null): Fact
     {
-        return new Fact(Fact::idFor($service, $recordId, $field), $service, $recordId, $field, $value, $category);
+        return new Fact(Fact::idFor($service, $recordId, $field), $service, $recordId, $field, $value, $category, $citation);
     }
 
     // The date is part of the fact value so the model can cite it and the
