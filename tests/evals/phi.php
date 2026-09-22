@@ -6,7 +6,9 @@
  * with a capturing logger and a capturing tracer, and returns every log
  * record and trace payload so run.php can scan them. Needs the full
  * OpenEMR runtime (run.php --live boots it). The upload is removed
- * afterwards so the seed data stays as seeded.
+ * afterwards so the seed data stays as seeded. run.php pairs each case with
+ * the sidecar's own log lines for the same fixture (POST /eval/phi) and also
+ * requires every one of those lines to carry the request's correlation id.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org

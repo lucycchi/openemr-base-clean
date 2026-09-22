@@ -6,6 +6,10 @@
  * Recorded cases (default) replay a narration fixture through the Verifier
  * and OmissionGuard: deterministic, no network, no database. Live cases
  * (--live) assemble real facts from the seed database and call OpenAI.
+ * Week 2 modes reach the sidecar (anchor, absent, malformed, route,
+ * retrieve; the container must be up), the database (facts) or the real
+ * controllers (extract, phi_logs; live). Which mode reaches which layer:
+ * clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md section 1.
  * Results are written to tests/evals/results.json.
  *
  * Usage (inside the openemr container, as apache):

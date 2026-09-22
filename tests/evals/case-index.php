@@ -8,9 +8,11 @@
  *   php tests/evals/case-index.php          # rewrite the table in README.md
  *   php tests/evals/case-index.php --check  # fail if the table is stale (used by the gate)
  *
- * Every case must declare `guards` (invariant, boundary, regression or
- * authorization) and a `failure_mode` in plain English: the suite is designed
- * around boundaries, invariants and known regressions, not happy paths.
+ * Every case must declare `guards` (exactly one of invariant, boundary,
+ * regression; access-control cases are invariants with `theme: authorization`)
+ * and a `failure_mode` in plain English of at least 40 characters: the suite
+ * is designed around boundaries, invariants and known regressions, not happy
+ * paths. Why: clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md section 1.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org

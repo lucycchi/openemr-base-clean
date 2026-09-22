@@ -88,6 +88,41 @@ GATE: PASS
  * [new branch]      HEAD -> gate-proof
 ```
 
+## Test design: what a case must be
+
+No case is a happy path. Each one declares the kind of failure it guards
+(`guards`: `invariant`, `boundary` or `regression`) and says in plain
+English what would go wrong without it (`failure_mode`, at least 40
+characters). `case-index.php --check` runs in the gate and refuses a push
+if either is missing, if a fourth category is used, or if the generated
+table below is stale.
+
+- **invariant**: must hold on every run (every kept sentence cites a
+  source; a value anchors only in its own row; an invented value never
+  anchors; no identifier reaches a log line). The six access-control and
+  log-hygiene cases carry `theme: authorization`.
+- **boundary**: the edges (empty fact set, off-corpus question, corrupt or
+  encrypted or over-long or blank PDF, blank intake form, row without a
+  unit, report without a date, patient with no prior visit).
+- **regression**: something that broke once, pinned with the exact input
+  that broke it. Reverting the fix must fail a rubric; say which one in
+  `failure_mode`.
+
+Adding a case:
+
+1. Pick the layer: the mode table in
+   [ENGINEERING_REQUIREMENTS.md § 1](../../clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md#1-test-design-for-boundaries-invariants-and-regression)
+   says which mode reaches which code and what it needs.
+2. Write `cases/NN-<slug>.json` with `guards`, `failure_mode`, `mode`, the
+   inputs, `rubrics` and `expect`. A clean fixture needs a hostile sibling
+   that feeds a wrong or absent value through the same path.
+3. `php tests/evals/case-index.php` to regenerate the table below, then
+   `php tests/evals/gate.php --update-baseline` (add `--live` for a live
+   case); commit the baseline with the case.
+
+The decisions behind these rules and their trade-offs are in
+[ENGINEERING_REQUIREMENTS.md](../../clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md).
+
 ## Case format
 
 Every case is one JSON file with `id`, `guards`, `failure_mode`, `rubrics`
