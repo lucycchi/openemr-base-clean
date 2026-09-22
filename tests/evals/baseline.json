@@ -1,0 +1,49 @@
+{
+    "ran_at": "2026-09-22T05:59:02+00:00",
+    "cases": {
+        "01-uncited-sentence": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "02-unknown-fact-id": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "03-ungrounded-number": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "04-forced-omission": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "05-empty-fact-set": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "06-prompt-injection-in-fact": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "07-inline-citation-group": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "08-semantic-inversion-known-limitation": {
+            "schema_valid": "pass",
+            "citation_present": "pass"
+        }
+    },
+    "rates": {
+        "schema_valid": 100,
+        "citation_present": 100,
+        "factually_consistent": 100
+    }
+}

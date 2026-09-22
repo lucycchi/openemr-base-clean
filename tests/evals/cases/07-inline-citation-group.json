@@ -2,13 +2,45 @@
   "id": "07-inline-citation-group",
   "guards": "regression",
   "failure_mode": "Regression found 2026-09-15: the model echoes '[id, id]' inline; an all-digit id was read as an ungrounded number and a correct sentence was stripped.",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
   "mode": "briefing",
   "facts": [
-    {"id": "12345678", "service": "PrescriptionService", "record_id": 1, "field": "drug", "value": "Aspirin 81 MG", "category": "medication_active"},
-    {"id": "87654321", "service": "PrescriptionService", "record_id": 2, "field": "drug", "value": "Metformin 500 MG", "category": "medication_active"}
+    {
+      "id": "12345678",
+      "service": "PrescriptionService",
+      "record_id": 1,
+      "field": "drug",
+      "value": "Aspirin 81 MG",
+      "category": "medication_active"
+    },
+    {
+      "id": "87654321",
+      "service": "PrescriptionService",
+      "record_id": 2,
+      "field": "drug",
+      "value": "Metformin 500 MG",
+      "category": "medication_active"
+    }
   ],
-  "narration": {"sentences": [
-    {"text": "Aspirin and metformin are active [12345678, 87654321].", "fact_ids": ["12345678", "87654321"]}
-  ]},
-  "expect": {"kept": 1, "stripped": 0, "omitted_ids": [], "total_failure": false}
+  "narration": {
+    "sentences": [
+      {
+        "text": "Aspirin and metformin are active [12345678, 87654321].",
+        "fact_ids": [
+          "12345678",
+          "87654321"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "kept": 1,
+    "stripped": 0,
+    "omitted_ids": [],
+    "total_failure": false
+  }
 }

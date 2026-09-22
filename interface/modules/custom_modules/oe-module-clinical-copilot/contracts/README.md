@@ -20,6 +20,13 @@ and `ChatRequestTest.php`, which run on every commit (`openemr-cmd pit`).
 | `llm.followup.output.schema.json` | OpenAI → `OpenAiClient`, follow-up | Same, via `Prompt::followUpSchema()`. |
 | `fact.schema.json` | shared: one row of the fact table | `$ref`'d by the three response contracts; its `category` enum is asserted equal to `FactCategory::cases()`. |
 | `sentence.schema.json` | shared: one cited sentence | `$ref`'d by the response contracts. |
+| `citation.schema.json` | shared (Week 2): provenance for one claim or extracted field, with the bounding box for document sources | `$ref`'d by the extraction contracts; `Fact::citation` and the panel render it. Written by hand first; the sidecar's Pydantic export must equal it (pytest). |
+| `lab-report.schema.json` | sidecar → PHP: extraction of a lab PDF | Validated by PHP before persisting; sent to OpenAI as the Structured Output schema by the sidecar. `tests/evals` extract and anchor cases validate fixtures against it. |
+| `intake-form.schema.json` | sidecar → PHP: extraction of an intake form | Same. |
+| `handoff.schema.json` | sidecar → PHP: one supervisor routing step | Every hop in `run.response.handoffs`; written to Langfuse spans and the panel drawer. Reasons are fixed codes so they are safe to log. |
+| `run.request.schema.json` | PHP → sidecar `POST /run` | `SidecarClient` builds it; the sidecar rejects anything else (422). No patient identifiers cross this boundary. |
+| `run.response.schema.json` | sidecar → PHP, success | Validated by PHP before any persistence; carries `usage` for `Pricing`. |
+| `run.error.schema.json` | sidecar → PHP, failure | Fixed error codes only. |
 
 ## Rules
 

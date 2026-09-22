@@ -132,6 +132,13 @@ final class ContractsTest extends TestCase
             'llm briefing output' => ['llm.briefing.output'],
             'llm follow-up output' => ['llm.followup.output'],
             'fact' => ['fact'],
+            'citation' => ['citation'],
+            'lab report extraction' => ['lab-report'],
+            'intake form extraction' => ['intake-form'],
+            'handoff' => ['handoff'],
+            'run request' => ['run.request'],
+            'run response' => ['run.response'],
+            'run error' => ['run.error'],
         ];
     }
 

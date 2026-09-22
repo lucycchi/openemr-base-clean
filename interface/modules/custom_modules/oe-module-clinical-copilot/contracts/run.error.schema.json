@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/run.error.schema.json",
+  "title": "Sidecar run error",
+  "description": "Sidecar -> PHP with HTTP 4xx/5xx when the run could not complete at all (a per-document failure is reported inside run.response instead). Codes are fixed; the message is a code too, never document text.",
+  "type": "object",
+  "properties": {
+    "correlation_id": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string",
+      "enum": [
+        "bad_request",
+        "parse_failed",
+        "encrypted",
+        "unreadable",
+        "model_error",
+        "timeout",
+        "internal"
+      ]
+    }
+  },
+  "required": [
+    "correlation_id",
+    "code"
+  ],
+  "additionalProperties": false
+}

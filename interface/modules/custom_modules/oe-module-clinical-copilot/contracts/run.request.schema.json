@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/run.request.schema.json",
+  "title": "Sidecar run request",
+  "description": "PHP -> sidecar POST /run. Two modes: extract (documents carry bytes; the graph runs the intake_extractor) and answer (a question; the graph runs the evidence_retriever). The sidecar never receives patient identifiers: facts_hash is the Week 1 fact-set hash, question text is the physician's words (it may name drugs or labs, never the patient). correlation_id is the idempotency key for 10 minutes.",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "extract",
+        "answer"
+      ]
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "facts_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "question": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2000
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "doc_type": {
+            "type": "string",
+            "enum": [
+              "lab_pdf",
+              "intake_form"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "stored",
+              "extracted",
+              "failed"
+            ]
+          },
+          "sha3_512": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{128}$"
+          },
+          "bytes_base64": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PDF bytes, base64; present only when status=stored (not yet extracted)."
+          }
+        },
+        "required": [
+          "document_id",
+          "doc_type",
+          "status",
+          "sha3_512",
+          "bytes_base64"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "mode",
+    "correlation_id",
+    "facts_hash",
+    "question",
+    "documents"
+  ],
+  "additionalProperties": false
+}

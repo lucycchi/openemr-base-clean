@@ -226,13 +226,13 @@ Not related to last week's grader notes. This settles the one unknown every late
 - [x] 0.1 (done 2026-09-21: 2 vCPU / 3.9 GB; Docling 15 GB image, 14-16 s/page, OOM at 2.5 GB; tesseract 2.4 s/page under 100 MB → PyMuPDF + tesseract chosen; recorded in W2_ARCHITECTURE.md. No Cohere key found.) **Droplet spike, first thing.** `free -m`, `df -h`, `docker pull` a Docling-based image; time Docling on `lab-layout1.pdf` inside a container on the droplet. If RAM < 4 GB, the pull fails, or a page takes > 10 s, the stack is pdfplumber + tesseract for the week. One stack only; the other is a sentence in `W2_ARCHITECTURE.md`. Also confirm the Cohere key; if none, `bge-reranker-base` is the one reranker.
 - [x] 0.2 (done 2026-09-21) `TODOS.md`: record the two Week 1 grader notes (cost analysis needs per-tier architecture changes; USERS.md personas and use cases too thin) as open items pointing at tasks 9.1 and 9.2, and link from README so graders see the debt is documented before Week 2 work starts.
 
-### Phase 1: Gate shell (Monday, ~2.5 h)
+### Phase 1: Gate shell (Monday, ~2.5 h) — done 2026-09-21: 15 cases carry rubrics, both baselines committed, hook installed and proven (transcript in tests/evals/README.md)
 
-- [ ] 1.1 Case format: `mode` gains `extract | anchor | retrieve | route | answer` with inputs per mode documented by one example JSON each in `tests/evals/README.md`; `rubrics{}`; `pending`.
-- [ ] 1.2 Write the schemas above as `contracts/*.schema.json` by hand first (they are the spec); the Pydantic export in 3.1 must match them.
-- [ ] 1.3 `gate.php` with the gate rule; per-case results; separate deterministic and live baselines; skipped-with-reason for live without keys.
-- [ ] 1.4 `install-hooks.sh`: pre-push runs `openemr-cmd e "su -s /bin/sh apache -c 'php tests/evals/gate.php'"`, checks `openemr` is up (and `copilot-sidecar` once any non-pending case needs it), fails closed with the start command; `--self-test` installs, injects a known failure into a temp copy of a case, asserts exit 1, restores. Pre-commit entry runs pure-PHP cases only. README section "How graders test the gate", stating the hook is push-blocking when installed and bypassable with `--no-verify`.
-- [ ] 1.5 Add rubric fields to the 15 Week 1 cases, commit both baselines, prove the gate: inject a `Verifier` regression, `git push` refused, revert, keep the transcript.
+- [x] 1.1 Case format: `mode` gains `extract | anchor | retrieve | route | answer` with inputs per mode documented by one example JSON each in `tests/evals/README.md`; `rubrics{}`; `pending`.
+- [x] 1.2 Write the schemas above as `contracts/*.schema.json` by hand first (they are the spec); the Pydantic export in 3.1 must match them.
+- [x] 1.3 `gate.php` with the gate rule; per-case results; separate deterministic and live baselines; skipped-with-reason for live without keys.
+- [x] 1.4 `install-hooks.sh`: pre-push runs `openemr-cmd e "su -s /bin/sh apache -c 'php tests/evals/gate.php'"`, checks `openemr` is up (and `copilot-sidecar` once any non-pending case needs it), fails closed with the start command; `--self-test` installs, injects a known failure into a temp copy of a case, asserts exit 1, restores. Pre-commit entry runs pure-PHP cases only. README section "How graders test the gate", stating the hook is push-blocking when installed and bypassable with `--no-verify`.
+- [x] 1.5 Add rubric fields to the 15 Week 1 cases, commit both baselines, prove the gate: inject a `Verifier` regression, `git push` refused, revert, keep the transcript.
 
 ### Phase 2: One deployed vertical slice (Monday to Tuesday midday, ~9 h)
 

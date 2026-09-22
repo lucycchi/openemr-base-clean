@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/lab-report.schema.json",
+  "title": "Lab report extraction",
+  "description": "Strict extraction of an uploaded lab PDF (doc_type=lab_pdf). Produced by the sidecar's intake_extractor worker: the model proposes values from the page text, anchor.py attaches citations. Every clinical field carries a citation; lab_name is the only uncited metadata. patient_name_on_report is compared with the session patient by PHP and never stored.",
+  "type": "object",
+  "properties": {
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "lab_pdf"
+      ]
+    },
+    "patient_name_on_report": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "As printed; compared to the chart, never persisted or logged."
+    },
+    "collection_date": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date the specimen was collected. Required; anchored once per document."
+    },
+    "collection_date_citation": {
+      "$ref": "citation.schema.json"
+    },
+    "reported_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "reported_date_citation": {
+      "oneOf": [
+        {
+          "$ref": "citation.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lab_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Performing laboratory as printed; metadata, no citation."
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/lab_result"
+      }
+    }
+  },
+  "required": [
+    "doc_type",
+    "patient_name_on_report",
+    "collection_date",
+    "collection_date_citation",
+    "reported_date",
+    "reported_date_citation",
+    "lab_name",
+    "results"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "lab_result": {
+      "type": "object",
+      "properties": {
+        "analyte": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Test name as printed."
+        },
+        "loinc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "LOINC code from contracts/loinc_map.json, null when the analyte is not mapped."
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Result as printed, verbatim (string so '<5' and '1.2' both survive)."
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reference_range": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "As printed, e.g. '70-99' or '<100'."
+        },
+        "abnormal_flag": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "H",
+            "L",
+            "HH",
+            "LL",
+            "A",
+            "N",
+            null
+          ]
+        },
+        "unit_mismatch": {
+          "type": "boolean",
+          "description": "True when the printed unit differs from the canonical unit for the LOINC; such results are stored but not compared to reference ranges."
+        },
+        "citation": {
+          "$ref": "citation.schema.json"
+        }
+      },
+      "required": [
+        "analyte",
+        "loinc",
+        "value",
+        "unit",
+        "reference_range",
+        "abnormal_flag",
+        "unit_mismatch",
+        "citation"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/run.response.schema.json",
+  "title": "Sidecar run response",
+  "description": "Sidecar -> PHP for a successful run. PHP validates this document against the contract before persisting anything. extractions are validated again against lab_report / intake_form by doc_type.",
+  "type": "object",
+  "properties": {
+    "correlation_id": {
+      "type": "string"
+    },
+    "extractions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "extracted",
+              "failed"
+            ]
+          },
+          "failure_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "encrypted",
+              "unreadable",
+              "too_many_pages",
+              "model_error",
+              "schema_mismatch",
+              "timeout",
+              null
+            ]
+          },
+          "extraction": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "lab-report.schema.json"
+              },
+              {
+                "$ref": "intake-form.schema.json"
+              }
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Anchored fields / cited fields."
+          }
+        },
+        "required": [
+          "document_id",
+          "status",
+          "failure_reason",
+          "extraction",
+          "confidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "chunks": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "properties": {
+          "chunk_id": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "section": {
+            "type": "string"
+          },
+          "quote": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "source_id",
+          "section",
+          "quote",
+          "score"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "handoffs": {
+      "type": "array",
+      "items": {
+        "$ref": "handoff.schema.json"
+      }
+    },
+    "usage": {
+      "type": "array",
+      "description": "Every paid call the run made, so PHP can cost it with Pricing. kind=rerank counts one search as input=1.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "chat",
+              "embedding",
+              "rerank"
+            ]
+          },
+          "input": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "output": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "model",
+          "kind",
+          "input",
+          "output"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "correlation_id",
+    "extractions",
+    "chunks",
+    "handoffs",
+    "usage"
+  ],
+  "additionalProperties": false
+}

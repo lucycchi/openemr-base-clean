@@ -2,8 +2,20 @@
   "id": "05-empty-fact-set",
   "guards": "boundary",
   "failure_mode": "Patient with nothing since last visit (or an empty chart). The pipeline must not fail or invent content; an empty narration is correct.",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
   "mode": "briefing",
   "facts": [],
-  "narration": {"sentences": []},
-  "expect": {"kept": 0, "stripped": 0, "omitted_ids": [], "total_failure": false}
+  "narration": {
+    "sentences": []
+  },
+  "expect": {
+    "kept": 0,
+    "stripped": 0,
+    "omitted_ids": [],
+    "total_failure": false
+  }
 }

@@ -3,12 +3,36 @@
   "guards": "invariant",
   "known_limitation": true,
   "failure_mode": "The model cites a real fact but inverts its meaning ('discontinued' when it was started). No number or date is wrong, so value-level verification cannot catch it. Documented limitation: mitigated by rendering the fact table as the primary UI beside the prose.",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
   "mode": "briefing",
   "facts": [
-    {"id": "rx0001", "service": "PrescriptionService", "record_id": 17, "field": "drug", "value": "Lisinopril 10 MG Oral Tablet", "category": "medication_new"}
+    {
+      "id": "8be04b5a",
+      "service": "PrescriptionService",
+      "record_id": 17,
+      "field": "drug",
+      "value": "Lisinopril 10 MG Oral Tablet",
+      "category": "medication_new"
+    }
   ],
-  "narration": {"sentences": [
-    {"text": "Lisinopril was discontinued.", "fact_ids": ["rx0001"]}
-  ]},
-  "expect": {"kept": 1, "stripped": 0, "omitted_ids": [], "total_failure": false}
+  "narration": {
+    "sentences": [
+      {
+        "text": "Lisinopril was discontinued.",
+        "fact_ids": [
+          "8be04b5a"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "kept": 1,
+    "stripped": 0,
+    "omitted_ids": [],
+    "total_failure": false
+  }
 }

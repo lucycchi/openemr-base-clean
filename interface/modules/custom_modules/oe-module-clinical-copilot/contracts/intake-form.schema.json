@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/intake-form.schema.json",
+  "title": "Intake form extraction",
+  "description": "Strict extraction of an uploaded patient intake form (doc_type=intake_form). Demographics are compared with the session patient by PHP and never persisted; a mismatch surfaces as a fact. Empty lists are valid; an unfilled field is null, never an empty string. Every clinical field carries a citation.",
+  "type": "object",
+  "properties": {
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "intake_form"
+      ]
+    },
+    "form_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "form_date_citation": {
+      "oneOf": [
+        {
+          "$ref": "citation.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "demographics": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/cited_string_or_null"
+        },
+        "dob": {
+          "$ref": "#/$defs/cited_string_or_null"
+        },
+        "sex": {
+          "$ref": "#/$defs/cited_string_or_null"
+        },
+        "phone": {
+          "$ref": "#/$defs/cited_string_or_null"
+        }
+      },
+      "required": [
+        "name",
+        "dob",
+        "sex",
+        "phone"
+      ],
+      "additionalProperties": false
+    },
+    "chief_concern": {
+      "$ref": "#/$defs/cited_string_or_null"
+    },
+    "medications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dose": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "frequency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "citation": {
+            "$ref": "citation.schema.json"
+          }
+        },
+        "required": [
+          "name",
+          "dose",
+          "frequency",
+          "citation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "allergies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "substance": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reaction": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "citation": {
+            "$ref": "citation.schema.json"
+          }
+        },
+        "required": [
+          "substance",
+          "reaction",
+          "citation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "family_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "relative": {
+            "type": "string",
+            "minLength": 1
+          },
+          "condition": {
+            "type": "string",
+            "minLength": 1
+          },
+          "citation": {
+            "$ref": "citation.schema.json"
+          }
+        },
+        "required": [
+          "relative",
+          "condition",
+          "citation"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "doc_type",
+    "form_date",
+    "form_date_citation",
+    "demographics",
+    "chief_concern",
+    "medications",
+    "allergies",
+    "family_history"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "cited_string_or_null": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string",
+              "minLength": 1
+            },
+            "citation": {
+              "$ref": "citation.schema.json"
+            }
+          },
+          "required": [
+            "value",
+            "citation"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

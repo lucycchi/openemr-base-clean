@@ -2,13 +2,40 @@
   "id": "01-uncited-sentence",
   "guards": "invariant",
   "failure_mode": "The model states something without citing any fact. Uncited prose must never reach the physician.",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
   "mode": "briefing",
   "facts": [
-    {"id": "rx0001", "service": "PrescriptionService", "record_id": 17, "field": "drug", "value": "Lisinopril 10 MG Oral Tablet", "category": "medication_new"}
+    {
+      "id": "8be04b5a",
+      "service": "PrescriptionService",
+      "record_id": 17,
+      "field": "drug",
+      "value": "Lisinopril 10 MG Oral Tablet",
+      "category": "medication_new"
+    }
   ],
-  "narration": {"sentences": [
-    {"text": "A new blood pressure medication was started.", "fact_ids": ["rx0001"]},
-    {"text": "The patient is doing well overall.", "fact_ids": []}
-  ]},
-  "expect": {"kept": 1, "stripped": 1, "omitted_ids": [], "total_failure": false}
+  "narration": {
+    "sentences": [
+      {
+        "text": "A new blood pressure medication was started.",
+        "fact_ids": [
+          "8be04b5a"
+        ]
+      },
+      {
+        "text": "The patient is doing well overall.",
+        "fact_ids": []
+      }
+    ]
+  },
+  "expect": {
+    "kept": 1,
+    "stripped": 1,
+    "omitted_ids": [],
+    "total_failure": false
+  }
 }

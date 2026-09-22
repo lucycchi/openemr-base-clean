@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/handoff.schema.json",
+  "title": "Supervisor handoff",
+  "description": "One routing step in the sidecar graph, appended by the supervisor on every transition so the multi-agent run is inspectable. PHP writes each as a Langfuse span and the panel shows the list in its 'Why this answer' drawer. Reasons are fixed codes, never free text, so they are safe to log.",
+  "type": "object",
+  "properties": {
+    "from": {
+      "type": "string",
+      "enum": [
+        "supervisor",
+        "intake_extractor",
+        "evidence_retriever",
+        "critic"
+      ]
+    },
+    "to": {
+      "type": "string",
+      "enum": [
+        "supervisor",
+        "intake_extractor",
+        "evidence_retriever",
+        "critic",
+        "done"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "stored_document",
+        "question_present",
+        "no_documents",
+        "no_question",
+        "already_extracted",
+        "unsupported_doc_type",
+        "worker_finished",
+        "worker_failed"
+      ]
+    },
+    "state_keys_changed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "RunState keys the step wrote (e.g. extractions, chunks)."
+    },
+    "ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "from",
+    "to",
+    "reason",
+    "state_keys_changed",
+    "ms"
+  ],
+  "additionalProperties": false
+}
