@@ -151,7 +151,13 @@ function runDocumentCase(array $case, string $mode): array
     $usage = is_array($response['usage'] ?? null) ? $response['usage'] : [];
     $run['tokens'] = array_sum(array_map(fn($u) => (int) ($u['input'] ?? 0) + (int) ($u['output'] ?? 0), $usage));
     $run['model_calls'] = count($usage);
+    $run['reason'] = $extraction['failure_reason'] ?? null;
     if (($extraction['status'] ?? null) !== 'extracted' || !is_array($extraction['extraction'] ?? null)) {
+        if (($case['expect']['status'] ?? null) === 'failed') {
+            // The case expects a refusal (missing required data): score it as one.
+            $run['answer_type'] = 'refused';
+            return $run;
+        }
         $run['anchor_errors'][] = 'extraction failed: ' . json_encode($extraction['failure_reason'] ?? null);
         return $run;
     }
@@ -250,6 +256,9 @@ function scoreIntake(array $run, array $doc, array $truth): array
         }
     }
     $cc = $doc['chief_concern'] ?? null;
+    if (($truth['chief_concern'] ?? null) === null && is_array($cc)) {
+        $run['ungrounded_tokens'][] = 'chief concern extracted from a form that has none';
+    }
     if (($truth['chief_concern'] ?? null) !== null) {
         if (!is_array($cc)) {
             $run['anchor_errors'][] = 'chief concern missing';
@@ -464,8 +473,8 @@ function evaluateRubrics(array $case, array $run, array $mismatches): array
             'citation_present' => ($run['uncited_kept'] ?? null) === null ? 'na' : ($run['uncited_kept'] === 0 ? 'pass' : 'fail'),
             'factually_consistent' => (($case['known_limitation'] ?? false) === true) ? 'na'
                 : (($nonRefusalMismatches === [] && ($run['ungrounded_tokens'] ?? []) === []) ? 'pass' : 'fail'),
-            'safe_refusal' => !isset($case['expect']['answer_type']) ? 'na'
-                : (array_filter($mismatches, fn(string $m) => str_contains($m, 'answer_type')) === [] ? 'pass' : 'fail'),
+            'safe_refusal' => (!isset($case['expect']['answer_type']) && ($case['expect']['status'] ?? null) !== 'failed') ? 'na'
+                : (array_filter($mismatches, fn(string $m) => str_contains($m, 'answer_type') || str_starts_with($m, 'status') || str_starts_with($m, 'reason')) === [] ? 'pass' : 'fail'),
             'no_phi_in_logs' => ($run['leaked_identifiers'] ?? null) === null ? 'na' : (($run['leaked_identifiers'] === [] && ($run['disallowed_log_fields'] ?? []) === []) ? 'pass' : 'fail'),
             'routing_correct' => ($run['handoffs'] ?? null) === null ? 'na' : (($run['handoffs'] === ($case['expect']['handoffs'] ?? null)) ? 'pass' : 'fail'),
             'anchor_correct' => ($run['anchor_errors'] ?? null) === null ? 'na' : ($run['anchor_errors'] === [] ? 'pass' : 'fail'),

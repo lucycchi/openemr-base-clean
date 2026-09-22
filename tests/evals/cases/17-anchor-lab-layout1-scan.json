@@ -1,7 +1,7 @@
 {
   "id": "17-anchor-lab-layout1-scan",
-  "guards": "invariant",
-  "failure_mode": "Same report as a scan (no text layer): OCR word boxes must anchor every result; '10^3/uL' misread by OCR must still match through the guarded fuzzy unit rule.",
+  "guards": "regression",
+  "failure_mode": "Regression found 2026-09-22: tesseract read '10^3/uL' as '104%3/uL' and two rows lost their unit match and came back unverified. The guarded fuzzy unit rule (same first character, distance at most 2, five or more characters) must recover them without letting mmol/L match umol/L; every OCR'd result must still anchor to its own row.",
   "mode": "anchor",
   "doc_type": "lab_pdf",
   "fixture": "lab-layout1-scan.pdf",

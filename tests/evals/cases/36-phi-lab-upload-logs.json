@@ -1,6 +1,7 @@
 {
   "id": "36-phi-lab-upload-logs",
-  "guards": "authorization",
+  "guards": "invariant",
+  "theme": "authorization",
   "live": true,
   "failure_mode": "Uploading and extracting a lab report through the real controller must leave no patient name from the report, no filename and no extracted values in the log records or the trace payloads; every log field must be on the allowlist.",
   "mode": "phi_logs",

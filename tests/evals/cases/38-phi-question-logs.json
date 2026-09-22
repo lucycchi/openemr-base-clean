@@ -1,6 +1,7 @@
 {
   "id": "38-phi-question-logs",
-  "guards": "authorization",
+  "guards": "invariant",
+  "theme": "authorization",
   "live": true,
   "failure_mode": "The physician's question text (which may name a drug, a value or a person) must not appear in logs or traces; only counts, ids and codes do.",
   "mode": "phi_logs",

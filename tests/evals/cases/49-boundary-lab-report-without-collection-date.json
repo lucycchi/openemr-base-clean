@@ -1,0 +1,18 @@
+{
+  "id": "49-boundary-lab-report-without-collection-date",
+  "guards": "boundary",
+  "failure_mode": "Missing data that cannot be tolerated: a lab report with no readable collection date has no date to file results under. The extraction must fail with schema_mismatch and persist nothing, rather than filing results under today's date or the upload date.",
+  "mode": "anchor",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-layout1.pdf",
+  "model_output": "lab-no-date.model.json",
+  "truth": "lab-layout1.truth.json",
+  "rubrics": {
+    "safe_refusal": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "status": "failed",
+    "reason": "schema_mismatch"
+  }
+}

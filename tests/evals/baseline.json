@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T15:51:02+00:00",
+    "ran_at": "2026-09-22T17:40:25+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -124,15 +124,19 @@
             "factually_consistent": "pass"
         },
         "39-malformed-corrupt-pdf": {
+            "safe_refusal": "pass",
             "schema_valid": "pass"
         },
         "40-malformed-encrypted-pdf": {
+            "safe_refusal": "pass",
             "schema_valid": "pass"
         },
         "41-malformed-too-many-pages": {
+            "safe_refusal": "pass",
             "schema_valid": "pass"
         },
         "42-malformed-blank-scan": {
+            "safe_refusal": "pass",
             "schema_valid": "pass"
         },
         "43-absent-lab-values-unverified": {
@@ -152,6 +156,21 @@
             "schema_valid": "pass",
             "citation_present": "pass",
             "factually_consistent": "pass"
+        },
+        "47-boundary-intake-blank-fields": {
+            "schema_valid": "pass",
+            "factually_consistent": "pass",
+            "anchor_correct": "pass"
+        },
+        "48-boundary-lab-result-without-unit": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
+        },
+        "49-boundary-lab-report-without-collection-date": {
+            "safe_refusal": "pass",
+            "schema_valid": "pass"
         }
     },
     "rates": {

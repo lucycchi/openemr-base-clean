@@ -1,7 +1,7 @@
 {
   "id": "16-anchor-lab-layout1",
   "guards": "invariant",
-  "failure_mode": "A recorded model proposal for the 5-page text-layer report must anchor every result to its own row on the right page; a value anchored to the wrong row or an unanchored true value fails.",
+  "failure_mode": "Cross-page attribution: a five-page report where every page has the same table layout. A value anchored to a row on the wrong page (same analyte name on another page, same number in a 'Previous' column) fails anchor_correct even though the number exists somewhere in the document; the page in the citation must be the page the truth file names.",
   "mode": "anchor",
   "doc_type": "lab_pdf",
   "fixture": "lab-layout1.pdf",

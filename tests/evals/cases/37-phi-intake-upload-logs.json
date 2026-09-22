@@ -1,6 +1,7 @@
 {
   "id": "37-phi-intake-upload-logs",
-  "guards": "authorization",
+  "guards": "invariant",
+  "theme": "authorization",
   "live": true,
   "failure_mode": "An intake form carries a name, a date of birth, a phone number and a chief concern: none may appear in logs or traces; the mismatch flag is recorded as a fixed phrase only.",
   "mode": "phi_logs",
