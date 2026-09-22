@@ -11,13 +11,18 @@ cannot find on the page anyway.
 from __future__ import annotations
 
 import json
+import logging
 import os
+import time
 from dataclasses import dataclass
 
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
+from .logging_setup import correlation_id
 from .schemas import IntakeFormProposal, LabReportProposal, Usage, openai_strict_schema
+
+log = logging.getLogger("copilot.llm")
 
 PROMPT_VERSION = "2026-09-21.1"
 
@@ -72,14 +77,26 @@ def model_name() -> str:
     return os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
 
-def propose(doc_type: str, page_text: str, client: OpenAI | None = None, extra_task: str = "") -> Proposal:
+def correlation_options() -> dict:
+    """The request's correlation id as OpenAI's per-request `user` field and as
+    an X-Correlation-Id header, the same two places the PHP client puts it, so
+    the provider's own logs can be matched to ours."""
+    cid = correlation_id()
+    if not cid:
+        return {}
+    return {"user": cid, "extra_headers": {"X-Correlation-Id": cid}}
+
+
+def propose(doc_type: str, page_text: str, client: OpenAI | None = None, extra_task: str = "", page: int | None = None) -> Proposal:
     schema_model = LabReportProposal if doc_type == "lab_pdf" else IntakeFormProposal
     task = LAB_TASK if doc_type == "lab_pdf" else INTAKE_TASK
     client = client or OpenAI(timeout=45.0, max_retries=1)
+    started = time.monotonic()
     try:
         resp = client.chat.completions.create(
             model=model_name(),
             temperature=0,
+            **correlation_options(),
             messages=[
                 {"role": "system", "content": SYSTEM},
                 {"role": "user", "content": f"{task}{extra_task}\n\n<<<DOCUMENT_TEXT\n{page_text}\nDOCUMENT_TEXT>>>"},
@@ -90,6 +107,7 @@ def propose(doc_type: str, page_text: str, client: OpenAI | None = None, extra_t
             },
         )
     except Exception as exc:  # network, auth, rate limit; the caller maps to failure_reason
+        log.info("model_call failed", extra={"model": model_name(), "kind": "chat", "page": page, "ms": int((time.monotonic() - started) * 1000), "exception_class": type(exc).__name__})
         raise ModelError("timeout" if "timeout" in str(exc).lower() else "model_error") from exc
     choice = resp.choices[0]
     if choice.finish_reason == "content_filter" or choice.message.refusal:
@@ -105,4 +123,5 @@ def propose(doc_type: str, page_text: str, client: OpenAI | None = None, extra_t
         input=int(resp.usage.prompt_tokens if resp.usage else 0),
         output=int(resp.usage.completion_tokens if resp.usage else 0),
     )
+    log.info("model_call", extra={"model": usage.model, "kind": "chat", "page": page, "input": usage.input, "output": usage.output, "ms": int((time.monotonic() - started) * 1000)})
     return Proposal(data=data, usage=usage, raw=raw)

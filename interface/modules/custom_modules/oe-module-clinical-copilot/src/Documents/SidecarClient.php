@@ -65,7 +65,13 @@ final class SidecarClient
     private function run(array $body): RunResult
     {
         try {
-            $response = $this->http->post(rtrim($this->config->sidecarUrl, '/') . '/run', ['json' => $body, 'headers' => ['Accept' => 'application/json']]);
+            // The id travels in the body (the contract) and as a header, so the
+            // sidecar binds it to its log lines before the body is even parsed.
+            $headers = ['Accept' => 'application/json'];
+            if (is_string($body['correlation_id'] ?? null)) {
+                $headers['X-Correlation-Id'] = $body['correlation_id'];
+            }
+            $response = $this->http->post(rtrim($this->config->sidecarUrl, '/') . '/run', ['json' => $body, 'headers' => $headers]);
         } catch (ConnectException $e) {
             throw new SidecarException('unavailable', $e);
         } catch (RequestException $e) {

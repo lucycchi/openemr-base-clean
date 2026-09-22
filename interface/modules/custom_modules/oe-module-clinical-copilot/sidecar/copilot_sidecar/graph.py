@@ -25,6 +25,7 @@ harness can run the same graph with stubs and score only the routing.
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Callable, TypedDict
 
@@ -32,6 +33,8 @@ from langgraph.graph import END, START, StateGraph
 
 from . import extractor
 from .schemas import Chunk, Extraction, Handoff, RunDocument, Usage
+
+log = logging.getLogger("copilot.graph")
 
 SUPPORTED_DOC_TYPES = {"lab_pdf", "intake_form"}
 
@@ -57,9 +60,10 @@ class RunState(TypedDict, total=False):
 
 def _hop(state: RunState, from_: str, to: str, reason: str, changed: list[str]) -> None:
     now = time.monotonic()
-    state.setdefault("handoffs", []).append(
-        Handoff(**{"from": from_, "to": to, "reason": reason, "state_keys_changed": changed, "ms": int((now - state.get("_t", now)) * 1000)})
-    )
+    ms = int((now - state.get("_t", now)) * 1000)
+    state.setdefault("handoffs", []).append(Handoff(**{"from": from_, "to": to, "reason": reason, "state_keys_changed": changed, "ms": ms}))
+    # The same hop the response carries, so the sidecar's own log tells the route.
+    log.info("handoff", extra={"from": from_, "to": to, "reason": reason, "ms": ms})
     state["_t"] = now
 
 

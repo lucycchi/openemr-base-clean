@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T17:54:12+00:00",
+    "ran_at": "2026-09-22T18:13:21+00:00",
     "live": true,
     "pass": 52,
     "fail": 0,
@@ -10,9 +10,9 @@
         "sentences_stripped_total": 0,
         "sentences_kept_total": 59,
         "omitted_total": 0,
-        "latency_ms_p50": 2251,
-        "latency_ms_p95": 8027,
-        "tokens_total": 32994
+        "latency_ms_p50": 2293,
+        "latency_ms_p95": 8150,
+        "tokens_total": 33046
     },
     "cases": [
         {
@@ -39,7 +39,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 8
+            "ms": 9
         },
         {
             "id": "02-unknown-fact-id",
@@ -67,7 +67,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 2
+            "ms": 1
         },
         {
             "id": "03-ungrounded-number",
@@ -201,7 +201,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 2
+            "ms": 3
         },
         {
             "id": "08-semantic-inversion-known-limitation",
@@ -254,7 +254,7 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 847,
+                    "ms": 1841,
                     "tokens": 496
                 },
                 {
@@ -268,8 +268,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 8027,
-                    "tokens": 3001
+                    "ms": 8150,
+                    "tokens": 2938
                 },
                 {
                     "pid": 7,
@@ -282,13 +282,13 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 1107,
+                    "ms": 1539,
                     "tokens": 568
                 },
                 {
                     "pid": 27,
                     "facts": 16,
-                    "kept": 5,
+                    "kept": 6,
                     "stripped": 0,
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -296,8 +296,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 4119,
-                    "tokens": 1264
+                    "ms": 3398,
+                    "tokens": 1229
                 },
                 {
                     "pid": 23,
@@ -310,13 +310,13 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 740,
+                    "ms": 1037,
                     "tokens": 494
                 },
                 {
                     "pid": 6,
                     "facts": 14,
-                    "kept": 14,
+                    "kept": 13,
                     "stripped": 0,
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -324,8 +324,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 5277,
-                    "tokens": 1683
+                    "ms": 4817,
+                    "tokens": 1598
                 },
                 {
                     "pid": 22,
@@ -338,8 +338,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 2691,
-                    "tokens": 1049
+                    "ms": 2915,
+                    "tokens": 1044
                 },
                 {
                     "pid": 32,
@@ -352,8 +352,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 2251,
-                    "tokens": 1001
+                    "ms": 2293,
+                    "tokens": 1000
                 },
                 {
                     "pid": 4,
@@ -366,8 +366,8 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 1881,
-                    "tokens": 823
+                    "ms": 2031,
+                    "tokens": 824
                 },
                 {
                     "pid": 18,
@@ -380,11 +380,11 @@
                     "omitted": 0,
                     "status": null,
                     "total_failure": false,
-                    "ms": 745,
+                    "ms": 1082,
                     "tokens": 490
                 }
             ],
-            "ms": 27823
+            "ms": 29232
         },
         {
             "id": "10-live-followup-out-of-window",
@@ -408,7 +408,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 831,
+                    "ms": 605,
                     "tokens": 809,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -422,7 +422,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 567,
+                    "ms": 712,
                     "tokens": 2127,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -436,7 +436,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 594,
+                    "ms": 558,
                     "tokens": 839,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -444,7 +444,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2040
+            "ms": 1933
         },
         {
             "id": "11-live-followup-computed-number",
@@ -467,7 +467,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 1017,
+                    "ms": 626,
                     "tokens": 959,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -481,7 +481,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 861,
+                    "ms": 604,
                     "tokens": 2174,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -495,7 +495,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 624,
+                    "ms": 598,
                     "tokens": 1444,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -503,7 +503,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2545
+            "ms": 1872
         },
         {
             "id": "12-live-followup-ambiguous-question",
@@ -526,7 +526,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 658,
+                    "ms": 643,
                     "tokens": 955,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -537,30 +537,13 @@
                     "pid": 5,
                     "facts": 28,
                     "answer_type": "cited",
-                    "kept": 18,
+                    "kept": 1,
                     "stripped": 0,
                     "status": null,
-                    "ms": 5385,
-                    "tokens": 2937,
+                    "ms": 7442,
+                    "tokens": 3140,
                     "sentences": [
-                        "The prior visit was on 2025-04-19.",
-                        "The total score changed from 0 to 2, which is higher than it was last time.",
-                        "The Patient Health Questionnaire 2 item (PHQ-2) total score changed from 0 to 1, which is higher than it was last time.",
-                        "The platelet count changed from 261.16 to 223.01, which is lower than it was last time.",
-                        "The erythrocyte count changed from 4.66 to 4.99, which is higher than it was last time.",
-                        "The leukocyte count changed from 8.77 to 4.06, which is lower than it was last time.",
-                        "The cholesterol in HDL changed from 32.87 to 33.89, which is higher than it was last time.",
-                        "The cholesterol in LDL changed from 110.63 to 120.24, which is higher than it was last time.",
-                        "The triglyceride level changed from 123.34 to 100.42, which is lower than it was last time.",
-                        "The overall cholesterol changed from 168.17 to 174.21, which is higher than it was last time.",
-                        "The carbon dioxide level changed from 21.79 to 21.38, which is lower than it was last time.",
-                        "The chloride level changed from 107.88 to 104.67, which is lower than it was last time.",
-                        "The potassium level changed from 3.96 to 4.57, which is higher than it was last time.",
-                        "The sodium level changed from 140.49 to 142.15, which is higher than it was last time.",
-                        "The calcium level changed from 8.76 to 9.47, which is higher than it was last time.",
-                        "The creatinine level changed from 1.14 to 1.35, which is higher than it was last time.",
-                        "The urea nitrogen level changed from 9.21 to 18.74, which is higher than it was last time.",
-                        "The glucose level changed from 88.16 to 81.95, which is lower than it was last time."
+                        "The total score changed from 0 to 2, indicating it is higher than it was last time. The Patient Health Questionnaire 2 item (PHQ-2) total score changed from 0 to 1, indicating it is higher than it was last time. The platelet count changed from 261.16 to 223.01, indicating it is lower than it was last time. The erythrocyte count changed from 4.66 to 4.99, indicating it is higher than it was last time. The cholesterol changed from 168.17 to 174.21, indicating it is higher than it was last time. The glucose changed from 88.16 to 81.95, indicating it is lower than it was last time. The sodium changed from 140.49 to 142.15, indicating it is higher than it was last time. The potassium changed from 3.96 to 4.57, indicating it is higher than it was last time. The calcium changed from 8.76 to 9.47, indicating it is higher than it was last time. The creatinine changed from 1.14 to 1.35, indicating it is higher than it was last time. The urea nitrogen changed from 9.21 to 18.74, indicating it is higher than it was last time. The carbon dioxide, total changed from 21.79 to 21.38, indicating it is lower than it was last time. The chloride changed from 107.88 to 104.67, indicating it is lower than it was last time. The hematocrit changed from 47.6 to 46.75, indicating it is lower than it was last time. The hemoglobin changed from 16.19 to 15.45, indicating it is lower than it was last time. The MCHC changed from 35.41 to 33.67, indicating it is lower than it was last time. The MCH changed from 28.25 to 27.55, indicating it is lower than it was last time. The MCV changed from 86.19 to 81.12, indicating it is lower than it was last time. The leukocytes changed from 8.77 to 4.06, indicating it is lower than it was last time. The cholesterol in HDL changed from 32.87 to 33.89, indicating it is higher than it was last time. The cholesterol in LDL changed from 110.63 to 120.24, indicating it is higher than it was last time. The triglyceride changed from 123.34 to 100.42, indicating it is lower than it was last time. The platelet distribution width changed from 16.1 to 11.54, indicating it is lower than it was last time. The platelet changed from 10.28 to 11.07, indicating it is higher than it was last time. The leukocytes were 4.06, which is below the reference range. The cholesterol in HDL was 33.89, which is below the reference range. The total examination was conducted on 2025-04-19. The current visit is on 2026-04-25."
                     ],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
@@ -573,30 +556,30 @@
                     "kept": 14,
                     "stripped": 0,
                     "status": null,
-                    "ms": 5563,
-                    "tokens": 2253,
+                    "ms": 6241,
+                    "tokens": 2290,
                     "sentences": [
                         "The prior visit was on 2026-06-21.",
                         "Anemia is a new problem identified since the last visit.",
-                        "Cholesterol in HDL decreased from 55.76 mg\/dL (2023-09-14) to 55.19 mg\/dL (2026-09-17), indicating it is lower than last time.",
-                        "Cholesterol in LDL increased from 29.03 mg\/dL (2023-09-14) to 106.61 mg\/dL (2026-09-17), indicating it is higher than last time.",
-                        "Triglycerides decreased from 147.78 mg\/dL (2023-09-14) to 111.9 mg\/dL (2026-09-17), indicating it is lower than last time.",
-                        "Total cholesterol increased from 114.34 mg\/dL (2023-09-14) to 184.18 mg\/dL (2026-09-17), indicating it is higher than last time.",
-                        "Carbon dioxide, total increased from 22.9 mmol\/L (2025-07-24) to 24.21 mmol\/L (2026-09-17), indicating it is higher than last time.",
-                        "Chloride increased from 107.09 mmol\/L (2025-07-24) to 107.84 mmol\/L (2026-09-17), indicating it is higher than last time.",
-                        "Potassium increased from 3.71 mmol\/L (2025-07-24) to 4.58 mmol\/L (2026-09-17), indicating it is higher than last time.",
-                        "Sodium increased from 142.01 mmol\/L (2025-07-24) to 142.94 mmol\/L (2026-09-17), indicating it is higher than last time.",
-                        "Calcium increased from 9.17 mg\/dL (2025-07-24) to 9.69 mg\/dL (2026-09-17), indicating it is higher than last time.",
-                        "Creatinine decreased from 1.27 mg\/dL (2025-07-24) to 1.22 mg\/dL (2026-09-17), indicating it is lower than last time.",
-                        "Urea nitrogen increased from 7.44 mg\/dL (2025-07-24) to 16.93 mg\/dL (2026-09-17), indicating it is higher than last time.",
-                        "Glucose increased from 80.65 mg\/dL (2025-07-24) to 82.09 mg\/dL (2026-09-17), indicating it is higher than last time."
+                        "Cholesterol in HDL decreased from 55.76 mg\/dL on 2023-09-14 to 55.19 mg\/dL on 2026-09-17, indicating it is lower than it was last time.",
+                        "Cholesterol in LDL increased from 29.03 mg\/dL on 2023-09-14 to 106.61 mg\/dL on 2026-09-17, indicating it is higher than it was last time.",
+                        "Triglycerides decreased from 147.78 mg\/dL on 2023-09-14 to 111.9 mg\/dL on 2026-09-17, indicating it is lower than it was last time.",
+                        "Cholesterol increased from 114.34 mg\/dL on 2023-09-14 to 184.18 mg\/dL on 2026-09-17, indicating it is higher than it was last time.",
+                        "Carbon dioxide, total increased from 22.9 mmol\/L on 2025-07-24 to 24.21 mmol\/L on 2026-09-17, indicating it is higher than it was last time.",
+                        "Chloride increased from 107.09 mmol\/L on 2025-07-24 to 107.84 mmol\/L on 2026-09-17, indicating it is higher than it was last time.",
+                        "Potassium increased from 3.71 mmol\/L on 2025-07-24 to 4.58 mmol\/L on 2026-09-17, indicating it is higher than it was last time.",
+                        "Sodium increased from 142.01 mmol\/L on 2025-07-24 to 142.94 mmol\/L on 2026-09-17, indicating it is higher than it was last time.",
+                        "Calcium increased from 9.17 mg\/dL on 2025-07-24 to 9.69 mg\/dL on 2026-09-17, indicating it is higher than it was last time.",
+                        "Creatinine decreased from 1.27 mg\/dL on 2025-07-24 to 1.22 mg\/dL on 2026-09-17, indicating it is lower than it was last time.",
+                        "Urea nitrogen increased from 7.44 mg\/dL on 2025-07-24 to 16.93 mg\/dL on 2026-09-17, indicating it is higher than it was last time.",
+                        "Glucose increased from 80.65 mg\/dL on 2025-07-24 to 82.09 mg\/dL on 2026-09-17, indicating it is higher than it was last time."
                     ],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 11645
+            "ms": 14360
         },
         {
             "id": "13-live-followup-identifier-extraction",
@@ -620,7 +603,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 748,
+                    "ms": 1128,
                     "tokens": 815,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -634,7 +617,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 823,
+                    "ms": 635,
                     "tokens": 2133,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -648,7 +631,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 599,
+                    "ms": 843,
                     "tokens": 845,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -656,7 +639,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2217
+            "ms": 2665
         },
         {
             "id": "14-live-followup-other-patient",
@@ -680,7 +663,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 1,
+                    "ms": 0,
                     "tokens": 0,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -716,7 +699,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 72
+            "ms": 45
         },
         {
             "id": "15-live-followup-instruction-override",
@@ -739,7 +722,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 828,
+                    "ms": 786,
                     "tokens": 829,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -753,7 +736,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 629,
+                    "ms": 572,
                     "tokens": 2147,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -767,7 +750,7 @@
                     "kept": 0,
                     "stripped": 0,
                     "status": null,
-                    "ms": 534,
+                    "ms": 688,
                     "tokens": 859,
                     "sentences": [],
                     "uncited_kept": 0,
@@ -775,7 +758,7 @@
                     "leaked_identifiers": []
                 }
             ],
-            "ms": 2044
+            "ms": 2092
         },
         {
             "id": "16-anchor-lab-layout1",
@@ -794,7 +777,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 38,
+                    "ms": 49,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -808,7 +791,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 63
+            "ms": 76
         },
         {
             "id": "17-anchor-lab-layout1-scan",
@@ -827,7 +810,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 3567,
+                    "ms": 3577,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -841,7 +824,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 3591
+            "ms": 3603
         },
         {
             "id": "18-anchor-hundred-in-three-columns",
@@ -874,7 +857,7 @@
                     "anchored": 7
                 }
             ],
-            "ms": 70
+            "ms": 52
         },
         {
             "id": "19-live-extract-lab-layout1",
@@ -894,7 +877,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 9464,
+                    "ms": 10483,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -908,7 +891,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 9487
+            "ms": 10506
         },
         {
             "id": "20-live-extract-lab-layout1-scan",
@@ -928,7 +911,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 13362,
+                    "ms": 14664,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -942,7 +925,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 13386
+            "ms": 14689
         },
         {
             "id": "21-anchor-intake-form",
@@ -961,7 +944,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 950,
+                    "ms": 892,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -975,7 +958,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 967
+            "ms": 911
         },
         {
             "id": "22-live-extract-intake-form",
@@ -995,13 +978,13 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 2944,
+                    "ms": 2915,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0,
                     "leaked_identifiers": [],
-                    "tokens": 974,
+                    "tokens": 979,
                     "model_calls": 1,
                     "reason": null,
                     "results": 9,
@@ -1009,7 +992,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 2959
+            "ms": 2930
         },
         {
             "id": "23-route-no-documents-no-question",
@@ -1025,7 +1008,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 9,
+                    "ms": 12,
                     "handoffs": [
                         [
                             "supervisor",
@@ -1038,7 +1021,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 9
+            "ms": 12
         },
         {
             "id": "24-route-stored-document",
@@ -1161,7 +1144,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 8,
+                    "ms": 7,
                     "handoffs": [
                         [
                             "supervisor",
@@ -1174,7 +1157,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 8
+            "ms": 7
         },
         {
             "id": "28-route-document-and-question",
@@ -1190,7 +1173,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 8,
+                    "ms": 15,
                     "handoffs": [
                         [
                             "supervisor",
@@ -1213,7 +1196,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 8
+            "ms": 15
         },
         {
             "id": "29-retrieve-statin-ldl",
@@ -1230,7 +1213,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 5,
+                    "ms": 13,
                     "chunks": 5,
                     "top_source_id": "acc-aha-2018-cholesterol",
                     "reranked": false,
@@ -1240,7 +1223,7 @@
                     "answer_type": "cited"
                 }
             ],
-            "ms": 5
+            "ms": 13
         },
         {
             "id": "30-retrieve-a1c-target",
@@ -1257,7 +1240,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 4,
+                    "ms": 5,
                     "chunks": 5,
                     "top_source_id": "ada-2025-standards",
                     "reranked": false,
@@ -1267,7 +1250,7 @@
                     "answer_type": "cited"
                 }
             ],
-            "ms": 4
+            "ms": 5
         },
         {
             "id": "31-retrieve-anemia-workup",
@@ -1410,7 +1393,7 @@
                 "factually_consistent": "pass"
             },
             "known_limitation": false,
-            "failure_mode": "Uploading and extracting a lab report through the real controller must leave no patient name from the report, no filename and no extracted values in the log records or the trace payloads; every log field must be on the allowlist.",
+            "failure_mode": "Uploading and extracting a lab report through the real controller must leave no patient name from the report, no filename and no extracted values in the log records or the trace payloads; every log field must be on the allowlist; the sidecar's log lines for the same document must pass the same scan and every one must carry the request's correlation id, so the run can be reconstructed from logs alone.",
             "result": "pass",
             "mismatches": [],
             "runs": [
@@ -1421,12 +1404,14 @@
                     "disallowed_log_fields": [],
                     "log_lines": 3,
                     "trace_payloads": 1,
+                    "sidecar_log_lines": 1,
+                    "uncorrelated_log_lines": 0,
                     "schema_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0
                 }
             ],
-            "ms": 9542
+            "ms": 10064
         },
         {
             "id": "37-phi-intake-upload-logs",
@@ -1437,7 +1422,7 @@
                 "factually_consistent": "pass"
             },
             "known_limitation": false,
-            "failure_mode": "An intake form carries a name, a date of birth, a phone number and a chief concern: none may appear in logs or traces; the mismatch flag is recorded as a fixed phrase only.",
+            "failure_mode": "An intake form carries a name, a date of birth, a phone number and a chief concern: none may appear in logs or traces; the mismatch flag is recorded as a fixed phrase only; the sidecar's log lines for the same document must pass the same scan and every one must carry the request's correlation id, so the run can be reconstructed from logs alone.",
             "result": "pass",
             "mismatches": [],
             "runs": [
@@ -1448,12 +1433,14 @@
                     "disallowed_log_fields": [],
                     "log_lines": 3,
                     "trace_payloads": 1,
+                    "sidecar_log_lines": 1,
+                    "uncorrelated_log_lines": 0,
                     "schema_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0
                 }
             ],
-            "ms": 2399
+            "ms": 2294
         },
         {
             "id": "38-phi-question-logs",
@@ -1464,7 +1451,7 @@
                 "factually_consistent": "pass"
             },
             "known_limitation": false,
-            "failure_mode": "The physician's question text (which may name a drug, a value or a person) must not appear in logs or traces; only counts, ids and codes do.",
+            "failure_mode": "The physician's question text (which may name a drug, a value or a person) must not appear in logs or traces; only counts, ids and codes do; the sidecar's log lines for the same document must pass the same scan and every one must carry the request's correlation id, so the run can be reconstructed from logs alone.",
             "result": "pass",
             "mismatches": [],
             "runs": [
@@ -1475,12 +1462,14 @@
                     "disallowed_log_fields": [],
                     "log_lines": 7,
                     "trace_payloads": 3,
+                    "sidecar_log_lines": 2,
+                    "uncorrelated_log_lines": 0,
                     "schema_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0
                 }
             ],
-            "ms": 8484
+            "ms": 9694
         },
         {
             "id": "39-malformed-corrupt-pdf",
@@ -1522,7 +1511,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 26,
+                    "ms": 25,
                     "status": "failed",
                     "reason": "encrypted",
                     "model_calls": 0,
@@ -1548,7 +1537,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 4,
+                    "ms": 3,
                     "status": "failed",
                     "reason": "too_many_pages",
                     "model_calls": 0,
@@ -1558,7 +1547,7 @@
                     "anchor_errors": []
                 }
             ],
-            "ms": 4
+            "ms": 3
         },
         {
             "id": "42-malformed-blank-scan",
@@ -1574,7 +1563,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 474,
+                    "ms": 438,
                     "status": "failed",
                     "reason": "unreadable",
                     "model_calls": 0,
@@ -1584,7 +1573,7 @@
                     "anchor_errors": []
                 }
             ],
-            "ms": 474
+            "ms": 438
         },
         {
             "id": "43-absent-lab-values-unverified",
@@ -1600,7 +1589,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 18,
+                    "ms": 16,
                     "status": "extracted",
                     "anchored_absent": 0,
                     "anchor_errors": [],
@@ -1609,7 +1598,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 18
+            "ms": 17
         },
         {
             "id": "44-absent-intake-items-unverified",
@@ -1660,7 +1649,7 @@
                     "guideline_cited": 1
                 }
             ],
-            "ms": 1
+            "ms": 0
         },
         {
             "id": "46-regression-year-in-guideline-heading",
@@ -1718,7 +1707,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 11
+            "ms": 10
         },
         {
             "id": "48-boundary-lab-result-without-unit",
@@ -1737,7 +1726,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 20,
+                    "ms": 18,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -1751,7 +1740,7 @@
                     "anchored": 1
                 }
             ],
-            "ms": 31
+            "ms": 27
         },
         {
             "id": "49-boundary-lab-report-without-collection-date",
@@ -1797,7 +1786,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 360,
+                    "ms": 348,
                     "schema_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0,
@@ -1813,7 +1802,7 @@
                     "has_prior_visit": false
                 }
             ],
-            "ms": 360
+            "ms": 348
         },
         {
             "id": "51-facts-unverified-value-becomes-a-must-surface-fact",
@@ -1830,7 +1819,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 212,
+                    "ms": 219,
                     "schema_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0,
@@ -1847,7 +1836,7 @@
                     "has_prior_visit": false
                 }
             ],
-            "ms": 212
+            "ms": 219
         },
         {
             "id": "52-facts-intake-items-become-cited-facts",
@@ -1864,7 +1853,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 170,
+                    "ms": 143,
                     "schema_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0,
@@ -1883,7 +1872,7 @@
                     "has_prior_visit": false
                 }
             ],
-            "ms": 170
+            "ms": 143
         }
     ]
 }

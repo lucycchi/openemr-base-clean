@@ -4,6 +4,8 @@ the extractor fails before proposing)."""
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 from pathlib import Path
 
@@ -33,6 +35,48 @@ def request(**over) -> dict:
 def test_health(client: TestClient) -> None:
     r = client.get("/health")
     assert r.status_code == 200 and r.json()["parser"] == "pymupdf+tesseract"
+
+
+class _Lines(logging.Handler):
+    """Formats each record as the sidecar writes it, at emit time, while the
+    request's correlation id is still bound (caplog would format afterwards)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        from copilot_sidecar.logging_setup import AllowlistJsonFormatter
+
+        self.setFormatter(AllowlistJsonFormatter())
+        self.lines: list[dict] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if record.name.startswith("copilot."):
+            self.lines.append(json.loads(self.format(record)))
+
+
+@pytest.fixture
+def lines() -> list[dict]:
+    handler = _Lines()
+    logging.getLogger().addHandler(handler)
+    yield handler.lines
+    logging.getLogger().removeHandler(handler)
+
+
+def test_every_sidecar_log_line_of_a_run_carries_its_correlation_id(client: TestClient, lines: list[dict]) -> None:
+    """Requirement: the id appears in every log entry related to the request,
+    so a run is reconstructible from the sidecar's log alone (route hops,
+    per-document outcome, the run line)."""
+    r = client.post("/run", json=request(correlation_id="abcdefgh-logs"))
+    assert r.status_code == 200
+    events = [line["event"] for line in lines]
+    assert "handoff" in events and "run" in events and "extract failed" in events
+    assert all(line["correlation_id"] == "abcdefgh-logs" for line in lines), lines
+
+
+def test_rejected_request_logs_under_the_header_id(client: TestClient, lines: list[dict]) -> None:
+    """A body the contract rejects still logs under the caller's id, taken from X-Correlation-Id."""
+    r = client.post("/run", json={"mode": "extract"}, headers={"X-Correlation-Id": "abcdefgh-hdr"})
+    assert r.status_code == 422
+    assert lines and all(line["correlation_id"] == "abcdefgh-hdr" for line in lines)
 
 
 def test_bad_request_is_a_run_error(client: TestClient) -> None:

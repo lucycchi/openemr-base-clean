@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import time
 from pathlib import Path
@@ -25,11 +26,21 @@ from pydantic import BaseModel, ValidationError
 
 from . import extractor, graph
 from .llm import PROMPT_VERSION
-from .logging_setup import setup_logging
+from .logging_setup import bind_correlation_id, setup_logging
 from .schemas import IntakeFormProposal, LabReportProposal, RunError, RunRequest, RunResponse
 
 setup_logging()
+log = logging.getLogger("copilot.app")
 app = FastAPI(title="clinical-copilot-sidecar", docs_url=None, redoc_url=None)
+
+
+@app.middleware("http")
+async def correlate(request: Request, call_next):
+    """Binds the caller's X-Correlation-Id before anything else runs, so even a
+    request rejected as malformed logs under the caller's id; /run rebinds to
+    the body's id (the contract's authority) once the body has parsed."""
+    bind_correlation_id(request.headers.get("x-correlation-id", ""))
+    return await call_next(request)
 
 IDEMPOTENCY_TTL_S = 600
 _cache: dict[str, tuple[float, dict]] = {}
@@ -56,27 +67,35 @@ def health() -> dict:
 
 @app.post("/run")
 async def run(request: Request) -> JSONResponse:
+    started = time.monotonic()
     try:
         body = await request.json()
     except Exception:
+        log.info("run rejected", extra={"code": "bad_request"})
         return _error("unknown", "bad_request", 400)
+    if isinstance(body, dict) and isinstance(body.get("correlation_id"), str):
+        bind_correlation_id(body["correlation_id"])
     try:
         req = RunRequest.model_validate(body)
     except ValidationError:
+        log.info("run rejected", extra={"code": "bad_request"})
         return _error(str(body.get("correlation_id", "unknown")) if isinstance(body, dict) else "unknown", "bad_request", 422)
 
     key = _cache_key(req)
     now = time.monotonic()
     hit = _cache.get(key)
     if hit and now - hit[0] < IDEMPOTENCY_TTL_S:
+        log.info("run served from cache", extra={"mode": req.mode})
         return JSONResponse(content=hit[1])
 
     try:
         state = graph.run(req.mode, req.correlation_id, req.facts_hash, req.question, req.documents)
-    except Exception:  # never leak a traceback; the code is the message
+    except Exception as exc:  # never leak a traceback; the code is the message
+        log.error("run failed", extra={"mode": req.mode, "code": "internal", "exception_class": type(exc).__name__, "ms": int((time.monotonic() - started) * 1000)})
         return _error(req.correlation_id, "internal", 500)
     resp = RunResponse(correlation_id=req.correlation_id, extractions=state["extractions"], chunks=state["chunks"], handoffs=state["handoffs"], usage=state["usage"])
     payload = json.loads(resp.model_dump_json(by_alias=True))
+    log.info("run", extra={"mode": req.mode, "hops": len(state["handoffs"]), "count": len(state["extractions"]) + len(state["chunks"]), "ms": int((time.monotonic() - started) * 1000)})
     _cache[key] = (now, payload)
     for k in [k for k, (t, _) in _cache.items() if now - t >= IDEMPOTENCY_TTL_S]:
         _cache.pop(k, None)
@@ -93,6 +112,7 @@ class AnchorEvalRequest(BaseModel):
     doc_type: str
     proposal: dict
     document_id: int = 1
+    question: str | None = None  # /eval/phi only: also run the retrieval leg (keyword leg, no embeddings call)
 
 
 class RetrieveEvalRequest(BaseModel):
@@ -174,8 +194,6 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         while capturing every log line the sidecar emits, and returns the
         lines. The harness scans them for the fixture's identifiers and for
         fields outside the allowlist (no_phi_in_logs)."""
-        import logging
-
         from .logging_setup import ALLOWED, AllowlistJsonFormatter
 
         path = (FIXTURES_ROOT / req.fixture).resolve()
@@ -192,13 +210,19 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         handler = Capture()
         root = logging.getLogger()
         root.addHandler(handler)
+        cid = "eval-phi-" + hashlib.sha256(req.fixture.encode()).hexdigest()[:8]
+        bind_correlation_id(cid)
         try:
             model = LabReportProposal if req.doc_type == "lab_pdf" else IntakeFormProposal
             proposal = model.model_validate(req.proposal) if req.proposal else None
-            outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), "eval-phi-0000", proposal=proposal)
+            outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), cid, proposal=proposal)
+            if req.question:
+                from . import retrieve as retrieve_module
+
+                retrieve_module.retrieve(req.question, embed_query=False)
         finally:
             root.removeHandler(handler)
-        return {"status": outcome.extraction.status, "lines": lines, "extra_keys_seen": sorted(raw_keys), "allowlist": sorted(ALLOWED)}
+        return {"correlation_id": cid, "status": outcome.extraction.status, "lines": lines, "extra_keys_seen": sorted(raw_keys), "allowlist": sorted(ALLOWED)}
 
     @app.post("/eval/extract")
     def eval_extract(req: AnchorEvalRequest) -> dict:

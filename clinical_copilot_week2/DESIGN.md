@@ -142,8 +142,9 @@ matches in more than one row is unanchored.
 ### Log-field allowlist (rubric `no_phi_in_logs`)
 
 Allowed: correlation id, pid (internal surrogate), user id, encounter id,
-action, document id, doc_type, hashes, counts, timings, token counts, model
-names, status and failure reason codes, handoff `from`/`to`/`reason` codes.
+action, document id, doc_type, hashes, counts (incl. page numbers, hop
+counts), timings, token counts, model names, run mode, status and failure
+reason codes, handoff `from`/`to`/`reason` codes.
 Current emitters that violate this and get cleaned up in task 4.4:
 `ChatController.php:169` (exception messages), `StepRecorder.php:74` and
 `LangfuseTracer.php:47` (`prior_visit` date; replaced by a boolean

@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 
 from copilot_sidecar import extractor
-from copilot_sidecar.logging_setup import ALLOWED, AllowlistJsonFormatter
+from copilot_sidecar.logging_setup import ALLOWED, AllowlistJsonFormatter, bind_correlation_id
 from copilot_sidecar.schemas import IntakeFormProposal
 from tools import generate_fixtures
 
@@ -40,12 +40,23 @@ def test_intake_extraction_logs_carry_no_identifiers(tmp_path: Path, caplog) -> 
     truth = json.loads((tmp_path / "intake-full.truth.json").read_text())
     proposal = IntakeFormProposal(form_date="09/20/2026", name=truth["demographics"]["name"], dob=truth["demographics"]["dob"], sex="F", phone=truth["demographics"]["phone"],
                                   chief_concern=truth["chief_concern"], medications=[], allergies=[], family_history=[])
+    bind_correlation_id("phi-test")
     with caplog.at_level(logging.INFO):
         outcome = extractor.extract(1, "intake_form", (tmp_path / "intake-full.pdf").read_bytes(), "phi-test", proposal=proposal)
     assert outcome.extraction.status == "extracted"
-    rendered = "\n".join(AllowlistJsonFormatter().format(r) for r in caplog.records)
+    lines = [json.loads(AllowlistJsonFormatter().format(r)) for r in caplog.records if not r.name.startswith("httpx")]
+    rendered = json.dumps(lines)
     for phi in [truth["demographics"]["name"], truth["demographics"]["dob"], truth["demographics"]["phone"], truth["chief_concern"]]:
         assert phi not in rendered, phi
-    for r in caplog.records:
-        extras = {k for k in r.__dict__ if k in ALLOWED}
-        assert "correlation_id" in extras or r.name.startswith("httpx")
+    assert lines and all(line["correlation_id"] == "phi-test" for line in lines)
+
+
+def test_bound_correlation_id_reaches_every_line_even_without_extra() -> None:
+    """The id is structural: a log call that forgets it still carries it."""
+    bind_correlation_id("ctx-0001")
+    record = logging.LogRecord("t", logging.INFO, "", 0, "forgot the id", None, None)
+    assert json.loads(AllowlistJsonFormatter().format(record))["correlation_id"] == "ctx-0001"
+    explicit = logging.LogRecord("t", logging.INFO, "", 0, "explicit", None, None)
+    explicit.__dict__["correlation_id"] = "explicit-0001"
+    assert json.loads(AllowlistJsonFormatter().format(explicit))["correlation_id"] == "explicit-0001"
+    bind_correlation_id("")

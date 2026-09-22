@@ -173,6 +173,40 @@ they failed once: the five-page report is the case that exposed the model
 omitting 7 of 20 printed rows, and the scanned copy is the case that exposed
 OCR unit mangling.
 
+## Correlation id: one id, every boundary (requirement audit, 2026-09-22)
+
+Requirement: every request carries a unique correlation id across service
+boundaries, present in every log entry, tool call and LLM interaction, so a
+full trace can be reconstructed from logs alone.
+
+| Boundary | How the id travels | Enforced by |
+|---|---|---|
+| Request start | `CorrelationId::generate()` (16 random bytes) once per chat request, document request, `copilot:attach` run and prewarm row | — |
+| Every PHP log entry | `CorrelatedLogger` decorator adds `correlation_id` to every record; code cannot forget it | `CorrelatedLoggerTest` |
+| Every response, including 400/401/403/500 | `correlation_id` in the JSON body and an `X-Correlation-Id` header | `PanelPayloadTest` |
+| PHP → OpenAI (briefing, follow-up) | OpenAI's per-request `user` field and an `X-Correlation-Id` header | `OpenAiClientTest` |
+| PHP → sidecar | required `correlation_id` in `run.request` (echoed in `run.response` / `run.error`) and the same `X-Correlation-Id` header | `ContractsTest`, `test_app` |
+| Inside the sidecar | a middleware binds the header's id to a context variable before the body is parsed; `/run` rebinds to the body's id; the JSON formatter writes it on **every** line, so a `log.info()` without `extra=` still carries it (`logging_setup.py`) | `test_logging`, `test_app` |
+| Sidecar log lines per run | `run` (mode, hops, ms), one `handoff` per supervisor hop (from, to, reason, ms), one `model_call` per proposal / embedding / rerank (model, kind, page, tokens, ms), `retrieved` (count, rrf-or-rerank, ms), `extracted` / `extract failed`; uvicorn's access line is bound too | eval cases 36-38 (`uncorrelated_log_lines` must be 0) |
+| Sidecar → OpenAI (extraction per page, retry, query embedding) | `user` field + `X-Correlation-Id` header, same as the PHP client | — |
+| Sidecar → Cohere rerank | `X-Correlation-Id` via `request_options.additional_headers` | — |
+| Traces | the Langfuse trace id *is* the correlation id; steps, generation, scores and handoffs hang off it | `LangfuseTracerTest` |
+| Persistence | `copilot_document.correlation_id` names the run that extracted the document | `DocumentIngestServiceTest` |
+| Audit | OpenEMR's `EventAuditLogger` line carries `correlation_id=` | — |
+
+Reconstruction from logs alone: `grep <id>` across the PHP log and the
+sidecar log yields the request line, the route (handoffs in order), each
+model call with tokens and latency, the extraction or retrieval outcome, and
+the HTTP status; the same id opens the Langfuse trace and the document row.
+
+Found during the audit (fixed the same day): the Week 2 sidecar had regressed
+what Week 1's PHP client did right. Its OpenAI, embedding and rerank calls
+carried no id, only two log events (`extracted` / `extract failed`) had it,
+and answer-mode retrieval logged nothing at all; the id was a function
+argument, so any new log line could drop it. The context-variable binding
+and the per-hop / per-call lines above closed that, and the PHI cases now
+fail the gate if any sidecar line lacks the request's id.
+
 ## Findings and open issues (running log)
 
 1. **Case 09 is flaky on one patient.** `09-live-seed-patients-zero-strips`

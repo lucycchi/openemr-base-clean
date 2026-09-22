@@ -101,7 +101,7 @@ def _propose_per_page(doc_type: str, parsed: parse.ParsedDocument) -> tuple[LabR
     usage: list[Usage] = []
     merged: LabReportProposal | IntakeFormProposal | None = None
     for page in parsed.pages:
-        p = llm.propose(doc_type, parsed.text_for_model([page.number]))
+        p = llm.propose(doc_type, parsed.text_for_model([page.number]), page=page.number)
         usage.append(p.usage)
         if merged is None:
             merged = p.data  # type: ignore[assignment]

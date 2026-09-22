@@ -19,15 +19,21 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 from rank_bm25 import BM25Okapi
 
+from .llm import correlation_options
+from .logging_setup import correlation_id
 from .schemas import Chunk, Usage
+
+log = logging.getLogger("copilot.retrieve")
 
 CORPUS_DIR = Path(os.environ.get("COPILOT_CORPUS_DIR") or Path(__file__).resolve().parents[1] / "corpus")
 INDEX_DIR = CORPUS_DIR / "index"
@@ -91,10 +97,13 @@ def embed(texts: list[str]) -> tuple[np.ndarray, Usage]:
     from openai import OpenAI
 
     client = OpenAI(timeout=30.0, max_retries=1)
-    resp = client.embeddings.create(model=EMBED_MODEL, input=texts)
+    started = time.monotonic()
+    resp = client.embeddings.create(model=EMBED_MODEL, input=texts, **correlation_options())
     vecs = np.array([d.embedding for d in resp.data], dtype=np.float32)
     vecs /= np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-9
-    return vecs, Usage(model=EMBED_MODEL, kind="embedding", input=int(resp.usage.prompt_tokens), output=0)
+    usage = Usage(model=EMBED_MODEL, kind="embedding", input=int(resp.usage.prompt_tokens), output=0)
+    log.info("model_call", extra={"model": EMBED_MODEL, "kind": "embedding", "count": len(texts), "input": usage.input, "ms": int((time.monotonic() - started) * 1000)})
+    return vecs, usage
 
 
 class Index:
@@ -154,8 +163,12 @@ def rerank(query: str, cands: list[tuple[IndexedChunk, float, float, float]]) ->
 
     client = cohere.ClientV2(api_key=key, timeout=20)
     docs = [f"{c.section}\n{c.text}" for c, _, _, _ in cands]
-    resp = client.rerank(model=RERANK_MODEL, query=query, documents=docs, top_n=TOP)
+    started = time.monotonic()
+    cid = correlation_id()
+    options = {"additional_headers": {"X-Correlation-Id": cid}} if cid else None
+    resp = client.rerank(model=RERANK_MODEL, query=query, documents=docs, top_n=TOP, request_options=options)
     ranked = [(cands[r.index][0], float(r.relevance_score)) for r in resp.results]
+    log.info("model_call", extra={"model": RERANK_MODEL, "kind": "rerank", "count": len(docs), "ms": int((time.monotonic() - started) * 1000)})
     return ranked, [Usage(model=RERANK_MODEL, kind="rerank", input=1, output=0)]
 
 
@@ -163,6 +176,7 @@ def retrieve(question: str, query_vec: np.ndarray | None = None, embed_query: bo
     """Top chunks for a question. query_vec lets the eval harness pass a
     committed embedding so offline cases never call the embeddings API."""
     usage: list[Usage] = []
+    started = time.monotonic()
     if query_vec is None and embed_query and os.environ.get("OPENAI_API_KEY"):
         vecs, u = embed([question])
         query_vec, usage = vecs[0], [u]
@@ -170,4 +184,6 @@ def retrieve(question: str, query_vec: np.ndarray | None = None, embed_query: bo
     ranked, rerank_usage = rerank(question, cands)
     usage.extend(rerank_usage)
     chunks = [Chunk(chunk_id=c.chunk_id, source_id=c.source_id, section=c.section, quote=c.text, score=round(score, 4)) for c, score in ranked[:TOP]]
+    # Counts and the ranking kind only: never the question or a chunk's text.
+    log.info("retrieved", extra={"count": len(chunks), "kind": "rerank" if rerank_usage else "rrf", "ms": int((time.monotonic() - started) * 1000)})
     return chunks, usage

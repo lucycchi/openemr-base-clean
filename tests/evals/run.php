@@ -569,7 +569,7 @@ function evaluateRubrics(array $case, array $run, array $mismatches): array
                 : (($nonRefusalMismatches === [] && ($run['ungrounded_tokens'] ?? []) === []) ? 'pass' : 'fail'),
             'safe_refusal' => (!isset($case['expect']['answer_type']) && ($case['expect']['status'] ?? null) !== 'failed') ? 'na'
                 : (array_filter($mismatches, fn(string $m) => str_contains($m, 'answer_type') || str_starts_with($m, 'status') || str_starts_with($m, 'reason')) === [] ? 'pass' : 'fail'),
-            'no_phi_in_logs' => ($run['leaked_identifiers'] ?? null) === null ? 'na' : (($run['leaked_identifiers'] === [] && ($run['disallowed_log_fields'] ?? []) === []) ? 'pass' : 'fail'),
+            'no_phi_in_logs' => ($run['leaked_identifiers'] ?? null) === null ? 'na' : (($run['leaked_identifiers'] === [] && ($run['disallowed_log_fields'] ?? []) === [] && ($run['uncorrelated_log_lines'] ?? 0) === 0) ? 'pass' : 'fail'),
             'routing_correct' => ($run['handoffs'] ?? null) === null ? 'na' : (($run['handoffs'] === ($case['expect']['handoffs'] ?? null)) ? 'pass' : 'fail'),
             'anchor_correct' => ($run['anchor_errors'] ?? null) === null ? 'na' : ($run['anchor_errors'] === [] ? 'pass' : 'fail'),
         };
@@ -685,6 +685,31 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         $leaked = array_values(array_filter($phi, fn(string $p) => stripos($rendered, $p) !== false));
         $allowed = ['action', 'pid', 'user', 'encounter', 'document_id', 'doc_type', 'status', 'failure_reason', 'confidence', 'results_persisted', 'unverified', 'unextracted', 'model_calls', 'prompt_tokens', 'completion_tokens', 'cost_usd', 'steps', 'code', 'exception_class', 'exception_code', 'facts', 'stripped', 'omitted', 'from_cache', 'total_failure', 'answer_type', 'chart_changed', 'verification_pass', 'llm_attempts', 'llm_retried', 'guideline_chunks', 'handoffs', 'has_prior_visit', 'warm', 'warm_miss_reason', 'warm_receipt_age_s', 'cache_key', 'tool', 'reason', 'attempts', 'ms', 'correlation_id', 'http_status', 'model', 'denied', 'llm_ms', 'existing', 'chunks', 'calls'];
         $disallowed = array_values(array_diff($out['log_keys'], $allowed));
+        // The sidecar's own log lines for the same fixture (recorded proposal,
+        // so no model call): same PHI scan, its allowlist, and every line must
+        // carry the request's correlation id (the full-trace-from-logs rule).
+        $sidecarBody = ['fixture' => (string) $case['fixture'], 'doc_type' => (string) $case['doc_type'], 'document_id' => 1,
+            'proposal' => is_string($case['model_output'] ?? null) ? json_decode((string) file_get_contents(__DIR__ . '/fixtures/docs/' . (string) $case['model_output']), true, 32, JSON_THROW_ON_ERROR) : new stdClass()];
+        if (is_string($case['question'] ?? null)) {
+            $sidecarBody['question'] = $case['question'];
+        }
+        $sidecar = sidecarPost('/eval/phi', $sidecarBody);
+        $sidecarLines = is_array($sidecar['lines'] ?? null) ? $sidecar['lines'] : [];
+        $cid = is_string($sidecar['correlation_id'] ?? null) ? $sidecar['correlation_id'] : '';
+        $uncorrelated = 0;
+        foreach ($sidecarLines as $line) {
+            $decoded = is_string($line) ? json_decode($line, true) : null;
+            if (!is_array($decoded) || ($decoded['correlation_id'] ?? null) !== $cid) {
+                $uncorrelated++;
+            }
+        }
+        $sidecarRendered = implode("\n", array_filter($sidecarLines, 'is_string'));
+        foreach (array_filter($phi, fn(string $p) => stripos($sidecarRendered, $p) !== false) as $p) {
+            $leaked[] = 'sidecar:' . $p;
+        }
+        foreach (array_diff(is_array($sidecar['extra_keys_seen'] ?? null) ? $sidecar['extra_keys_seen'] : [], is_array($sidecar['allowlist'] ?? null) ? $sidecar['allowlist'] : []) as $k) {
+            $disallowed[] = 'sidecar:' . (string) $k;
+        }
         $runs[] = [
             'status' => $out['status'],
             'answer_type' => $out['answer_type'],
@@ -692,6 +717,8 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
             'disallowed_log_fields' => $disallowed,
             'log_lines' => count($out['logs']),
             'trace_payloads' => count($out['traces']),
+            'sidecar_log_lines' => count($sidecarLines),
+            'uncorrelated_log_lines' => $uncorrelated,
             'schema_errors' => [],
             'ungrounded_tokens' => [],
             'uncited_kept' => 0,
