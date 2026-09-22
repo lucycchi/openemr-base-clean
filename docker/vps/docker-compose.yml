@@ -89,6 +89,9 @@ services:
       LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
       ALERT_WEBHOOK_SECRET: ${ALERT_WEBHOOK_SECRET:-}
       LANGFUSE_WEBHOOK_SECRET: ${LANGFUSE_WEBHOOK_SECRET:-}
+      # Week 2 sidecar (extraction, retrieval, supervisor); compose service name below.
+      COPILOT_SIDECAR_URL: http://copilot-sidecar:8000
+      COHERE_API_KEY: ${COHERE_API_KEY:-}
       OPENEMR_SETTING_site_addr_oath: https://${DOMAIN:?set in .env}
       OPENEMR_SETTING_rest_api: 1
       OPENEMR_SETTING_rest_fhir_api: 1
@@ -102,6 +105,31 @@ services:
       interval: 1m
       timeout: 5s
       retries: 3
+
+  copilot-sidecar:
+    # Clinical Co-Pilot week 2 sidecar. Built on the VPS from ./copilot-sidecar
+    # (rsynced by docker/vps/deploy.sh); contracts are mounted read-only from
+    # ./copilot-contracts. Stateless for PHI, internal network only (no ports).
+    # Sized for this droplet: PyMuPDF + tesseract, not Docling (W2_ARCHITECTURE.md).
+    build:
+      context: ./copilot-sidecar
+    restart: always
+    volumes:
+      - ./copilot-contracts:/contracts:ro
+    environment:
+      COPILOT_CONTRACTS_DIR: /contracts
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      COHERE_API_KEY: ${COHERE_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 768M
 
 volumes:
   databasevolume: {}
