@@ -74,9 +74,12 @@ final class StepRecorder
     /** "LlmTimeout: ... (caused by ConnectException: ...)" — short class names, no stack trace. */
     public static function describe(\Throwable $e): string
     {
-        $text = (new \ReflectionClass($e))->getShortName() . ': ' . $e->getMessage();
+        // Class names only, never the message: exception messages can carry SQL
+        // fragments, file paths or request text, none of which belongs in a
+        // log line or a trace (log-field allowlist, W2_ARCHITECTURE.md).
+        $text = (new \ReflectionClass($e))->getShortName() . ($e->getCode() !== 0 ? ' (code ' . $e->getCode() . ')' : '');
         $previous = $e->getPrevious();
-        return $previous === null ? $text : $text . ' (caused by ' . (new \ReflectionClass($previous))->getShortName() . ': ' . $previous->getMessage() . ')';
+        return $previous === null ? $text : $text . ' (caused by ' . (new \ReflectionClass($previous))->getShortName() . ')';
     }
 
     private static function elapsedMs(int|float $startedHr): int

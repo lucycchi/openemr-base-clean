@@ -1,0 +1,35 @@
+{
+  "id": "25-route-question",
+  "guards": "boundary",
+  "pending": true,
+  "failure_mode": "A question goes to the retriever, never to the extractor.",
+  "mode": "route",
+  "state": {
+    "mode": "answer",
+    "question": "should I start a statin?",
+    "documents": []
+  },
+  "rubrics": {
+    "routing_correct": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "handoffs": [
+      [
+        "supervisor",
+        "evidence_retriever",
+        "question_present"
+      ],
+      [
+        "evidence_retriever",
+        "supervisor",
+        "worker_finished"
+      ],
+      [
+        "supervisor",
+        "done",
+        "worker_finished"
+      ]
+    ]
+  }
+}

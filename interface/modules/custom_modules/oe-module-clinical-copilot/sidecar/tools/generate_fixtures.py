@@ -126,12 +126,68 @@ def lab_layout2(out: Path) -> None:
     (out / "lab-layout2.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
 
 
+def intake_full(out: Path) -> None:
+    """A filled new-patient intake form: demographics block, reason for visit,
+    a medications table, allergies, family history, a signature line. Written
+    with invented answers for the fictional patient; includes 'stopped
+    lisinopril' so the intake-vs-chart discrepancy case has something to find.
+    Also saved as a 150 dpi JPEG scan (no text layer)."""
+    doc = fitz.open()
+    p = doc.new_page(width=612, height=792)
+    y = 50
+    p.insert_text((50, y), "RIVERSIDE FAMILY MEDICINE  -  NEW PATIENT INTAKE FORM", fontsize=12); y += 14
+    p.insert_text((50, y), "Fixture for evals; fictional patient, invented answers", fontsize=8); y += 22
+    p.insert_text((50, y), f"Patient name: {PATIENT}          Date of birth: 01/01/1970          Sex: F", fontsize=10); y += 16
+    p.insert_text((50, y), "Phone: (555) 010-2233          Today's date: 09/20/2026", fontsize=10); y += 24
+    p.insert_text((50, y), "Reason for today's visit:", fontsize=10); y += 14
+    p.insert_text((60, y), "chest tightness when climbing stairs for the past 2 weeks", fontsize=10); y += 24
+    p.insert_text((50, y), "Current medications (name, dose, how often):", fontsize=10); y += 14
+    meds = [("metformin", "500 mg", "twice daily"), ("atorvastatin", "20 mg", "at bedtime"), ("lisinopril", "10 mg", "STOPPED in August, dizziness"), ("aspirin", "81 mg", "daily")]
+    for x, h in [(60, "Medication"), (230, "Dose"), (330, "How often")]:
+        p.insert_text((x, y), h, fontsize=9)
+    y += 4; p.draw_line((60, y), (540, y)); y += 14
+    for name, dose, freq in meds:
+        for x, t in [(60, name), (230, dose), (330, freq)]:
+            p.insert_text((x, y), t, fontsize=10)
+        y += 16
+    y += 10
+    p.insert_text((50, y), "Allergies (substance and reaction):", fontsize=10); y += 14
+    allergies = [("penicillin", "rash"), ("sulfa drugs", "hives")]
+    for sub, rx in allergies:
+        p.insert_text((60, y), f"{sub}  -  {rx}", fontsize=10); y += 16
+    y += 10
+    p.insert_text((50, y), "Family history:", fontsize=10); y += 14
+    fam = [("father", "heart attack at 55"), ("mother", "type 2 diabetes"), ("sister", "breast cancer")]
+    for rel, cond in fam:
+        p.insert_text((60, y), f"{rel}: {cond}", fontsize=10); y += 16
+    y += 20
+    p.insert_text((50, y), "Patient signature: ______________________     Date: 09/20/2026", fontsize=10)
+    doc.save(out / "intake-full.pdf", garbage=4, deflate=True)
+    truth = {
+        "doc_type": "intake_form", "form_date": "2026-09-20",
+        "demographics": {"name": PATIENT, "dob": "01/01/1970", "sex": "F", "phone": "(555) 010-2233"},
+        "chief_concern": "chest tightness when climbing stairs for the past 2 weeks",
+        "medications": [{"name": n, "dose": d, "frequency": f, "page": 1} for n, d, f in meds],
+        "allergies": [{"substance": s, "reaction": r, "page": 1} for s, r in allergies],
+        "family_history": [{"relative": r, "condition": c, "page": 1} for r, c in fam],
+    }
+    (out / "intake-full.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
+    scan = fitz.open()
+    for pg in doc:
+        pix = pg.get_pixmap(dpi=150)
+        np_ = scan.new_page(width=612, height=792)
+        np_.insert_image(np_.rect, stream=pix.tobytes("jpeg", jpg_quality=70), rotate=0)
+    scan.save(out / "intake-full-scan.pdf", garbage=4, deflate=True)
+    (out / "intake-full-scan.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
+
+
 def main() -> None:
     out = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
     out.mkdir(parents=True, exist_ok=True)
     lab_layout1(out)
     lab_layout2(out)
-    print("wrote", sorted(p.name for p in out.glob("lab-*")))
+    intake_full(out)
+    print("wrote", sorted(p.name for p in out.glob("*.pdf")))
 
 
 if __name__ == "__main__":

@@ -124,6 +124,12 @@ final class DocumentIngestService
         if ($lab->reportedDate !== null && $lab->reportedDateCitation !== null) {
             $this->fact($documentId, '/reported_date', 'reported_date', null, $lab->reportedDate->format('Y-m-d'), null, null, null, null, false, $lab->reportedDateCitation, null);
         }
+        if ($lab->patientNameOnReport !== null && $this->demographicsMismatches($pid, ['name' => $lab->patientNameOnReport]) !== []) {
+            QueryUtils::sqlInsert(
+                "INSERT INTO copilot_document_fact (document_id, field_path, kind, value, anchored, page) VALUES (?, '/patient_name_on_report', 'patient_mismatch', 'patient name on the report does not match the chart', 1, 1)",
+                [$documentId]
+            );
+        }
         foreach ($lab->unextracted as $i => $u) {
             QueryUtils::sqlInsert(
                 "INSERT INTO copilot_document_fact (document_id, field_path, kind, value, anchored, page, row_bbox_json) VALUES (?, ?, 'unextracted_row', ?, 0, ?, ?)",
@@ -137,6 +143,14 @@ final class DocumentIngestService
     private function persistIntake(PatientId $pid, int $documentId, IntakeExtraction $intake): array
     {
         $unverified = 0;
+        // Demographics on the form are compared with the chart and never stored;
+        // only the fact of a mismatch is kept, as a kind with a fixed value.
+        foreach ($this->demographicsMismatches($pid, $intake->demographics) as $i => $what) {
+            QueryUtils::sqlInsert(
+                "INSERT INTO copilot_intake (document_id, pid, field_path, kind, value, detail, anchored, page) VALUES (?, ?, ?, 'demographics_mismatch', ?, NULL, 1, 1)",
+                [$documentId, $pid->value, "/demographics/mismatch/$i", $what]
+            );
+        }
         foreach ($intake->items as $item) {
             QueryUtils::sqlInsert(
                 "INSERT INTO copilot_intake (document_id, pid, field_path, kind, value, detail, anchored, page, bbox_json, row_bbox_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -158,6 +172,65 @@ final class DocumentIngestService
             }
         }
         return ['results_persisted' => count($intake->items), 'unverified' => $unverified, 'unextracted' => 0];
+    }
+
+    /**
+     * Which demographics printed on the form disagree with the chart. Names
+     * match when every chart name token appears on the form (order and
+     * middle names ignored); dates match as dates; sex by first letter;
+     * phones by digits. Values never leave this method.
+     *
+     * @param array<string, string> $onForm name/dob/sex/phone as printed
+     * @return list<string> fixed descriptions, e.g. "name on the form does not match the chart"
+     */
+    private function demographicsMismatches(PatientId $pid, array $onForm): array
+    {
+        if ($onForm === []) {
+            return [];
+        }
+        $chart = QueryUtils::querySingleRow("SELECT fname, lname, DOB, sex, phone_home, phone_cell FROM patient_data WHERE pid = ?", [$pid->value]);
+        if (!is_array($chart)) {
+            return [];
+        }
+        $out = [];
+        $norm = static fn(string $s): string => preg_replace('/[^a-z0-9]+/', ' ', mb_strtolower($s)) ?? '';
+        if (isset($onForm['name'])) {
+            $form = ' ' . trim($norm($onForm['name'])) . ' ';
+            foreach ([(string) ($chart['fname'] ?? ''), (string) ($chart['lname'] ?? '')] as $token) {
+                $t = trim($norm($token));
+                if ($t !== '' && !str_contains($form, " $t ")) {
+                    $out[] = 'name on the form does not match the chart';
+                    break;
+                }
+            }
+        }
+        if (isset($onForm['dob']) && is_string($chart['DOB'] ?? null) && $chart['DOB'] !== '0000-00-00') {
+            $formDob = null;
+            foreach (['m/d/Y', 'Y-m-d', 'd/m/Y', 'm-d-Y'] as $fmt) {
+                $d = \DateTimeImmutable::createFromFormat('!' . $fmt, trim($onForm['dob']));
+                if ($d !== false) {
+                    $formDob = $d;
+                    break;
+                }
+            }
+            if ($formDob !== null && $formDob->format('Y-m-d') !== substr($chart['DOB'], 0, 10)) {
+                $out[] = 'date of birth on the form does not match the chart';
+            }
+        }
+        if (isset($onForm['sex']) && is_string($chart['sex'] ?? null) && $chart['sex'] !== '') {
+            if (strtolower(substr(trim($onForm['sex']), 0, 1)) !== strtolower(substr($chart['sex'], 0, 1))) {
+                $out[] = 'sex on the form does not match the chart';
+            }
+        }
+        if (isset($onForm['phone'])) {
+            $digits = static fn(string $s): string => preg_replace('/\D/', '', $s) ?? '';
+            $formPhone = $digits($onForm['phone']);
+            $chartPhones = array_filter([$digits((string) ($chart['phone_home'] ?? '')), $digits((string) ($chart['phone_cell'] ?? ''))]);
+            if ($formPhone !== '' && $chartPhones !== [] && !in_array($formPhone, $chartPhones, true)) {
+                $out[] = 'phone on the form does not match the chart';
+            }
+        }
+        return $out;
     }
 
     private function fact(int $documentId, string $path, string $kind, ?string $analyte, string $value, ?string $unit, ?string $loinc, ?string $range, ?string $flag, bool $mismatch, Citation $c, ?int $resultId): void

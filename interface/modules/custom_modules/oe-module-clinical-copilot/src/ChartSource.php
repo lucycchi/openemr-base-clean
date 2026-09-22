@@ -39,4 +39,7 @@ interface ChartSource
 
     /** Week 2: unanchored extracted fields and unextracted rows from this patient's uploaded documents. @return list<UnverifiedExtraction> */
     public function unverifiedExtractions(PatientId $pid): array;
+
+    /** Week 2: cited intake-form entries and document-vs-chart mismatches for this patient's uploaded documents. @return list<IntakeRecord> */
+    public function intakeRecords(PatientId $pid): array;
 }

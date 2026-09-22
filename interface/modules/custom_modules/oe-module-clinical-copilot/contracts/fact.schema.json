@@ -26,7 +26,12 @@
         "lab_delta",
         "problem_new",
         "truncation",
-        "extraction_unverified"
+        "extraction_unverified",
+        "intake_chief_concern",
+        "intake_med",
+        "intake_allergy",
+        "intake_family_history",
+        "document_mismatch"
       ]
     },
     "value": {

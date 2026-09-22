@@ -1,0 +1,66 @@
+{
+  "doc_type": "intake_form",
+  "form_date": "2026-09-20",
+  "demographics": {
+    "name": "Test Zeta",
+    "dob": "01/01/1970",
+    "sex": "F",
+    "phone": "(555) 010-2233"
+  },
+  "chief_concern": "chest tightness when climbing stairs for the past 2 weeks",
+  "medications": [
+    {
+      "name": "metformin",
+      "dose": "500 mg",
+      "frequency": "twice daily",
+      "page": 1
+    },
+    {
+      "name": "atorvastatin",
+      "dose": "20 mg",
+      "frequency": "at bedtime",
+      "page": 1
+    },
+    {
+      "name": "lisinopril",
+      "dose": "10 mg",
+      "frequency": "STOPPED in August, dizziness",
+      "page": 1
+    },
+    {
+      "name": "aspirin",
+      "dose": "81 mg",
+      "frequency": "daily",
+      "page": 1
+    }
+  ],
+  "allergies": [
+    {
+      "substance": "penicillin",
+      "reaction": "rash",
+      "page": 1
+    },
+    {
+      "substance": "sulfa drugs",
+      "reaction": "hives",
+      "page": 1
+    }
+  ],
+  "family_history": [
+    {
+      "relative": "father",
+      "condition": "heart attack at 55",
+      "page": 1
+    },
+    {
+      "relative": "mother",
+      "condition": "type 2 diabetes",
+      "page": 1
+    },
+    {
+      "relative": "sister",
+      "condition": "breast cancer",
+      "page": 1
+    }
+  ]
+}

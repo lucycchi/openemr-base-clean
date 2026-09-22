@@ -67,7 +67,9 @@ final class StepRecorderTest extends TestCase
         $failed = $steps->failed();
         self::assertCount(1, $failed);
         self::assertSame('llm.briefing', $failed[0]->name);
-        self::assertSame('LogicException: Upstream HTTP 503 (caused by RuntimeException: HTTP 503 from upstream)', $failed[0]->error);
+        // Week 2 log allowlist: class chain only; the messages ('Upstream HTTP 503', 'HTTP 503 from upstream') must not appear.
+        self::assertSame('LogicException (code 503) (caused by RuntimeException)', $failed[0]->error);
+        self::assertStringNotContainsString('from upstream', $failed[0]->error);
         self::assertSame(['step' => 'llm.briefing', 'ms' => $failed[0]->durationMs, 'error' => $failed[0]->error], $failed[0]->toLogContext());
     }
 }

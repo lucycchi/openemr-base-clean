@@ -31,7 +31,7 @@ push gate. `install-hooks.sh` installs it as `.git/hooks/pre-push`.
 | `schema_valid` | The system's output (fact rows, verified narration, extraction JSON) validates against the contract in `contracts/` | 100% |
 | `citation_present` | Every kept sentence and every clinical extracted field carries a citation | 100% |
 | `anchor_correct` | Anchored `(page, row)` set equals the fixture's `truth.json`; unexpected anchored fields fail | 100% |
-| `no_phi_in_logs` | Kept text and captured log/trace output contain no direct identifier of the patient | 100% |
+| `no_phi_in_logs` | Kept text contains no direct identifier of the patient; log and trace fields follow the allowlist (exception class and code only, `has_prior_visit` instead of the date) | 100% |
 | `factually_consistent` | Expectation mismatches empty and no number/date in kept text is absent from every cited fact or chunk (independent scan, not a call into `Verifier`) | ≥ 90% |
 | `safe_refusal` | `answer_type` equals the expected refusal (`not_in_facts`, `not_in_corpus`, `unsupported_doc_type`) | ≥ 90% |
 | `routing_correct` | Handoff sequence equals `expect.handoffs` | ≥ 90% |

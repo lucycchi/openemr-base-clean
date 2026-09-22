@@ -107,7 +107,7 @@ final class ChatController
             // Anything unexpected still gets a correlation id, a log line with
             // the exception, a trace with the failed step, and a JSON body;
             // then it propagates so the failure is never swallowed.
-            $this->logger->error('copilot request failed', ['exception' => $e, 'steps' => $this->stepSummary()]);
+            $this->logger->error('copilot request failed', ['exception_class' => $e::class, 'exception_code' => $e->getCode(), 'steps' => $this->stepSummary()]);
             $this->tracer->record(new RequestTrace(
                 $this->correlationId,
                 'copilot.' . $this->request->request->getString('action'),
@@ -177,7 +177,7 @@ final class ChatController
             $assembled = $this->steps->measure(
                 'authorize_and_assemble_facts',
                 fn() => (new FactAssembler(new OpenEmrChartSource(), new AclAuthorization($user), ServiceContainer::getClock()))->assemble($pid, $encounter > 0 ? $encounter : null),
-                static fn(AssembledFacts $a) => ['facts' => count($a->facts()->all()), 'prior_visit' => $a->priorEncounter()?->date->format('Y-m-d')],
+                static fn(AssembledFacts $a) => ['facts' => count($a->facts()->all()), 'has_prior_visit' => $a->priorEncounter() !== null],
             );
         } catch (AccessDeniedException) {
             $this->logger->warning('copilot access denied', ['user' => $user, 'steps' => $this->stepSummary()]);
@@ -297,7 +297,7 @@ final class ChatController
             // a site enabled at 0.1.0 will not have it until Module Manager >
             // Upgrade runs). A missing or broken table must not take the
             // briefing down: log it, score nothing, and carry on.
-            $this->logger->warning('copilot warm lookup failed; pre-warm receipts unavailable', ['exception' => $e]);
+            $this->logger->warning('copilot warm lookup failed; pre-warm receipts unavailable', ['exception_class' => $e::class]);
             return null;
         }
         if ($receipt === null && !$config->prewarmEnabled) {

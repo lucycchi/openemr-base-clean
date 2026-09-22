@@ -155,6 +155,41 @@ final class OpenEmrChartSource implements ChartSource
         );
     }
 
+    /** @return list<IntakeRecord> */
+    public function intakeRecords(PatientId $pid): array
+    {
+        $rows = QueryUtils::fetchRecords(
+            "SELECT ci.id, ci.document_id, ci.kind, ci.value, ci.detail, ci.anchored, ci.page, ci.field_path, ci.bbox_json, ci.row_bbox_json, cd.created_at
+             FROM copilot_intake ci
+             JOIN copilot_document cd ON cd.document_id = ci.document_id
+             JOIN documents d ON d.id = cd.document_id
+             WHERE ci.pid = ? AND cd.status = 'extracted' AND d.deleted = 0
+             UNION ALL
+             SELECT cdf.id, cdf.document_id, cdf.kind, cdf.value, NULL AS detail, cdf.anchored, cdf.page, cdf.field_path, cdf.bbox_json, cdf.row_bbox_json, cd.created_at
+             FROM copilot_document_fact cdf
+             JOIN copilot_document cd ON cd.document_id = cdf.document_id
+             JOIN documents d ON d.id = cd.document_id
+             WHERE cd.pid = ? AND cdf.kind = 'patient_mismatch' AND cd.status = 'extracted' AND d.deleted = 0
+             ORDER BY created_at DESC, id ASC",
+            [$pid->value, $pid->value]
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $bbox = is_string($r['bbox_json'] ?? null) ? json_decode($r['bbox_json'], true) : null;
+            $row = is_string($r['row_bbox_json'] ?? null) ? json_decode($r['row_bbox_json'], true) : null;
+            $out[] = new IntakeRecord(
+                Row::int($r, 'id'),
+                Row::int($r, 'document_id'),
+                Row::str($r, 'kind'),
+                Row::str($r, 'value'),
+                is_string($r['detail'] ?? null) ? $r['detail'] : null,
+                $this->date(Row::str($r, 'created_at')),
+                new Citation('document', (string) Row::int($r, 'document_id'), is_numeric($r['page'] ?? null) ? (string) (int) $r['page'] : '', Row::str($r, 'field_path'), Row::str($r, 'value'), (int) ($r['anchored'] ?? 0) === 1 && is_array($bbox), is_array($bbox) ? BBox::fromArray($bbox) : null, is_array($row) ? BBox::fromArray($row) : null),
+            );
+        }
+        return $out;
+    }
+
     /**
      * Week 2: fields the extractor could not anchor (and table rows it did not
      * extract at all) for this patient's documents, so they surface as

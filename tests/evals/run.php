@@ -154,6 +154,9 @@ function runDocumentCase(array $case, string $mode): array
     }
     $doc = $extraction['extraction'];
     $run['schema_errors'] = schemaErrors((string) $case['doc_type'] === 'lab_pdf' ? 'lab-report' : 'intake-form', json_decode(json_encode($doc, JSON_THROW_ON_ERROR)));
+    if ((string) $case['doc_type'] === 'intake_form') {
+        return scoreIntake($run, $doc, $truth);
+    }
     $run['unextracted'] = count(is_array($doc['unextracted'] ?? null) ? $doc['unextracted'] : []);
     $results = is_array($doc['results'] ?? null) ? $doc['results'] : [];
     $run['results'] = count($results);
@@ -201,6 +204,70 @@ function runDocumentCase(array $case, string $mode): array
             $run['anchor_errors'][] = sprintf('swapped %s=%s was anchored (must be unverified)', $swap['analyte'], $swap['value']);
         }
     }
+    return $run;
+}
+
+/**
+ * Intake-form scoring against truth.json: every true medication, allergy and
+ * family-history line must be present (matched by name/substance/condition)
+ * and anchored; the chief concern must be present and anchored; demographics
+ * on the form are compared but never persisted, so only their anchoring is
+ * scored. Extra items the model invented count against factually_consistent.
+ *
+ * @param array<string, mixed> $run
+ * @param array<string, mixed> $doc
+ * @param array<string, mixed> $truth
+ * @return array<string, mixed>
+ */
+function scoreIntake(array $run, array $doc, array $truth): array
+{
+    $lists = [['medications', 'name', 'name'], ['allergies', 'substance', 'substance'], ['family_history', 'condition', 'condition']];
+    $cited = 0;
+    $anchored = 0;
+    foreach ($lists as [$key, $field, $truthField]) {
+        $got = is_array($doc[$key] ?? null) ? $doc[$key] : [];
+        $want = is_array($truth[$key] ?? null) ? $truth[$key] : [];
+        foreach ($got as $g) {
+            $cited++;
+            $anchored += (($g['citation']['anchored'] ?? false) === true) ? 1 : 0;
+            if (!is_array($g['citation'] ?? null)) {
+                $run['uncited_kept']++;
+            }
+        }
+        foreach ($want as $w) {
+            $match = array_values(array_filter($got, fn($g) => normName((string) ($g[$field] ?? '')) === normName((string) $w[$truthField])));
+            if ($match === []) {
+                $run['anchor_errors'][] = sprintf('%s "%s" missing', $key, $w[$truthField]);
+            } elseif (($match[0]['citation']['anchored'] ?? false) !== true) {
+                $run['anchor_errors'][] = sprintf('%s "%s" not anchored', $key, $w[$truthField]);
+            }
+        }
+        if (count($got) > count($want)) {
+            $run['ungrounded_tokens'][] = sprintf('%s: %d listed, truth has %d', $key, count($got), count($want));
+        }
+    }
+    $cc = $doc['chief_concern'] ?? null;
+    if (($truth['chief_concern'] ?? null) !== null) {
+        if (!is_array($cc)) {
+            $run['anchor_errors'][] = 'chief concern missing';
+        } elseif (($cc['citation']['anchored'] ?? false) !== true) {
+            $run['anchor_errors'][] = 'chief concern not anchored';
+        } elseif (normName((string) ($cc['value'] ?? '')) !== normName((string) $truth['chief_concern'])) {
+            $run['ungrounded_tokens'][] = 'chief concern text differs from truth';
+        }
+    }
+    foreach (['name', 'dob', 'sex', 'phone'] as $d) {
+        $node = $doc['demographics'][$d] ?? null;
+        if (is_array($node) && ($node['citation']['anchored'] ?? false) !== true) {
+            $run['anchor_errors'][] = "demographics $d not anchored";
+        }
+    }
+    if (($doc['form_date'] ?? null) !== ($truth['form_date'] ?? null)) {
+        $run['ungrounded_tokens'][] = sprintf('form_date=%s (truth %s)', json_encode($doc['form_date'] ?? null), json_encode($truth['form_date'] ?? null));
+    }
+    $run['results'] = $cited;
+    $run['anchored'] = $anchored;
+    $run['unextracted'] = 0;
     return $run;
 }
 

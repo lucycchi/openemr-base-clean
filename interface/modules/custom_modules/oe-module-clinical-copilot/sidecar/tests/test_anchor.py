@@ -127,3 +127,32 @@ def test_parse_errors() -> None:
     with pytest.raises(parse.ParseError) as e:
         parse.parse_pdf(enc.tobytes(encryption=fitz.PDF_ENCRYPT_AES_256, user_pw="x", owner_pw="x"))
     assert e.value.code == "encrypted"
+
+
+def test_intake_form_anchors_every_field(fixtures: Path) -> None:
+    from copilot_sidecar.schemas import IntakeAllergyProposal, IntakeFamilyHistoryProposal, IntakeFormProposal, IntakeMedicationProposal
+
+    generate_fixtures.intake_full(fixtures)
+    for name in ["intake-full", "intake-full-scan"]:
+        parsed = parse.parse_pdf((fixtures / f"{name}.pdf").read_bytes())
+        truth = json.loads((fixtures / f"{name}.truth.json").read_text())
+        prop = IntakeFormProposal(
+            form_date="09/20/2026", name=truth["demographics"]["name"], dob=truth["demographics"]["dob"], sex="F", phone=truth["demographics"]["phone"],
+            chief_concern=truth["chief_concern"],
+            medications=[IntakeMedicationProposal(name=m["name"], dose=m["dose"], frequency=m["frequency"], page=1) for m in truth["medications"]],
+            allergies=[IntakeAllergyProposal(substance=a["substance"], reaction=a["reaction"], page=1) for a in truth["allergies"]],
+            family_history=[IntakeFamilyHistoryProposal(relative=f["relative"], condition=f["condition"], page=1) for f in truth["family_history"]],
+        )
+        form, reason = anchor.build_intake_form(1, parsed, prop)
+        assert form is not None, reason
+        assert form.form_date.isoformat() == "2026-09-20"
+        assert form.chief_concern is not None and form.chief_concern.citation.anchored, name
+        assert [m.name for m in form.medications] == [m["name"] for m in truth["medications"]]
+        assert all(m.citation.anchored for m in form.medications), name
+        assert all(a.citation.anchored for a in form.allergies), name
+        assert all(f.citation.anchored for f in form.family_history), name
+        assert form.demographics.name is not None and form.demographics.name.citation.anchored
+        # A medication the form does not mention must not anchor.
+        prop2 = prop.model_copy(update={"medications": [IntakeMedicationProposal(name="warfarin", dose=None, frequency=None, page=1)]})
+        form2, _ = anchor.build_intake_form(1, parsed, prop2)
+        assert form2 is not None and not form2.medications[0].citation.anchored

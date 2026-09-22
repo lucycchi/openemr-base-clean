@@ -32,6 +32,8 @@ final class FakeChartSource implements ChartSource
 {
     /** @var list<\OpenEMR\Modules\ClinicalCopilot\UnverifiedExtraction> */
     public array $unverified = [];
+    /** @var list<\OpenEMR\Modules\ClinicalCopilot\IntakeRecord> */
+    public array $intake = [];
 
     public int $reads = 0;
     /** @var list<EncounterRecord> */
@@ -79,5 +81,11 @@ final class FakeChartSource implements ChartSource
     public function unverifiedExtractions(PatientId $pid): array
     {
         return $this->unverified;
+    }
+
+    /** @return list<\OpenEMR\Modules\ClinicalCopilot\IntakeRecord> */
+    public function intakeRecords(PatientId $pid): array
+    {
+        return $this->intake;
     }
 }

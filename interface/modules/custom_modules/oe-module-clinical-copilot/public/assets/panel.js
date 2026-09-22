@@ -46,6 +46,10 @@
     // are shown (most clinically urgent first). Must match FactCategory.php.
     const CATEGORY_LABELS = {
         allergy_medication_hit: 'Allergy / medication matches',
+        document_mismatch: 'Document does not match the chart',
+        intake_chief_concern: 'Reason for visit (intake form)',
+        intake_med: 'Medications listed on the intake form',
+        intake_allergy: 'Allergies listed on the intake form',
         extraction_unverified: 'Unverified values from uploaded documents',
         lab_abnormal: 'Abnormal labs since last visit',
         medication_new: 'New medications',
@@ -57,6 +61,7 @@
         lab_delta: 'Lab changes vs prior result',
         medication_active: 'Active medications',
         allergy_active: 'Allergies on file',
+        intake_family_history: 'Family history (intake form)',
         truncation: 'Not shown',
     };
     const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);

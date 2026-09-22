@@ -1,0 +1,41 @@
+{
+  "id": "28-route-document-and-question",
+  "guards": "boundary",
+  "pending": true,
+  "failure_mode": "With an extracted document and a question, only retrieval runs.",
+  "mode": "route",
+  "state": {
+    "mode": "answer",
+    "question": "is the LDL improving?",
+    "documents": [
+      {
+        "document_id": 1,
+        "doc_type": "lab_pdf",
+        "status": "extracted"
+      }
+    ]
+  },
+  "rubrics": {
+    "routing_correct": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "handoffs": [
+      [
+        "supervisor",
+        "evidence_retriever",
+        "question_present"
+      ],
+      [
+        "evidence_retriever",
+        "supervisor",
+        "worker_finished"
+      ],
+      [
+        "supervisor",
+        "done",
+        "worker_finished"
+      ]
+    ]
+  }
+}

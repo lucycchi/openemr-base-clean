@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T07:19:51+00:00",
+    "ran_at": "2026-09-22T09:07:35+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -53,6 +53,12 @@
             "factually_consistent": "pass"
         },
         "18-anchor-hundred-in-three-columns": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
+        },
+        "21-anchor-intake-form": {
             "schema_valid": "pass",
             "citation_present": "pass",
             "anchor_correct": "pass",

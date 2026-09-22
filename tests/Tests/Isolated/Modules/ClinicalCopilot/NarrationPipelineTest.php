@@ -129,7 +129,8 @@ final class NarrationPipelineTest extends TestCase
         $failed = $pipeline->steps()->failed();
         self::assertCount(1, $failed);
         self::assertSame('llm.briefing', $failed[0]->name);
-        self::assertSame('LlmRateLimited: Rate limited (caused by RuntimeException: 429 Too Many Requests)', $failed[0]->error);
+        // Week 2 log allowlist: exception class chain and code only, never the message.
+        self::assertSame('LlmRateLimited (code 429) (caused by RuntimeException)', $failed[0]->error);
         self::assertSame(['cache_lookup', 'llm.briefing', 'omission_guard'], array_map(fn($s) => $s->name, $pipeline->steps()->all()));
     }
 

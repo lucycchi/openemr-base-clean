@@ -126,7 +126,8 @@ class DocumentIngestServiceTest extends TestCase
         self::assertNotEmpty($results[0]['uuid'], 'FHIR needs a uuid on the result');
 
         $facts = QueryUtils::fetchRecords("SELECT field_path, anchored, procedure_result_id FROM copilot_document_fact WHERE document_id = ? ORDER BY field_path", [$documentId]);
-        self::assertSame(['/collection_date', '/results/0/value', '/results/1/value'], array_column($facts, 'field_path'));
+        // 'Test Zeta' on the report is not the seed patient: a patient_mismatch flag is recorded beside the results.
+        self::assertSame(['/collection_date', '/patient_name_on_report', '/results/0/value', '/results/1/value'], array_column($facts, 'field_path'));
 
         // The Week 1 chart source now sees the results with their document citations.
         $labs = array_values(array_filter((new OpenEmrChartSource())->labs(new PatientId($this->pid)), static fn($l) => $l->citation !== null && $l->citation->sourceId === (string) $documentId));
@@ -170,6 +171,43 @@ class DocumentIngestServiceTest extends TestCase
         self::assertTrue($second['existing']);
         self::assertSame($first['document_id'], $second['document_id']);
         self::assertSame(1, (int) QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM copilot_document WHERE document_id = ?", 'n', [$first['document_id']]));
+    }
+
+    public function testIntakePersistsCitedItemsAndFlagsDemographicMismatchesWithoutStoringThem(): void
+    {
+        $documentId = $this->store('intake-' . bin2hex(random_bytes(4)));
+        $c = fn(string $path, string $v) => $this->citation($documentId, $path, $v, true);
+        $intake = new \OpenEMR\Modules\ClinicalCopilot\Documents\IntakeExtraction(
+            [
+                new \OpenEMR\Modules\ClinicalCopilot\Documents\IntakeItem('chief_concern', '/chief_concern', 'chest tightness on stairs', null, $c('/chief_concern', 'chest tightness on stairs')),
+                new \OpenEMR\Modules\ClinicalCopilot\Documents\IntakeItem('medication', '/medications/0/name', 'lisinopril', '10 mg STOPPED in August', $c('/medications/0/name', 'lisinopril')),
+                new \OpenEMR\Modules\ClinicalCopilot\Documents\IntakeItem('allergy', '/allergies/0/substance', 'penicillin', 'rash', $c('/allergies/0/substance', 'penicillin')),
+            ],
+            // A name that cannot match any seed patient, and a DOB that will not either.
+            ['name' => 'Zzyzx Nobody', 'dob' => '01/01/1900'],
+        );
+        $result = new ExtractionResult($documentId, DocumentStatus::Extracted, null, $intake, 1.0);
+        $out = (new DocumentIngestService())->persist(new PatientId($this->pid), $result, 'test-corr');
+        self::assertSame(DocumentStatus::Extracted, $out['status']);
+
+        $rows = QueryUtils::fetchRecords("SELECT kind, value FROM copilot_intake WHERE document_id = ? ORDER BY id", [$documentId]);
+        $kinds = array_column($rows, 'kind');
+        self::assertSame(['demographics_mismatch', 'demographics_mismatch', 'chief_concern', 'medication', 'allergy'], $kinds);
+        // The form's name and DOB are never stored: only the fixed mismatch phrases are.
+        $joined = implode(' ', array_column($rows, 'value'));
+        self::assertStringNotContainsString('Zzyzx', $joined);
+        self::assertStringNotContainsString('1900', $joined);
+        self::assertStringContainsString('name on the form does not match the chart', $joined);
+
+        $records = array_values(array_filter((new OpenEmrChartSource())->intakeRecords(new PatientId($this->pid)), static fn($r) => $r->documentId === $documentId));
+        self::assertCount(5, $records);
+        $categories = array_map(static fn($r) => $r->category()?->value, $records);
+        self::assertContains('intake_med', $categories);
+        self::assertContains('document_mismatch', $categories);
+        $med = array_values(array_filter($records, static fn($r) => $r->kind === 'medication'))[0];
+        self::assertTrue($med->citation->anchored);
+        self::assertSame(1, $med->citation->bbox?->page);
+        self::assertStringContainsString('STOPPED in August', $med->describe());
     }
 
     public function testUploadRejectsNonPdf(): void

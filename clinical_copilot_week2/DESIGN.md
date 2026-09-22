@@ -256,12 +256,12 @@ Goal: `lab-layout1.pdf` goes upload → extract → persisted lab rows → fact 
 - [x] 3.2 `copilot:attach <pid> <file> <lab_pdf|intake_form>` registered in `Bootstrap::registerCommands()` next to `copilot:prewarm`.
 - [x] 3.3 Negative authorization tests: forged document id from another patient, viewer without `patients/docs`, wrong session pid, `receptionist` cannot trigger persistence.
 
-### Phase 4: Intake form (Tuesday, ~2 h)
+### Phase 4: Intake form (Tuesday, ~2 h) — done 2026-09-22: intake fixture (text + scan), intake facts with citations, demographics/patient-name mismatch flags (SQL 0.1.3), log allowlist cleanup; 22 cases enforced, 6 routing cases pending for Phase 5
 
-- [ ] 4.1 `intake-full.pdf` fixture with `truth.json` and `model.json`; the `IntakeForm` path through `extract.py` and `anchor.py` (field-level anchoring, no table rows).
-- [ ] 4.2 One anchor-mode intake case and the six routing cases written now (routing flips in Phase 5); the remaining 27 cases are Thursday (9.3).
-- [ ] 4.3 Intake persistence: `copilot_intake` rows → `intake_*` fact categories in `FactAssembler` (`intake_med`, `intake_allergy` must-surface); demographics compared to the session patient and a mismatch surfaces as a fact, never stored.
-- [ ] 4.4 Log allowlist cleanup before the PHI cases flip: `ChatController` logs exception class + code, never the message; `StepRecorder` and `LangfuseTracer` replace `prior_visit` with `has_prior_visit`; grep every `logger->` and tracer call in the module against the allowlist.
+- [x] 4.1 `intake-full.pdf` fixture with `truth.json` and `model.json`; the `IntakeForm` path through `extract.py` and `anchor.py` (field-level anchoring, no table rows).
+- [x] 4.2 One anchor-mode intake case and the six routing cases written now (routing flips in Phase 5); the remaining 27 cases are Thursday (9.3).
+- [x] 4.3 Intake persistence: `copilot_intake` rows → `intake_*` fact categories in `FactAssembler` (`intake_med`, `intake_allergy` must-surface); demographics compared to the session patient and a mismatch surfaces as a fact, never stored.
+- [x] 4.4 Log allowlist cleanup before the PHI cases flip: `ChatController` logs exception class + code, never the message; `StepRecorder` and `LangfuseTracer` replace `prior_visit` with `has_prior_visit`; grep every `logger->` and tracer call in the module against the allowlist.
 
 ### Phase 4b: Review console and rating calibration (Tuesday/Wednesday, ~2.5 h)
 

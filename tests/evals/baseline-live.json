@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T07:19:51+00:00",
+    "ran_at": "2026-09-22T09:07:35+00:00",
     "cases": {
         "09-live-seed-patients-zero-strips": {
             "citation_present": "pass",
@@ -47,6 +47,13 @@
             "no_phi_in_logs": "pass"
         },
         "20-live-extract-lab-layout1-scan": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass",
+            "no_phi_in_logs": "pass"
+        },
+        "22-live-extract-intake-form": {
             "schema_valid": "pass",
             "citation_present": "pass",
             "anchor_correct": "pass",

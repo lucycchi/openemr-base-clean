@@ -36,6 +36,16 @@ enum FactCategory: string
     case Truncation = 'truncation';
     /** Week 2: a value or row from an uploaded document that could not be verified against the page. */
     case ExtractionUnverified = 'extraction_unverified';
+    /** Week 2, intake form: the reason for visit as the patient wrote it. */
+    case IntakeChiefConcern = 'intake_chief_concern';
+    /** Week 2, intake form: a medication the patient listed (with dose/frequency as written). */
+    case IntakeMedication = 'intake_med';
+    /** Week 2, intake form: an allergy the patient listed. */
+    case IntakeAllergy = 'intake_allergy';
+    /** Week 2, intake form: a family-history line. */
+    case IntakeFamilyHistory = 'intake_family_history';
+    /** Week 2: the name, date of birth, sex or phone printed on a document disagrees with the chart. */
+    case DocumentMismatch = 'document_mismatch';
 
     /**
      * Must this fact appear in the briefing even if the model skipped it?
@@ -54,11 +64,16 @@ enum FactCategory: string
             self::LabAbnormal,
             self::ProblemNew,
             self::Truncation,
-            self::ExtractionUnverified => true,
+            self::ExtractionUnverified,
+            self::IntakeMedication,
+            self::IntakeAllergy,
+            self::DocumentMismatch => true,
             self::PriorVisit,
             self::Encounter,
             self::MedicationActive,
             self::AllergyActive,
+            self::IntakeChiefConcern,
+            self::IntakeFamilyHistory,
             self::LabDelta => false,
         };
     }

@@ -102,7 +102,7 @@ final class Bootstrap
             echo $this->panelHtml($base, $csrf, $webroot, (int) $pid);
         } catch (\RuntimeException $e) {
             // Never let the panel break the chart page.
-            $this->logger->error('copilot panel render failed', ['exception' => $e]);
+            $this->logger->error('copilot panel render failed', ['exception_class' => $e::class]);
         }
     }
 

@@ -1,0 +1,20 @@
+{
+  "id": "22-live-extract-intake-form",
+  "guards": "invariant",
+  "live": true,
+  "failure_mode": "The scanned intake form through OCR and the real model: nothing invented, everything anchored.",
+  "mode": "extract",
+  "doc_type": "intake_form",
+  "fixture": "intake-full-scan.pdf",
+  "truth": "intake-full-scan.truth.json",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "anchor_correct": true,
+    "factually_consistent": true,
+    "no_phi_in_logs": true
+  },
+  "expect": {
+    "status": "extracted"
+  }
+}

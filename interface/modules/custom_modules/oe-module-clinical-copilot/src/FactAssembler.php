@@ -166,6 +166,14 @@ final class FactAssembler
             }
         }
 
+        // Week 2: intake-form entries and document-vs-chart mismatches since the prior visit.
+        foreach ($this->chart->intakeRecords($pid) as $r) {
+            $category = $r->category();
+            if ($category !== null && $this->isNew($r->uploadedAt, $since)) {
+                $facts[] = $this->fact('IntakeForm', $r->id, $r->kind, $r->describe(), $category, $r->citation);
+            }
+        }
+
         // Week 2: what the document extractor could not verify is shown, not hidden.
         foreach ($this->chart->unverifiedExtractions($pid) as $u) {
             if ($this->isNew($u->uploadedAt, $since)) {
@@ -215,6 +223,11 @@ final class FactAssembler
                 FactCategory::MedicationChanged => 'changed medications',
                 FactCategory::Truncation => $label,
                 FactCategory::ExtractionUnverified => 'unverified document values',
+                FactCategory::IntakeChiefConcern => 'intake reasons for visit',
+                FactCategory::IntakeMedication => 'intake medications',
+                FactCategory::IntakeAllergy => 'intake allergies',
+                FactCategory::IntakeFamilyHistory => 'intake family history lines',
+                FactCategory::DocumentMismatch => 'document mismatches',
             };
             $kept[] = $this->fact('FactAssembler', 0, "truncated:$key", "$count additional $label not shown", FactCategory::Truncation);
         }

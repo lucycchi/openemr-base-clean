@@ -1,0 +1,31 @@
+{
+  "id": "27-route-unsupported-doc-type",
+  "guards": "boundary",
+  "pending": true,
+  "failure_mode": "A document type the graph does not support is refused at the supervisor with a reason, not passed to a worker.",
+  "mode": "route",
+  "state": {
+    "mode": "extract",
+    "question": null,
+    "documents": [
+      {
+        "document_id": 1,
+        "doc_type": "referral_fax",
+        "status": "stored"
+      }
+    ]
+  },
+  "rubrics": {
+    "routing_correct": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "handoffs": [
+      [
+        "supervisor",
+        "done",
+        "unsupported_doc_type"
+      ]
+    ]
+  }
+}

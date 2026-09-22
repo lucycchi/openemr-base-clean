@@ -1,0 +1,19 @@
+{
+  "id": "21-anchor-intake-form",
+  "guards": "invariant",
+  "failure_mode": "A recorded proposal for the filled intake form must anchor the chief concern, every medication (including a 'STOPPED' note), every allergy and family-history line, and the demographics; a listed medication the form does not mention must come back unverified.",
+  "mode": "anchor",
+  "doc_type": "intake_form",
+  "fixture": "intake-full-scan.pdf",
+  "model_output": "intake-full-scan.model.json",
+  "truth": "intake-full-scan.truth.json",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "anchor_correct": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "status": "extracted"
+  }
+}
