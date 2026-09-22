@@ -121,14 +121,16 @@ class SearchFieldStatementResolverFieldNameTest extends TestCase
     }
 
     /**
-     * The REST search path: FhirSearchWhereClauseBuilder wraps a primitive
-     * value as a StringSearchField whose column name is the array *key*.
-     * The SEC-11 payload arrives exactly this way when a controller forwards
-     * raw query parameters.
+     * The REST search path: a controller forwarding raw query parameters
+     * reaches FhirSearchWhereClauseBuilder with the parameter *name* as the
+     * search field's column (the builder wraps a primitive value as an
+     * exact-match StringSearchField named after the key). The SEC-11 payload
+     * is that name; it must be refused before it reaches SQL.
      */
     public function testWhereClauseBuilderRejectsInjectedParameterName(): void
     {
-        $search = ['(select group_concat(username,0x3a,password) from users)' => 'x'];
+        $name = '(select group_concat(username,0x3a,password) from users)';
+        $search = [$name => new StringSearchField($name, 'x', SearchModifier::EXACT)];
 
         $this->expectException(SearchFieldException::class);
         FhirSearchWhereClauseBuilder::build($search, true);
@@ -136,7 +138,7 @@ class SearchFieldStatementResolverFieldNameTest extends TestCase
 
     public function testWhereClauseBuilderAcceptsPlainParameterName(): void
     {
-        $fragment = FhirSearchWhereClauseBuilder::build(['drug' => 'aspirin'], true);
+        $fragment = FhirSearchWhereClauseBuilder::build(['drug' => new StringSearchField('drug', 'aspirin', SearchModifier::EXACT)], true);
 
         $this->assertSame(" WHERE BINARY drug = ?", $fragment->getFragment());
         $this->assertSame(['aspirin'], $fragment->getBoundValues());

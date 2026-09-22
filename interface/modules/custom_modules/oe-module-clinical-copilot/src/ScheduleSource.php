@@ -22,6 +22,10 @@ use DateTimeImmutable;
  */
 interface ScheduleSource
 {
-    /** All appointments on the given calendar day. @return list<ScheduledAppointment> */
+    /**
+     * All appointments on the given calendar day.
+     *
+     * @return list<ScheduledAppointment>
+     */
     public function appointmentsOn(DateTimeImmutable $day): array;
 }

@@ -71,7 +71,11 @@ final readonly class AlertEvent
         return preg_match($pattern, $body, $m) ? $m[1] : null;
     }
 
-    /** PSR-3 context. Only the payload's *keys* are logged, not its values, to avoid echoing arbitrary sender data. @return array<string, scalar|list<string>|null> */
+    /**
+     * PSR-3 context. Only the payload's *keys* are logged, not its values, to avoid echoing arbitrary sender data.
+     *
+     * @return array<string, scalar|list<string>|null>
+     */
     public function toLogContext(): array
     {
         return [

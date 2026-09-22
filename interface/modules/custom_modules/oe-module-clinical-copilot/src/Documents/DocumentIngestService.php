@@ -17,6 +17,7 @@ namespace OpenEMR\Modules\ClinicalCopilot\Documents;
 use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Common\Uuid\UuidRegistry;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
+use OpenEMR\Modules\ClinicalCopilot\Row;
 
 final class DocumentIngestService
 {
@@ -40,20 +41,18 @@ final class DocumentIngestService
             return ['status' => DocumentStatus::Extracted, 'results_persisted' => 0, 'unverified' => 0, 'unextracted' => 0];
         }
 
-        QueryUtils::startTransaction();
-        try {
-            $counts = $result->extraction instanceof LabReportExtraction
-                ? $this->persistLab($pid, $documentId, $result->extraction)
-                : $this->persistIntake($pid, $documentId, $result->extraction);
+        $extraction = $result->extraction;
+        // One transaction per document: the rows and the status flip land together or not at all.
+        $counts = QueryUtils::inTransaction(function () use ($pid, $documentId, $extraction, $result, $correlationId): array {
+            $counts = $extraction instanceof LabReportExtraction
+                ? $this->persistLab($pid, $documentId, $extraction)
+                : $this->persistIntake($pid, $documentId, $extraction);
             QueryUtils::sqlStatementThrowException(
                 "UPDATE copilot_document SET status = 'extracted', failure_reason = NULL, confidence = ?, correlation_id = ?, extracted_at = NOW() WHERE document_id = ? AND pid = ?",
                 [$result->confidence, $correlationId, $documentId, $pid->value]
             );
-            QueryUtils::commitTransaction();
-        } catch (\Throwable $e) {
-            QueryUtils::rollbackTransaction();
-            throw $e;
-        }
+            return $counts;
+        });
         return ['status' => DocumentStatus::Extracted] + $counts;
     }
 
@@ -61,7 +60,7 @@ final class DocumentIngestService
     {
         $n = QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM copilot_document_fact WHERE document_id = ?", 'n', [$documentId]);
         $m = QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM copilot_intake WHERE document_id = ?", 'n', [$documentId]);
-        return (int) $n + (int) $m > 0;
+        return self::count($n) + self::count($m) > 0;
     }
 
     /** @return array{results_persisted: int, unverified: int, unextracted: int} */
@@ -196,7 +195,7 @@ final class DocumentIngestService
         $norm = static fn(string $s): string => preg_replace('/[^a-z0-9]+/', ' ', mb_strtolower($s)) ?? '';
         if (isset($onForm['name'])) {
             $form = ' ' . trim($norm($onForm['name'])) . ' ';
-            foreach ([(string) ($chart['fname'] ?? ''), (string) ($chart['lname'] ?? '')] as $token) {
+            foreach ([Row::str($chart, 'fname'), Row::str($chart, 'lname')] as $token) {
                 $t = trim($norm($token));
                 if ($t !== '' && !str_contains($form, " $t ")) {
                     $out[] = 'name on the form does not match the chart';
@@ -225,7 +224,7 @@ final class DocumentIngestService
         if (isset($onForm['phone'])) {
             $digits = static fn(string $s): string => preg_replace('/\D/', '', $s) ?? '';
             $formPhone = $digits($onForm['phone']);
-            $chartPhones = array_filter([$digits((string) ($chart['phone_home'] ?? '')), $digits((string) ($chart['phone_cell'] ?? ''))]);
+            $chartPhones = array_filter([$digits(Row::str($chart, 'phone_home')), $digits(Row::str($chart, 'phone_cell'))]);
             if ($formPhone !== '' && $chartPhones !== [] && !in_array($formPhone, $chartPhones, true)) {
                 $out[] = 'phone on the form does not match the chart';
             }
@@ -283,7 +282,13 @@ final class DocumentIngestService
             'n',
             [$pid->value, $r->loinc, $r->value, $collected->format('Y-m-d')]
         );
-        return (int) $n > 0;
+        return self::count($n) > 0;
+    }
+
+    /** A COUNT(*) as the query layer returns it (string or int), as an int. */
+    private static function count(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
     }
 
     private function abnormal(?string $flag): string
@@ -300,7 +305,6 @@ final class DocumentIngestService
     private function uuid(string $table): string
     {
         $registry = new UuidRegistry(['table_name' => $table, 'table_id' => $table . '_id']);
-        $uuid = $registry->createUuid();
-        return is_string($uuid) ? $uuid : throw new \RuntimeException('uuid');
+        return $registry->createUuid();
     }
 }

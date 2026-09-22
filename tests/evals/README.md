@@ -7,6 +7,9 @@ boundary, an invariant, or a known regression; none is a happy-path demo.
 
 ## Layout
 
+Every script here is namespaced `OpenEMR\Tests\Evals` and reads decoded JSON through the typed readers in `lib.php` (`str`, `int`, `map`, `lst`, `strings`, `jsonFile`) rather than casting; the harness passes PHPStan level 10 with the rest of the repository ([clinical_copilot_week2/STATIC_ANALYSIS.md](../../clinical_copilot_week2/STATIC_ANALYSIS.md)).
+
+
 | Path | What |
 |---|---|
 | `cases/*.json` | One case per file: `guards` (boundary / invariant / regression), a plain-English `failure_mode`, inputs, and `expect`. |

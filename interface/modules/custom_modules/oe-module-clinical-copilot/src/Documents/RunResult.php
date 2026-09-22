@@ -26,7 +26,7 @@ final readonly class RunResult
     {
     }
 
-    /** @param array<string, mixed> $a */
+    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
     public static function fromArray(array $a): self
     {
         foreach (['extractions', 'chunks', 'handoffs', 'usage'] as $k) {

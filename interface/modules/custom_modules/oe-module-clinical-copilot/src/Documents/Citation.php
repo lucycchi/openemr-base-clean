@@ -34,7 +34,7 @@ final readonly class Citation
         }
     }
 
-    /** @param array<string, mixed> $a */
+    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
     public static function fromArray(array $a): self
     {
         $str = static fn(string $k): string => is_string($a[$k] ?? null) ? $a[$k] : throw new SidecarException('schema_mismatch');

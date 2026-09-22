@@ -124,7 +124,7 @@ final class OpenEmrChartSource implements ChartSource
                 Row::str($r, 'units'),
                 $this->date(Row::str($r, 'date')),
                 $this->documentCitation($r),
-                (int) ($r['unit_mismatch'] ?? 0) === 1,
+                Row::int($r, 'unit_mismatch') === 1,
             ),
             $rows
         );
@@ -134,25 +134,39 @@ final class OpenEmrChartSource implements ChartSource
      * A document citation for a lab row that came from an uploaded PDF
      * (copilot_document_fact joined on procedure_result_id), else null.
      *
-     * @param array<string, mixed> $r
+     * @param array<mixed> $r  a lab row as the query layer returns it
      */
     private function documentCitation(array $r): ?Citation
     {
-        if (!is_numeric($r['doc_id'] ?? null) || !is_string($r['field_path'] ?? null)) {
+        $docId = $r['doc_id'] ?? null;
+        $fieldPath = $r['field_path'] ?? null;
+        if (!is_numeric($docId) || !is_string($fieldPath)) {
             return null;
         }
         $bbox = is_string($r['bbox_json'] ?? null) ? json_decode($r['bbox_json'], true) : null;
         $row = is_string($r['row_bbox_json'] ?? null) ? json_decode($r['row_bbox_json'], true) : null;
         return new Citation(
             'document',
-            (string) (int) $r['doc_id'],
-            is_numeric($r['page'] ?? null) ? (string) (int) $r['page'] : '',
-            $r['field_path'],
+            (string) (int) $docId,
+            self::pageLabel($r),
+            $fieldPath,
             Row::str($r, 'result'),
             is_array($bbox),
             is_array($bbox) ? BBox::fromArray($bbox) : null,
             is_array($row) ? BBox::fromArray($row) : null,
         );
+    }
+
+    /**
+     * The page a document citation points at, as the citation contract's
+     * page_or_section string; '' when the row has no page.
+     *
+     * @param array<mixed> $r
+     */
+    private static function pageLabel(array $r): string
+    {
+        $page = $r['page'] ?? null;
+        return is_numeric($page) ? (string) (int) $page : '';
     }
 
     /** @return list<IntakeRecord> */
@@ -184,7 +198,7 @@ final class OpenEmrChartSource implements ChartSource
                 Row::str($r, 'value'),
                 is_string($r['detail'] ?? null) ? $r['detail'] : null,
                 $this->date(Row::str($r, 'created_at')),
-                new Citation('document', (string) Row::int($r, 'document_id'), is_numeric($r['page'] ?? null) ? (string) (int) $r['page'] : '', Row::str($r, 'field_path'), Row::str($r, 'value'), (int) ($r['anchored'] ?? 0) === 1 && is_array($bbox), is_array($bbox) ? BBox::fromArray($bbox) : null, is_array($row) ? BBox::fromArray($row) : null),
+                new Citation('document', (string) Row::int($r, 'document_id'), self::pageLabel($r), Row::str($r, 'field_path'), Row::str($r, 'value'), Row::int($r, 'anchored') === 1 && is_array($bbox), is_array($bbox) ? BBox::fromArray($bbox) : null, is_array($row) ? BBox::fromArray($row) : null),
             );
         }
         return $out;
@@ -220,7 +234,7 @@ final class OpenEmrChartSource implements ChartSource
                 Row::str($r, 'value'),
                 is_string($r['unit'] ?? null) ? $r['unit'] : null,
                 $this->date(Row::str($r, 'created_at')),
-                new Citation('document', (string) Row::int($r, 'document_id'), is_numeric($r['page'] ?? null) ? (string) (int) $r['page'] : '', Row::str($r, 'field_path'), Row::str($r, 'value'), false, is_array($bbox) ? BBox::fromArray($bbox) : null, is_array($row) ? BBox::fromArray($row) : null),
+                new Citation('document', (string) Row::int($r, 'document_id'), self::pageLabel($r), Row::str($r, 'field_path'), Row::str($r, 'value'), false, is_array($bbox) ? BBox::fromArray($bbox) : null, is_array($row) ? BBox::fromArray($row) : null),
             );
         }
         return $out;

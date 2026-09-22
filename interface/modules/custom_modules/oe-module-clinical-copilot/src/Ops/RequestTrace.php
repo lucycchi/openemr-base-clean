@@ -23,7 +23,7 @@ namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 final readonly class RequestTrace
 {
     /**
-     * @param array<string, scalar|null> $metadata
+     * @param array<string, scalar|null|list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}>> $metadata  scalars, plus the Week 2 handoff list
      * @param list<Step> $steps
      */
     public function __construct(

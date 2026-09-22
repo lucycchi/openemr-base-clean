@@ -69,7 +69,11 @@ final class WarmOutcomeTest extends TestCase
         return new AssembledFacts(new FactSet($facts), null);
     }
 
-    /** A receipt as the pre-warm would have written it for these facts (hash + lines derived from them). @param list<Fact> $facts */
+    /**
+     * A receipt as the pre-warm would have written it for these facts (hash + lines derived from them).
+     *
+     * @param list<Fact> $facts
+     */
     private function receipt(array $facts, string $provider = 'drsmith', string $prompt = self::PROMPT, string $model = self::MODEL): PrewarmReceipt
     {
         $set = new FactSet($facts);

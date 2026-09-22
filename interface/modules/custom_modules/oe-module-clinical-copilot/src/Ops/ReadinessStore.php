@@ -21,7 +21,11 @@ namespace OpenEMR\Modules\ClinicalCopilot\Ops;
  */
 interface ReadinessStore
 {
-    /** The last stored result: unix time it was taken plus name => "ok"/reason. Null if none. @return array{at: int, dependencies: array<string, string>}|null */
+    /**
+     * The last stored result: unix time it was taken plus name => "ok"/reason. Null if none.
+     *
+     * @return array{at: int, dependencies: array<string, string>}|null
+     */
     public function get(): ?array;
 
     /** @param array<string, string> $dependencies */

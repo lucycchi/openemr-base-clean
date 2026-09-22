@@ -25,6 +25,10 @@ interface BriefingCache
     /** Returns null on a miss. */
     public function get(string $key): ?CachedNarration;
 
-    /** Stores the raw decoded model JSON (not the verified sentences). @param array<string, mixed> $narration */
+    /**
+     * Stores the raw decoded model JSON (not the verified sentences).
+     *
+     * @param array<string, mixed> $narration
+     */
     public function put(string $key, array $narration): void;
 }

@@ -113,7 +113,11 @@ final class LangfuseTracerTest extends TestCase
         self::assertSame('DEFAULT', $batch[1]['body']['level']);
     }
 
-    /** Filters the captured batch to events of the given types (e.g. 'span-create'). @return list<array<string, mixed>> batch events of the given types, in order */
+    /**
+     * Filters the captured batch to events of the given types (e.g. 'span-create').
+     *
+     * @return list<array<string, mixed>> batch events of the given types, in order
+     */
     private function types(string ...$types): array
     {
         $batch = $this->sentBody()['batch'];

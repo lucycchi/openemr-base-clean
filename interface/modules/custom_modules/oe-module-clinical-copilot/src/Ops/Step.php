@@ -33,7 +33,11 @@ final readonly class Step
     ) {
     }
 
-    /** Flattens the step into a PSR-3 context array (step name, ms, error, plus $detail). @return array<string, scalar|null> */
+    /**
+     * Flattens the step into a PSR-3 context array (step name, ms, error, plus $detail).
+     *
+     * @return array<string, scalar|null>
+     */
     public function toLogContext(): array
     {
         return ['step' => $this->name, 'ms' => $this->durationMs, 'error' => $this->error] + $this->detail;

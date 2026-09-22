@@ -25,7 +25,7 @@ final readonly class ExtractionResult
     ) {
     }
 
-    /** @param array<string, mixed> $a */
+    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
     public static function fromArray(array $a): self
     {
         $status = is_string($a['status'] ?? null) ? DocumentStatus::tryFrom($a['status']) : null;

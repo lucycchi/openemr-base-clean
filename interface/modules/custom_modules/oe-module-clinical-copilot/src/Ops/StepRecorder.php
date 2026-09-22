@@ -23,7 +23,11 @@ namespace OpenEMR\Modules\ClinicalCopilot\Ops;
  */
 final class StepRecorder
 {
-    /** Steps in the order they ran. @var list<Step> */
+    /**
+     * Steps in the order they ran.
+     *
+     * @var list<Step>
+     */
     private array $steps = [];
 
     /**
@@ -53,7 +57,11 @@ final class StepRecorder
         return $result;
     }
 
-    /** Records a step that was not run through measure() (e.g. an instant decision like a scope refusal). @param array<string, scalar|null> $detail */
+    /**
+     * Records a step that was not run through measure() (e.g. an instant decision like a scope refusal).
+     *
+     * @param array<string, scalar|null> $detail
+     */
     public function add(string $name, int $startedAtMs, int $durationMs, ?string $error = null, array $detail = []): void
     {
         $this->steps[] = new Step($name, $startedAtMs, $durationMs, $error, $detail);

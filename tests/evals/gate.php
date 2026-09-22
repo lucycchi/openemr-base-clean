@@ -34,6 +34,15 @@
 
 declare(strict_types=1);
 
+namespace OpenEMR\Tests\Evals;
+
+use RuntimeException;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Process\Process;
+
+require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
+require_once __DIR__ . '/lib.php';
+
 const THRESHOLDS = [
     'schema_valid' => 100,
     'citation_present' => 100,
@@ -45,10 +54,10 @@ const THRESHOLDS = [
 ];
 const MAX_REGRESSION_POINTS = 5;
 
-$args = array_slice($argv, 1);
-$wantLive = in_array('--live', $args, true) || getenv('COPILOT_GATE_LIVE') === '1';
-$update = in_array('--update-baseline', $args, true);
-$selfTest = in_array('--self-test', $args, true);
+$args = new ArgvInput();
+$wantLive = $args->hasParameterOption('--live', true) || getenv('COPILOT_GATE_LIVE') === '1';
+$update = $args->hasParameterOption('--update-baseline', true);
+$selfTest = $args->hasParameterOption('--self-test', true);
 
 $root = dirname(__DIR__, 2);
 $liveKeyPresent = envHas($root, 'OPENAI_API_KEY');
@@ -58,8 +67,13 @@ if ($wantLive && !$liveKeyPresent) {
 }
 
 $resultsPath = tempnam(sys_get_temp_dir(), 'copilot-gate-') ?: throw new RuntimeException('tempnam failed');
-$cmd = sprintf('EVAL_RESULTS=%s %s %s%s 2>&1', escapeshellarg($resultsPath), escapeshellarg(PHP_BINARY), escapeshellarg(__DIR__ . '/run.php'), $runLive ? ' --live' : '');
-passthru($cmd, $harnessExit);
+// The harness runs as a child process with array arguments (no shell), its
+// output streamed through; the results file is what the gate judges.
+$harness = new Process([PHP_BINARY, __DIR__ . '/run.php', ...($runLive ? ['--live'] : [])], null, ['EVAL_RESULTS' => $resultsPath] + getenv());
+$harness->setTimeout(null);
+$harnessExit = $harness->run(static function (string $type, string $buffer): void {
+    echo $buffer;
+});
 echo "\n";
 $rawResults = (string) file_get_contents($resultsPath);
 @unlink($resultsPath);
@@ -78,9 +92,13 @@ foreach ($summary['cases'] as $case) {
     if (!is_array($case) || in_array($case['result'] ?? '', ['pending', 'skipped'], true)) {
         continue;
     }
-    $id = (string) $case['id'];
-    $rubrics = is_array($case['rubrics'] ?? null) ? $case['rubrics'] : [];
-    $counted = array_filter($rubrics, fn($v) => $v === 'pass' || $v === 'fail');
+    $id = str($case, 'id');
+    $counted = [];
+    foreach (map($case, 'rubrics') as $name => $verdict) {
+        if ($verdict === 'pass' || $verdict === 'fail') {
+            $counted[$name] = $verdict;
+        }
+    }
     if ($counted === []) {
         continue;
     }
@@ -91,10 +109,9 @@ foreach ($summary['cases'] as $case) {
     }
 }
 
-$failed = false;
-$failed = !gateSubset('deterministic', $verdictsDet, __DIR__ . '/baseline.json', $update) || $failed;
-if ($runLive) {
-    $failed = !gateSubset('live', $verdictsLive, __DIR__ . '/baseline-live.json', $update) || $failed;
+$failed = !gateSubset('deterministic', $verdictsDet, __DIR__ . '/baseline.json', $update);
+if ($runLive && !gateSubset('live', $verdictsLive, __DIR__ . '/baseline-live.json', $update)) {
+    $failed = true;
 }
 if ($harnessExit !== 0) {
     echo "harness reported failing cases (exit $harnessExit)\n";
@@ -146,9 +163,16 @@ function gateSubset(string $label, array $verdicts, string $baselinePath, bool $
         }
         return true;
     }
-    $baseline = json_decode((string) file_get_contents($baselinePath), true, 64, JSON_THROW_ON_ERROR);
-    /** @var array<string, array<string, string>> $baseCases */
-    $baseCases = is_array($baseline['cases'] ?? null) ? $baseline['cases'] : [];
+    $baseline = jsonFile($baselinePath);
+    // Rebuild the baseline's case => rubric => verdict map from the decoded JSON, narrowing every level.
+    $baseCases = [];
+    foreach (map($baseline, 'cases') as $caseId => $caseRubrics) {
+        foreach (mapOf($caseRubrics) as $name => $verdict) {
+            if (is_string($verdict)) {
+                $baseCases[$caseId][$name] = $verdict;
+            }
+        }
+    }
     $common = array_intersect_key($verdicts, $baseCases);
     $baseRates = rates(array_intersect_key($baseCases, $verdicts));
     $commonRates = rates($common);
@@ -212,9 +236,9 @@ function liveCaseIds(): array
 {
     $ids = [];
     foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
-        $case = json_decode((string) file_get_contents($path), true, 32, JSON_THROW_ON_ERROR);
-        if (is_array($case) && ($case['live'] ?? false) === true) {
-            $ids[] = (string) $case['id'];
+        $case = jsonFile($path);
+        if (($case['live'] ?? false) === true) {
+            $ids[] = str($case, 'id');
         }
     }
     return $ids;

@@ -28,7 +28,7 @@ final readonly class LabResultExtraction
     ) {
     }
 
-    /** @param array<string, mixed> $a */
+    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
     public static function fromArray(array $a): self
     {
         $opt = static fn(string $k): ?string => is_string($a[$k] ?? null) ? $a[$k] : null;

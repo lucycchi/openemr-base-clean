@@ -236,7 +236,11 @@ final class FactAssembler
         return $kept;
     }
 
-    /** The next-older result with the same LOINC code, or null. @param list<LabRecord> $labs sorted newest first */
+    /**
+     * The next-older result with the same LOINC code, or null.
+     *
+     * @param list<LabRecord> $labs sorted newest first
+     */
     private function previousResult(array $labs, int $index): ?LabRecord
     {
         $current = $labs[$index];

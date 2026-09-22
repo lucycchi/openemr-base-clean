@@ -216,7 +216,7 @@ final class DocumentController
             $outcome = $this->steps->measure(
                 'sidecar_extract_and_persist',
                 fn() => $this->runner->run($pid, $doc, $this->correlationId),
-                static fn(array $o) => ['handoffs' => count($o['run']?->handoffs ?? []), 'calls' => $o['run']?->chatTokens()['calls'] ?? 0, 'status' => $o['persisted']['status']->value],
+                static fn(array $o) => ['handoffs' => count($o['run']->handoffs ?? []), 'calls' => $o['run']?->chatTokens()['calls'] ?? 0, 'status' => $o['persisted']['status']->value],
             );
         } catch (SidecarException $e) {
             $this->logger->warning('copilot sidecar failed', ['code' => $e->errorCode, 'document_id' => $doc['document_id'], 'steps' => $this->steps->all()]);

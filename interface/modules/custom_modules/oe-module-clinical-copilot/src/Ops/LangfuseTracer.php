@@ -125,7 +125,11 @@ final readonly class LangfuseTracer implements Tracer
         }
     }
 
-    /** The boolean scores attached to every trace; each one becomes an alertable rate. @return array<string, bool> */
+    /**
+     * The boolean scores attached to every trace; each one becomes an alertable rate.
+     *
+     * @return array<string, bool>
+     */
     private static function scores(RequestTrace $t): array
     {
         $httpStatus = is_int($t->metadata['http_status'] ?? null) ? $t->metadata['http_status'] : 200;

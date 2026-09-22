@@ -96,11 +96,11 @@ final class AttachCommand extends Command
             'already_extracted' => $outcome['already'],
             'status' => $outcome['persisted']['status']->value,
             'failure_reason' => $extraction?->failureReason,
-            'confidence' => $extraction?->confidence ?? $doc['confidence'],
+            'confidence' => $extraction->confidence ?? $doc['confidence'],
             'results_persisted' => $outcome['persisted']['results_persisted'],
             'unverified' => $outcome['persisted']['unverified'],
             'unextracted' => $outcome['persisted']['unextracted'],
-            'handoffs' => array_map(static fn($h) => $h->from . ' -> ' . $h->to . ' (' . $h->reason . ')', $outcome['run']?->handoffs ?? []),
+            'handoffs' => array_map(static fn($h) => $h->from . ' -> ' . $h->to . ' (' . $h->reason . ')', $outcome['run']->handoffs ?? []),
             'model_calls' => $outcome['run']?->chatTokens()['calls'] ?? 0,
         ];
         if ($input->getOption('json')) {

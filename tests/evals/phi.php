@@ -19,6 +19,9 @@
 
 declare(strict_types=1);
 
+namespace OpenEMR\Tests\Evals;
+
+use Document;
 use Monolog\Handler\TestHandler;
 use Monolog\Logger;
 use OpenEMR\Common\Csrf\CsrfUtils;
@@ -29,8 +32,24 @@ use OpenEMR\Modules\ClinicalCopilot\Controller\ChatController;
 use OpenEMR\Modules\ClinicalCopilot\Controller\DocumentController;
 use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
+use OpenEMR\Modules\ClinicalCopilot\Row;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
+
+require_once __DIR__ . '/lib.php';
+
+/** Keeps every trace payload the controllers record, as JSON, for the PHI scan. */
+final class CapturingTracer implements Tracer
+{
+    /** @var list<string> */
+    public array $payloads = [];
+
+    public function record(RequestTrace $trace): void
+    {
+        $this->payloads[] = json_encode($trace, JSON_THROW_ON_ERROR);
+    }
+}
 
 /**
  * @param array<string, mixed> $case  keys: fixture, doc_type, question, pid (optional)
@@ -42,27 +61,17 @@ function runPhiCase(array $case): array
     $session->set('authUser', 'admin');
     $session->set('authUserID', 1);
     $session->set('authProvider', 'Default');
-    $pid = (int) ($case['pid'] ?? (QueryUtils::querySingleRow("SELECT pid FROM patient_data ORDER BY pid DESC LIMIT 1")['pid'] ?? 0));
+    $newest = QueryUtils::querySingleRow("SELECT pid FROM patient_data ORDER BY pid DESC LIMIT 1");
+    $pid = int($case, 'pid', is_array($newest) ? Row::int($newest, 'pid') : 0);
     PatientSessionUtil::setPid($pid);
     CsrfUtils::setupCsrfKey($session);
     $csrf = CsrfUtils::collectCsrfToken($session);
 
     $handler = new TestHandler();
     $logger = new Logger('phi', [$handler]);
-    $traces = [];
-    $tracer = new class ($traces) implements Tracer {
-        /** @param list<string> $sink */
-        public function __construct(private array &$sink)
-        {
-        }
+    $tracer = new CapturingTracer();
 
-        public function record(RequestTrace $trace): void
-        {
-            $this->sink[] = json_encode($trace, JSON_THROW_ON_ERROR);
-        }
-    };
-
-    $fixture = __DIR__ . '/fixtures/docs/' . (string) $case['fixture'];
+    $fixture = __DIR__ . '/fixtures/docs/' . str($case, 'fixture');
     $tmp = tempnam(sys_get_temp_dir(), 'phi-') ?: throw new RuntimeException('tempnam');
     copy($fixture, $tmp);
     $documentId = null;
@@ -71,7 +80,7 @@ function runPhiCase(array $case): array
     $bodies = [];
     try {
         // Upload through the real controller.
-        $req = Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'upload', 'doc_type' => (string) $case['doc_type']], [], ['file' => new UploadedFile($tmp, basename($fixture), 'application/pdf', null, true)]);
+        $req = Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'upload', 'doc_type' => str($case, 'doc_type')], [], ['file' => new UploadedFile($tmp, basename($fixture), 'application/pdf', null, true)]);
         ob_start();
         (new DocumentController($logger, $req, null, $tracer))->handleRequest();
         $body = json_decode((string) ob_get_clean(), true);
@@ -97,7 +106,8 @@ function runPhiCase(array $case): array
             ob_start();
             (new ChatController($logger, Request::create('/chat.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'ask', 'question' => $case['question'], 'facts_hash' => $hash, 'transcript' => '[]']), null, $tracer))->handleRequest();
             $ans = json_decode((string) ob_get_clean(), true);
-            $answerType = is_array($ans) && is_string($ans['answer']['type'] ?? null) ? $ans['answer']['type'] : null;
+            $type = map(mapOf($ans), 'answer')['type'] ?? null;
+            $answerType = is_string($type) ? $type : null;
         }
     } finally {
         @unlink($tmp);
@@ -111,16 +121,16 @@ function runPhiCase(array $case): array
     foreach ($handler->getRecords() as $r) {
         $logs[] = $r->message . ' ' . json_encode($r->context, JSON_THROW_ON_ERROR);
         foreach (array_keys($r->context) as $k) {
-            $keys[$k] = true;
+            $keys[(string) $k] = true;
         }
     }
-    return ['logs' => $logs, 'traces' => $traces, 'log_keys' => array_keys($keys), 'status' => $status, 'answer_type' => $answerType, 'document_id' => $documentId, 'bodies' => $bodies];
+    return ['logs' => $logs, 'traces' => $tracer->payloads, 'log_keys' => array_keys($keys), 'status' => $status, 'answer_type' => $answerType, 'document_id' => $documentId, 'bodies' => $bodies];
 }
 
 function removeDocument(int $id): void
 {
     foreach (QueryUtils::fetchRecords("SELECT DISTINCT po.procedure_order_id FROM procedure_order po JOIN procedure_report prp ON prp.procedure_order_id = po.procedure_order_id JOIN procedure_result pr ON pr.procedure_report_id = prp.procedure_report_id WHERE pr.document_id = ?", [$id]) as $o) {
-        $oid = (int) $o['procedure_order_id'];
+        $oid = Row::int($o, 'procedure_order_id');
         QueryUtils::sqlStatementThrowException("DELETE pr FROM procedure_result pr JOIN procedure_report prp ON prp.procedure_report_id = pr.procedure_report_id WHERE prp.procedure_order_id = ?", [$oid]);
         QueryUtils::sqlStatementThrowException("DELETE FROM procedure_report WHERE procedure_order_id = ?", [$oid]);
         QueryUtils::sqlStatementThrowException("DELETE FROM procedure_order_code WHERE procedure_order_id = ?", [$oid]);

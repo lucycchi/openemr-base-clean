@@ -23,14 +23,22 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final class Row
 {
-    /** String column; numbers are stringified, anything else becomes ''. @param array<mixed> $row */
+    /**
+     * String column; numbers are stringified, anything else becomes ''.
+     *
+     * @param array<mixed> $row
+     */
     public static function str(array $row, string $key): string
     {
         $v = $row[$key] ?? null;
         return is_string($v) ? $v : (is_int($v) || is_float($v) ? (string) $v : '');
     }
 
-    /** Integer column; numeric strings are accepted, anything else becomes 0. @param array<mixed> $row */
+    /**
+     * Integer column; numeric strings are accepted, anything else becomes 0.
+     *
+     * @param array<mixed> $row
+     */
     public static function int(array $row, string $key): int
     {
         $v = $row[$key] ?? null;
@@ -43,7 +51,11 @@ final class Row
         return 0;
     }
 
-    /** Float column; ints and numeric strings are accepted, anything else becomes 0.0. @param array<mixed> $row */
+    /**
+     * Float column; ints and numeric strings are accepted, anything else becomes 0.0.
+     *
+     * @param array<mixed> $row
+     */
     public static function float(array $row, string $key): float
     {
         $v = $row[$key] ?? null;

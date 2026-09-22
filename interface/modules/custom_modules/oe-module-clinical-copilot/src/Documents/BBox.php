@@ -27,7 +27,7 @@ final readonly class BBox
     ) {
     }
 
-    /** @param array<string, mixed> $a */
+    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
     public static function fromArray(array $a): self
     {
         foreach (['page', 'x0', 'y0', 'x1', 'y1', 'page_w', 'page_h'] as $k) {

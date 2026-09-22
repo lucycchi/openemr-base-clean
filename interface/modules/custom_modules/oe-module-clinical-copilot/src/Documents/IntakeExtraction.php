@@ -24,7 +24,7 @@ final readonly class IntakeExtraction
     {
     }
 
-    /** @param array<string, mixed> $a */
+    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
     public static function fromArray(array $a): self
     {
         if (($a['doc_type'] ?? null) !== 'intake_form' || !is_array($a['demographics'] ?? null)) {

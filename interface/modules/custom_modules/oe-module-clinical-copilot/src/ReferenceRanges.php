@@ -51,7 +51,11 @@ final class ReferenceRanges
         '3016-3' => [0.4, 4.0, 'm[IU]/L'],    // TSH
     ];
 
-    /** Returns [low, high, units] for a known LOINC, or null if the copilot has no range for it. @return array{float, float, string}|null */
+    /**
+     * Returns [low, high, units] for a known LOINC, or null if the copilot has no range for it.
+     *
+     * @return array{float, float, string}|null
+     */
     public function for(string $loinc): ?array
     {
         return self::RANGES[$loinc] ?? null;

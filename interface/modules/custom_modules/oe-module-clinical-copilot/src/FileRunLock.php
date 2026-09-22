@@ -24,7 +24,11 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final class FileRunLock implements RunLock
 {
-    /** Open file handle while locked; null when not held. @var resource|null */
+    /**
+     * Open file handle while locked; null when not held.
+     *
+     * @var resource|null
+     */
     private $handle = null;
 
     public function __construct(private readonly string $path)

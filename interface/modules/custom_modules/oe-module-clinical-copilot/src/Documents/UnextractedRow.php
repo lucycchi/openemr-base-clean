@@ -20,7 +20,7 @@ final readonly class UnextractedRow
     {
     }
 
-    /** @param array<string, mixed> $a */
+    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
     public static function fromArray(array $a): self
     {
         if (!is_int($a['page'] ?? null) || !is_string($a['text'] ?? null) || !is_array($a['row_bbox'] ?? null)) {

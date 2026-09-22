@@ -23,7 +23,7 @@ final readonly class UsageEntry
         }
     }
 
-    /** @param array<string, mixed> $a */
+    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
     public static function fromArray(array $a): self
     {
         if (!is_string($a['model'] ?? null) || !is_string($a['kind'] ?? null) || !is_int($a['input'] ?? null) || !is_int($a['output'] ?? null)) {

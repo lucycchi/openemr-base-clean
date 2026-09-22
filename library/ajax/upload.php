@@ -17,6 +17,7 @@
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\OEGlobalsBag;
+use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Services\MessageService;
 
 // Auth if core or portal.
@@ -25,8 +26,10 @@ require_once(__DIR__ . "/../../vendor/autoload.php");
 $session = SessionWrapperFactory::getInstance()->getActiveSession();
 
 $isPortal = false;
-if (!empty($session->get('pid')) && !empty($session->get('patient_portal_onsite_two'))) {
-    $pid = $session->get('pid');
+$pid = 0;
+$sessionPid = $session->get('pid');
+if (is_numeric($sessionPid) && (int) $sessionPid > 0 && !empty($session->get('patient_portal_onsite_two'))) {
+    $pid = (int) $sessionPid;
     $ignoreAuth_onsite_portal = true;
     $isPortal = true;
 } else {
@@ -50,8 +53,9 @@ $json_data = $_POST['json_data'] ?? null;
 
 // Portal patients may only touch documents that belong to them.
 if ($isPortal && ($action == 'save' || $action == 'fetch')) {
-    $docOwner = sqlQuery("SELECT foreign_id FROM documents WHERE id = ?", [$doc_id]);
-    if (empty($docOwner) || (int)$docOwner['foreign_id'] !== (int)$pid) {
+    $docOwner = QueryUtils::querySingleRow("SELECT foreign_id FROM documents WHERE id = ?", [$doc_id]);
+    $ownerPid = is_array($docOwner) && is_numeric($docOwner['foreign_id'] ?? null) ? (int) $docOwner['foreign_id'] : null;
+    if ($ownerPid === null || $ownerPid !== $pid) {
         http_response_code(403);
         echo xlj("Access denied");
         exit();
@@ -77,6 +81,7 @@ if ($action == 'fetch') {
 }
 // nope! so continue on with Sherwins uploader.
 $patient_id = filter_input(INPUT_GET, 'patient_id');
+$patient_id = is_string($patient_id) ? $patient_id : '';
 $category_id = filter_input(INPUT_GET, 'parent_id');
 
 if ($isPortal ?? false) {
@@ -104,7 +109,7 @@ if ($isPortal ?? false) {
                 '',
                 $size,
                 $owner,
-                $pid,
+                (string) $pid,
                 $category,
                 '',
                 '',

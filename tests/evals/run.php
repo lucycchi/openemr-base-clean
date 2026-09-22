@@ -10,7 +10,8 @@
  * retrieve; the container must be up), the database (facts) or the real
  * controllers (extract, phi_logs; live). Which mode reaches which layer:
  * clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md section 1.
- * Results are written to tests/evals/results.json.
+ * Results are written to tests/evals/results.json. Decoded JSON is read through
+ * the typed readers in lib.php (never cast); see clinical_copilot_week2/STATIC_ANALYSIS.md.
  *
  * Usage (inside the openemr container, as apache):
  *   php tests/evals/run.php            # recorded cases only
@@ -31,8 +32,45 @@
 
 declare(strict_types=1);
 
-$live = in_array('--live', $argv, true);
+namespace OpenEMR\Tests\Evals;
+
+use Composer\Autoload\ClassLoader;
+use OpenEMR\BC\ServiceContainer;
+use OpenEMR\Common\Database\QueryUtils;
+use OpenEMR\Modules\ClinicalCopilot\AclAuthorization;
+use OpenEMR\Modules\ClinicalCopilot\BriefingCache;
+use OpenEMR\Modules\ClinicalCopilot\CachedNarration;
+use OpenEMR\Modules\ClinicalCopilot\Config;
+use OpenEMR\Modules\ClinicalCopilot\Contracts;
+use OpenEMR\Modules\ClinicalCopilot\Documents\DocType;
+use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentIngestService;
+use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentStore;
+use OpenEMR\Modules\ClinicalCopilot\Documents\ExtractionResult;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceChunk;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
+use OpenEMR\Modules\ClinicalCopilot\Fact;
+use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
+use OpenEMR\Modules\ClinicalCopilot\FactCategory;
+use OpenEMR\Modules\ClinicalCopilot\FactSet;
+use OpenEMR\Modules\ClinicalCopilot\Llm\OpenAiClient;
+use OpenEMR\Modules\ClinicalCopilot\ModelOutput;
+use OpenEMR\Modules\ClinicalCopilot\Narration;
+use OpenEMR\Modules\ClinicalCopilot\NarrationPipeline;
+use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
+use OpenEMR\Modules\ClinicalCopilot\OpenEmrChartSource;
+use OpenEMR\Modules\ClinicalCopilot\PatientId;
+use OpenEMR\Modules\ClinicalCopilot\Row;
+use OpenEMR\Modules\ClinicalCopilot\Sentence;
+use OpenEMR\Modules\ClinicalCopilot\Verifier;
+use RuntimeException;
+use stdClass;
+use Symfony\Component\Console\Input\ArgvInput;
+
+require_once __DIR__ . '/lib.php';
+
 $root = dirname(__DIR__, 2);
+require_once $root . '/vendor/autoload.php';
+$live = (new ArgvInput())->hasParameterOption('--live', true);
 
 // Cases in "facts" mode persist a recorded extraction and assemble facts from
 // the database (no model), so they need the OpenEMR runtime even when not --live.
@@ -52,52 +90,40 @@ if ($needsDb) {
     $_GET['site'] = 'default';
     $sessionAllowWrite = true;
     require_once $root . '/interface/globals.php';
-} else {
-    require_once $root . '/vendor/autoload.php';
 }
-
-use Composer\Autoload\ClassLoader;
-use JsonSchema\Constraints\Constraint;
-use JsonSchema\Validator;
-use OpenEMR\Modules\ClinicalCopilot\Contracts;
-use OpenEMR\Modules\ClinicalCopilot\EvidenceChunk;
-use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
-use OpenEMR\Modules\ClinicalCopilot\Fact;
-use OpenEMR\Modules\ClinicalCopilot\FactCategory;
-use OpenEMR\Modules\ClinicalCopilot\FactSet;
-use OpenEMR\Modules\ClinicalCopilot\ModelOutput;
-use OpenEMR\Modules\ClinicalCopilot\Narration;
-use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
-use OpenEMR\Modules\ClinicalCopilot\Sentence;
-use OpenEMR\Modules\ClinicalCopilot\Verifier;
 
 // The module is not in composer.json's autoload map (see Support/ModuleAutoload.php).
 $loaders = ClassLoader::getRegisteredLoaders();
-reset($loaders)->addPsr4('OpenEMR\\Modules\\ClinicalCopilot\\', $root . '/interface/modules/custom_modules/oe-module-clinical-copilot/src/');
+$loader = reset($loaders);
+if ($loader instanceof ClassLoader) {
+    $loader->addPsr4('OpenEMR\\Modules\\ClinicalCopilot\\', $root . '/interface/modules/custom_modules/oe-module-clinical-copilot/src/');
+}
 
 /** @return array<string, mixed> */
 function loadCase(string $path): array
 {
-    $data = json_decode((string) file_get_contents($path), true, 32, JSON_THROW_ON_ERROR);
-    if (!is_array($data)) {
-        throw new RuntimeException("Bad case file $path");
-    }
-    /** @var array<string, mixed> $data */
-    return $data;
+    return jsonFile($path);
 }
 
-/** Builds a FactSet from the "facts" array in a recorded case file. @param list<array<string, mixed>> $rows */
+/**
+ * Builds a FactSet from the "facts" array in a recorded case file.
+ *
+ * @param list<mixed> $rows
+ */
 function factsFrom(array $rows): FactSet
 {
     $facts = [];
     foreach ($rows as $r) {
+        if (!is_array($r)) {
+            throw new RuntimeException('fact row is not an object');
+        }
         $facts[] = new Fact(
-            (string) $r['id'],
-            (string) $r['service'],
-            (int) $r['record_id'],
-            (string) $r['field'],
-            (string) $r['value'],
-            FactCategory::from((string) $r['category']),
+            str($r, 'id'),
+            str($r, 'service'),
+            int($r, 'record_id'),
+            str($r, 'field'),
+            str($r, 'value'),
+            FactCategory::from(str($r, 'category')),
         );
     }
     return new FactSet($facts);
@@ -117,9 +143,6 @@ function narrationFrom(array $data): Narration
 
 /** Rubric names the gate understands; a case lists the ones that apply to it. */
 const RUBRICS = ['schema_valid', 'citation_present', 'factually_consistent', 'safe_refusal', 'no_phi_in_logs', 'routing_correct', 'anchor_correct'];
-
-/** Modes whose runner has not landed yet; a non-pending case in one of these fails every rubric it declares. */
-const UNIMPLEMENTED_MODES = [];
 
 /** Sidecar test endpoints (COPILOT_EVAL_ENDPOINTS=1 on the dev compose service). */
 function sidecarUrl(): string
@@ -144,30 +167,29 @@ function sidecarUrl(): string
 function runDocumentCase(array $case, string $mode): array
 {
     $fixturesDir = __DIR__ . '/fixtures/docs/';
-    $truth = json_decode((string) file_get_contents($fixturesDir . (string) $case['truth']), true, 32, JSON_THROW_ON_ERROR);
-    if (!is_array($truth)) {
-        throw new RuntimeException('bad truth file');
-    }
-    $body = ['fixture' => (string) $case['fixture'], 'doc_type' => (string) $case['doc_type'], 'document_id' => 1];
+    $truth = jsonFile($fixturesDir . str($case, 'truth'));
+    $docType = str($case, 'doc_type');
+    $body = ['fixture' => str($case, 'fixture'), 'doc_type' => $docType, 'document_id' => 1];
     if ($mode === 'anchor') {
-        $body['proposal'] = json_decode((string) file_get_contents($fixturesDir . (string) $case['model_output']), true, 32, JSON_THROW_ON_ERROR);
+        $body['proposal'] = jsonFile($fixturesDir . str($case, 'model_output'));
     } else {
         $body['proposal'] = new stdClass(); // extract mode: the sidecar calls the model itself
     }
     $t = hrtime(true);
     $response = sidecarPost('/eval/' . $mode, $body);
     $ms = (int) round((hrtime(true) - $t) / 1e6);
-    $extraction = $mode === 'anchor' ? $response : ($response['extraction'] ?? null);
-    if (!is_array($extraction)) {
+    $extraction = $mode === 'anchor' ? $response : map($response, 'extraction');
+    if ($extraction === []) {
         throw new RuntimeException('sidecar returned no extraction');
     }
     $run = ['status' => $extraction['status'] ?? null, 'ms' => $ms, 'schema_errors' => [], 'anchor_errors' => [], 'ungrounded_tokens' => [], 'uncited_kept' => 0, 'leaked_identifiers' => []];
-    $usage = is_array($response['usage'] ?? null) ? $response['usage'] : [];
-    $run['tokens'] = array_sum(array_map(fn($u) => (int) ($u['input'] ?? 0) + (int) ($u['output'] ?? 0), $usage));
+    $usage = lst($response, 'usage');
+    $run['tokens'] = array_sum(array_map(fn(mixed $u): int => int(arrOf($u), 'input') + int(arrOf($u), 'output'), $usage));
     $run['model_calls'] = count($usage);
     $run['reason'] = $extraction['failure_reason'] ?? null;
-    if (($extraction['status'] ?? null) !== 'extracted' || !is_array($extraction['extraction'] ?? null)) {
-        if (($case['expect']['status'] ?? null) === 'failed') {
+    $doc = map($extraction, 'extraction');
+    if (($extraction['status'] ?? null) !== 'extracted' || $doc === []) {
+        if ((map($case, 'expect')['status'] ?? null) === 'failed') {
             // The case expects a refusal (missing required data): score it as one.
             $run['answer_type'] = 'refused';
             return $run;
@@ -175,56 +197,63 @@ function runDocumentCase(array $case, string $mode): array
         $run['anchor_errors'][] = 'extraction failed: ' . json_encode($extraction['failure_reason'] ?? null);
         return $run;
     }
-    $doc = $extraction['extraction'];
-    $run['schema_errors'] = schemaErrors((string) $case['doc_type'] === 'lab_pdf' ? 'lab-report' : 'intake-form', json_decode(json_encode($doc, JSON_THROW_ON_ERROR)));
-    if ((string) $case['doc_type'] === 'intake_form') {
+    $run['schema_errors'] = schemaErrors($docType === 'lab_pdf' ? 'lab-report' : 'intake-form', $doc);
+    if ($docType === 'intake_form') {
         return scoreIntake($run, $doc, $truth);
     }
-    $run['unextracted'] = count(is_array($doc['unextracted'] ?? null) ? $doc['unextracted'] : []);
-    $results = is_array($doc['results'] ?? null) ? $doc['results'] : [];
+    $run['unextracted'] = count(lst($doc, 'unextracted'));
+    $results = array_map(mapOf(...), lst($doc, 'results'));
     $run['results'] = count($results);
-    $run['anchored'] = count(array_filter($results, fn($r) => (($r['citation']['anchored'] ?? false) === true)));
-    $run['uncited_kept'] = count(array_filter($results, fn($r) => !is_array($r['citation'] ?? null)));
+    $anchoredOn = static fn(array $r): bool => (map($r, 'citation')['anchored'] ?? false) === true;
+    $pageOf = static function (array $r): ?int {
+        $page = map(map($r, 'citation'), 'bbox')['page'] ?? null;
+        return is_int($page) ? $page : null;
+    };
+    $run['anchored'] = count(array_filter($results, $anchoredOn));
+    $run['uncited_kept'] = count(array_filter($results, static fn(array $r): bool => !is_array($r['citation'] ?? null)));
 
     // anchor_correct against truth: match each true result by analyte (OCR may
     // mangle a name; fall back to value+unit within the same page).
     $byAnalyte = [];
     foreach ($results as $r) {
-        $byAnalyte[normName((string) ($r['analyte'] ?? ''))][] = $r;
+        $byAnalyte[normName(str($r, 'analyte'))][] = $r;
     }
-    foreach (is_array($truth['results'] ?? null) ? $truth['results'] : [] as $want) {
-        $cands = $byAnalyte[normName((string) $want['analyte'])] ?? [];
+    foreach (array_map(mapOf(...), lst($truth, 'results')) as $want) {
+        $wantAnalyte = str($want, 'analyte');
+        $wantValue = str($want, 'value');
+        $wantPage = int($want, 'page');
+        $cands = $byAnalyte[normName($wantAnalyte)] ?? [];
         if ($cands === []) {
-            $cands = array_values(array_filter($results, fn($r) => normNum((string) ($r['value'] ?? '')) === normNum((string) $want['value']) && (($r['citation']['bbox']['page'] ?? null) === $want['page'])));
+            $cands = array_values(array_filter($results, static fn(array $r): bool => normNum(str($r, 'value')) === normNum($wantValue) && $pageOf($r) === $wantPage));
         }
         if ($cands === []) {
-            $run['anchor_errors'][] = sprintf('%s missing', $want['analyte']);
+            $run['anchor_errors'][] = sprintf('%s missing', $wantAnalyte);
             continue;
         }
         $got = $cands[0];
-        if (normNum((string) ($got['value'] ?? '')) !== normNum((string) $want['value'])) {
-            $run['ungrounded_tokens'][] = sprintf('%s=%s (truth %s)', $want['analyte'], $got['value'] ?? '', $want['value']);
+        if (normNum(str($got, 'value')) !== normNum($wantValue)) {
+            $run['ungrounded_tokens'][] = sprintf('%s=%s (truth %s)', $wantAnalyte, str($got, 'value'), $wantValue);
         }
-        if (($got['citation']['anchored'] ?? false) !== true) {
-            $run['anchor_errors'][] = sprintf('%s not anchored', $want['analyte']);
-        } elseif (($got['citation']['bbox']['page'] ?? null) !== $want['page']) {
-            $run['anchor_errors'][] = sprintf('%s anchored on page %s, truth page %s', $want['analyte'], json_encode($got['citation']['bbox']['page'] ?? null), $want['page']);
+        if (!$anchoredOn($got)) {
+            $run['anchor_errors'][] = sprintf('%s not anchored', $wantAnalyte);
+        } elseif ($pageOf($got) !== $wantPage) {
+            $run['anchor_errors'][] = sprintf('%s anchored on page %s, truth page %d', $wantAnalyte, json_encode($pageOf($got)), $wantPage);
         }
     }
     if (($doc['collection_date'] ?? null) !== ($truth['collection_date'] ?? null)) {
         $run['ungrounded_tokens'][] = sprintf('collection_date=%s (truth %s)', json_encode($doc['collection_date'] ?? null), json_encode($truth['collection_date'] ?? null));
     }
-    if (($doc['collection_date_citation']['anchored'] ?? false) !== true) {
+    if ((map($doc, 'collection_date_citation')['anchored'] ?? false) !== true) {
         $run['anchor_errors'][] = 'collection date not anchored';
     }
     // Swapped proposals must come back unverified (the Codex "100 in three columns" rule).
-    foreach (is_array($case['swapped'] ?? null) ? $case['swapped'] : [] as $swap) {
+    foreach (array_map(mapOf(...), lst($case, 'swapped')) as $swap) {
         $proposal = ['patient_name_on_report' => null, 'collection_date' => $truth['collection_date'] ?? null, 'reported_date' => null, 'lab_name' => null,
-            'results' => [['analyte' => $swap['analyte'], 'value' => $swap['value'], 'unit' => $swap['unit'] ?? 'mg/dL', 'reference_range' => null, 'abnormal_flag' => null, 'page' => 1]]];
-        $sw = sidecarPost('/eval/anchor', ['fixture' => (string) $case['fixture'], 'doc_type' => 'lab_pdf', 'document_id' => 1, 'proposal' => $proposal]);
-        $anchored = $sw['extraction']['results'][0]['citation']['anchored'] ?? null;
-        if ($anchored !== false) {
-            $run['anchor_errors'][] = sprintf('swapped %s=%s was anchored (must be unverified)', $swap['analyte'], $swap['value']);
+            'results' => [['analyte' => str($swap, 'analyte'), 'value' => str($swap, 'value'), 'unit' => str($swap, 'unit', 'mg/dL'), 'reference_range' => null, 'abnormal_flag' => null, 'page' => 1]]];
+        $sw = sidecarPost('/eval/anchor', ['fixture' => str($case, 'fixture'), 'doc_type' => 'lab_pdf', 'document_id' => 1, 'proposal' => $proposal]);
+        $first = mapOf(lst(map($sw, 'extraction'), 'results')[0] ?? null);
+        if ((map($first, 'citation')['anchored'] ?? null) !== false) {
+            $run['anchor_errors'][] = sprintf('swapped %s=%s was anchored (must be unverified)', str($swap, 'analyte'), str($swap, 'value'));
         }
     }
     return $run;
@@ -247,50 +276,57 @@ function scoreIntake(array $run, array $doc, array $truth): array
     $lists = [['medications', 'name', 'name'], ['allergies', 'substance', 'substance'], ['family_history', 'condition', 'condition']];
     $cited = 0;
     $anchored = 0;
+    $uncited = int($run, 'uncited_kept');
+    $anchorErrors = strings($run['anchor_errors'] ?? null);
+    $ungrounded = strings($run['ungrounded_tokens'] ?? null);
     foreach ($lists as [$key, $field, $truthField]) {
-        $got = is_array($doc[$key] ?? null) ? $doc[$key] : [];
-        $want = is_array($truth[$key] ?? null) ? $truth[$key] : [];
+        $got = array_map(mapOf(...), lst($doc, $key));
+        $want = array_map(mapOf(...), lst($truth, $key));
         foreach ($got as $g) {
             $cited++;
-            $anchored += (($g['citation']['anchored'] ?? false) === true) ? 1 : 0;
+            $anchored += ((map($g, 'citation')['anchored'] ?? false) === true) ? 1 : 0;
             if (!is_array($g['citation'] ?? null)) {
-                $run['uncited_kept']++;
+                $uncited++;
             }
         }
         foreach ($want as $w) {
-            $match = array_values(array_filter($got, fn($g) => normName((string) ($g[$field] ?? '')) === normName((string) $w[$truthField])));
+            $wanted = str($w, $truthField);
+            $match = array_values(array_filter($got, static fn(array $g): bool => normName(str($g, $field)) === normName($wanted)));
             if ($match === []) {
-                $run['anchor_errors'][] = sprintf('%s "%s" missing', $key, $w[$truthField]);
-            } elseif (($match[0]['citation']['anchored'] ?? false) !== true) {
-                $run['anchor_errors'][] = sprintf('%s "%s" not anchored', $key, $w[$truthField]);
+                $anchorErrors[] = sprintf('%s "%s" missing', $key, $wanted);
+            } elseif ((map($match[0], 'citation')['anchored'] ?? false) !== true) {
+                $anchorErrors[] = sprintf('%s "%s" not anchored', $key, $wanted);
             }
         }
         if (count($got) > count($want)) {
-            $run['ungrounded_tokens'][] = sprintf('%s: %d listed, truth has %d', $key, count($got), count($want));
+            $ungrounded[] = sprintf('%s: %d listed, truth has %d', $key, count($got), count($want));
         }
     }
     $cc = $doc['chief_concern'] ?? null;
     if (($truth['chief_concern'] ?? null) === null && is_array($cc)) {
-        $run['ungrounded_tokens'][] = 'chief concern extracted from a form that has none';
+        $ungrounded[] = 'chief concern extracted from a form that has none';
     }
     if (($truth['chief_concern'] ?? null) !== null) {
         if (!is_array($cc)) {
-            $run['anchor_errors'][] = 'chief concern missing';
-        } elseif (($cc['citation']['anchored'] ?? false) !== true) {
-            $run['anchor_errors'][] = 'chief concern not anchored';
-        } elseif (normName((string) ($cc['value'] ?? '')) !== normName((string) $truth['chief_concern'])) {
-            $run['ungrounded_tokens'][] = 'chief concern text differs from truth';
+            $anchorErrors[] = 'chief concern missing';
+        } elseif ((map($cc, 'citation')['anchored'] ?? false) !== true) {
+            $anchorErrors[] = 'chief concern not anchored';
+        } elseif (normName(str($cc, 'value')) !== normName(str($truth, 'chief_concern'))) {
+            $ungrounded[] = 'chief concern text differs from truth';
         }
     }
     foreach (['name', 'dob', 'sex', 'phone'] as $d) {
-        $node = $doc['demographics'][$d] ?? null;
-        if (is_array($node) && ($node['citation']['anchored'] ?? false) !== true) {
-            $run['anchor_errors'][] = "demographics $d not anchored";
+        $node = map($doc, 'demographics')[$d] ?? null;
+        if (is_array($node) && (map($node, 'citation')['anchored'] ?? false) !== true) {
+            $anchorErrors[] = "demographics $d not anchored";
         }
     }
     if (($doc['form_date'] ?? null) !== ($truth['form_date'] ?? null)) {
-        $run['ungrounded_tokens'][] = sprintf('form_date=%s (truth %s)', json_encode($doc['form_date'] ?? null), json_encode($truth['form_date'] ?? null));
+        $ungrounded[] = sprintf('form_date=%s (truth %s)', json_encode($doc['form_date'] ?? null), json_encode($truth['form_date'] ?? null));
     }
+    $run['anchor_errors'] = $anchorErrors;
+    $run['ungrounded_tokens'] = $ungrounded;
+    $run['uncited_kept'] = $uncited;
     $run['results'] = $cited;
     $run['anchored'] = $anchored;
     $run['unextracted'] = 0;
@@ -309,13 +345,13 @@ function scoreIntake(array $run, array $doc, array $truth): array
 function runMalformedCase(array $case): array
 {
     $t = hrtime(true);
-    $response = sidecarPost('/eval/extract', ['fixture' => (string) $case['fixture'], 'doc_type' => (string) $case['doc_type'], 'document_id' => 1, 'proposal' => new stdClass()]);
-    $extraction = is_array($response['extraction'] ?? null) ? $response['extraction'] : [];
+    $response = sidecarPost('/eval/extract', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => new stdClass()]);
+    $extraction = map($response, 'extraction');
     return [
         'ms' => (int) round((hrtime(true) - $t) / 1e6),
         'status' => $extraction['status'] ?? null,
         'reason' => $extraction['failure_reason'] ?? null,
-        'model_calls' => count(is_array($response['usage'] ?? null) ? $response['usage'] : []),
+        'model_calls' => count(lst($response, 'usage')),
         'schema_errors' => [],
         'ungrounded_tokens' => [],
         'uncited_kept' => 0,
@@ -334,13 +370,13 @@ function runMalformedCase(array $case): array
 function runAbsentCase(array $case): array
 {
     $t = hrtime(true);
-    $response = sidecarPost('/eval/anchor-absent', ['fixture' => (string) $case['fixture'], 'doc_type' => (string) $case['doc_type'], 'document_id' => 1, 'proposal' => is_array($case['proposal'] ?? null) ? $case['proposal'] : []]);
-    $anchored = is_array($response['anchored'] ?? null) ? $response['anchored'] : [];
+    $response = sidecarPost('/eval/anchor-absent', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => arr($case, 'proposal')]);
+    $anchored = strings($response['anchored'] ?? null);
     return [
         'ms' => (int) round((hrtime(true) - $t) / 1e6),
         'status' => $response['status'] ?? null,
         'anchored_absent' => count($anchored),
-        'anchor_errors' => array_map(fn($a) => sprintf('"%s" was anchored but is not in the document', (string) $a), $anchored),
+        'anchor_errors' => array_map(static fn(string $a): string => sprintf('"%s" was anchored but is not in the document', $a), $anchored),
         'schema_errors' => [],
         'ungrounded_tokens' => [],
         'uncited_kept' => 0,
@@ -357,17 +393,17 @@ function runAbsentCase(array $case): array
  */
 function runRouteCase(array $case): array
 {
-    $state = is_array($case['state'] ?? null) ? $case['state'] : [];
+    $state = map($case, 'state');
     $t = hrtime(true);
-    $response = sidecarPost('/eval/route', ['mode' => (string) ($state['mode'] ?? 'extract'), 'question' => $state['question'] ?? null, 'documents' => is_array($state['documents'] ?? null) ? array_values($state['documents']) : []]);
-    $handoffs = is_array($response['handoffs'] ?? null) ? $response['handoffs'] : [];
+    $response = sidecarPost('/eval/route', ['mode' => str($state, 'mode', 'extract'), 'question' => $state['question'] ?? null, 'documents' => lst($state, 'documents')]);
+    $handoffs = array_map(mapOf(...), lst($response, 'handoffs'));
     $schemaErrors = [];
     foreach ($handoffs as $h) {
-        $schemaErrors = [...$schemaErrors, ...schemaErrors('handoff', json_decode(json_encode($h, JSON_THROW_ON_ERROR)))];
+        $schemaErrors = [...$schemaErrors, ...schemaErrors('handoff', $h)];
     }
     return [
         'ms' => (int) round((hrtime(true) - $t) / 1e6),
-        'handoffs' => array_map(fn(array $h) => [(string) $h['from'], (string) $h['to'], (string) $h['reason']], $handoffs),
+        'handoffs' => array_map(static fn(array $h): array => [str($h, 'from'), str($h, 'to'), str($h, 'reason')], $handoffs),
         'schema_errors' => $schemaErrors,
         'ungrounded_tokens' => [],
         'extractions' => $response['extractions'] ?? null,
@@ -386,34 +422,30 @@ function runRouteCase(array $case): array
  */
 function runRetrieveCase(array $case): array
 {
-    $q = json_decode((string) file_get_contents(__DIR__ . '/fixtures/queries/' . (string) $case['query_fixture'] . '.json'), true, 32, JSON_THROW_ON_ERROR);
-    if (!is_array($q)) {
-        throw new RuntimeException('bad query fixture');
-    }
+    $q = jsonFile(__DIR__ . '/fixtures/queries/' . str($case, 'query_fixture') . '.json');
     $t = hrtime(true);
-    $response = sidecarPost('/eval/retrieve', ['query' => (string) $q['query'], 'embedding' => $q['embedding']]);
-    $chunks = is_array($response['chunks'] ?? null) ? $response['chunks'] : [];
+    $response = sidecarPost('/eval/retrieve', ['query' => str($q, 'query'), 'embedding' => $q['embedding'] ?? null]);
+    $chunks = array_map(mapOf(...), lst($response, 'chunks'));
+    // Every chunk must conform to run.response's chunk shape: validate a
+    // one-chunk run.response so the contract file, not a copy, is the judge.
     $schemaErrors = [];
-    $chunkSchema = Contracts::schema('run.response')->properties->chunks->items;
     foreach ($chunks as $c) {
-        $v = new Validator();
-        $v->validate(json_decode(json_encode($c, JSON_THROW_ON_ERROR)), $chunkSchema, Constraint::CHECK_MODE_NORMAL);
-        foreach ($v->getErrors() as $e) {
-            $schemaErrors[] = sprintf('%s: %s', (string) ($e['property'] ?? ''), (string) ($e['message'] ?? ''));
+        foreach (schemaErrors('run.response', ['correlation_id' => 'eval-retrieve-0000', 'extractions' => [], 'chunks' => [$c], 'handoffs' => [], 'usage' => []]) as $e) {
+            $schemaErrors[] = $e;
         }
     }
-    $expect = is_array($case['expect'] ?? null) ? $case['expect'] : [];
+    $expect = map($case, 'expect');
     $run = [
         'ms' => (int) round((hrtime(true) - $t) / 1e6),
         'chunks' => count($chunks),
         'top_source_id' => $chunks[0]['source_id'] ?? null,
         'reranked' => ($response['reranked'] ?? false) === true,
         'schema_errors' => $schemaErrors,
-        'uncited_kept' => count(array_filter($chunks, fn($c) => empty($c['source_id']) || empty($c['quote']) || empty($c['chunk_id']))),
+        'uncited_kept' => count(array_filter($chunks, static fn(array $c): bool => str($c, 'source_id') === '' || str($c, 'quote') === '' || str($c, 'chunk_id') === '')),
         'ungrounded_tokens' => [],
         'answer_type' => $chunks === [] ? 'not_in_corpus' : 'cited',
     ];
-    if (isset($expect['min_chunks']) && count($chunks) < (int) $expect['min_chunks']) {
+    if (isset($expect['min_chunks']) && count($chunks) < int($expect, 'min_chunks')) {
         $run['ungrounded_tokens'][] = sprintf('only %d chunks', count($chunks));
     }
     return $run;
@@ -437,57 +469,59 @@ function runRetrieveCase(array $case): array
 function runFactsCase(array $case): array
 {
     $fixturesDir = __DIR__ . '/fixtures/docs/';
-    $proposal = isset($case['proposal']) && is_array($case['proposal']) ? $case['proposal']
-        : json_decode((string) file_get_contents($fixturesDir . (string) $case['model_output']), true, 32, JSON_THROW_ON_ERROR);
+    $proposal = is_array($case['proposal'] ?? null) ? $case['proposal'] : jsonFile($fixturesDir . str($case, 'model_output'));
     $t = hrtime(true);
-    $extraction = sidecarPost('/eval/anchor', ['fixture' => (string) $case['fixture'], 'doc_type' => (string) $case['doc_type'], 'document_id' => 1, 'proposal' => $proposal]);
+    $extraction = sidecarPost('/eval/anchor', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => $proposal]);
 
-    $maxPid = (int) \OpenEMR\Common\Database\QueryUtils::fetchSingleValue("SELECT MAX(pid) AS m FROM patient_data", 'm');
+    $maxPid = intOf(QueryUtils::fetchSingleValue("SELECT MAX(pid) AS m FROM patient_data", 'm'));
     $pid = $maxPid + 1;
-    \OpenEMR\Common\Database\QueryUtils::sqlInsert("INSERT INTO patient_data (pid, fname, lname, DOB, sex) VALUES (?, 'Eval', 'NoVisit', '1980-05-05', 'Male')", [$pid]);
+    QueryUtils::sqlInsert("INSERT INTO patient_data (pid, fname, lname, DOB, sex) VALUES (?, 'Eval', 'NoVisit', '1980-05-05', 'Male')", [$pid]);
     $documentId = null;
-    $run = ['ms' => 0, 'schema_errors' => [], 'ungrounded_tokens' => [], 'uncited_kept' => 0, 'anchor_errors' => [], 'categories' => []];
+    $schemaErrors = [];
+    $anchorErrors = [];
+    $categories = [];
+    $uncited = 0;
+    $run = ['ms' => 0, 'ungrounded_tokens' => []];
     try {
-        $patient = new \OpenEMR\Modules\ClinicalCopilot\PatientId($pid);
-        $store = new \OpenEMR\Modules\ClinicalCopilot\Documents\DocumentStore();
-        $type = \OpenEMR\Modules\ClinicalCopilot\Documents\DocType::from((string) $case['doc_type']);
-        $stored = $store->store($patient, $type, (string) $case['fixture'], (string) file_get_contents($fixturesDir . (string) $case['fixture']), 'admin', 1);
+        $patient = new PatientId($pid);
+        $store = new DocumentStore();
+        $type = DocType::from(str($case, 'doc_type'));
+        $stored = $store->store($patient, $type, str($case, 'fixture'), (string) file_get_contents($fixturesDir . str($case, 'fixture')), 'admin', 1);
         $documentId = $stored['document_id'];
         // The sidecar anchored under document_id 1; re-point every citation at the real document id.
         $json = str_replace('"source_id": "1"', '"source_id": "' . $documentId . '"', json_encode($extraction, JSON_THROW_ON_ERROR));
         $json = preg_replace('/"document_id":\s*1\b/', '"document_id": ' . $documentId, $json) ?? $json;
-        $decoded = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
-        $result = \OpenEMR\Modules\ClinicalCopilot\Documents\ExtractionResult::fromArray(is_array($decoded) ? $decoded : []);
-        $persisted = (new \OpenEMR\Modules\ClinicalCopilot\Documents\DocumentIngestService())->persist($patient, $result, 'eval-facts');
+        $result = ExtractionResult::fromArray(mapOf(json_decode($json, true, 64, JSON_THROW_ON_ERROR)));
+        $persisted = (new DocumentIngestService())->persist($patient, $result, 'eval-facts');
         $run['status'] = $persisted['status']->value;
         $run['results_persisted'] = $persisted['results_persisted'];
         $run['unverified'] = $persisted['unverified'];
 
-        $assembled = (new \OpenEMR\Modules\ClinicalCopilot\FactAssembler(new \OpenEMR\Modules\ClinicalCopilot\OpenEmrChartSource(), new \OpenEMR\Modules\ClinicalCopilot\AclAuthorization('admin'), \OpenEMR\BC\ServiceContainer::getClock()))->assemble($patient, null);
+        $assembled = (new FactAssembler(new OpenEmrChartSource(), new AclAuthorization('admin'), ServiceContainer::getClock()))->assemble($patient, null);
         $facts = $assembled->facts()->all();
         $run['facts'] = count($facts);
         $run['has_prior_visit'] = $assembled->priorEncounter() !== null;
         foreach ($facts as $f) {
-            $run['categories'][$f->category->value] = ($run['categories'][$f->category->value] ?? 0) + 1;
+            $categories[$f->category->value] = ($categories[$f->category->value] ?? 0) + 1;
             $row = ['id' => $f->id, 'category' => $f->category->value, 'value' => $f->value, 'source' => sprintf('%s#%d.%s', $f->service, $f->recordId, $f->field), 'must_surface' => $f->category->mustSurface(), 'citation' => $f->citationOrChart()->toArray()];
-            $run['schema_errors'] = [...$run['schema_errors'], ...schemaErrors('fact', json_decode(json_encode($row, JSON_THROW_ON_ERROR)))];
+            $schemaErrors = [...$schemaErrors, ...schemaErrors('fact', $row)];
         }
-        $expect = is_array($case['expect'] ?? null) ? $case['expect'] : [];
-        foreach (is_array($expect['categories'] ?? null) ? $expect['categories'] : [] as $cat => $min) {
-            if (($run['categories'][$cat] ?? 0) < (int) $min) {
-                $run['anchor_errors'][] = sprintf('%s: %d facts, expected at least %d', $cat, $run['categories'][$cat] ?? 0, (int) $min);
+        $expect = map($case, 'expect');
+        foreach (map($expect, 'categories') as $cat => $min) {
+            if (($categories[$cat] ?? 0) < intOf($min)) {
+                $anchorErrors[] = sprintf('%s: %d facts, expected at least %d', $cat, $categories[$cat] ?? 0, intOf($min));
             }
         }
-        foreach (is_array($expect['absent'] ?? null) ? $expect['absent'] : [] as $cat) {
-            if (($run['categories'][$cat] ?? 0) > 0) {
-                $run['anchor_errors'][] = sprintf('%s: present, expected absent', $cat);
+        foreach (strings($expect['absent'] ?? null) as $cat) {
+            if (($categories[$cat] ?? 0) > 0) {
+                $anchorErrors[] = sprintf('%s: present, expected absent', $cat);
             }
         }
-        foreach (is_array($expect['cited'] ?? null) ? $expect['cited'] : [] as $cat) {
+        foreach (strings($expect['cited'] ?? null) as $cat) {
             foreach ($facts as $f) {
                 if ($f->category->value === $cat && !($f->citation !== null && $f->citation->anchored && $f->citation->sourceId === (string) $documentId)) {
-                    $run['anchor_errors'][] = sprintf('%s fact without an anchored citation to document %d', $cat, $documentId);
-                    $run['uncited_kept']++;
+                    $anchorErrors[] = sprintf('%s fact without an anchored citation to document %d', $cat, $documentId);
+                    $uncited++;
                 }
             }
         }
@@ -496,14 +530,18 @@ function runFactsCase(array $case): array
             require_once __DIR__ . '/phi.php';
             removeDocument($documentId);
         }
-        \OpenEMR\Common\Database\QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$pid]);
-        \OpenEMR\Common\Database\QueryUtils::sqlStatementThrowException("DELETE FROM patient_data WHERE pid = ?", [$pid]);
+        QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$pid]);
+        QueryUtils::sqlStatementThrowException("DELETE FROM patient_data WHERE pid = ?", [$pid]);
     }
     $run['ms'] = (int) round((hrtime(true) - $t) / 1e6);
-    return $run;
+    return $run + ['schema_errors' => $schemaErrors, 'anchor_errors' => $anchorErrors, 'categories' => $categories, 'uncited_kept' => $uncited];
 }
 
-/** @param array<string, mixed> $body @return array<string, mixed> */
+/**
+ * @param array<string, mixed> $body
+ *
+ * @return array<string, mixed>
+ */
 function sidecarPost(string $path, array $body): array
 {
     $ctx = stream_context_create(['http' => ['method' => 'POST', 'header' => "Content-Type: application/json\r\n", 'content' => json_encode($body, JSON_THROW_ON_ERROR), 'timeout' => 120, 'ignore_errors' => true]]);
@@ -515,7 +553,7 @@ function sidecarPost(string $path, array $body): array
     if (!is_array($decoded)) {
         throw new RuntimeException('sidecar returned a non-object');
     }
-    return $decoded;
+    return mapOf($decoded);
 }
 
 function normName(string $s): string
@@ -532,16 +570,16 @@ function normNum(string $s): string
     return strtolower($s);
 }
 
-/** @return list<string> validation errors, empty when $data conforms to the named contract */
+/**
+ * Validation errors, empty when $data conforms to the named contract. The
+ * same gate the module applies at runtime (Contracts::violations), so the
+ * harness and production judge documents identically.
+ *
+ * @return list<string>
+ */
 function schemaErrors(string $contract, mixed $data): array
 {
-    $validator = new Validator();
-    $validator->validate($data, Contracts::schema($contract), Constraint::CHECK_MODE_NORMAL);
-    $errors = [];
-    foreach ($validator->getErrors() as $e) {
-        $errors[] = sprintf('%s: %s', (string) ($e['property'] ?? ''), (string) ($e['message'] ?? ''));
-    }
-    return $errors;
+    return Contracts::violations($contract, $data);
 }
 
 /**
@@ -558,23 +596,24 @@ function schemaErrors(string $contract, mixed $data): array
  */
 function evaluateRubrics(array $case, array $run, array $mismatches): array
 {
-    $declared = is_array($case['rubrics'] ?? null) ? array_keys(array_filter($case['rubrics'], fn($v) => $v === true)) : [];
+    $declared = array_keys(array_filter(map($case, 'rubrics'), static fn(mixed $v): bool => $v === true));
+    $expect = map($case, 'expect');
     $out = [];
     // answer_type mismatches belong to safe_refusal, everything else to factually_consistent.
     $nonRefusalMismatches = array_values(array_filter($mismatches, fn(string $m) => !str_contains($m, 'answer_type')));
     foreach ($declared as $r) {
         if (!in_array($r, RUBRICS, true)) {
-            throw new RuntimeException(sprintf('%s declares unknown rubric %s', (string) $case['id'], $r));
+            throw new RuntimeException(sprintf('%s declares unknown rubric %s', str($case, 'id'), $r));
         }
         $out[$r] = match ($r) {
             'schema_valid' => ($run['schema_errors'] ?? null) === null ? 'na' : ($run['schema_errors'] === [] ? 'pass' : 'fail'),
             'citation_present' => ($run['uncited_kept'] ?? null) === null ? 'na' : ($run['uncited_kept'] === 0 ? 'pass' : 'fail'),
             'factually_consistent' => (($case['known_limitation'] ?? false) === true) ? 'na'
                 : (($nonRefusalMismatches === [] && ($run['ungrounded_tokens'] ?? []) === []) ? 'pass' : 'fail'),
-            'safe_refusal' => (!isset($case['expect']['answer_type']) && ($case['expect']['status'] ?? null) !== 'failed') ? 'na'
+            'safe_refusal' => (!isset($expect['answer_type']) && ($expect['status'] ?? null) !== 'failed') ? 'na'
                 : (array_filter($mismatches, fn(string $m) => str_contains($m, 'answer_type') || str_starts_with($m, 'status') || str_starts_with($m, 'reason')) === [] ? 'pass' : 'fail'),
             'no_phi_in_logs' => ($run['leaked_identifiers'] ?? null) === null ? 'na' : (($run['leaked_identifiers'] === [] && ($run['disallowed_log_fields'] ?? []) === [] && ($run['uncorrelated_log_lines'] ?? 0) === 0) ? 'pass' : 'fail'),
-            'routing_correct' => ($run['handoffs'] ?? null) === null ? 'na' : (($run['handoffs'] === ($case['expect']['handoffs'] ?? null)) ? 'pass' : 'fail'),
+            'routing_correct' => ($run['handoffs'] ?? null) === null ? 'na' : (($run['handoffs'] === ($expect['handoffs'] ?? null)) ? 'pass' : 'fail'),
             'anchor_correct' => ($run['anchor_errors'] ?? null) === null ? 'na' : ($run['anchor_errors'] === [] ? 'pass' : 'fail'),
         };
     }
@@ -636,23 +675,16 @@ $fail = 0;
 
 foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     $case = loadCase($path);
-    $id = (string) $case['id'];
-    $isLive = (bool) ($case['live'] ?? false);
-    $mode = (string) ($case['mode'] ?? 'briefing');
+    $id = str($case, 'id');
+    $isLive = ($case['live'] ?? false) === true;
+    $mode = str($case, 'mode', 'briefing');
     if (($case['pending'] ?? false) === true) {
-        $results[] = ['id' => $id, 'guards' => $case['guards'], 'mode' => $mode, 'result' => 'pending', 'reason' => 'pending: implementation has not landed', 'rubrics' => []];
+        $results[] = ['id' => $id, 'guards' => $case['guards'] ?? null, 'mode' => $mode, 'result' => 'pending', 'reason' => 'pending: implementation has not landed', 'rubrics' => []];
         printf("%-42s PENDING\n", $id);
         continue;
     }
-    if (in_array($mode, UNIMPLEMENTED_MODES, true)) {
-        $declared = is_array($case['rubrics'] ?? null) ? array_keys(array_filter($case['rubrics'], fn($v) => $v === true)) : [];
-        $results[] = ['id' => $id, 'guards' => $case['guards'], 'mode' => $mode, 'result' => 'fail', 'mismatches' => ["mode $mode is not implemented in run.php"], 'rubrics' => array_fill_keys($declared, 'fail'), 'runs' => []];
-        $fail++;
-        printf("%-42s FAIL (mode %s not implemented; mark the case pending or land the runner)\n", $id, $mode);
-        continue;
-    }
     if ($isLive && !$live) {
-        $results[] = ['id' => $id, 'guards' => $case['guards'], 'result' => 'skipped', 'reason' => 'live case; run with --live'];
+        $results[] = ['id' => $id, 'guards' => $case['guards'] ?? null, 'result' => 'skipped', 'reason' => 'live case; run with --live'];
         printf("%-42s SKIP (live)\n", $id);
         continue;
     }
@@ -670,13 +702,13 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     } elseif ($mode === 'phi_logs') {
         // Live: the real controllers with a capturing logger and tracer (tests/evals/phi.php).
         require_once __DIR__ . '/phi.php';
-        $truth = json_decode((string) file_get_contents(__DIR__ . '/fixtures/docs/' . (string) $case['truth']), true, 32, JSON_THROW_ON_ERROR);
+        $truth = jsonFile(__DIR__ . '/fixtures/docs/' . str($case, 'truth'));
         $out = runPhiCase($case);
         $rendered = implode("\n", [...$out['logs'], ...$out['traces']]);
         $phi = [];
-        foreach (is_array($case['phi'] ?? null) ? $case['phi'] : [] as $pointer) {
+        foreach (strings($case['phi'] ?? null) as $pointer) {
             $v = $truth;
-            foreach (explode('/', trim((string) $pointer, '/')) as $k) {
+            foreach (explode('/', trim($pointer, '/')) as $k) {
                 $v = is_array($v) ? ($v[$k] ?? null) : null;
             }
             if (is_string($v) && $v !== '') {
@@ -692,27 +724,27 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         // The sidecar's own log lines for the same fixture (recorded proposal,
         // so no model call): same PHI scan, its allowlist, and every line must
         // carry the request's correlation id (the full-trace-from-logs rule).
-        $sidecarBody = ['fixture' => (string) $case['fixture'], 'doc_type' => (string) $case['doc_type'], 'document_id' => 1,
-            'proposal' => is_string($case['model_output'] ?? null) ? json_decode((string) file_get_contents(__DIR__ . '/fixtures/docs/' . (string) $case['model_output']), true, 32, JSON_THROW_ON_ERROR) : new stdClass()];
+        $sidecarBody = ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1,
+            'proposal' => is_string($case['model_output'] ?? null) ? jsonFile(__DIR__ . '/fixtures/docs/' . $case['model_output']) : new stdClass()];
         if (is_string($case['question'] ?? null)) {
             $sidecarBody['question'] = $case['question'];
         }
         $sidecar = sidecarPost('/eval/phi', $sidecarBody);
-        $sidecarLines = is_array($sidecar['lines'] ?? null) ? $sidecar['lines'] : [];
-        $cid = is_string($sidecar['correlation_id'] ?? null) ? $sidecar['correlation_id'] : '';
+        $sidecarLines = strings($sidecar['lines'] ?? null);
+        $cid = str($sidecar, 'correlation_id');
         $uncorrelated = 0;
         foreach ($sidecarLines as $line) {
-            $decoded = is_string($line) ? json_decode($line, true) : null;
+            $decoded = json_decode($line, true);
             if (!is_array($decoded) || ($decoded['correlation_id'] ?? null) !== $cid) {
                 $uncorrelated++;
             }
         }
-        $sidecarRendered = implode("\n", array_filter($sidecarLines, 'is_string'));
+        $sidecarRendered = implode("\n", $sidecarLines);
         foreach (array_filter($phi, fn(string $p) => stripos($sidecarRendered, $p) !== false) as $p) {
             $leaked[] = 'sidecar:' . $p;
         }
-        foreach (array_diff(is_array($sidecar['extra_keys_seen'] ?? null) ? $sidecar['extra_keys_seen'] : [], is_array($sidecar['allowlist'] ?? null) ? $sidecar['allowlist'] : []) as $k) {
-            $disallowed[] = 'sidecar:' . (string) $k;
+        foreach (array_diff(strings($sidecar['extra_keys_seen'] ?? null), strings($sidecar['allowlist'] ?? null)) as $k) {
+            $disallowed[] = 'sidecar:' . $k;
         }
         // The real controllers' responses must conform to the documents.* contracts.
         $schemaErrors = [];
@@ -742,13 +774,13 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         // Recorded answer: facts + guideline chunks + a narration fixture through the
         // extended Verifier. Guideline sentences cite 12-char chunk ids; patient
         // sentences cite 8-char fact ids; numbers must be verbatim in whichever is cited.
-        $facts = factsFrom(is_array($case['facts'] ?? null) ? array_values($case['facts']) : []);
+        $facts = factsFrom(lst($case, 'facts'));
         $chunks = [];
-        foreach (is_array($case['chunks'] ?? null) ? $case['chunks'] : [] as $c) {
-            $chunks[] = new EvidenceChunk((string) $c['chunk_id'], (string) $c['source_id'], (string) ($c['section'] ?? ''), (string) $c['quote'], 1.0, (string) ($c['title'] ?? ''));
+        foreach (array_map(mapOf(...), lst($case, 'chunks')) as $c) {
+            $chunks[] = new EvidenceChunk(str($c, 'chunk_id'), str($c, 'source_id'), str($c, 'section'), str($c, 'quote'), 1.0, str($c, 'title'));
         }
         $evidence = new EvidenceSet($chunks);
-        $narrationData = is_array($case['narration'] ?? null) ? $case['narration'] : [];
+        $narrationData = map($case, 'narration');
         $verified = $verifier->verify(narrationFrom($narrationData), $facts, $evidence);
         $keptTexts = array_map(fn(Sentence $s) => $s->text, $verified->kept());
         $haystackFacts = $facts;
@@ -758,7 +790,7 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
             'kept' => count($verified->kept()),
             'stripped' => $verified->strippedCount(),
             'answer_type' => $chunks === [] && ($narrationData['answer_type'] ?? null) === 'not_in_facts' ? 'not_in_corpus' : ($narrationData['answer_type'] ?? 'cited'),
-            'schema_errors' => schemaErrors('llm.followup.output', json_decode(json_encode($verifiedOut, JSON_THROW_ON_ERROR))),
+            'schema_errors' => schemaErrors('llm.followup.output', $verifiedOut),
             'uncited_kept' => count(array_filter($verified->kept(), fn(Sentence $s) => $s->factIds === [])),
             'ungrounded_tokens' => array_values(array_filter(ungroundedTokens($keptTexts, $haystackFacts), fn(string $t) => !str_contains($quotes, $t))),
             'guideline_cited' => count(array_filter($verified->kept(), fn(Sentence $s) => array_filter($s->factIds, fn(string $id) => strlen($id) === 12) !== [])),
@@ -770,9 +802,8 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     } elseif ($mode === 'anchor' || $mode === 'extract') {
         $runs[] = runDocumentCase($case, $mode);
     } elseif (!$isLive) {
-        $factRows = is_array($case['facts'] ?? null) ? array_values($case['facts']) : [];
-        $facts = factsFrom($factRows);
-        $narrationData = is_array($case['narration'] ?? null) ? $case['narration'] : [];
+        $facts = factsFrom(lst($case, 'facts'));
+        $narrationData = map($case, 'narration');
         $verified = $verifier->verify(narrationFrom($narrationData), $facts);
         $keptTexts = array_map(fn(Sentence $s) => $s->text, $verified->kept());
         // schema_valid checks what the system emits, not the fixture: the
@@ -782,10 +813,10 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         $schemaErrors = [];
         foreach ($facts->all() as $f) {
             $row = ['id' => $f->id, 'category' => $f->category->value, 'value' => $f->value, 'source' => sprintf('%s#%d.%s', $f->service, $f->recordId, $f->field), 'must_surface' => $f->category->mustSurface(), 'citation' => $f->citationOrChart()->toArray()];
-            $schemaErrors = [...$schemaErrors, ...schemaErrors('fact', json_decode(json_encode($row, JSON_THROW_ON_ERROR)))];
+            $schemaErrors = [...$schemaErrors, ...schemaErrors('fact', $row)];
         }
         $verifiedOut = ['sentences' => array_map(fn(Sentence $s) => ['text' => $s->text, 'fact_ids' => $s->factIds], $verified->kept())];
-        $schemaErrors = [...$schemaErrors, ...schemaErrors('llm.briefing.output', json_decode(json_encode($verifiedOut, JSON_THROW_ON_ERROR)))];
+        $schemaErrors = [...$schemaErrors, ...schemaErrors('llm.briefing.output', $verifiedOut)];
         $runs[] = [
             'kept' => count($verified->kept()),
             'stripped' => $verified->strippedCount(),
@@ -799,7 +830,7 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         $runs = runLive($case, $verifier, $guard);
     }
 
-    $expect = is_array($case['expect'] ?? null) ? $case['expect'] : [];
+    $expect = map($case, 'expect');
     $mismatches = [];
     $rubrics = [];
     foreach ($runs as $i => $run) {
@@ -823,11 +854,11 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     }
     $results[] = [
         'id' => $id,
-        'guards' => $case['guards'],
+        'guards' => $case['guards'] ?? null,
         'mode' => $mode,
         'rubrics' => $rubrics,
         'known_limitation' => $known,
-        'failure_mode' => $case['failure_mode'],
+        'failure_mode' => $case['failure_mode'] ?? null,
         'result' => $ok ? 'pass' : 'fail',
         'mismatches' => $mismatches,
         'runs' => $runs,
@@ -838,7 +869,7 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
 // ---- Aggregate metrics over live runs (latency percentiles, strip counts) --
 $liveRuns = [];
 foreach ($results as $r) {
-    foreach ($r['runs'] ?? [] as $run) {
+    foreach (array_map(mapOf(...), lst($r, 'runs')) as $run) {
         if (isset($run['pid'])) {
             $liveRuns[] = $run;
         }
@@ -847,19 +878,19 @@ foreach ($results as $r) {
 $metrics = [];
 if ($liveRuns !== []) {
     $briefings = array_values(array_filter($liveRuns, fn(array $r) => !isset($r['answer_type'])));
-    $latencies = array_map(fn(array $r) => (int) $r['ms'], $briefings);
+    $latencies = array_map(fn(array $r) => int($r, 'ms'), $briefings);
     sort($latencies);
     $pct = fn(float $p) => $latencies === [] ? null : $latencies[(int) min(count($latencies) - 1, floor($p * count($latencies)))];
     $metrics = [
         'briefings' => count($briefings),
-        'briefings_with_strips' => count(array_filter($briefings, fn(array $r) => ($r['stripped'] ?? 0) > 0)),
-        'briefings_failed' => count(array_filter($briefings, fn(array $r) => $r['status'] !== null)),
-        'sentences_stripped_total' => array_sum(array_map(fn(array $r) => (int) ($r['stripped'] ?? 0), $briefings)),
-        'sentences_kept_total' => array_sum(array_map(fn(array $r) => (int) ($r['kept'] ?? 0), $briefings)),
-        'omitted_total' => array_sum(array_map(fn(array $r) => (int) ($r['omitted'] ?? 0), $briefings)),
+        'briefings_with_strips' => count(array_filter($briefings, fn(array $r) => int($r, 'stripped') > 0)),
+        'briefings_failed' => count(array_filter($briefings, fn(array $r) => ($r['status'] ?? null) !== null)),
+        'sentences_stripped_total' => array_sum(array_map(fn(array $r) => int($r, 'stripped'), $briefings)),
+        'sentences_kept_total' => array_sum(array_map(fn(array $r) => int($r, 'kept'), $briefings)),
+        'omitted_total' => array_sum(array_map(fn(array $r) => int($r, 'omitted'), $briefings)),
         'latency_ms_p50' => $pct(0.5),
         'latency_ms_p95' => $pct(0.95),
-        'tokens_total' => array_sum(array_map(fn(array $r) => (int) ($r['tokens'] ?? 0), $liveRuns)),
+        'tokens_total' => array_sum(array_map(fn(array $r) => int($r, 'tokens'), $liveRuns)),
     ];
 }
 // results.json is committed so a reviewer can see the last run without an
@@ -878,23 +909,20 @@ function runLive(array $case, Verifier $verifier, OmissionGuard $guard): array
 {
     // Real chart source, real ACL (as 'admin'), real OpenAI client — the
     // same objects production uses, minus the HTTP controller.
-    $config = \OpenEMR\Modules\ClinicalCopilot\Config::fromEnvironment();
+    $config = Config::fromEnvironment();
     if (!$config->hasOpenAi()) {
         throw new RuntimeException('OPENAI_API_KEY is not set');
     }
-    $llm = new \OpenEMR\Modules\ClinicalCopilot\Llm\OpenAiClient(new \GuzzleHttp\Client(), $config->openAiApiKey, $config->openAiModel);
-    $assembler = new \OpenEMR\Modules\ClinicalCopilot\FactAssembler(
-        new \OpenEMR\Modules\ClinicalCopilot\OpenEmrChartSource(),
-        new \OpenEMR\Modules\ClinicalCopilot\AclAuthorization('admin'),
-        \OpenEMR\BC\ServiceContainer::getClock(),
-    );
+    $llm = new OpenAiClient(new \GuzzleHttp\Client(), $config->openAiApiKey, $config->openAiModel);
+    $assembler = new FactAssembler(new OpenEmrChartSource(), new AclAuthorization('admin'), ServiceContainer::getClock());
     $runs = [];
-    foreach (selectPatients((string) $case['patients']) as $pid) {
-        $current = (int) (\OpenEMR\Common\Database\QueryUtils::querySingleRow("SELECT encounter FROM form_encounter WHERE pid = ? ORDER BY date DESC, encounter DESC LIMIT 1", [$pid])['encounter'] ?? 0);
-        $assembled = $assembler->assemble(new \OpenEMR\Modules\ClinicalCopilot\PatientId($pid), $current ?: null);
+    foreach (selectPatients(str($case, 'patients')) as $pid) {
+        $currentRow = QueryUtils::querySingleRow("SELECT encounter FROM form_encounter WHERE pid = ? ORDER BY date DESC, encounter DESC LIMIT 1", [$pid]);
+        $current = is_array($currentRow) ? Row::int($currentRow, 'encounter') : 0;
+        $assembled = $assembler->assemble(new PatientId($pid), $current > 0 ? $current : null);
         // Fresh in-memory cache per run so every live case really calls the model.
-        $cache = new class implements \OpenEMR\Modules\ClinicalCopilot\BriefingCache {
-            public function get(string $key): ?\OpenEMR\Modules\ClinicalCopilot\CachedNarration
+        $cache = new class implements BriefingCache {
+            public function get(string $key): ?CachedNarration
             {
                 return null;
             }
@@ -903,13 +931,13 @@ function runLive(array $case, Verifier $verifier, OmissionGuard $guard): array
             {
             }
         };
-        $pipeline = new \OpenEMR\Modules\ClinicalCopilot\NarrationPipeline($llm, $verifier, $guard, $cache);
+        $pipeline = new NarrationPipeline($llm, $verifier, $guard, $cache);
         $t = hrtime(true);
         // Follow-up cases ask a question; "{other_pid}" in the question is
         // replaced with a real different patient's id to test the scope guard.
-        if (($case['mode'] ?? 'briefing') === 'followup') {
-            $question = str_replace('{other_pid}', (string) otherPatient($pid), (string) $case['question']);
-            $a = $pipeline->answer($assembled, $question, [], new \OpenEMR\Modules\ClinicalCopilot\PatientId($pid));
+        if (str($case, 'mode', 'briefing') === 'followup') {
+            $question = str_replace('{other_pid}', (string) otherPatient($pid), str($case, 'question'));
+            $a = $pipeline->answer($assembled, $question, [], new PatientId($pid));
             $texts = array_map(fn(Sentence $s) => $s->text, $a->sentences);
             $runs[] = [
                 'pid' => $pid, 'facts' => count($assembled->facts()->all()),
@@ -946,7 +974,7 @@ function runLive(array $case, Verifier $verifier, OmissionGuard $guard): array
  * @param list<string> $texts
  * @return list<string>
  */
-function ungroundedTokens(array $texts, \OpenEMR\Modules\ClinicalCopilot\FactSet $facts): array
+function ungroundedTokens(array $texts, FactSet $facts): array
 {
     // Fact ids are part of the haystack: a sentence may echo its citation ids
     // inline (case 07) and an all-digit id is not a clinical number.
@@ -972,16 +1000,16 @@ function ungroundedTokens(array $texts, \OpenEMR\Modules\ClinicalCopilot\FactSet
  */
 function leakedIdentifiers(array $texts, int $pid): array
 {
-    $row = \OpenEMR\Common\Database\QueryUtils::querySingleRow(
+    $row = QueryUtils::querySingleRow(
         "SELECT fname, lname, DOB, ss, phone_home, phone_cell, street, email FROM patient_data WHERE pid = ?",
         [$pid]
-    ) ?? [];
+    );
     $joined = mb_strtolower(implode("\n", $texts));
     $leaked = [];
-    foreach ($row as $field => $value) {
+    foreach (mapOf($row) as $field => $value) {
         $value = is_string($value) ? trim($value) : '';
         if (mb_strlen($value) >= 4 && $value !== '0000-00-00' && str_contains($joined, mb_strtolower($value))) {
-            $leaked[] = (string) $field;
+            $leaked[] = $field;
         }
     }
     return $leaked;
@@ -990,8 +1018,8 @@ function leakedIdentifiers(array $texts, int $pid): array
 /** A different seed patient, for cross-patient questions. */
 function otherPatient(int $pid): int
 {
-    $row = \OpenEMR\Common\Database\QueryUtils::querySingleRow("SELECT pid FROM patient_data WHERE pid <> ? ORDER BY pid LIMIT 1", [$pid]);
-    return (int) ($row['pid'] ?? 0);
+    $row = QueryUtils::querySingleRow("SELECT pid FROM patient_data WHERE pid <> ? ORDER BY pid LIMIT 1", [$pid]);
+    return is_array($row) ? Row::int($row, 'pid') : 0;
 }
 
 /**
@@ -1009,5 +1037,5 @@ function selectPatients(string $spec): array
         'abnormal' => "SELECT DISTINCT po.patient_id AS pid FROM procedure_result pr JOIN procedure_report prp ON prp.procedure_report_id = pr.procedure_report_id JOIN procedure_order po ON po.procedure_order_id = prp.procedure_order_id WHERE pr.result_code IN ('4548-4','2345-7','718-7','2571-8','2160-0','2093-3','2089-1') LIMIT $n",
         default => throw new RuntimeException("Unknown patient selector $spec"),
     };
-    return array_map(fn(array $r) => (int) $r['pid'], \OpenEMR\Common\Database\QueryUtils::fetchRecords($sql));
+    return array_map(fn(array $r) => Row::int($r, 'pid'), QueryUtils::fetchRecords($sql));
 }

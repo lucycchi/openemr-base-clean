@@ -12,6 +12,11 @@ parameters:
   excludePaths:
   # excluding for easy dev setups since ccdaservice is a path below
   - ccdaservice/node_modules/*
+  # Historical one-off spike scripts from the Clinical Co-Pilot design phase
+  # (Week 1 timing and seed-data probes). Kept as the record behind
+  # tests/evals/spike-results.md; never run by the gate, the hook or the app.
+  # See clinical_copilot_week2/STATIC_ANALYSIS.md.
+  - tests/evals/spike/*
   # oe-module-claimrev-connect is a Composer dependency
   # (claimrevolution/oe-module-claimrev-connect), relocated into this path by the
   # oe-module-installer-plugin during `composer install`. It is third-party code,

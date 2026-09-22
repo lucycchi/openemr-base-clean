@@ -29,6 +29,7 @@ use OpenEMR\Modules\ClinicalCopilot\Documents\LabReportExtraction;
 use OpenEMR\Modules\ClinicalCopilot\Documents\LabResultExtraction;
 use OpenEMR\Modules\ClinicalCopilot\OpenEmrChartSource;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
+use OpenEMR\Modules\ClinicalCopilot\Row;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
@@ -38,11 +39,17 @@ class DocumentIngestServiceTest extends TestCase
     /** @var list<int> */
     private array $documentIds = [];
 
+    /** A COUNT(*) or MAX() as the query layer returns it, as an int. */
+    private static function sqlCount(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
+    }
+
     protected function setUp(): void
     {
         ModuleAutoload::register();
         $row = QueryUtils::querySingleRow("SELECT pid FROM patient_data ORDER BY pid LIMIT 1");
-        $this->pid = is_array($row) ? (int) $row['pid'] : 0;
+        $this->pid = is_array($row) ? Row::int($row, 'pid') : 0;
         if ($this->pid <= 0) {
             self::markTestSkipped('needs a seeded patient');
         }
@@ -53,7 +60,7 @@ class DocumentIngestServiceTest extends TestCase
         foreach ($this->documentIds as $id) {
             $orders = QueryUtils::fetchRecords("SELECT DISTINCT po.procedure_order_id FROM procedure_order po JOIN procedure_report prp ON prp.procedure_order_id = po.procedure_order_id JOIN procedure_result pr ON pr.procedure_report_id = prp.procedure_report_id WHERE pr.document_id = ?", [$id]);
             foreach ($orders as $o) {
-                $oid = (int) $o['procedure_order_id'];
+                $oid = Row::int($o, 'procedure_order_id');
                 QueryUtils::sqlStatementThrowException("DELETE pr FROM procedure_result pr JOIN procedure_report prp ON prp.procedure_report_id = pr.procedure_report_id WHERE prp.procedure_order_id = ?", [$oid]);
                 QueryUtils::sqlStatementThrowException("DELETE FROM procedure_report WHERE procedure_order_id = ?", [$oid]);
                 QueryUtils::sqlStatementThrowException("DELETE FROM procedure_order_code WHERE procedure_order_id = ?", [$oid]);
@@ -132,11 +139,13 @@ class DocumentIngestServiceTest extends TestCase
         // The Week 1 chart source now sees the results with their document citations.
         $labs = array_values(array_filter((new OpenEmrChartSource())->labs(new PatientId($this->pid)), static fn($l) => $l->citation !== null && $l->citation->sourceId === (string) $documentId));
         self::assertCount(2, $labs);
-        self::assertSame(1, $labs[0]->citation->bbox?->page);
+        $citation = $labs[0]->citation;
+        self::assertNotNull($citation);
+        self::assertSame(1, $citation->bbox?->page);
 
         $again = $service->persist(new PatientId($this->pid), $this->labExtraction($documentId), 'test-corr-2');
         self::assertSame(0, $again['results_persisted'], 'a repeat run must not create a second set of rows');
-        self::assertSame(2, (int) QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM procedure_result WHERE document_id = ?", 'n', [$documentId]));
+        self::assertSame(2, self::sqlCount(QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM procedure_result WHERE document_id = ?", 'n', [$documentId])));
     }
 
     public function testUnanchoredValueIsRecordedButNotPersistedAsALabRow(): void
@@ -145,7 +154,7 @@ class DocumentIngestServiceTest extends TestCase
         $out = (new DocumentIngestService())->persist(new PatientId($this->pid), $this->labExtraction($documentId, false), 'test-corr');
         self::assertSame(1, $out['results_persisted']);
         self::assertSame(1, $out['unverified']);
-        self::assertSame(1, (int) QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM procedure_result WHERE document_id = ?", 'n', [$documentId]));
+        self::assertSame(1, self::sqlCount(QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM procedure_result WHERE document_id = ?", 'n', [$documentId])));
         $unverified = (new OpenEmrChartSource())->unverifiedExtractions(new PatientId($this->pid));
         self::assertNotEmpty(array_filter($unverified, static fn($u) => $u->documentId === $documentId && $u->analyte === 'Potassium'));
     }
@@ -156,7 +165,7 @@ class DocumentIngestServiceTest extends TestCase
         $failed = new ExtractionResult($documentId, DocumentStatus::Failed, 'unreadable', null, 0.0);
         $out = (new DocumentIngestService())->persist(new PatientId($this->pid), $failed, 'test-corr');
         self::assertSame(DocumentStatus::Failed, $out['status']);
-        self::assertSame(0, (int) QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM procedure_result WHERE document_id = ?", 'n', [$documentId]));
+        self::assertSame(0, self::sqlCount(QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM procedure_result WHERE document_id = ?", 'n', [$documentId])));
         $row = QueryUtils::querySingleRow("SELECT status, failure_reason FROM copilot_document WHERE document_id = ?", [$documentId]);
         self::assertSame(['status' => 'failed', 'failure_reason' => 'unreadable'], $row);
     }
@@ -170,7 +179,7 @@ class DocumentIngestServiceTest extends TestCase
         $second = $store->store(new PatientId($this->pid), DocType::LabPdf, 'b.pdf', $this->pdf($marker), 'admin', 1);
         self::assertTrue($second['existing']);
         self::assertSame($first['document_id'], $second['document_id']);
-        self::assertSame(1, (int) QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM copilot_document WHERE document_id = ?", 'n', [$first['document_id']]));
+        self::assertSame(1, self::sqlCount(QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM copilot_document WHERE document_id = ?", 'n', [$first['document_id']])));
     }
 
     public function testIntakePersistsCitedItemsAndFlagsDemographicMismatchesWithoutStoringThem(): void
@@ -194,7 +203,7 @@ class DocumentIngestServiceTest extends TestCase
         $kinds = array_column($rows, 'kind');
         self::assertSame(['demographics_mismatch', 'demographics_mismatch', 'chief_concern', 'medication', 'allergy'], $kinds);
         // The form's name and DOB are never stored: only the fixed mismatch phrases are.
-        $joined = implode(' ', array_column($rows, 'value'));
+        $joined = implode(' ', array_filter(array_column($rows, 'value'), 'is_string'));
         self::assertStringNotContainsString('Zzyzx', $joined);
         self::assertStringNotContainsString('1900', $joined);
         self::assertStringContainsString('name on the form does not match the chart', $joined);
@@ -204,7 +213,9 @@ class DocumentIngestServiceTest extends TestCase
         $categories = array_map(static fn($r) => $r->category()?->value, $records);
         self::assertContains('intake_med', $categories);
         self::assertContains('document_mismatch', $categories);
-        $med = array_values(array_filter($records, static fn($r) => $r->kind === 'medication'))[0];
+        $meds = array_values(array_filter($records, static fn($r) => $r->kind === 'medication'));
+        self::assertNotEmpty($meds);
+        $med = $meds[0];
         self::assertTrue($med->citation->anchored);
         self::assertSame(1, $med->citation->bbox?->page);
         self::assertStringContainsString('STOPPED in August', $med->describe());
@@ -218,7 +229,7 @@ class DocumentIngestServiceTest extends TestCase
      */
     public function testDocumentDerivedFactsSurfaceForAPatientWithNoPriorVisit(): void
     {
-        $maxPid = (int) QueryUtils::fetchSingleValue("SELECT MAX(pid) AS m FROM patient_data", 'm');
+        $maxPid = self::sqlCount(QueryUtils::fetchSingleValue("SELECT MAX(pid) AS m FROM patient_data", 'm'));
         $tempPid = $maxPid + 1;
         QueryUtils::sqlInsert("INSERT INTO patient_data (pid, fname, lname, DOB, sex) VALUES (?, 'Temp', 'NoVisit', '1980-05-05', 'Male')", [$tempPid]);
         try {
@@ -236,8 +247,10 @@ class DocumentIngestServiceTest extends TestCase
                 $byCategory[$f->category->value][] = $f;
             }
             self::assertArrayHasKey('lab_abnormal', $byCategory, 'the abnormal glucose from the document must surface with no prior visit');
-            self::assertSame((string) $documentId, $byCategory['lab_abnormal'][0]->citation?->sourceId);
-            self::assertTrue($byCategory['lab_abnormal'][0]->citation?->anchored);
+            $labCitation = $byCategory['lab_abnormal'][0]->citation;
+            self::assertNotNull($labCitation);
+            self::assertSame((string) $documentId, $labCitation->sourceId);
+            self::assertTrue($labCitation->anchored);
             self::assertArrayHasKey('extraction_unverified', $byCategory, 'the unanchored potassium must surface as unverified');
             self::assertArrayHasKey('document_mismatch', $byCategory, 'the report name does not match the chart');
             self::assertTrue($byCategory['extraction_unverified'][0]->category->mustSurface());

@@ -21,7 +21,7 @@ final readonly class Handoff
     {
     }
 
-    /** @param array<string, mixed> $a */
+    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
     public static function fromArray(array $a): self
     {
         if (!is_string($a['from'] ?? null) || !is_string($a['to'] ?? null) || !is_string($a['reason'] ?? null) || !is_int($a['ms'] ?? null)) {

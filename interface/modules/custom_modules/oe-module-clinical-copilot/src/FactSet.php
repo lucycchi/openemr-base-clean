@@ -22,7 +22,11 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final readonly class FactSet
 {
-    /** Fact id -> Fact. @var array<string, Fact> */
+    /**
+     * Fact id -> Fact.
+     *
+     * @var array<string, Fact>
+     */
     private array $byId;
 
     /** @param list<Fact> $facts */

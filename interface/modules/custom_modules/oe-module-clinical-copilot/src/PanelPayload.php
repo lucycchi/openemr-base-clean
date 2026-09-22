@@ -23,7 +23,11 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final class PanelPayload
 {
-    /** Response to action=brief. @return array<string, mixed> */
+    /**
+     * Response to action=brief.
+     *
+     * @return array<string, mixed>
+     */
     public static function briefing(AssembledFacts $assembled, BriefingResult $briefing, string $correlationId): array
     {
         return self::base($assembled, $correlationId) + [
@@ -40,7 +44,11 @@ final class PanelPayload
         ];
     }
 
-    /** Response to action=ask when the chart is unchanged. @return array<string, mixed> */
+    /**
+     * Response to action=ask when the chart is unchanged.
+     *
+     * @return array<string, mixed>
+     */
     public static function answer(AssembledFacts $assembled, AnswerResult $answer, string $correlationId): array
     {
         return self::base($assembled, $correlationId) + [
@@ -70,7 +78,9 @@ final class PanelPayload
     /**
      * Fields common to every response. The full fact list is always sent so
      * the panel can render citations by id and show the "facts only" view
-     * when the narration is empty. @return array<string, mixed>
+     * when the narration is empty.
+     *
+     * @return array<string, mixed>
      */
     private static function base(AssembledFacts $assembled, string $correlationId): array
     {

@@ -60,7 +60,11 @@ final readonly class Pricing
         return round(($promptTokens * $input + $completionTokens * $output) / 1_000_000, 6);
     }
 
-    /** [input rate, output rate], each possibly null. Override ?? list price. @return array{?float, ?float} */
+    /**
+     * [input rate, output rate], each possibly null. Override ?? list price.
+     *
+     * @return array{?float, ?float}
+     */
     private function ratesFor(string $model): array
     {
         $list = self::LIST_USD_PER_MILLION[$model] ?? [null, null];

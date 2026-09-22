@@ -35,7 +35,7 @@ final readonly class LabReportExtraction
         }
     }
 
-    /** @param array<string, mixed> $a */
+    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
     public static function fromArray(array $a): self
     {
         if (($a['doc_type'] ?? null) !== 'lab_pdf' || !is_string($a['collection_date'] ?? null) || !is_array($a['collection_date_citation'] ?? null) || !is_array($a['results'] ?? null)) {

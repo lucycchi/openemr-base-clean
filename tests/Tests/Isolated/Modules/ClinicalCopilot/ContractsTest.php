@@ -63,7 +63,11 @@ final class ContractsTest extends TestCase
 
     private const CORRELATION_ID = '763e45ddfc57b76bccc793509358ad89';
 
-    /** Validates $document against contracts/<contract>.schema.json and fails with the validator's error list. @param array<string, mixed> $document */
+    /**
+     * Validates $document against contracts/<contract>.schema.json and fails with the validator's error list.
+     *
+     * @param array<string, mixed> $document
+     */
     private static function assertConforms(string $contract, array $document): void
     {
         $validator = new Validator();

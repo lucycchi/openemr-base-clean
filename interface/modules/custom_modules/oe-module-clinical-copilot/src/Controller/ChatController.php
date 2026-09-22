@@ -84,7 +84,11 @@ final class ChatController
     private int $llmMs = 0;
     private bool $llmCalled = false;
     private int $llmAttempts = 0;
-    /** Week 2: the sidecar's routing decisions for this question (empty for a briefing). @var list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}> */
+    /**
+     * Week 2: the sidecar's routing decisions for this question (empty for a briefing).
+     *
+     * @var list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}>
+     */
     private array $handoffs = [];
     private readonly PrewarmReceipts $receipts;
     private ?WarmOutcome $warm = null;
@@ -268,7 +272,9 @@ final class ChatController
 
     /**
      * action=brief. Records the pre-warm hit/miss outcome, then runs the
-     * pipeline (which serves from cache when it can). @return array<string, mixed>
+     * pipeline (which serves from cache when it can).
+     *
+     * @return array<string, mixed>
      */
     private function brief(AssembledFacts $assembled, Config $config, PatientId $pid, string $user): array
     {
@@ -316,7 +322,11 @@ final class ChatController
         return $outcome;
     }
 
-    /** action=ask. @return array<string, mixed> */
+    /**
+     * action=ask.
+     *
+     * @return array<string, mixed>
+     */
     private function ask(ChatRequest $chat, AssembledFacts $assembled, Config $config, PatientId $pid): array
     {
         // Stale-conversation guard: the panel sends the facts_hash it was
@@ -374,7 +384,11 @@ final class ChatController
         return new BriefingResult([], 0, $omitted, 'AI summary unavailable: not configured on this server', false, false, 0, 0);
     }
 
-    /** Writes the JSON response. Every response carries X-Correlation-Id so a user report can be matched to logs. @param array<string, mixed> $payload */
+    /**
+     * Writes the JSON response. Every response carries X-Correlation-Id so a user report can be matched to logs.
+     *
+     * @param array<string, mixed> $payload
+     */
     private function respond(array $payload, int $status): void
     {
         http_response_code($status);

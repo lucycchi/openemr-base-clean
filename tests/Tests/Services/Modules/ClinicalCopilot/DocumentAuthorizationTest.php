@@ -23,6 +23,7 @@ use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocType;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentStore;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
+use OpenEMR\Modules\ClinicalCopilot\Row;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 
@@ -40,8 +41,8 @@ class DocumentAuthorizationTest extends TestCase
         if (count($rows) < 2) {
             self::markTestSkipped('needs two seeded patients');
         }
-        $this->pidA = (int) $rows[0]['pid'];
-        $this->pidB = (int) $rows[1]['pid'];
+        $this->pidA = Row::int($rows[0], 'pid');
+        $this->pidB = Row::int($rows[1], 'pid');
     }
 
     protected function tearDown(): void

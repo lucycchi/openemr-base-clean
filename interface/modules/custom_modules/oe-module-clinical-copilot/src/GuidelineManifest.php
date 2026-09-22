@@ -23,7 +23,8 @@ final class GuidelineManifest
     {
         $path ??= dirname(__DIR__) . '/sidecar/corpus/manifest.json';
         $raw = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
-        foreach (is_array($raw['documents'] ?? null) ? $raw['documents'] : [] as $d) {
+        $documents = is_array($raw) && is_array($raw['documents'] ?? null) ? $raw['documents'] : [];
+        foreach ($documents as $d) {
             if (is_array($d) && is_string($d['source_id'] ?? null)) {
                 $this->docs[$d['source_id']] = [
                     'title' => is_string($d['title'] ?? null) ? $d['title'] : $d['source_id'],

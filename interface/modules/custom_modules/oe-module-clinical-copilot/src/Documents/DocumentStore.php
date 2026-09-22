@@ -45,7 +45,9 @@ final class DocumentStore
             [$pid->value, $hash]
         );
         $existing = is_array($existing) ? $existing : null; // querySingleRow returns false for no row
-        if ($existing !== null && (int) ($existing['deleted'] ?? 1) === 0) {
+        // A LEFT JOIN with no documents row reads as deleted (null), so only an explicit 0 keeps the upload.
+        $deleted = $existing['deleted'] ?? null;
+        if ($existing !== null && is_numeric($deleted) && (int) $deleted === 0) {
             return ['id' => Row::int($existing, 'id'), 'document_id' => Row::int($existing, 'document_id'), 'existing' => true, 'status' => DocumentStatus::from(Row::str($existing, 'status'))];
         }
 
@@ -56,14 +58,15 @@ final class DocumentStore
         $safeName = preg_replace('/[^A-Za-z0-9._-]/', '_', $filename) ?: 'upload.pdf';
         $doc = new Document();
         $data = $bytes;
-        $error = $doc->createDocument($pid->value, (int) $categoryId, $safeName, 'application/pdf', $data, '', 1, $ownerUserId);
-        if (is_string($error) && $error !== '') {
+        $error = $doc->createDocument((string) $pid->value, (int) $categoryId, $safeName, 'application/pdf', $data, '', 1, $ownerUserId);
+        if ($error !== '') {
             throw new \RuntimeException('Document storage failed');
         }
-        $documentId = (int) $doc->get_id();
-        if ($documentId <= 0) {
+        $newId = $doc->get_id();
+        if (!is_numeric($newId) || (int) $newId <= 0) {
             throw new \RuntimeException('Document storage returned no id');
         }
+        $documentId = (int) $newId;
         if ($existing !== null) {
             QueryUtils::sqlStatementThrowException(
                 "UPDATE copilot_document SET document_id = ?, status = 'stored', failure_reason = NULL, confidence = NULL, uploaded_by = ?, created_at = NOW(), extracted_at = NULL WHERE id = ?",
@@ -112,7 +115,7 @@ final class DocumentStore
     }
 
     /**
-     * @param array<string, mixed> $r
+     * @param array<mixed> $r  a copilot_document row as the query layer returns it
      * @return array{id: int, document_id: int, pid: int, doc_type: DocType, hash: string, status: DocumentStatus, failure_reason: ?string, confidence: ?float}
      */
     private function row(array $r): array
