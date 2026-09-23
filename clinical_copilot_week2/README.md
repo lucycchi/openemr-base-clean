@@ -17,6 +17,41 @@ eval gate). Week 1 documents stay in [../clinical_copilot_week1/](../clinical_co
 | [experiments/](experiments/answer-length-cap.md) | Measured decisions with their data and scripts. So far: the follow-up answer-length cap (uncapped vs 3, 6, 10 sentences; five timed calls each; six chosen). |
 | [ENGINEERING_REQUIREMENTS.md](ENGINEERING_REQUIREMENTS.md) | The graded engineering requirements re-audited against the Week 2 code, one by one: how each is met, the decisions and trade-offs, how to verify it, what is open. Test design (1), correlation id (2), contracts (3), dashboards (4), the API collection (5), health/ready (6), alerts (7), baselines (8) and load tests (9): all nine. |
 
+## Seeing click-to-source on the deployed instance
+
+Two patients on https://146-190-139-37.sslip.io already have an extracted
+lab PDF, so the source highlight can be checked without uploading
+anything. Both were given the same synthetic 5-page lab report
+(collected 2026-09-15, 20 results). All 20 results and both dates were
+found on the page and carry a bounding box.
+
+| pid | Patient | Document id | What it shows |
+|---|---|---|---|
+| 28 | Vince741 Collier206 | 1560 | The normal case: the report matches the chart, and every lab fact from it has a working source link. |
+| 1 | Phil Belford | 1561 | The same labs plus a **Document does not match the chart** fact: the name on the report is Collier's. That fact's link reads "open document" and opens the PDF with no highlight, by design. |
+
+1. Log in as `admin` (the password is supplied with the submission).
+2. **Patient → Finder**, search for the name above and open the chart.
+   Go to **Dashboard**. The Co-Pilot card is at the top.
+3. In the card's fact list, lab facts read from the PDF (for example
+   Hemoglobin A1c 8.8 %, LDL 141.6 mg/dL or Potassium 3.3 mmol/L) end
+   with a **source p.N** link after their id badge.
+4. Click the link. The viewer opens on that page with a blue box around
+   the report row and a red box around the value, and scrolls to it. The
+   results are spread across all 5 pages, so try one from a later page
+   too (TSH, ALT, AST and Vitamin D are on page 5).
+5. The **Uploaded documents** list under the facts has an **open** link
+   that shows the whole PDF with no highlight.
+
+Neither document has an unverified value, so the dashed
+**unverified, open source** link does not appear on these charts. To see
+it, upload a report whose values the anchor step cannot place, such as a
+low-quality scan.
+
+The source link sits on the fact in the list, not on the sentence badges
+in the AI summary. Hovering a summary badge highlights the matching fact,
+which carries the link.
+
 ## Documents kept next to what they describe
 
 | Document | Why it stays there | What it covers |
