@@ -168,6 +168,7 @@ final class FactAssembler
 
         $who = $this->chart->demographics($pid);
         $sex = $who->sex;
+        $age = $who->ageOn($this->clock->now());
         $labs = array_values(array_filter(
             $this->chart->labs($pid),
             fn(LabRecord $l) => !isset($hiddenEncounterIds[$l->encounterId])
@@ -178,10 +179,10 @@ final class FactAssembler
             if (!$this->isNew($l->date, $since) && !($l->citation !== null && $since === null)) {
                 continue;
             }
-            $judged = $this->judge->judge($l, $sex);
+            $judged = $this->judge->judge($l, $sex, $age);
             $day = $l->date->format('Y-m-d');
             $reading = $l->value === null
-                ? trim(sprintf('%s: %s %s', $l->name, trim((string) $l->text), $l->units))
+                ? trim(sprintf('%s: %s %s', $l->name, LabJudge::capText((string) $l->text), $l->units))
                 : trim(sprintf('%s %s %s', $l->name, $this->num($l->value), $l->units));
             $text = $judged->clause === '' ? "$reading on $day" : "$reading on $day ({$judged->clause})";
             $category = match ($judged->verdict) {
@@ -233,9 +234,16 @@ final class FactAssembler
         // Vital signs new since the prior visit: outside an adult threshold is a
         // must-surface fact; a change past a noise threshold versus the most
         // recent prior reading is a delta fact. No abnormal facts for a child.
-        $age = $who->ageOn($this->clock->now());
         $vitals = array_values(array_filter($this->chart->vitals($pid), fn(VitalRecord $v) => !isset($hiddenEncounterIds[$v->encounterId])));
         usort($vitals, fn(VitalRecord $a, VitalRecord $b) => [$b->date, $b->id] <=> [$a->date, $a->id]);
+        // The most recent BMI on file, any date, for the screening rule; never a fact.
+        $latestBmi = null;
+        foreach ($vitals as $v) {
+            if ($v->bmi !== null) {
+                $latestBmi = $v->bmi;
+                break;
+            }
+        }
         foreach ($vitals as $i => $v) {
             if (!$this->isNew($v->date, $since)) {
                 continue;
@@ -276,7 +284,7 @@ final class FactAssembler
             }
         }
 
-        return new AssembledFacts(new FactSet($this->capPerCategory($facts)), $prior, $activeProblemTitles);
+        return new AssembledFacts(new FactSet($this->capPerCategory($facts)), $prior, $activeProblemTitles, $latestBmi);
     }
 
     private const CAP_PER_CATEGORY = 50;

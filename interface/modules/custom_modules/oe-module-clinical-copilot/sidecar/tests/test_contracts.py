@@ -217,3 +217,11 @@ def test_critic_output_contract_is_strict_and_matches_its_model() -> None:
     schemas.CriticVerdict.model_validate({"applicable": True, "reason": "no restriction stated"})
     with pytest.raises(ValidationError):
         schemas.CriticVerdict.model_validate({"applicable": "yes", "reason": "x"})
+
+
+def test_trigger_queries_may_carry_their_own_fact_lines() -> None:
+    v = validator("run.request")
+    body = _brief(queries=[{"trigger_id": "lipids", "query": "statin indication", "facts": ["LDL Cholesterol 165 mg/dL", "On the problem list: Essential hypertension"]}])
+    assert v.is_valid(body), [e.message for e in v.iter_errors(body)]
+    req = schemas.RunRequest.model_validate(body)
+    assert req.queries[0].facts == ["LDL Cholesterol 165 mg/dL", "On the problem list: Essential hypertension"]

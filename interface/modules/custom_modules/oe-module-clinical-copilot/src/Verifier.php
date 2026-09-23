@@ -41,6 +41,7 @@ final class Verifier
             if (
                 $sentence->factIds === []
                 || !$this->allKnown($sentence, $facts, $evidence)
+                || $this->mixesRecordAndGuideline($sentence, $facts, $evidence)
                 || !$this->literalsGrounded($sentence, $facts, $evidence)
             ) {
                 $stripped[] = $sentence;
@@ -83,6 +84,25 @@ final class Verifier
     }
 
     /** Every cited id must be a real fact in this set (guards against invented ids). */
+    /**
+     * A sentence that cites a chart fact and a guideline passage together
+     * attaches guideline text to the patient ("LDL 165 means a statin is
+     * indicated"); it is stripped, whatever its numbers.
+     */
+    private function mixesRecordAndGuideline(Sentence $sentence, FactSet $facts, EvidenceSet $evidence): bool
+    {
+        $record = false;
+        $guideline = false;
+        foreach ($sentence->factIds as $id) {
+            if ($facts->has($id)) {
+                $record = true;
+            } elseif ($evidence->has($id)) {
+                $guideline = true;
+            }
+        }
+        return $record && $guideline;
+    }
+
     private function allKnown(Sentence $sentence, FactSet $facts, EvidenceSet $evidence): bool
     {
         foreach ($sentence->factIds as $id) {

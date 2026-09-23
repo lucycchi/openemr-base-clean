@@ -1,13 +1,13 @@
 {
- "description": "Chart-driven guideline triggers. Each rule fires when any matcher in `any` matches a fact or the problem list (or every matcher in `all` does), and no matcher in `exclude` does. Matchers: {category, loinc[], direction?} on lab facts; {category, drug_regex} on medication facts; {category, vital} on vital facts; {problem_regex} against active problem titles; {age_below|age_above|age_between} against the patient's age (an unknown age never satisfies an `all` age matcher and never fires an `exclude` age matcher); {category_present[], loinc[]} true when any fact of those categories carries that LOINC. `source` must be a document in sidecar/corpus/manifest.json; `query` is the fixed retrieval query the sidecar embeds at index build. Every rule is a clinical decision: cite the reasoning in `note`.",
- "version": "2026-09-23.1",
+ "description": "Chart-driven guideline triggers. Each rule fires when any matcher in `any` matches a fact or the problem list (or every matcher in `all` does), and no matcher in `exclude` does. Matchers: {category, loinc[], direction?} on lab facts; {category, drug_regex} on medication facts; {category, vital} on vital facts; {problem_regex} against active problem titles; {age_below|age_above|age_between} against the patient's age (an unknown age never satisfies an `all` age matcher and never fires an `exclude` age matcher); {category_present[], loinc[]} true when any fact of those categories carries that LOINC; {bmi_at_least: n} against the latest BMI on the chart, any date. `source` must be a document in sidecar/corpus/manifest.json; `query` is the fixed retrieval query the sidecar embeds at index build. Every rule is a clinical decision: cite the reasoning in `note`.",
+ "version": "2026-09-23.2",
  "rules": [
   {
    "id": "lipids",
    "label": "Cholesterol management",
    "query": "statin indication and intensity when LDL cholesterol is above goal",
    "source": "acc-aha-2018-cholesterol",
-   "note": "2018 AHA/ACC primary-prevention statin recommendations apply to ages 40-75.",
+   "note": "2018 AHA/ACC primary-prevention statin recommendations apply to ages 40-75; statins are contraindicated in pregnancy.",
    "any": [
     {
      "category": "lab_abnormal",
@@ -25,11 +25,11 @@
     },
     {
      "category": "medication_active",
-     "drug_regex": "statin\\b|atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin"
+     "drug_regex": "\\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin)\\b"
     },
     {
      "category": "medication_new",
-     "drug_regex": "statin\\b|atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin"
+     "drug_regex": "\\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin)\\b"
     }
    ],
    "exclude": [
@@ -38,6 +38,9 @@
     },
     {
      "age_above": 75
+    },
+    {
+     "problem_regex": "pregnan"
     }
    ]
   },
@@ -73,10 +76,13 @@
    ],
    "exclude": [
     {
-     "problem_regex": "type 1"
+     "problem_regex": "(diabetes.*\\btype (1|i)\\b|\\btype (1|i)\\b.*diabet|\\bt1dm\\b|\\biddm\\b)"
     },
     {
      "problem_regex": "pregnan"
+    },
+    {
+     "age_below": 18
     }
    ]
   },
@@ -98,6 +104,9 @@
    "exclude": [
     {
      "problem_regex": "pregnan"
+    },
+    {
+     "age_below": 18
     }
    ]
   },
@@ -126,6 +135,9 @@
    "exclude": [
     {
      "problem_regex": "pregnan"
+    },
+    {
+     "age_below": 18
     }
    ]
   },
@@ -159,6 +171,11 @@
     {
      "problem_regex": "chronic kidney|\\bckd\\b"
     }
+   ],
+   "exclude": [
+    {
+     "age_below": 18
+    }
    ]
   },
   {
@@ -166,7 +183,7 @@
    "label": "Diabetes screening",
    "query": "USPSTF recommendation on screening asymptomatic adults aged 35 to 70 with overweight or obesity for prediabetes and type 2 diabetes",
    "source": "uspstf-screening",
-   "note": "USPSTF 2021: adults 35-70 with overweight or obesity; not for people with diabetes or with a recent A1c. The briefing's facts cover results since the prior visit, so 'recent' means an A1c in this briefing.",
+   "note": "USPSTF 2021: adults 35-70 with overweight (BMI 25 or more) or obesity; not for people with diabetes, in pregnancy, or with a recent A1c. The briefing's facts cover results since the prior visit, so 'recent' means an A1c in this briefing.",
    "all": [
     {
      "age_between": [
@@ -175,13 +192,15 @@
      ]
     },
     {
-     "category": "vital_abnormal",
-     "vital": "bmi"
+     "bmi_at_least": 25
     }
    ],
    "exclude": [
     {
      "problem_regex": "diabet"
+    },
+    {
+     "problem_regex": "pregnan"
     },
     {
      "category_present": [

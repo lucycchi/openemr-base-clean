@@ -40,7 +40,7 @@ final readonly class GuidelineCard
     public function checkedLabel(): string
     {
         return match ($this->applicable) {
-            true => 'Checked against age, sex and the problem list',
+            true => 'Checked against age, sex, the cited facts and the problem list',
             false => 'Not applicable to this patient',
             null => 'Guideline text; applicability not assessed',
         };

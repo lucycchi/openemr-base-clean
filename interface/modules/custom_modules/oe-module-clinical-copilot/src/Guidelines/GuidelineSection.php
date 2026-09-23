@@ -26,12 +26,16 @@ final readonly class GuidelineSection
 {
     public const STATUSES = ['ok', 'unavailable', 'no_triggers', 'not_configured'];
 
-    /** @param list<GuidelineCard> $cards */
+    /**
+     * @param list<GuidelineCard> $cards
+     * @param bool $cacheable false when the run did not finish (a worker failed, or the critic ran but left a verdict unknown); such a section is shown but never cached
+     */
     public function __construct(
         public string $status,
         public array $cards,
         public int $dropped = 0,
         public string $triggersVersion = GuidelineTriggers::VERSION,
+        public bool $cacheable = true,
     ) {
         if (!in_array($status, self::STATUSES, true)) {
             throw new \InvalidArgumentException("unknown guideline section status: $status");
@@ -69,7 +73,14 @@ final readonly class GuidelineSection
             }
             $cards[] = new GuidelineCard($t->id, $t->label, $t->factIds, $t->reasons, $chunks, $e['applicable'], $e['reason']);
         }
-        return new self('ok', $cards, $dropped);
+        $failed = false;
+        $criticRan = false;
+        foreach ($run->handoffs as $h) {
+            $failed = $failed || $h->reason === 'worker_failed';
+            $criticRan = $criticRan || $h->to === 'critic';
+        }
+        $unknown = $criticRan && array_filter($cards, static fn(GuidelineCard $c): bool => $c->applicable === null) !== [];
+        return new self('ok', $cards, $dropped, GuidelineTriggers::VERSION, !$failed && !$unknown);
     }
 
     /** @return array<string, mixed> */

@@ -121,7 +121,7 @@ final class SidecarClientTest extends TestCase
     {
         $reply = self::reply() + ['evidence' => [['trigger_id' => 'lipids', 'chunks' => [['chunk_id' => 'aaaaaaaaaaaa', 'source_id' => 'acc-aha-2018-cholesterol', 'section' => 'T > S', 'quote' => 'A passage.', 'score' => 0.8]], 'applicable' => true, 'reason' => 'no restriction stated']]];
         $client = $this->client($reply);
-        $trigger = new \OpenEMR\Modules\ClinicalCopilot\Guidelines\FiredTrigger('lipids', 'Cholesterol management', 'statin indication', 'acc-aha-2018-cholesterol', ['0a1b2c3d'], []);
+        $trigger = new \OpenEMR\Modules\ClinicalCopilot\Guidelines\FiredTrigger('lipids', 'Cholesterol management', 'statin indication', 'acc-aha-2018-cholesterol', ['0a1b2c3d'], [], ['LDL Cholesterol 165 mg/dL', 'On the problem list: Essential hypertension']);
 
         $result = $client->brief(self::CORRELATION_ID, str_repeat('0', 64), [$trigger], ['LDL Cholesterol 165 mg/dL'], 55, 'M');
 
@@ -131,7 +131,7 @@ final class SidecarClientTest extends TestCase
         self::assertSame('brief', $body['mode']);
         self::assertNull($body['question']);
         self::assertSame([], $body['documents']);
-        self::assertSame([['trigger_id' => 'lipids', 'query' => 'statin indication']], $body['queries']);
+        self::assertSame([['trigger_id' => 'lipids', 'query' => 'statin indication', 'facts' => ['LDL Cholesterol 165 mg/dL', 'On the problem list: Essential hypertension']]], $body['queries']);
         self::assertSame(['age' => 55, 'sex' => 'M'], $body['patient']);
         self::assertSame(['LDL Cholesterol 165 mg/dL'], $body['facts']);
         self::assertCount(1, $result->evidence);

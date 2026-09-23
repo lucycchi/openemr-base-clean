@@ -39,20 +39,24 @@ final class LabJudge
     {
     }
 
-    public function judge(LabRecord $lab, ?string $sex): LabJudgement
+    private const TEXT_CAP = 120;
+
+    public function judge(LabRecord $lab, ?string $sex, ?int $age = null): LabJudgement
     {
         $flag = strtolower(trim($lab->labFlag));
         $flagCritical = in_array($flag, self::CRITICAL_FLAGS, true);
         $flagAbnormal = in_array($flag, self::ABNORMAL_FLAGS, true);
 
+        // The standard table is adult-only and is skipped when the stored unit is
+        // not the analyte's canonical unit: the numbers would be compared on the
+        // wrong scale. A child's result is judged by the lab's flag and range only.
+        $child = $age !== null && $age < 18;
+        $standard = ($child || $lab->unitMismatch || $lab->loinc === '') ? null : $this->ranges->range($lab->loinc, $sex);
         if ($lab->value === null) {
-            return $this->judgeQualitative($lab, $flag, $flagCritical || $flagAbnormal);
+            return $this->judgeQualitative($lab, $flag, $flagCritical || $flagAbnormal, $standard);
         }
         $value = $lab->value;
 
-        // The standard table is skipped when the stored unit is not the analyte's
-        // canonical unit: the numbers would be compared on the wrong scale.
-        $standard = ($lab->unitMismatch || $lab->loinc === '') ? null : $this->ranges->range($lab->loinc, $sex);
         $printed = self::parsePrinted($lab->printedRange);
         $printedText = $printed === null ? '' : trim((string) $lab->printedRange);
 
@@ -113,9 +117,14 @@ final class LabJudge
         return new LabJudgement(LabVerdict::Normal, $clause, $clause);
     }
 
-    private function judgeQualitative(LabRecord $lab, string $flag, bool $flagged): LabJudgement
+    private function judgeQualitative(LabRecord $lab, string $flag, bool $flagged, ?Range $standard): LabJudgement
     {
         $text = strtolower(trim((string) $lab->text));
+        // A comparator result (">500", "<15", "<=145") states a bound; judge the bound
+        // against the standard interval and its panic limits.
+        if (preg_match('/^\s*([<>]=?)\s*(-?\d+(?:[.,]\d+)?)\s*$/', $text, $m) === 1) {
+            return $this->judgeComparator($m[1], (float) str_replace(',', '.', $m[2]), $standard);
+        }
         if ($flagged) {
             $verdict = in_array($flag, self::CRITICAL_FLAGS, true) ? LabVerdict::Critical : LabVerdict::Abnormal;
             return new LabJudgement($verdict, $verdict === LabVerdict::Critical ? "flagged $flag by the lab" : 'flagged abnormal by the lab', '');
@@ -130,6 +139,37 @@ final class LabJudge
             return new LabJudgement(LabVerdict::Abnormal, 'reported as ' . strtolower($m[1]), '');
         }
         return new LabJudgement(LabVerdict::Normal, '', '');
+    }
+
+    private function judgeComparator(string $op, float $bound, ?Range $standard): LabJudgement
+    {
+        if ($standard === null) {
+            return new LabJudgement(LabVerdict::Normal, '', '');
+        }
+        $clause = $this->rangeClause(null, '', $standard);
+        if (str_starts_with($op, '>')) {
+            if ($standard->panicHigh !== null && $bound >= $standard->panicHigh) {
+                return new LabJudgement(LabVerdict::Critical, sprintf('%s the panic limit %s %s', $bound > $standard->panicHigh ? 'above' : 'at or above', self::num($standard->panicHigh), $standard->unit), $clause, 'above');
+            }
+            if ($standard->high !== null && $bound >= $standard->high) {
+                return new LabJudgement(LabVerdict::Abnormal, sprintf('%s the standard range %s %s', $bound > $standard->high ? 'above' : 'at or above', $standard->describe(), $standard->unit), $clause, 'above');
+            }
+            return new LabJudgement(LabVerdict::Normal, $clause, $clause);
+        }
+        if ($standard->panicLow !== null && $bound <= $standard->panicLow) {
+            return new LabJudgement(LabVerdict::Critical, sprintf('%s the panic limit %s %s', $bound < $standard->panicLow ? 'below' : 'at or below', self::num($standard->panicLow), $standard->unit), $clause, 'below');
+        }
+        if ($standard->low !== null && $bound <= $standard->low) {
+            return new LabJudgement(LabVerdict::Abnormal, sprintf('%s the standard range %s %s', $bound < $standard->low ? 'below' : 'at or below', $standard->describe(), $standard->unit), $clause, 'below');
+        }
+        return new LabJudgement(LabVerdict::Normal, $clause, $clause);
+    }
+
+    /** Free-text results are capped so a narrative report cannot flood the briefing. */
+    public static function capText(string $text): string
+    {
+        $text = trim((string) preg_replace('/\s+/', ' ', $text));
+        return mb_strlen($text) <= self::TEXT_CAP ? $text : rtrim(mb_substr($text, 0, self::TEXT_CAP)) . ' [truncated]';
     }
 
     /**

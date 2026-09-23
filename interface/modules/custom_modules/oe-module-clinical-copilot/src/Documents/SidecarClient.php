@@ -28,7 +28,7 @@ use OpenEMR\Modules\ClinicalCopilot\Guidelines\FiredTrigger;
  *     -> decode JSON -> validate against run.response contract
  *     -> RunResult::fromArray (typed objects) -> caller
  *
- * Two modes share the path: extract (documents in, extractions out) and
+ * Three modes share the path: extract (documents in, extractions out) and
  * answer (a question in, guideline chunks out). Nothing that identifies a
  * patient is in either body: documents travel as bytes plus a hash, and the
  * facts hash is a fingerprint, not data.
@@ -106,7 +106,7 @@ final class SidecarClient
             'queries' => array_map(static fn(FiredTrigger $t): array => $t->toQuery(), $triggers),
             'patient' => ['age' => $age, 'sex' => $sex],
             'facts' => $factLines,
-        ]);
+        ], self::BRIEF_TIMEOUT_S);
     }
 
     public function answer(string $correlationId, string $factsHash, string $question): RunResult
@@ -114,14 +114,18 @@ final class SidecarClient
         return $this->run(['mode' => 'answer', 'correlation_id' => $correlationId, 'facts_hash' => $factsHash, 'question' => $question, 'documents' => []]);
     }
 
+    /** Seconds a brief run may take end to end: retrieval plus one round of critic calls, well inside the panel's 30 s abandon. */
+    public const BRIEF_TIMEOUT_S = 15.0;
+
     /**
      * The one POST. Every failure becomes a SidecarException with a short
      * code so the controller can log it and tell the user "stored, retry
-     * later" without ever showing an upstream message.
+     * later" without ever showing an upstream message. A per-call timeout
+     * overrides the client's default for the run.
      *
      * @param array<string, mixed> $body
      */
-    private function run(array $body): RunResult
+    private function run(array $body, ?float $timeout = null): RunResult
     {
         try {
             // The id travels in the body (the contract) and as a header, so the
@@ -130,7 +134,11 @@ final class SidecarClient
             if (is_string($body['correlation_id'] ?? null)) {
                 $headers['X-Correlation-Id'] = $body['correlation_id'];
             }
-            $response = $this->http->post(rtrim($this->config->sidecarUrl, '/') . '/run', ['json' => $body, 'headers' => $headers]);
+            $options = ['json' => $body, 'headers' => $headers];
+            if ($timeout !== null) {
+                $options['timeout'] = $timeout;
+            }
+            $response = $this->http->post(rtrim($this->config->sidecarUrl, '/') . '/run', $options);
         } catch (ConnectException $e) {
             // Could not open a connection at all: the sidecar container is down or unreachable.
             throw new SidecarException('unavailable', $e);

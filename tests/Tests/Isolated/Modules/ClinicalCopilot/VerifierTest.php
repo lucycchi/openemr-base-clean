@@ -16,6 +16,8 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot;
 
 use Composer\Autoload\ClassLoader;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceChunk;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
 use OpenEMR\Modules\ClinicalCopilot\Fact;
 use OpenEMR\Modules\ClinicalCopilot\FactCategory;
 use OpenEMR\Modules\ClinicalCopilot\FactSet;
@@ -216,5 +218,22 @@ final class VerifierTest extends TestCase
         $facts = new FactSet([]);
         $n = new Narration([new Sentence('A1C goal below 7 percent [a1b2c3d4e5f6].', ['a1b2c3d4e5f6'])]);
         self::assertCount(1, (new Verifier())->verify($n, $facts, $this->evidence())->kept());
+    }
+
+    public function testASentenceCitingBothAFactAndAGuidelineChunkIsStripped(): void
+    {
+        $facts = new FactSet([new Fact('9e41cdd9', 'ObservationLabService', 901, 'result', 'LDL Cholesterol 165 mg/dL on 2026-09-10', FactCategory::LabAbnormal)]);
+        $evidence = new EvidenceSet([new EvidenceChunk('a1b2c3d4e5f6', 'acc-aha-2018-cholesterol', 'T > S', 'Moderate-intensity statin therapy is recommended for adults 40 to 75.', 0.9)]);
+        $narration = new Narration([
+            new Sentence('The LDL cholesterol was 165 mg/dL on 2026-09-10.', ['9e41cdd9']),
+            new Sentence('An LDL of 165 mg/dL means statin therapy is recommended for this patient.', ['9e41cdd9', 'a1b2c3d4e5f6']),
+            new Sentence('The guideline recommends moderate-intensity statin therapy for adults 40 to 75.', ['a1b2c3d4e5f6']),
+        ]);
+
+        $verified = (new Verifier())->verify($narration, $facts, $evidence);
+
+        self::assertCount(2, $verified->kept());
+        self::assertSame(1, $verified->strippedCount());
+        self::assertSame(['9e41cdd9', 'a1b2c3d4e5f6'], $verified->stripped()[0]->factIds);
     }
 }

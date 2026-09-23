@@ -424,6 +424,71 @@ final class FactAssemblerTest extends TestCase
 
     // -- Review fix pass ---------------------------------------------------------
 
+    public function testUnder18LabsAreNotJudgedAgainstAdultRanges(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->demographics = new Demographics('M', new DateTimeImmutable('2012-06-01'));
+        $this->chart->labs = [
+            $this->lab(950, '6768-6', 'Alkaline Phosphatase', 310.0, 'U/L', '2026-09-10'),
+            $this->lab(951, '2823-3', 'Potassium', 6.4, 'mmol/L', '2026-09-10', labFlag: 'high'),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        self::assertSame([], $this->factsIn($result, FactCategory::LabCritical), 'adult panic bounds do not apply to a child');
+        $abnormal = $this->factsIn($result, FactCategory::LabAbnormal);
+        self::assertCount(1, $abnormal, 'only the lab-flagged result; the adult range is not applied');
+        self::assertSame('Potassium 6.4 mmol/L on 2026-09-10 (flagged high by the lab)', $abnormal[0]->value);
+        self::assertSame([], $this->factsIn($result, FactCategory::LabNormal));
+    }
+
+    public function testComparatorResultsAreJudgedAgainstTheRange(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        $this->chart->labs = [
+            $this->lab(952, '2345-7', 'Glucose', null, 'mg/dL', '2026-09-10', text: '>500'),
+            $this->lab(953, '62238-1', 'eGFR', null, 'mL/min/1.73m2', '2026-09-10', text: '<15'),
+            $this->lab(954, '2951-2', 'Sodium', null, 'mmol/L', '2026-09-10', text: '<=145'),
+            $this->lab(955, '', 'HCG, quantitative', null, 'mIU/mL', '2026-09-10', text: '<5'),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $critical = $this->byRecordId($this->factsIn($result, FactCategory::LabCritical));
+        self::assertSame('Glucose: >500 mg/dL on 2026-09-10 (above the panic limit 400 mg/dL)', $critical[952]->value);
+        self::assertSame('eGFR: <15 mL/min/1.73m2 on 2026-09-10 (at or below the panic limit 15 mL/min/1.73m2)', $critical[953]->value);
+        $normal = $this->byRecordId($this->factsIn($result, FactCategory::LabNormal));
+        self::assertSame('Sodium: <=145 mmol/L on 2026-09-10 (reference range 135-145 mmol/L)', $normal[954]->value);
+        self::assertSame('HCG, quantitative: <5 mIU/mL on 2026-09-10', $normal[955]->value);
+        self::assertSame([], $this->factsIn($result, FactCategory::LabAbnormal));
+    }
+
+    public function testLongNarrativeResultsAreCapped(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [$this->lab(956, '', 'Pathology', null, '', '2026-09-10', text: str_repeat('Benign tissue with no atypia. ', 20))];
+
+        $normal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::LabNormal);
+
+        self::assertCount(1, $normal);
+        self::assertLessThanOrEqual(200, mb_strlen($normal[0]->value));
+        self::assertStringContainsString('[truncated]', $normal[0]->value);
+    }
+
+    public function testLatestBmiIsExposedForTheTriggerRulesWithoutBeingAFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        $this->chart->vitals = [$this->vitals(712, '2026-03-02', bmi: 27.4), $this->vitals(713, '2025-01-01', bmi: 31.0)];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        self::assertSame(27.4, $result->latestBmi());
+        self::assertSame([], $this->factsIn($result, FactCategory::VitalAbnormal));
+    }
+
+
     public function testNegatedQualitativeResultsAreNormalNotAbnormal(): void
     {
         $this->withPriorVisitOn('2026-09-01 10:00:00');

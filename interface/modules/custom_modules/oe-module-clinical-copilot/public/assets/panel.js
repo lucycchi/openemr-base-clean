@@ -85,30 +85,30 @@
     const CATEGORY_LABELS = {
         lab_critical: 'Critical lab values',
         allergy_medication_hit: 'Allergy / medication matches',
-        document_mismatch: 'Document does not match the chart',
-        intake_chief_concern: 'Reason for visit (intake form)',
-        intake_med: 'Medications listed on the intake form',
-        intake_allergy: 'Allergies listed on the intake form',
-        extraction_unverified: 'Unverified values from uploaded documents',
         lab_abnormal: 'Abnormal labs since last visit',
         vital_abnormal: 'Abnormal vital signs',
         lab_pending: 'Labs ordered, no result on file',
         medication_stopped: 'Stopped medications',
-        medication_new: 'New medications',
         medication_changed: 'Changed medications',
+        medication_new: 'New medications',
         allergy_new: 'New allergies',
         problem_new: 'New problems',
-        encounter: 'Visits since last visit',
-        prior_visit: 'Prior visit',
+        extraction_unverified: 'Unverified values from uploaded documents',
+        document_mismatch: 'Document does not match the chart',
+        intake_chief_concern: 'Reason for visit (intake form)',
+        intake_med: 'Medications listed on the intake form',
+        intake_allergy: 'Allergies listed on the intake form',
+        intake_family_history: 'Family history (intake form)',
+        prior_visit_plan: 'Plan from the prior visit',
+        prior_visit_assessment: 'Assessment from the prior visit',
         lab_delta: 'Lab changes vs prior result',
         vital_delta: 'Vital sign changes vs prior reading',
         problem_resolved: 'Problems resolved since last visit',
+        encounter: 'Visits since last visit',
         medication_active: 'Active medications',
         allergy_active: 'Allergies on file',
         lab_normal: 'Normal labs since last visit',
-        prior_visit_plan: 'Plan from the prior visit',
-        prior_visit_assessment: 'Assessment from the prior visit',
-        intake_family_history: 'Family history (intake form)',
+        prior_visit: 'Prior visit',
         truncation: 'Not shown',
     };
     // The keys of the table above, in the order written, become the section order.
@@ -478,9 +478,15 @@
                 const label = c.title + ' › ' + c.section;
                 node.appendChild(el('div', { class: 'copilot-source' }, [c.url ? el('a', { href: c.url, target: '_blank', rel: 'noopener', text: label }) : el('span', { text: label })]));
             });
-            node.appendChild(el('div', { class: 'copilot-checked', text: card.checked_label + (card.reason ? ' · ' + card.reason : '') }));
+            // The critic's reason is model text; it is shown only for a card the critic
+            // accepted, and capped, so it never reads as advice about the patient.
+            const reason = card.applicable === true && card.reason ? ' · ' + String(card.reason).slice(0, 200) : '';
+            node.appendChild(el('div', { class: 'copilot-checked', text: card.checked_label + reason }));
             els.guidelines.appendChild(node);
         });
+        if (g.dropped > 0) {
+            els.guidelines.appendChild(el('p', { class: 'copilot-muted', text: g.dropped + ' topic' + (g.dropped > 1 ? 's' : '') + ' hidden: the guideline population does not include this patient.' }));
+        }
     }
 
     // Renders the AI summary block. Three branches: the model failed (show the

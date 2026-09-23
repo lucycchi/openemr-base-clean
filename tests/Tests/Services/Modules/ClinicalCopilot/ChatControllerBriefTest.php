@@ -46,8 +46,13 @@ class ChatControllerBriefTest extends TestCase
         }
     }
 
+    private ?int $problemId = null;
+
     protected function tearDown(): void
     {
+        if ($this->problemId !== null) {
+            QueryUtils::sqlStatementThrowException("DELETE FROM lists WHERE id = ?", [$this->problemId]);
+        }
         if ($this->pid > 0) {
             QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$this->pid]);
         }
@@ -63,9 +68,13 @@ class ChatControllerBriefTest extends TestCase
         CsrfUtils::setupCsrfKey($session);
         $csrf = CsrfUtils::collectCsrfToken($session);
 
+        // An established diagnosis on the problem list fires the diabetes trigger whatever the
+        // visit history, so the sidecar path is exercised for certain.
+        $this->problemId = (int) QueryUtils::sqlInsert("INSERT INTO lists (pid, type, title, begdate, activity, date) VALUES (?, 'medical_problem', 'Type 2 diabetes mellitus (brief test)', '2020-01-01', 1, NOW())", [$this->pid]);
         // No chat model, and a sidecar URL nothing listens on.
         $config = new Config('', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', '', sidecarUrl: 'http://127.0.0.1:9');
-        $logger = new Logger('test', [new TestHandler()]);
+        $handler = new TestHandler();
+        $logger = new Logger('test', [$handler]);
         $request = Request::create('/chat.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'brief']);
 
         ob_start();
@@ -73,13 +82,14 @@ class ChatControllerBriefTest extends TestCase
         $body = json_decode((string) ob_get_clean(), true, 32, JSON_THROW_ON_ERROR);
 
         self::assertIsArray($body);
-        self::assertSame(200, http_response_code() ?: 200);
         self::assertArrayHasKey('facts', $body);
         self::assertArrayHasKey('guidelines', $body);
         $guidelines = $body['guidelines'];
         self::assertIsArray($guidelines);
-        self::assertContains($guidelines['status'], ['unavailable', 'no_triggers'], 'an unreachable sidecar must degrade, not fail');
+        self::assertSame('unavailable', $guidelines['status'], 'an unreachable sidecar must degrade, not fail');
         self::assertSame([], $guidelines['cards']);
+        self::assertTrue($handler->hasWarningThatContains('guideline evidence unavailable'), 'the degradation is logged');
+        self::assertCount(1, array_filter($handler->getRecords(), static fn($r): bool => str_contains($r->message, 'guideline evidence unavailable')));
         $narration = $body['narration'];
         self::assertIsArray($narration);
         self::assertSame('AI summary unavailable: not configured on this server', $narration['status']);

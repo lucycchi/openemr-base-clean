@@ -54,9 +54,9 @@ final class GuidelineTriggersTest extends TestCase
      * @param list<Fact> $facts
      * @param list<string> $activeProblems
      */
-    private function assembled(array $facts, array $activeProblems = []): AssembledFacts
+    private function assembled(array $facts, array $activeProblems = [], ?float $latestBmi = null): AssembledFacts
     {
-        return new AssembledFacts(new FactSet($facts), null, $activeProblems);
+        return new AssembledFacts(new FactSet($facts), null, $activeProblems, $latestBmi);
     }
 
     /** @param 'M'|'F' $sex */
@@ -188,13 +188,12 @@ final class GuidelineTriggersTest extends TestCase
 
     public function testScreeningFiresOnAgeAndBmiWithoutDiabetesOrARecentA1c(): void
     {
-        $bmi = $this->fact(1, FactCategory::VitalAbnormal, 'BMI 31.2 on 2026-09-10 (at or above 30)', ['vital' => 'bmi', 'direction' => 'above']);
         $a1c = $this->fact(2, FactCategory::LabNormal, 'Hemoglobin A1c 5.4 % on 2026-09-10 (reference range 4-5.6 %)', ['loinc' => '4548-4']);
 
-        self::assertArrayHasKey('screening', $this->fire($this->assembled([$bmi]), $this->aged(50)));
-        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([$bmi]), $this->aged(72)));
-        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([$bmi], ['Type 2 diabetes mellitus']), $this->aged(50)));
-        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([$bmi, $a1c]), $this->aged(50)));
+        self::assertArrayHasKey('screening', $this->fire($this->assembled([], [], 31.2), $this->aged(50)));
+        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([], [], 31.2), $this->aged(72)));
+        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([], ['Type 2 diabetes mellitus'], 31.2), $this->aged(50)));
+        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([$a1c], [], 31.2), $this->aged(50)));
     }
 
     public function testEveryRuleMatcherNamesAKnownCategory(): void
@@ -220,5 +219,78 @@ final class GuidelineTriggersTest extends TestCase
                 }
             }
         }
+    }
+
+    // -- Review fix pass ---------------------------------------------------------
+
+    public function testNystatinDoesNotFireLipids(): void
+    {
+        $nystatin = $this->fact(1, FactCategory::MedicationActive, 'Nystatin 100000 UNT/ML Oral Suspension', ['drug' => 'Nystatin 100000 UNT/ML Oral Suspension']);
+        $atorvastatin = $this->fact(2, FactCategory::MedicationActive, 'Atorvastatin 20 MG', ['drug' => 'Atorvastatin 20 MG']);
+
+        self::assertArrayNotHasKey('lipids', $this->fire($this->assembled([$nystatin]), $this->aged(55)));
+        self::assertArrayHasKey('lipids', $this->fire($this->assembled([$atorvastatin]), $this->aged(55)));
+    }
+
+    public function testScreeningFiresOnOverweightNotUnderweightAndNeedsNoAbnormalFact(): void
+    {
+        $underweight = $this->fact(1, FactCategory::VitalAbnormal, 'BMI 17 on 2026-09-10 (below 18.5)', ['vital' => 'bmi', 'direction' => 'below']);
+
+        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([$underweight], [], 17.0), $this->aged(50)));
+        self::assertArrayHasKey('screening', $this->fire($this->assembled([], [], 27.4), $this->aged(50)), 'overweight fires without an abnormal fact');
+        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([], [], 24.0), $this->aged(50)));
+    }
+
+    public function testPregnancySuppressesLipidsAndScreening(): void
+    {
+        $ldl = $this->fact(1, FactCategory::LabAbnormal, 'LDL Cholesterol 165 mg/dL', ['loinc' => '2089-1', 'direction' => 'above']);
+
+        self::assertArrayNotHasKey('lipids', $this->fire($this->assembled([$ldl], ['Pregnancy, first trimester']), $this->aged(35)));
+        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([], ['Pregnancy, first trimester'], 31.0), $this->aged(35)));
+    }
+
+    public function testChildrenDoNotFireTheAdultRules(): void
+    {
+        $bp = $this->fact(1, FactCategory::VitalAbnormal, 'Blood pressure 152/94 mmHg', ['vital' => 'bp', 'direction' => 'above']);
+        $hgb = $this->fact(2, FactCategory::LabAbnormal, 'Hemoglobin 10.2 g/dL', ['loinc' => '718-7', 'direction' => 'below']);
+        $egfr = $this->fact(3, FactCategory::LabAbnormal, 'eGFR 52', ['loinc' => '62238-1', 'direction' => 'below']);
+
+        $fired = $this->fire($this->assembled([$bp, $hgb, $egfr], ['Type 2 diabetes mellitus']), $this->aged(12));
+
+        self::assertSame([], $fired);
+    }
+
+    public function testTypeOneDiabetesMatchesItsSpellingsAndNotHypersensitivity(): void
+    {
+        $a1c = $this->fact(1, FactCategory::LabAbnormal, 'Hemoglobin A1c 8.8 %', ['loinc' => '4548-4', 'direction' => 'above']);
+
+        self::assertArrayNotHasKey('diabetes', $this->fire($this->assembled([$a1c], ['Diabetes mellitus type I']), $this->aged(40)));
+        self::assertArrayNotHasKey('diabetes', $this->fire($this->assembled([$a1c], ['Type 1 diabetes mellitus']), $this->aged(40)));
+        self::assertArrayNotHasKey('diabetes', $this->fire($this->assembled([$a1c], ['T1DM']), $this->aged(40)));
+        self::assertArrayHasKey('diabetes', $this->fire($this->assembled([$a1c], ['Hypersensitivity type 1']), $this->aged(40)));
+    }
+
+    public function testFiredTriggersCarryTheirOwnFactLinesAndTheProblemList(): void
+    {
+        $ldl = $this->fact(1, FactCategory::LabAbnormal, 'LDL Cholesterol 165 mg/dL on 2026-09-10', ['loinc' => '2089-1', 'direction' => 'above']);
+        $hgb = $this->fact(2, FactCategory::LabAbnormal, 'Hemoglobin 10.2 g/dL on 2026-09-10', ['loinc' => '718-7', 'direction' => 'below']);
+
+        $fired = $this->fire($this->assembled([$ldl, $hgb], ['Essential hypertension']), $this->aged(50));
+
+        self::assertSame(['LDL Cholesterol 165 mg/dL on 2026-09-10', 'On the problem list: Essential hypertension'], $fired['lipids']->contextLines);
+        self::assertSame(['Hemoglobin 10.2 g/dL on 2026-09-10', 'On the problem list: Essential hypertension'], $fired['anemia']->contextLines);
+    }
+
+    public function testCacheKeyChangesWithTriggersAgeSexAndIndexVersion(): void
+    {
+        $ldl = $this->fact(1, FactCategory::LabAbnormal, 'LDL Cholesterol 165 mg/dL', ['loinc' => '2089-1', 'direction' => 'above']);
+        $fired = (new GuidelineTriggers())->fire($this->assembled([$ldl]), $this->aged(55), $this->today);
+        $base = GuidelineTriggers::cacheKey('facts', $fired, 55, 'F', 'model', 'v1');
+
+        self::assertSame($base, GuidelineTriggers::cacheKey('facts', $fired, 55, 'F', 'model', 'v1'));
+        self::assertNotSame($base, GuidelineTriggers::cacheKey('facts', [], 55, 'F', 'model', 'v1'));
+        self::assertNotSame($base, GuidelineTriggers::cacheKey('facts', $fired, 82, 'F', 'model', 'v1'));
+        self::assertNotSame($base, GuidelineTriggers::cacheKey('facts', $fired, 55, 'M', 'model', 'v1'));
+        self::assertNotSame($base, GuidelineTriggers::cacheKey('facts', $fired, 55, 'F', 'model', 'v2'));
     }
 }

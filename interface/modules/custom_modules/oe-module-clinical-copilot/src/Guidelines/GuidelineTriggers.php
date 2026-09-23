@@ -25,7 +25,7 @@ use OpenEMR\Modules\ClinicalCopilot\Demographics;
 final class GuidelineTriggers
 {
     /** Must equal the "version" in the JSON file; GuidelineTriggersTest pins it. Bump when a rule changes: it is part of the briefing cache key. */
-    public const VERSION = '2026-09-23.1';
+    public const VERSION = '2026-09-23.2';
 
     private const FILE = __DIR__ . '/../../contracts/guideline_triggers.json';
 
@@ -51,12 +51,39 @@ final class GuidelineTriggers
         $age = $who->ageOn($today);
         $fired = [];
         foreach ($this->rules as $rule) {
-            $t = $rule->fire($facts, $problems, $age);
+            $t = $rule->fire($facts, $problems, $age, $assembled->latestBmi());
             if ($t !== null) {
                 $fired[] = $t;
             }
         }
         return $fired;
+    }
+
+    /**
+     * The briefing cache key for the guideline section: everything that
+     * decides which cards appear (the facts, the rules version, which rules
+     * fired and why, the patient's age and sex, the model, the corpus index).
+     *
+     * @param list<FiredTrigger> $fired
+     */
+    public static function cacheKey(string $factsHash, array $fired, ?int $age, ?string $sex, string $model, string $indexVersion): string
+    {
+        $ids = array_map(static fn(FiredTrigger $t): string => $t->id . ':' . implode('|', $t->factIds) . ':' . implode('|', $t->reasons), $fired);
+        sort($ids);
+        return hash('sha256', implode("\n", [$factsHash, self::VERSION, implode(',', $ids), (string) ($age ?? ''), (string) ($sex ?? ''), $model, 'guidelines', $indexVersion]));
+    }
+
+    /** A fingerprint of the committed corpus index, so a rebuilt corpus invalidates cached cards. */
+    public static function indexVersion(): string
+    {
+        /** @var string|null $version */
+        static $version = null;
+        if ($version === null) {
+            $chunks = @file_get_contents(__DIR__ . '/../../sidecar/corpus/index/chunks.json');
+            $vectors = @file_get_contents(__DIR__ . '/../../sidecar/corpus/index/trigger_queries.json');
+            $version = substr(hash('sha256', ($chunks === false ? '' : $chunks) . ($vectors === false ? '' : $vectors)), 0, 16);
+        }
+        return $version;
     }
 
     /** @return list<TriggerRule> */

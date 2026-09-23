@@ -41,10 +41,10 @@ final readonly class TriggerRule
      * @param list<Fact> $facts
      * @param list<string> $activeProblems
      */
-    public function fire(array $facts, array $activeProblems, ?int $age): ?FiredTrigger
+    public function fire(array $facts, array $activeProblems, ?int $age, ?float $latestBmi = null): ?FiredTrigger
     {
         foreach ($this->exclude as $matcher) {
-            if (self::evaluate($matcher, $facts, $activeProblems, $age, forExclusion: true)->matched) {
+            if (self::evaluate($matcher, $facts, $activeProblems, $age, $latestBmi, forExclusion: true)->matched) {
                 return null;
             }
         }
@@ -54,7 +54,7 @@ final readonly class TriggerRule
         if ($this->all !== []) {
             $fired = true;
             foreach ($this->all as $matcher) {
-                $hit = self::evaluate($matcher, $facts, $activeProblems, $age, forExclusion: false);
+                $hit = self::evaluate($matcher, $facts, $activeProblems, $age, $latestBmi, forExclusion: false);
                 if (!$hit->matched) {
                     $fired = false;
                     break;
@@ -64,7 +64,7 @@ final readonly class TriggerRule
             }
         }
         foreach ($this->any as $matcher) {
-            $hit = self::evaluate($matcher, $facts, $activeProblems, $age, forExclusion: false);
+            $hit = self::evaluate($matcher, $facts, $activeProblems, $age, $latestBmi, forExclusion: false);
             if ($hit->matched) {
                 $fired = true;
                 $factIds = [...$factIds, ...$hit->factIds];
@@ -74,7 +74,21 @@ final readonly class TriggerRule
         if (!$fired) {
             return null;
         }
-        return new FiredTrigger($this->id, $this->label, $this->query, $this->source, array_values(array_unique($factIds)), array_values(array_unique($reasons)));
+        $ids = array_values(array_unique($factIds));
+        $byId = [];
+        foreach ($facts as $f) {
+            $byId[$f->id] = $f;
+        }
+        $context = [];
+        foreach ($ids as $id) {
+            if (isset($byId[$id])) {
+                $context[] = trim((string) preg_replace('/\s+/', ' ', str_replace(['[', ']'], ['(', ')'], $byId[$id]->value)));
+            }
+        }
+        foreach ($activeProblems as $title) {
+            $context[] = 'On the problem list: ' . trim((string) preg_replace('/\s+/', ' ', str_replace(['[', ']'], ['(', ')'], $title)));
+        }
+        return new FiredTrigger($this->id, $this->label, $this->query, $this->source, $ids, array_values(array_unique($reasons)), $context);
     }
 
     /**
@@ -82,8 +96,13 @@ final readonly class TriggerRule
      * @param list<Fact> $facts
      * @param list<string> $activeProblems
      */
-    private static function evaluate(array $m, array $facts, array $activeProblems, ?int $age, bool $forExclusion): MatchResult
+    private static function evaluate(array $m, array $facts, array $activeProblems, ?int $age, ?float $latestBmi, bool $forExclusion): MatchResult
     {
+        // The latest BMI on the chart (any date), for rules keyed on overweight rather than an abnormal fact.
+        if (isset($m['bmi_at_least'])) {
+            $min = $m['bmi_at_least'];
+            return MatchResult::of($latestBmi !== null && (is_int($min) || is_float($min)) && $latestBmi >= (float) $min);
+        }
         // Age matchers: an unknown age can neither satisfy a requirement nor prove an exclusion.
         if (isset($m['age_below']) || isset($m['age_above']) || isset($m['age_between'])) {
             if ($age === null) {

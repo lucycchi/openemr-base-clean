@@ -337,7 +337,8 @@ final class ChatController
             return GuidelineSection::none('no_triggers');
         }
         $factsHash = $assembled->facts()->hash();
-        $key = hash('sha256', $factsHash . '|' . GuidelineTriggers::VERSION . '|guidelines|' . $config->openAiModel);
+        $age = $who->ageOn($now);
+        $key = GuidelineTriggers::cacheKey($factsHash, $fired, $age, $who->sex, $config->openAiModel, GuidelineTriggers::indexVersion());
         $cache = new DbBriefingCache($pid, $factsHash, $config->openAiModel);
         $hit = $cache->get($key);
         if ($hit !== null) {
@@ -348,16 +349,16 @@ final class ChatController
                 $this->logger->warning('copilot guideline cache entry unreadable; rebuilding', ['exception_class' => $e::class]);
             }
         }
+        // Every fired trigger carries its own fact lines plus the problem list for the
+        // critic; the run-level list is the union, for an older sidecar.
         $lines = [];
         foreach ($fired as $trigger) {
-            foreach ($trigger->factIds as $id) {
-                if ($assembled->facts()->has($id)) {
-                    $lines[] = Prompt::flattenLine($assembled->facts()->get($id)->value);
-                }
+            foreach ($trigger->contextLines as $line) {
+                $lines[] = $line;
             }
         }
         try {
-            $run = SidecarClient::fromConfig($config)->brief($this->correlationId, $factsHash, $fired, array_values(array_unique($lines)), $who->ageOn($now), $who->sex);
+            $run = SidecarClient::fromConfig($config)->brief($this->correlationId, $factsHash, $fired, array_values(array_unique($lines)), $age, $who->sex);
         } catch (SidecarException $e) {
             $this->logger->warning('copilot guideline evidence unavailable; briefing without it', ['code' => $e->errorCode]);
             return GuidelineSection::none('unavailable');
@@ -365,7 +366,11 @@ final class ChatController
         $this->handoffs = array_map(static fn($h) => $h->toArray(), $run->handoffs);
         $this->sidecarUsage = Pricing::fromConfig($config)->priceUsage($run->usage, $config->openAiModel);
         $section = GuidelineSection::fromRun($fired, $run, new GuidelineManifest());
-        $cache->put($key, $section->toArray());
+        // A run that did not finish (a worker failed, a verdict unknown) is shown but
+        // not cached, so the next open tries again instead of keeping the gap.
+        if ($section->cacheable) {
+            $cache->put($key, $section->toArray());
+        }
         return $section;
     }
 

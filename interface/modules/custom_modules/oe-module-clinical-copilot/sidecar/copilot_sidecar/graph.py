@@ -43,6 +43,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -217,25 +218,44 @@ def make_critic_node(critic: CriticFn) -> Callable[[RunState], RunState]:
     worker_failed only when every verdict failed."""
     def node(state: RunState) -> RunState:
         patient = state.get("patient")
-        facts = state.get("facts") or []
+        run_facts = state.get("facts") or []
+        # Each trigger's own fact lines (plus the problem list) when the request
+        # carried them; the run-level union otherwise (an older PHP).
+        own_facts = {q.trigger_id: q.facts for q in (state.get("queries") or []) if q.facts}
+        age = patient.age if patient else None
+        sex = patient.sex if patient else None
+        evidence = state.get("evidence", [])
+        todo = [(i, e) for i, e in enumerate(evidence) if e.chunks]
+
+        def verdict(e: TriggerEvidence) -> tuple[bool, str, Usage] | None:
+            try:
+                return critic("\n\n".join(c.quote for c in e.chunks), own_facts.get(e.trigger_id, run_facts), age, sex)
+            except Exception:
+                return None
+
+        # One model call per trigger, side by side: the section's latency is one
+        # call, not the sum. Results are gathered in the original order.
+        results: dict[int, tuple[bool, str, Usage] | None] = {}
+        if todo:
+            with ThreadPoolExecutor(max_workers=min(4, len(todo))) as pool:
+                for i, r in zip([i for i, _ in todo], pool.map(lambda pair: verdict(pair[1]), todo)):
+                    results[i] = r
         updated: list[TriggerEvidence] = []
-        attempted = 0
         succeeded = 0
-        for e in state.get("evidence", []):
+        for i, e in enumerate(evidence):
+            r = results.get(i)
             if not e.chunks:
                 updated.append(e)
-                continue
-            attempted += 1
-            try:
-                ok, reason, usage = critic("\n\n".join(c.quote for c in e.chunks), facts, patient.age if patient else None, patient.sex if patient else None)
+            elif r is None:
+                updated.append(e.model_copy(update={"applicable": None, "reason": None}))
+            else:
+                ok, reason, usage = r
                 state.setdefault("usage", []).append(usage)
                 updated.append(e.model_copy(update={"applicable": ok, "reason": reason}))
                 succeeded += 1
-            except Exception:
-                updated.append(e.model_copy(update={"applicable": None, "reason": None}))
         state["evidence"] = updated
         state["critic_once"] = True
-        _hop(state, "critic", "supervisor", "worker_finished" if succeeded or not attempted else "worker_failed", ["evidence", "usage"])
+        _hop(state, "critic", "supervisor", "worker_finished" if succeeded or not todo else "worker_failed", ["evidence", "usage"])
         return state
 
     return node

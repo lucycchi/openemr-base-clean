@@ -307,6 +307,7 @@ class TriggerQuery(Strict):
     fixed retrieval query, whose vector the index build committed."""
     trigger_id: str = Field(min_length=1, max_length=40, pattern=r"^[a-z0-9_-]+$")
     query: str = Field(min_length=1, max_length=500)
+    facts: list[str] = Field(default_factory=list, max_length=200)  # this trigger's own fact lines and the problem list, for the critic
 
 
 class PatientContext(Strict):

@@ -26,7 +26,14 @@ final readonly class AssembledFacts
         private FactSet $facts,
         private ?EncounterRecord $priorEncounter,
         private array $activeProblemTitles = [],
+        private ?float $latestBmi = null,
     ) {
+    }
+
+    /** The most recent BMI on the chart, any date, for the trigger rules; never a fact. */
+    public function latestBmi(): ?float
+    {
+        return $this->latestBmi;
     }
 
     /** @return list<string> */

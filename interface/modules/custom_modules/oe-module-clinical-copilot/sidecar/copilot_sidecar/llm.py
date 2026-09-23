@@ -201,7 +201,9 @@ def applicable(passage: str, fact_lines: list[str], age: int | None, sex: str | 
     out, under the llm.critic.output contract in strict mode. Failures are
     ModelError codes like propose(); the graph's critic node maps them to an
     unknown verdict, never to a dropped card."""
-    client = client or OpenAI(timeout=30.0, max_retries=1)
+    # A short, single attempt: the critic runs inside a briefing the panel abandons
+    # at 30 s, and an unknown verdict is an honest outcome (the card stays, labelled).
+    client = client or OpenAI(timeout=10.0, max_retries=0)
     started = time.monotonic()
     facts = "\n".join(fact_lines) if fact_lines else "(none cited)"
     user = (

@@ -29,12 +29,14 @@ final readonly class FiredTrigger
         public string $expectedSource,
         public array $factIds,
         public array $reasons = [],
+        /** @var list<string> the fired facts' text plus the active problem list, flattened, for the critic */
+        public array $contextLines = [],
     ) {
     }
 
-    /** @return array{trigger_id: string, query: string} what the sidecar's brief mode receives */
+    /** @return array{trigger_id: string, query: string, facts: list<string>} what the sidecar's brief mode receives */
     public function toQuery(): array
     {
-        return ['trigger_id' => $this->id, 'query' => $this->query];
+        return ['trigger_id' => $this->id, 'query' => $this->query, 'facts' => $this->contextLines];
     }
 }

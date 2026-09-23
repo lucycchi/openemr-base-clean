@@ -73,7 +73,7 @@ final class GuidelineSectionTest extends TestCase
     {
         $cards = GuidelineSection::fromRun($this->triggers(), $this->runResult(), new GuidelineManifest())->cards;
 
-        self::assertSame('Checked against age, sex and the problem list', $cards[0]->checkedLabel());
+        self::assertSame('Checked against age, sex, the cited facts and the problem list', $cards[0]->checkedLabel());
         self::assertSame('Guideline text; applicability not assessed', $cards[1]->checkedLabel());
         self::assertSame('no restriction stated', $cards[0]->reason);
         self::assertSame(['on the problem list: Type 2 diabetes mellitus'], $cards[0]->reasons);
@@ -122,5 +122,25 @@ final class GuidelineSectionTest extends TestCase
     {
         $run = RunResult::fromArray(['correlation_id' => 'c', 'extractions' => [], 'chunks' => [], 'handoffs' => [], 'usage' => []]);
         self::assertSame([], $run->evidence);
+    }
+
+    public function testASectionFromAFailedRetrievalOrAnUnfinishedCriticIsNotCacheable(): void
+    {
+        $chunk = ['chunk_id' => 'aaaaaaaaaaaa', 'source_id' => 'acc-aha-2018-cholesterol', 'section' => 'T > S', 'quote' => 'A passage.', 'score' => 0.8];
+        $hop = static fn(string $from, string $to, string $reason): array => ['from' => $from, 'to' => $to, 'reason' => $reason, 'state_keys_changed' => [], 'ms' => 1];
+        $base = ['correlation_id' => 'c', 'extractions' => [], 'chunks' => [], 'usage' => []];
+        $triggers = [$this->triggers()[0]];
+
+        $failedRetrieval = RunResult::fromArray($base + ['evidence' => [], 'handoffs' => [$hop('supervisor', 'evidence_retriever', 'chart_triggers'), $hop('evidence_retriever', 'supervisor', 'worker_failed'), $hop('supervisor', 'done', 'worker_finished')]]);
+        self::assertFalse(GuidelineSection::fromRun($triggers, $failedRetrieval, new GuidelineManifest())->cacheable);
+
+        $criticFailed = RunResult::fromArray($base + ['evidence' => [['trigger_id' => 'lipids', 'chunks' => [$chunk], 'applicable' => null, 'reason' => null]], 'handoffs' => [$hop('supervisor', 'evidence_retriever', 'chart_triggers'), $hop('evidence_retriever', 'supervisor', 'worker_finished'), $hop('supervisor', 'critic', 'applicability_check'), $hop('critic', 'supervisor', 'worker_failed'), $hop('supervisor', 'done', 'worker_finished')]]);
+        self::assertFalse(GuidelineSection::fromRun($triggers, $criticFailed, new GuidelineManifest())->cacheable);
+
+        $noCritic = RunResult::fromArray($base + ['evidence' => [['trigger_id' => 'lipids', 'chunks' => [$chunk], 'applicable' => null, 'reason' => null]], 'handoffs' => [$hop('supervisor', 'evidence_retriever', 'chart_triggers'), $hop('evidence_retriever', 'supervisor', 'worker_finished'), $hop('supervisor', 'done', 'worker_finished')]]);
+        self::assertTrue(GuidelineSection::fromRun($triggers, $noCritic, new GuidelineManifest())->cacheable, 'no critic configured: the section is complete as it stands');
+
+        $good = RunResult::fromArray($base + ['evidence' => [['trigger_id' => 'lipids', 'chunks' => [$chunk], 'applicable' => true, 'reason' => 'ok']], 'handoffs' => [$hop('supervisor', 'evidence_retriever', 'chart_triggers'), $hop('evidence_retriever', 'supervisor', 'worker_finished'), $hop('supervisor', 'critic', 'applicability_check'), $hop('critic', 'supervisor', 'worker_finished'), $hop('supervisor', 'done', 'worker_finished')]]);
+        self::assertTrue(GuidelineSection::fromRun($triggers, $good, new GuidelineManifest())->cacheable);
     }
 }

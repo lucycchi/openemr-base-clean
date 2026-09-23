@@ -121,3 +121,67 @@ def test_without_a_critic_the_graph_skips_the_check() -> None:
     s = graph.run("brief", "abcdefgh", "0" * 64, None, [], graph=g, queries=[TriggerQuery(trigger_id="lipids", query="q")])
     assert ("supervisor", "critic", "applicability_check") not in hops(s)
     assert s["evidence"][0].applicable is None
+
+
+# -- review fix: per-trigger context, bounded time -----------------------------
+
+def test_critic_receives_each_triggers_own_facts_not_the_union() -> None:
+    seen = []
+
+    def critic(passage, facts, age, sex):
+        seen.append((passage, list(facts)))
+        return True, "ok", Usage(model="m", kind="chat", input=1, output=1)
+
+    g = graph.build_graph(graph.stub_extract, graph.stub_retrieve, _many_with_chunks, critic)
+    queries = [TriggerQuery(trigger_id="lipids", query="q1", facts=["LDL 165", "On the problem list: HTN"]), TriggerQuery(trigger_id="anemia", query="q2", facts=["Hgb 10.2", "On the problem list: HTN"])]
+    graph.run("brief", "abcdefgh", "0" * 64, None, [], graph=g, queries=queries, facts=["LDL 165", "Hgb 10.2"])
+    assert seen == [("Passage for lipids", ["LDL 165", "On the problem list: HTN"]), ("Passage for anemia", ["Hgb 10.2", "On the problem list: HTN"])]
+
+
+def test_critic_falls_back_to_the_run_facts_when_a_query_carries_none() -> None:
+    seen = []
+
+    def critic(passage, facts, age, sex):
+        seen.append(list(facts))
+        return True, "ok", Usage(model="m", kind="chat", input=1, output=1)
+
+    g = graph.build_graph(graph.stub_extract, graph.stub_retrieve, _many_with_chunks, critic)
+    graph.run("brief", "abcdefgh", "0" * 64, None, [], graph=g, queries=[TriggerQuery(trigger_id="lipids", query="q1")], facts=["LDL 165"])
+    assert seen == [["LDL 165"]]
+
+
+def test_critic_verdicts_are_gathered_concurrently_and_in_order() -> None:
+    import threading
+    import time
+
+    started = []
+    lock = threading.Lock()
+
+    def slow(passage, facts, age, sex):
+        with lock:
+            started.append(time.monotonic())
+        time.sleep(0.3)
+        return passage.endswith("lipids"), passage, Usage(model="m", kind="chat", input=1, output=1)
+
+    g = graph.build_graph(graph.stub_extract, graph.stub_retrieve, _many_with_chunks, slow)
+    queries = [TriggerQuery(trigger_id=t, query="q") for t in ("lipids", "anemia", "ckd", "diabetes")]
+    t0 = time.monotonic()
+    s = graph.run("brief", "abcdefgh", "0" * 64, None, [], graph=g, queries=queries)
+    elapsed = time.monotonic() - t0
+    assert [(e.trigger_id, e.applicable) for e in s["evidence"]] == [("lipids", True), ("anemia", False), ("ckd", False), ("diabetes", False)]
+    assert elapsed < 0.9, f"four 0.3 s verdicts took {elapsed:.2f} s: not concurrent"
+
+
+def test_critic_client_is_given_a_short_timeout_and_no_retries(monkeypatch) -> None:
+    captured = {}
+
+    class FakeOpenAI:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            raise RuntimeError("stop here")
+
+    monkeypatch.setattr(llm, "OpenAI", FakeOpenAI)
+    with pytest.raises(RuntimeError):
+        llm.applicable("passage", [], None, None)
+    assert captured.get("timeout", 999) <= 12
+    assert captured.get("max_retries") == 0
