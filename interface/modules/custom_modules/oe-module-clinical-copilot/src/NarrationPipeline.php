@@ -69,9 +69,13 @@ final class NarrationPipeline
      * looked up. Bumping Prompt::VERSION is the deliberate way to flush every
      * cached briefing at once.
      */
-    public function cacheKey(AssembledFacts $assembled): string
+    public function cacheKey(AssembledFacts $assembled, ?EvidenceSet $evidence = null): string
     {
-        return hash('sha256', $assembled->facts()->hash() . '|' . Prompt::VERSION . '|' . $this->llm->model());
+        // Guideline passages offered to the narration are part of what was said,
+        // so their ids are part of the key: a different set is a different briefing.
+        $ids = $evidence === null ? [] : array_map(static fn(EvidenceChunk $c): string => $c->chunkId, $evidence->all());
+        sort($ids);
+        return hash('sha256', $assembled->facts()->hash() . '|' . Prompt::VERSION . '|' . $this->llm->model() . '|' . implode(',', $ids));
     }
 
     /**
@@ -80,10 +84,11 @@ final class NarrationPipeline
      * how many were stripped, any omitted facts, an error label, whether it
      * was a cache hit, and token counts.
      */
-    public function brief(AssembledFacts $assembled): BriefingResult
+    public function brief(AssembledFacts $assembled, ?EvidenceSet $evidence = null): BriefingResult
     {
+        $evidence ??= EvidenceSet::none();
         $facts = $assembled->facts();
-        $key = $this->cacheKey($assembled);
+        $key = $this->cacheKey($assembled, $evidence);
 
         // 1. Cache lookup. `measure` runs the closure, times it, and records the
         //    name plus the metadata returned by the third closure.
@@ -92,7 +97,7 @@ final class NarrationPipeline
             // Cache hit — but still run the verifier. It is cheap and
             // deterministic, and if its rules have tightened since this entry
             // was written, the stale sentences get stripped rather than shown.
-            $verified = $this->verify($this->narrationFrom($cached->data), $facts);
+            $verified = $this->verify($this->narrationFrom($cached->data), $facts, $evidence);
             // Positional args: kept sentences, stripped count, omitted facts, error label,
             // cacheHit=true, totalFailure=false, promptTokens=0, completionTokens=0, generatedAt.
             return new BriefingResult($verified->kept(), $verified->strippedCount(), $this->omitted($verified, $facts), null, true, false, 0, 0, $cached->generatedAt);
@@ -104,7 +109,7 @@ final class NarrationPipeline
         try {
             $completion = $this->complete(
                 $this->prompt->briefingSystem(),
-                $this->prompt->briefingUser($assembled),
+                $this->prompt->briefingUser($assembled, $evidence),
                 'briefing',
                 $this->prompt->briefingSchema(),
             );
@@ -118,7 +123,7 @@ final class NarrationPipeline
         }
 
         // 3. Verify: every sentence must cite at least one real fact id, or it is dropped.
-        $verified = $this->verify($this->narrationFrom($completion->data), $facts);
+        $verified = $this->verify($this->narrationFrom($completion->data), $facts, $evidence);
 
         // 4. Cache the *raw* model output (not the verified form) — but only if
         //    the verifier kept something. A total failure is never cached, so a

@@ -61,7 +61,7 @@ final class BriefingPipelineFactoryTest extends TestCase
 
         $pipeline = (new BriefingPipelineFactory())->create($this->config('gpt-4o-mini'), $assembled, new PatientId(7), 'corr-1', new StepRecorder());
 
-        $expected = hash('sha256', $assembled->facts()->hash() . '|' . Prompt::VERSION . '|gpt-4o-mini');
+        $expected = hash('sha256', $assembled->facts()->hash() . '|' . Prompt::VERSION . '|gpt-4o-mini|');
         self::assertSame($expected, $pipeline->cacheKey($assembled));
     }
 

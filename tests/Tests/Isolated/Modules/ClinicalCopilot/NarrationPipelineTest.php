@@ -17,6 +17,8 @@ namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot;
 use DateTimeImmutable;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
 use OpenEMR\Modules\ClinicalCopilot\EncounterRecord;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceChunk;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
 use OpenEMR\Modules\ClinicalCopilot\Fact;
 use OpenEMR\Modules\ClinicalCopilot\FactCategory;
 use OpenEMR\Modules\ClinicalCopilot\FactSet;
@@ -199,7 +201,7 @@ final class NarrationPipelineTest extends TestCase
         $this->pipeline()->brief($this->assembled());
         $key = array_key_first($this->cache->entries);
 
-        self::assertSame(hash('sha256', $this->assembled()->facts()->hash() . '|' . Prompt::VERSION . '|' . $this->llm->model()), $key);
+        self::assertSame(hash('sha256', $this->assembled()->facts()->hash() . '|' . Prompt::VERSION . '|' . $this->llm->model() . '|'), $key);
     }
 
     public function testModelFailureYieldsStatusAndIsNotCached(): void
@@ -278,5 +280,65 @@ final class NarrationPipelineTest extends TestCase
         self::assertSame('not_in_facts', $result->answerType);
         self::assertSame([], $result->sentences);
         self::assertStringContainsString('hi', $this->llm->lastUser);
+    }
+
+    // -- Task 8: guideline passages in the briefing narration ----------------
+
+    private function evidence(): EvidenceSet
+    {
+        return new EvidenceSet([new EvidenceChunk('a1b2c3d4e5f6', 'acc-aha-2018-cholesterol', '2018 AHA/ACC cholesterol guideline (summary) > Statin therapy', 'In adults 40 to 75 years of age with LDL-C 70 to 189 mg/dL, moderate-intensity statin therapy is recommended.', 0.9, '2018 AHA/ACC Guideline on the Management of Blood Cholesterol (summary)')]);
+    }
+
+    public function testBriefingSentenceCitingAGuidelineChunkIsKeptAndItsNumbersCheckedAgainstTheQuote(): void
+    {
+        $this->llm->reply = ['sentences' => [
+            ['text' => 'A new blood pressure medication was started.', 'fact_ids' => ['rx0001']],
+            ['text' => 'The 2018 AHA/ACC guideline recommends moderate-intensity statin therapy for adults 40 to 75 with LDL-C 70 to 189 mg/dL.', 'fact_ids' => ['a1b2c3d4e5f6']],
+            ['text' => 'The guideline sets an LDL goal below 55 mg/dL.', 'fact_ids' => ['a1b2c3d4e5f6']],
+        ]];
+
+        $result = $this->pipeline()->brief($this->assembled(), $this->evidence());
+
+        self::assertCount(2, $result->sentences);
+        self::assertSame(['a1b2c3d4e5f6'], $result->sentences[1]->factIds);
+        self::assertSame(1, $result->strippedCount, 'the sentence quoting a goal not in the passage is stripped');
+        self::assertStringContainsString('Guideline evidence (not facts about this patient; cite by id):', $this->llm->lastUser);
+        self::assertStringContainsString('[a1b2c3d4e5f6]', $this->llm->lastUser);
+        self::assertStringContainsString('at most one sentence stating what it says', $this->llm->lastSystem);
+    }
+
+    public function testBriefingSentenceCitingAnUnprovidedChunkIsStripped(): void
+    {
+        $this->llm->reply = ['sentences' => [
+            ['text' => 'A new blood pressure medication was started.', 'fact_ids' => ['rx0001']],
+            ['text' => 'The guideline recommends a statin.', 'fact_ids' => ['a1b2c3d4e5f6']],
+        ]];
+
+        $result = $this->pipeline()->brief($this->assembled());
+
+        self::assertCount(1, $result->sentences);
+        self::assertSame(1, $result->strippedCount);
+        self::assertStringNotContainsString('Guideline evidence', $this->llm->lastUser);
+    }
+
+    public function testBriefingCacheKeyChangesWithEvidenceAndACacheHitIsReverifiedAgainstIt(): void
+    {
+        $pipeline = $this->pipeline();
+        self::assertNotSame($pipeline->cacheKey($this->assembled()), $pipeline->cacheKey($this->assembled(), $this->evidence()));
+
+        $this->llm->reply = ['sentences' => [['text' => 'The 2018 AHA/ACC guideline recommends moderate-intensity statin therapy for adults 40 to 75.', 'fact_ids' => ['a1b2c3d4e5f6']]]];
+        $first = $pipeline->brief($this->assembled(), $this->evidence());
+        self::assertCount(1, $first->sentences);
+        $second = $this->pipeline()->brief($this->assembled(), $this->evidence());
+        self::assertTrue($second->fromCache);
+        self::assertCount(1, $second->sentences);
+        self::assertSame(1, $this->llm->calls, 'the second briefing is a cache hit');
+    }
+
+    public function testBriefingSystemPromptCapsTheNarrationAtTwelveSentences(): void
+    {
+        $this->llm->reply = ['sentences' => []];
+        $this->pipeline()->brief($this->assembled());
+        self::assertStringContainsString('at most 12 sentences', $this->llm->lastSystem);
     }
 }

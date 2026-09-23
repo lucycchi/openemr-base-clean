@@ -29,7 +29,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final class Prompt
 {
-    public const VERSION = '2026-09-22.5';
+    public const VERSION = '2026-09-23.1';
 
     // The grounding contract, stated to the model in plain language. The
     // Verifier enforces rules 1, 2 and 5 mechanically afterwards; the rest
@@ -51,7 +51,9 @@ TXT;
     /** System message for action=brief. */
     public function briefingSystem(): string
     {
-        return self::RULES . "\nWrite the briefing as a short list of cited sentences.";
+        return self::RULES
+            . "\nGuideline passages may follow the facts (each has a 12-character id). For each passage you may add at most one sentence stating what it says, cited to its id, after the sentences about the patient; quote its numbers exactly and never present it as a fact about this patient. A sentence about the patient cites fact ids only."
+            . "\nWrite at most 12 sentences; the physician has the full fact table beside the briefing.";
     }
 
     /** System message for action=ask. Adds the "one patient only" and "not_in_facts" instructions. */
@@ -69,9 +71,27 @@ TXT;
     }
 
     /** User message for action=brief: the fact list plus the instruction. */
-    public function briefingUser(AssembledFacts $assembled): string
+    public function briefingUser(AssembledFacts $assembled, ?EvidenceSet $evidence = null): string
     {
-        return $this->context($assembled) . "\nWrite the briefing.";
+        return implode("\n", [$this->context($assembled), ...$this->evidenceLines($evidence), 'Write the briefing.']);
+    }
+
+    /**
+     * The guideline block both prompts share: one passage per line, cited by
+     * its 12-character id, labelled as evidence rather than patient facts.
+     *
+     * @return list<string>
+     */
+    private function evidenceLines(?EvidenceSet $evidence): array
+    {
+        if ($evidence === null || $evidence->isEmpty()) {
+            return [];
+        }
+        $lines = ['Guideline evidence (not facts about this patient; cite by id):'];
+        foreach ($evidence->all() as $c) {
+            $lines[] = sprintf('[%s] %s, %s: %s', $c->chunkId, $this->flatten($c->title !== '' ? $c->title : $c->sourceId), $this->flatten($c->section), $this->flatten($c->quote));
+        }
+        return $lines;
     }
 
     /**
@@ -81,13 +101,7 @@ TXT;
      */
     public function followUpUser(AssembledFacts $assembled, string $question, array $transcript, ?EvidenceSet $evidence = null): string
     {
-        $lines = [$this->context($assembled)];
-        if ($evidence !== null && !$evidence->isEmpty()) {
-            $lines[] = 'Guideline evidence (not facts about this patient; cite by id):';
-            foreach ($evidence->all() as $c) {
-                $lines[] = sprintf('[%s] %s, %s: %s', $c->chunkId, $this->flatten($c->title !== '' ? $c->title : $c->sourceId), $this->flatten($c->section), $this->flatten($c->quote));
-            }
-        }
+        $lines = [$this->context($assembled), ...$this->evidenceLines($evidence)];
         if ($transcript !== []) {
             $lines[] = 'Conversation so far:';
             foreach ($transcript as $turn) {

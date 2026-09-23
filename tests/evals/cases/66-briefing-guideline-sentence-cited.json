@@ -1,0 +1,58 @@
+{
+ "id": "66-briefing-guideline-sentence-cited",
+ "guards": "invariant",
+ "failure_mode": "A briefing offered a guideline passage may restate it in one sentence cited to the passage's 12-character id; its numbers must match the quote. A sentence that quotes a threshold the passage does not state is stripped, and a sentence about the patient still cites fact ids. A failure means guideline text reaches the briefing unverified, or verified guideline sentences are dropped.",
+ "mode": "briefing",
+ "facts": [
+  {
+   "id": "9e41cdd9",
+   "service": "ObservationLabService",
+   "record_id": 901,
+   "field": "result",
+   "value": "LDL Cholesterol 165 mg/dL on 2026-09-10 (above the standard range 0-129 mg/dL)",
+   "category": "lab_abnormal"
+  }
+ ],
+ "chunks": [
+  {
+   "chunk_id": "a1b2c3d4e5f6",
+   "source_id": "acc-aha-2018-cholesterol",
+   "title": "2018 AHA/ACC Guideline on the Management of Blood Cholesterol (summary)",
+   "section": "2018 AHA/ACC cholesterol guideline (summary) > Statin therapy",
+   "quote": "In adults 40 to 75 years of age with LDL-C 70 to 189 mg/dL and a 10-year ASCVD risk of 7.5 percent or higher, moderate-intensity statin therapy is recommended."
+  }
+ ],
+ "narration": {
+  "sentences": [
+   {
+    "text": "The LDL cholesterol was 165 mg/dL on 2026-09-10, above the standard range.",
+    "fact_ids": [
+     "9e41cdd9"
+    ]
+   },
+   {
+    "text": "The AHA/ACC guideline recommends moderate-intensity statin therapy for adults 40 to 75 with LDL-C 70 to 189 mg/dL and a 10-year ASCVD risk of 7.5 percent or higher.",
+    "fact_ids": [
+     "a1b2c3d4e5f6"
+    ]
+   },
+   {
+    "text": "The guideline sets an LDL goal below 55 mg/dL for this patient.",
+    "fact_ids": [
+     "a1b2c3d4e5f6"
+    ]
+   }
+  ]
+ },
+ "rubrics": {
+  "schema_valid": true,
+  "citation_present": true,
+  "factually_consistent": true
+ },
+ "expect": {
+  "kept": 2,
+  "stripped": 1,
+  "omitted_ids": [],
+  "total_failure": false
+ }
+}

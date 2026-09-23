@@ -1032,7 +1032,11 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     } elseif (!$isLive) {
         $facts = factsFrom(lst($case, 'facts'));
         $narrationData = map($case, 'narration');
-        $verified = $verifier->verify(narrationFrom($narrationData), $facts);
+        // A briefing may be offered guideline passages (the surviving cards); a sentence
+        // may cite a chunk id and its numbers are then checked against the quote.
+        $briefingChunks = array_map(fn(array $c) => new EvidenceChunk(str($c, 'chunk_id'), str($c, 'source_id'), str($c, 'section'), str($c, 'quote'), 1.0, str($c, 'title')), array_map(mapOf(...), lst($case, 'chunks')));
+        $briefingQuotes = implode("\n", array_map(fn(EvidenceChunk $c) => $c->section . "\n" . $c->quote, $briefingChunks));
+        $verified = $verifier->verify(narrationFrom($narrationData), $facts, new EvidenceSet($briefingChunks));
         $keptTexts = array_map(fn(Sentence $s) => $s->text, $verified->kept());
         // schema_valid checks what the system emits, not the fixture: the
         // fact rows as the panel contract renders them, and the *verified*
@@ -1052,7 +1056,8 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
             'total_failure' => $verified->isTotalFailure(),
             'schema_errors' => $schemaErrors,
             'uncited_kept' => count(array_filter($verified->kept(), fn(Sentence $s) => $s->factIds === [])),
-            'ungrounded_tokens' => ungroundedTokens($keptTexts, $facts),
+            // Numbers from a cited guideline passage are grounded in that passage, as in answer mode.
+            'ungrounded_tokens' => array_values(array_filter(ungroundedTokens($keptTexts, $facts), fn(string $t) => !str_contains($briefingQuotes, $t))),
         ];
     } else {
         $runs = runLive($case, $verifier, $guard);
