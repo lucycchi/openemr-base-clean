@@ -333,6 +333,28 @@ final class LangfuseTracerTest extends TestCase
         self::assertSame(1, $trace['metadata']['sidecar_retries']);
     }
 
+    public function testAFailedWorkerAlsoFailsTheToolRate(): void
+    {
+        // The tool-failure alert reads tool_ok; the agent's workers must count as tools.
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($this->extractionTrace('worker_failed'));
+        self::assertFalse($this->scores()['tool_ok']);
+    }
+
+    public function testAnUnreadableUploadIsNotAServiceError(): void
+    {
+        // encrypted / unreadable / too_many_pages describe the physician's document:
+        // extraction_ok says it failed, request_ok (the error-rate alert) stays true.
+        $userFault = new RequestTrace('corr-abc', 'copilot.documents.extract', 'physician', 1_700_000_000_000, 900, ['http_status' => 200, 'doc_type' => 'lab_pdf', 'status' => 'failed', 'failure_reason' => 'encrypted', 'unverified' => 0, 'unextracted' => 0, 'handoffs' => self::handoffs('worker_failed')], null, 0, 0, 0, 'encrypted');
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($userFault);
+        $scores = $this->scores();
+        self::assertTrue($scores['request_ok']);
+        self::assertFalse($scores['extraction_ok']);
+
+        $serviceFault = new RequestTrace('corr-abc', 'copilot.documents.extract', 'physician', 1_700_000_000_000, 900, ['http_status' => 200, 'doc_type' => 'lab_pdf', 'status' => 'failed', 'failure_reason' => 'model_error', 'unverified' => 0, 'unextracted' => 0, 'handoffs' => self::handoffs('worker_failed')], null, 0, 0, 0, 'model_error');
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($serviceFault);
+        self::assertFalse($this->scores()['request_ok'], 'a model error during extraction is a service error');
+    }
+
     public function testExtractionScoresVerifiedOnlyWhenNothingWasUnverified(): void
     {
         $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($this->extractionTrace('worker_finished', 2));

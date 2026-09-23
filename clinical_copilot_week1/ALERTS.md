@@ -1,5 +1,7 @@
 # ALERTS.md — Clinical Co-Pilot alert definitions
 
+> Week 2 (the sidecar's workers in `tool_ok`, extraction failures in `request_ok`, an extraction-latency rule, four watched rules and the runbook for the Week 2 failure modes) is in [../clinical_copilot_week2/ALERTS.md](../clinical_copilot_week2/ALERTS.md); this file remains the Week 1 record and the delivery/configuration reference.
+
 Three alerts page someone; two more are watched but do not page. All are
 computed from the Langfuse traces the module writes on every request (one
 trace per request, one span per tool step, one generation per model call;

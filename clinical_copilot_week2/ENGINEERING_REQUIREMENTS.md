@@ -18,7 +18,8 @@ Paths are relative to the repository root; `<module>/` is
 | 4 | [Dashboards](#4-dashboards-request-count-error-count-latency-queue-depth-event-retries-decision-outcomes) | Done for the Week 2 agent (worker spans, per-call generations, retries, five scores, the pre-warm queue); widgets defined, screenshots pending; OTLP migration deferred to Phase 9 | 2026-09-22 |
 | 5 | [Runnable API collection](#5-runnable-api-collection) | Done: a Week 2 Bruno collection (17 requests, verified 17/17, repeatable) beside the Week 1 one; stale links repointed | 2026-09-22 |
 | 6 | [Separate /health and /ready](#6-separate-health-and-ready-endpoints) | Done: the sidecar has its own /ready with five real checks; PHP's /ready probes it (degraded-only); proven by stopping the container | 2026-09-22 |
-| 7–9 | Alerts, baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
+| 7 | [Dashboard and alert definitions](#7-dashboard-and-alert-definitions) | Done: the three alerts now cover the sidecar (`tool_ok`, `request_ok` semantics), an extraction-latency rule, four watched rules, a Week 2 runbook | 2026-09-22 |
+| 8–9 | Baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
 
 ---
 
@@ -718,6 +719,81 @@ curl -s https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-modu
   `ReadinessProbesTest` added.
 - The Week 2 API collection's request 02 now asserts `sidecar: ok`. Not yet
   on the droplet; ships with the Phase 8 deploy.
+
+---
+
+## 7. Dashboard and alert definitions
+
+> Define at least three alerts on top of your dashboard: one for p95
+> latency exceeding threshold, one for error rate exceeding threshold, and
+> one for tool failure rate. Document what each alert means and what the
+> on-call response is.
+
+### How it is met
+
+The three alerts exist since Week 1, each fully specified (metric, window,
+minimum sample, threshold, severity, baseline, meaning, numbered on-call
+runbook) in [Week 1 ALERTS.md](../clinical_copilot_week1/ALERTS.md), and
+they are delivered: a Langfuse rule fires a signed webhook into the
+module's own receiver (`alerts.php`: HMAC verified, replay-protected,
+audit row per firing, unit-tested, collection requests 17–19), with the
+first real firing recorded with its correlation id.
+
+Week 2 audited each against the new agent and found a blind spot in every
+one; [Week 2 ALERTS.md](ALERTS.md) is the record:
+
+| Alert | Week 2 blind spot | Fix |
+|---|---|---|
+| p95 latency | extraction (5–20 s by design) was silently outside the filter; the ask path gained a retrieval leg | the exclusion is stated; **1b extraction latency** is its own paging rule (> 30 s over an hour); the ask runbook starts with the `retrieve_evidence` span |
+| error rate (`request_ok`) | now counts extraction and pre-warm traces, and would have paged on a batch of encrypted or over-long uploads | `request_ok` ignores the three document-caused failure reasons (`unreadable`, `encrypted`, `too_many_pages`); service failures (`model_error`, `timeout`, `schema_mismatch`) still count; pinned by `LangfuseTracerTest` |
+| tool failure rate (`tool_ok`) | computed from PHP steps only; a failed sidecar worker never moved it | `tool_ok` is false when any worker reported `worker_failed`, so the existing rule covers the agent's two workers; the failing-span table gained the four Week 2 spans |
+
+Plus four watched rules (`extraction_ok`, `extraction_verified`,
+`retrieval_hit`, `prewarm_ok`), an external readiness check on `/ready`
+degraded, the Langfuse field-by-field definitions for the new rules, and a
+runbook (S1–S7, M1–M2) for every Week 2 failure mode: sidecar down or
+OOM-killed, stale retrieval index, invalid Cohere key, scan memory, contract
+drift after a deploy, sidecar internal error, missing contracts mount,
+provider failure through the sidecar, and the answer-length regression.
+
+### Decisions and trade-offs
+
+1. **Extend the three scores, do not add three rules.** The alerts a grader
+   saw in Week 1 keep their names and now cover the Week 2 agent because
+   the scores they read were extended. *Trade-off:* the alert name says
+   "tool" and the tool may be a Python worker; the ERROR span names it.
+2. **Extraction latency is a fourth rule, not a wider first rule.** A
+   threshold that fits 20 s extractions would blind the chat rule.
+   *Trade-off:* the plan's alert allowance (two rules on Hobby, per the
+   Week 1 notes) may keep it a definition until the plan changes.
+3. **The document's fault is not the service's.** A physician's encrypted
+   PDF must not page anyone at night; the three document-caused codes are
+   assigned by the parser before any model call, so a service fault cannot
+   hide behind them. *Trade-off:* the error-rate alert no longer sees bad
+   uploads; watched rule 7 does.
+4. **Read-only, then restart, then roll back.** Every runbook step is
+   ordered that way and the sidecar is stateless, so a restart is always
+   safe and never loses a document (files are stored before extraction).
+5. **Readiness is watched from outside Langfuse.** A down sidecar produces
+   fewer traces, not a metric; an uptime check on `/ready` is the honest
+   signal and posts to the same webhook.
+
+### Verify it
+
+```bash
+openemr-cmd e 'php vendor/bin/phpunit -c phpunit-isolated.xml --filter "LangfuseTracerTest|AlertReceiverTest"'
+cd clinical_copilot_week2/api-collection && npx --yes @usebruno/cli@2 run 02-ready.bru --env local   # the readiness signal rule 11 watches
+```
+
+### What the audit found and fixed (2026-09-22)
+
+- `tool_ok` did not count sidecar worker failures; it does now (test).
+- `request_ok` would have counted a physician's unreadable upload as a
+  service error; it no longer does, service failures still count (test).
+- No latency rule covered extraction, and no runbook covered any Week 2
+  failure mode; both written in Week 2 ALERTS.md, with the Langfuse
+  definitions for the new rules. Whether the new rules are live in the UI
+  depends on the plan's alert allowance; the definitions stand either way.
 
 ---
 

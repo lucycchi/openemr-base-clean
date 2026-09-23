@@ -26,7 +26,7 @@ motivated it is [ENGINEERING_REQUIREMENTS.md § 4](ENGINEERING_REQUIREMENTS.md#4
 | **Span per sidecar worker**: `sidecar.intake_extractor`, `sidecar.evidence_retriever` | `LangfuseTracer::workerSpans()` from the handoff log | `startTime` / `endTime` (the worker's own duration, anchored inside the PHP step that called the sidecar), `level` ERROR when the worker reported `worker_failed`, metadata `routed_because` (the supervisor's reason), `outcome`, `duration_ms` |
 | **Generation per sidecar model call**: `sidecar.chat` (one per page, plus the re-ask), `sidecar.embedding`, `sidecar.rerank` | `LangfuseTracer` from `RequestTrace::$sidecarUsage` | `model`, `usage.input` / `usage.output` / `usage.totalCost`; start time only (the sidecar does not time individual calls; the worker span holds the latency) |
 | Generation `copilot.<action>.llm` | Week 1 | the PHP model call; **not emitted for extraction traces**, whose calls are the `sidecar.chat` generations above (no double counting) |
-| Boolean scores | `LangfuseTracer::scores()` | Week 1: `request_ok`, `verification_pass`, `tool_ok`, `warm_hit`. **Week 2:** `extraction_ok`, `extraction_verified`, `retrieval_hit`, `routing_ok`, `prewarm_ok` (definitions below) |
+| Boolean scores | `LangfuseTracer::scores()` | Week 1: `request_ok`, `verification_pass`, `tool_ok`, `warm_hit`. **Week 2:** `extraction_ok`, `extraction_verified`, `retrieval_hit`, `routing_ok`, `prewarm_ok` (definitions below). **Week 2 also changed two Week 1 scores:** `tool_ok` is false when a sidecar worker reported `worker_failed`, and `request_ok` ignores extraction failures the uploaded document caused (`unreadable`, `encrypted`, `too_many_pages`) |
 
 Nothing else leaves the server: no document text, extracted values,
 question text, narration or patient identifiers (the log-field allowlist in
@@ -84,13 +84,10 @@ built without guessing. Screenshots go in `images/` as they are captured.
 ### Alerts
 
 The three Week 1 alerts (p95 latency, error rate, tool-failure rate) keep
-working and now include the sidecar workers in the tool-failure rate. Two
-Week 2 rates are worth a rule when the pre-warm sweep is enabled on a site:
-`prewarm_ok` share below 1.0 (a patient will open cold) and
-`extraction_ok` share below 0.9 over an hour (the sidecar or the model
-provider is failing). They are defined the same way as the Week 1 rules in
-[../clinical_copilot_week1/ALERTS.md](../clinical_copilot_week1/ALERTS.md)
-("Configuring the rules in Langfuse"); not yet created in the UI.
+working and now cover the sidecar: worker failures fail `tool_ok`,
+service-caused extraction failures fail `request_ok`. Extraction has its
+own latency rule, four Week 2 rates are watched, and every Week 2 failure
+mode has a runbook entry: [ALERTS.md](ALERTS.md).
 
 ## Decisions and trade-offs
 

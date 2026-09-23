@@ -25,6 +25,12 @@ use GuzzleHttp\Exception\GuzzleException;
  */
 final readonly class LangfuseTracer implements Tracer
 {
+    /**
+     * Extraction failure reasons (contract run.response) that describe the
+     * uploaded document rather than the service; see scores().
+     */
+    private const USER_CAUSED_FAILURES = ['unreadable', 'encrypted', 'too_many_pages'];
+
     public function __construct(
         private ClientInterface $http,
         private string $host,
@@ -169,14 +175,25 @@ final readonly class LangfuseTracer implements Tracer
     {
         $httpStatus = is_int($t->metadata['http_status'] ?? null) ? $t->metadata['http_status'] : 200;
         // A refusal (403) is a correct outcome, not an error; a 5xx or a
-        // non-null status on a served request is.
-        $scores = ['request_ok' => $httpStatus < 500 && ($httpStatus >= 400 || $t->status === null)];
+        // non-null status on a served request is. Week 2: a document the
+        // physician uploaded that cannot be read (encrypted, not a PDF, too
+        // long) is the document's fault, not the service's, so it does not
+        // count against the error rate; it is still visible as extraction_ok.
+        $userCaused = in_array($t->status, self::USER_CAUSED_FAILURES, true) && is_string($t->metadata['doc_type'] ?? null);
+        $scores = ['request_ok' => $httpStatus < 500 && ($httpStatus >= 400 || $t->status === null || $userCaused)];
         if (is_bool($t->metadata['verification_pass'] ?? null)) {
             $scores['verification_pass'] = $t->metadata['verification_pass'];
         }
         $toolOk = true;
         foreach ($t->steps as $step) {
             if ($step->error !== null) {
+                $toolOk = false;
+            }
+        }
+        // Week 2: the sidecar's workers are tools too. A worker that reported
+        // worker_failed fails the tool-failure rate the same as a PHP step.
+        foreach (self::hops($t) as $hop) {
+            if ($hop['reason'] === 'worker_failed') {
                 $toolOk = false;
             }
         }
@@ -198,8 +215,8 @@ final readonly class LangfuseTracer implements Tracer
             // A follow-up question: did the retriever find guideline evidence for it?
             $scores['retrieval_hit'] = $t->metadata['guideline_chunks'] > 0;
         }
-        $hops = $t->metadata['handoffs'] ?? null;
-        if (is_array($hops) && $hops !== []) {
+        $hops = self::hops($t);
+        if ($hops !== []) {
             // Routing: every worker the supervisor invoked finished.
             $ok = true;
             foreach ($hops as $hop) {
@@ -217,6 +234,18 @@ final readonly class LangfuseTracer implements Tracer
     }
 
     /**
+     * The handoff log from the trace metadata, or [] when the request did not
+     * touch the sidecar.
+     *
+     * @return list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}>
+     */
+    private static function hops(RequestTrace $t): array
+    {
+        $hops = $t->metadata['handoffs'] ?? null;
+        return is_array($hops) ? $hops : [];
+    }
+
+    /**
      * The sidecar's workers as span bodies, from the handoff log. A hop from
      * the supervisor into a worker opens the span; the worker's hop back
      * closes it and carries its duration and outcome. Timing is anchored on
@@ -227,10 +256,7 @@ final readonly class LangfuseTracer implements Tracer
      */
     private static function workerSpans(RequestTrace $t): array
     {
-        $hops = $t->metadata['handoffs'] ?? null;
-        if (!is_array($hops)) {
-            return [];
-        }
+        $hops = self::hops($t);
         $anchor = $t->startedAtMs;
         foreach ($t->steps as $step) {
             if (in_array($step->name, ['sidecar_extract_and_persist', 'retrieve_evidence'], true)) {
