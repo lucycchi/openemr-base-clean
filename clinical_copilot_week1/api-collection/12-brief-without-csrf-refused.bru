@@ -1,0 +1,27 @@
+meta {
+  name: 12 Brief without CSRF is refused
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/chat.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  action: brief
+}
+
+assert {
+  res.status: eq 403
+}
+
+docs {
+  No csrf_token_form: 403 before anything else runs. The authorization
+  refusal is requests 13-16.
+}

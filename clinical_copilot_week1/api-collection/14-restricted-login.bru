@@ -1,0 +1,44 @@
+meta {
+  name: 14 Restricted user: login
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/interface/main/main_screen.php?auth=login&site=default
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  authUser: {{restrictedUser}}
+  clearPass: {{restrictedPassword}}
+  new_login_session_management: 1
+  languageChoice: 1
+}
+
+settings {
+  followRedirects: false
+}
+
+script:post-response {
+  const raw = (res.headers && res.headers["set-cookie"]) || res.getHeader("set-cookie");
+  const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+  const pairs = list.map(c => String(c).split(";")[0]).filter(c => !/=deleted$/.test(c));
+  const jar = {};
+  String(bru.getVar("cookie") || "").split("; ").filter(Boolean).forEach(p => { jar[p.split("=")[0]] = p; });
+  pairs.forEach(p => { jar[p.split("=")[0]] = p; });
+  bru.setVar("cookie", Object.values(jar).join("; "));
+}
+
+assert {
+  res.status: eq 302
+}
+
+docs {
+  302 = authenticated. The user is a valid OpenEMR user; what they lack is
+  the clinical ACLs the Co-Pilot checks.
+}

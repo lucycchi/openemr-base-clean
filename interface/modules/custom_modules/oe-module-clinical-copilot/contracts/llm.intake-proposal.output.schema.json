@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/llm.intake-proposal.output.schema.json",
+  "title": "LLM intake-form proposal",
+  "description": "What the extraction model is asked to return for one page of an intake form (sent by the sidecar as response_format.json_schema with strict: true). Values only, as written by the patient; anchor.py proves each on the page. Demographics are compared with the chart and never stored. Every field is required and unknown is null.",
+  "type": "object",
+  "properties": {
+    "form_date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dob": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sex": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "phone": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "chief_concern": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "medications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dose": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "frequency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based page the value was read from, as labelled in the page markers of the document text."
+          }
+        },
+        "required": [
+          "name",
+          "dose",
+          "frequency",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "allergies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "substance": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reaction": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based page the value was read from, as labelled in the page markers of the document text."
+          }
+        },
+        "required": [
+          "substance",
+          "reaction",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "family_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "relative": {
+            "type": "string",
+            "minLength": 1
+          },
+          "condition": {
+            "type": "string",
+            "minLength": 1
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based page the value was read from, as labelled in the page markers of the document text."
+          }
+        },
+        "required": [
+          "relative",
+          "condition",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "form_date",
+    "name",
+    "dob",
+    "sex",
+    "phone",
+    "chief_concern",
+    "medications",
+    "allergies",
+    "family_history"
+  ],
+  "additionalProperties": false
+}

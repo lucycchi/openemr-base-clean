@@ -1,0 +1,18 @@
+meta {
+  name: 01 Health
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq ok
+}
+
+docs {
+  Liveness only: 200 if PHP serves the module. No dependencies checked.
+}

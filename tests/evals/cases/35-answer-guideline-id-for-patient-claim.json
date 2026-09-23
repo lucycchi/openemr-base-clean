@@ -1,0 +1,45 @@
+{
+  "id": "35-answer-guideline-id-for-patient-claim",
+  "guards": "invariant",
+  "failure_mode": "A number about the patient (a lab value) cited only to a guideline chunk must be stripped: the passage does not contain 8.8, so the claim is ungrounded even though the citation id exists.",
+  "mode": "answer",
+  "facts": [
+    {
+      "id": "9e41cdd9",
+      "service": "ObservationLabService",
+      "record_id": 901,
+      "field": "result",
+      "value": "Hemoglobin A1c 8.8 % on 2026-09-15 (above reference range 4-5.6 %)",
+      "category": "lab_abnormal"
+    }
+  ],
+  "chunks": [
+    {
+      "chunk_id": "a1b2c3d4e5f6",
+      "source_id": "ada-2025-standards",
+      "title": "ADA Standards 2025",
+      "section": "Glycemic targets",
+      "quote": "An A1C goal below 7 percent is appropriate for many nonpregnant adults without significant hypoglycemia. Less stringent goals, such as below 8 percent, are appropriate for people with limited life expectancy."
+    }
+  ],
+  "narration": {
+    "answer_type": "cited",
+    "sentences": [
+      {
+        "text": "Your patient's A1c of 8.8 % is above the ADA target.",
+        "fact_ids": [
+          "a1b2c3d4e5f6"
+        ]
+      }
+    ]
+  },
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "kept": 0,
+    "stripped": 1
+  }
+}

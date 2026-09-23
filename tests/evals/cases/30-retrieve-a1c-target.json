@@ -1,0 +1,16 @@
+{
+  "id": "30-retrieve-a1c-target",
+  "guards": "invariant",
+  "failure_mode": "A glycemic-target question must surface the ADA standards, not the cholesterol or CKD documents that also mention A1C and diabetes; the wrong document would give the physician a citation that does not support the answer.",
+  "mode": "retrieve",
+  "query_fixture": "a1c-target",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "top_source_id": "ada-2025-standards",
+    "min_chunks": 1
+  }
+}

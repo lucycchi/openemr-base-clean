@@ -1,0 +1,34 @@
+meta {
+  name: 07 Ask
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/chat.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: ask
+  facts_hash: {{facts_hash}}
+  question: Which lab result was out of range and what is its reference range?
+  transcript: []
+}
+
+assert {
+  res.status: eq 200
+  res.body.chart_changed: eq false
+  res.body.answer.type: isString
+}
+
+docs {
+  Follow-up over the same fact set. answer.type is "cited" (sentences with
+  fact_ids, verified) or "not_in_facts" (the facts cannot answer it).
+  Requests 08 and 09 show the two refusal shapes.
+}

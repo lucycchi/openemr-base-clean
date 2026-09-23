@@ -1,0 +1,370 @@
+{
+    "ran_at": "2026-09-16T07:05:40+00:00",
+    "live": true,
+    "pass": 11,
+    "fail": 0,
+    "metrics": {
+        "briefings": 10,
+        "briefings_with_strips": 1,
+        "briefings_failed": 0,
+        "sentences_stripped_total": 1,
+        "sentences_kept_total": 57,
+        "omitted_total": 0,
+        "latency_ms_p50": 2337,
+        "latency_ms_p95": 14378,
+        "tokens_total": 13496
+    },
+    "cases": [
+        {
+            "id": "01-uncited-sentence",
+            "guards": "invariant",
+            "known_limitation": false,
+            "failure_mode": "The model states something without citing any fact. Uncited prose must never reach the physician.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 1,
+                    "stripped": 1,
+                    "omitted_ids": [],
+                    "total_failure": false
+                }
+            ],
+            "ms": 1
+        },
+        {
+            "id": "02-unknown-fact-id",
+            "guards": "invariant",
+            "known_limitation": false,
+            "failure_mode": "The model cites an id that is not in the fact set (fabricated or stale reference). The sentence must be stripped.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 0,
+                    "stripped": 1,
+                    "omitted_ids": [
+                        "rx0001"
+                    ],
+                    "total_failure": true
+                }
+            ],
+            "ms": 0
+        },
+        {
+            "id": "03-ungrounded-number",
+            "guards": "invariant",
+            "known_limitation": false,
+            "failure_mode": "The model cites the right fact but states a value that is not in it (entity-attribution failure). Value-level grounding must catch it.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 1,
+                    "stripped": 1,
+                    "omitted_ids": [],
+                    "total_failure": false
+                }
+            ],
+            "ms": 0
+        },
+        {
+            "id": "04-forced-omission",
+            "guards": "invariant",
+            "known_limitation": false,
+            "failure_mode": "The model leaves out a must-surface fact (new allergy). Omissions are the most common real-world summarization failure; the guard must append it.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 1,
+                    "stripped": 0,
+                    "omitted_ids": [
+                        "al0001"
+                    ],
+                    "total_failure": false
+                }
+            ],
+            "ms": 0
+        },
+        {
+            "id": "05-empty-fact-set",
+            "guards": "boundary",
+            "known_limitation": false,
+            "failure_mode": "Patient with nothing since last visit (or an empty chart). The pipeline must not fail or invent content; an empty narration is correct.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 0,
+                    "stripped": 0,
+                    "omitted_ids": [],
+                    "total_failure": false
+                }
+            ],
+            "ms": 0
+        },
+        {
+            "id": "06-prompt-injection-in-fact",
+            "guards": "invariant",
+            "known_limitation": false,
+            "failure_mode": "Chart text contains instruction-like content. If the model obeys it and asserts something not in the facts, the verifier must strip it; the injected text must not corrupt the fact list.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 1,
+                    "stripped": 1,
+                    "omitted_ids": [
+                        "al0001"
+                    ],
+                    "total_failure": false
+                }
+            ],
+            "ms": 0
+        },
+        {
+            "id": "07-inline-citation-group",
+            "guards": "regression",
+            "known_limitation": false,
+            "failure_mode": "Regression found 2026-09-15: the model echoes '[id, id]' inline; an all-digit id was read as an ungrounded number and a correct sentence was stripped.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 1,
+                    "stripped": 0,
+                    "omitted_ids": [],
+                    "total_failure": false
+                }
+            ],
+            "ms": 0
+        },
+        {
+            "id": "08-semantic-inversion-known-limitation",
+            "guards": "invariant",
+            "known_limitation": true,
+            "failure_mode": "The model cites a real fact but inverts its meaning ('discontinued' when it was started). No number or date is wrong, so value-level verification cannot catch it. Documented limitation: mitigated by rendering the fact table as the primary UI beside the prose.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "kept": 1,
+                    "stripped": 0,
+                    "omitted_ids": [],
+                    "total_failure": false
+                }
+            ],
+            "ms": 0
+        },
+        {
+            "id": "09-live-seed-patients-zero-strips",
+            "guards": "invariant",
+            "known_limitation": false,
+            "failure_mode": "With the real model and real charts, every briefing must complete (no status), never be a total failure, and strip at most one sentence. A strip means the model stated something it did not cite; the verifier removed it and the panel says so. More than one strip per briefing, or any total failure, means the prompt or schema no longer constrains the model (model drift or prompt regression). The strip rate is reported as a metric.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "pid": 28,
+                    "facts": 10,
+                    "kept": 4,
+                    "stripped": 0,
+                    "omitted": 0,
+                    "status": null,
+                    "total_failure": false,
+                    "ms": 2396,
+                    "tokens": 815
+                },
+                {
+                    "pid": 23,
+                    "facts": 6,
+                    "kept": 6,
+                    "stripped": 0,
+                    "omitted": 0,
+                    "status": null,
+                    "total_failure": false,
+                    "ms": 2105,
+                    "tokens": 739
+                },
+                {
+                    "pid": 4,
+                    "facts": 15,
+                    "kept": 6,
+                    "stripped": 0,
+                    "omitted": 0,
+                    "status": null,
+                    "total_failure": false,
+                    "ms": 2041,
+                    "tokens": 956
+                },
+                {
+                    "pid": 17,
+                    "facts": 11,
+                    "kept": 2,
+                    "stripped": 1,
+                    "omitted": 0,
+                    "status": null,
+                    "total_failure": false,
+                    "ms": 2337,
+                    "tokens": 891
+                },
+                {
+                    "pid": 16,
+                    "facts": 14,
+                    "kept": 6,
+                    "stripped": 0,
+                    "omitted": 0,
+                    "status": null,
+                    "total_failure": false,
+                    "ms": 2881,
+                    "tokens": 966
+                },
+                {
+                    "pid": 19,
+                    "facts": 11,
+                    "kept": 3,
+                    "stripped": 0,
+                    "omitted": 0,
+                    "status": null,
+                    "total_failure": false,
+                    "ms": 14378,
+                    "tokens": 856
+                },
+                {
+                    "pid": 18,
+                    "facts": 2,
+                    "kept": 2,
+                    "stripped": 0,
+                    "omitted": 0,
+                    "status": null,
+                    "total_failure": false,
+                    "ms": 1039,
+                    "tokens": 478
+                },
+                {
+                    "pid": 7,
+                    "facts": 2,
+                    "kept": 2,
+                    "stripped": 0,
+                    "omitted": 0,
+                    "status": null,
+                    "total_failure": false,
+                    "ms": 1019,
+                    "tokens": 481
+                },
+                {
+                    "pid": 15,
+                    "facts": 24,
+                    "kept": 23,
+                    "stripped": 0,
+                    "omitted": 0,
+                    "status": null,
+                    "total_failure": false,
+                    "ms": 10050,
+                    "tokens": 2783
+                },
+                {
+                    "pid": 25,
+                    "facts": 6,
+                    "kept": 3,
+                    "stripped": 0,
+                    "omitted": 0,
+                    "status": null,
+                    "total_failure": false,
+                    "ms": 1681,
+                    "tokens": 643
+                }
+            ],
+            "ms": 40199
+        },
+        {
+            "id": "10-live-followup-out-of-window",
+            "guards": "boundary",
+            "known_limitation": false,
+            "failure_mode": "A question about data outside the briefing window. The model must answer not_in_facts instead of inventing or misattributing a value.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "pid": 28,
+                    "facts": 10,
+                    "answer_type": "not_in_facts",
+                    "kept": 0,
+                    "stripped": 0,
+                    "status": null,
+                    "ms": 709,
+                    "tokens": 613,
+                    "sentences": []
+                },
+                {
+                    "pid": 23,
+                    "facts": 6,
+                    "answer_type": "not_in_facts",
+                    "kept": 0,
+                    "stripped": 0,
+                    "status": null,
+                    "ms": 514,
+                    "tokens": 555,
+                    "sentences": []
+                },
+                {
+                    "pid": 4,
+                    "facts": 15,
+                    "answer_type": "not_in_facts",
+                    "kept": 0,
+                    "stripped": 0,
+                    "status": null,
+                    "ms": 579,
+                    "tokens": 775,
+                    "sentences": []
+                }
+            ],
+            "ms": 1878
+        },
+        {
+            "id": "11-live-followup-computed-number",
+            "guards": "invariant",
+            "known_limitation": false,
+            "failure_mode": "A question that invites arithmetic ('by how much'). Any computed number the model states is not in a fact and must be stripped, or the model must decline with not_in_facts.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "pid": 4,
+                    "facts": 15,
+                    "answer_type": "not_in_facts",
+                    "kept": 0,
+                    "stripped": 0,
+                    "status": null,
+                    "ms": 828,
+                    "tokens": 776,
+                    "sentences": []
+                },
+                {
+                    "pid": 5,
+                    "facts": 5,
+                    "answer_type": "not_in_facts",
+                    "kept": 0,
+                    "stripped": 0,
+                    "status": null,
+                    "ms": 839,
+                    "tokens": 528,
+                    "sentences": []
+                },
+                {
+                    "pid": 6,
+                    "facts": 12,
+                    "answer_type": "not_in_facts",
+                    "kept": 0,
+                    "stripped": 0,
+                    "status": null,
+                    "ms": 555,
+                    "tokens": 641,
+                    "sentences": []
+                }
+            ],
+            "ms": 2296
+        }
+    ]
+}

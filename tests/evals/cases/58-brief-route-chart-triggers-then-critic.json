@@ -1,0 +1,50 @@
+{
+ "id": "58-brief-route-chart-triggers-then-critic",
+ "guards": "invariant",
+ "failure_mode": "A brief run with fired triggers must retrieve once (reason chart_triggers), hand the passages to the critic once (reason applicability_check), and end; the route log is how a reviewer sees that the critic ran.",
+ "mode": "route",
+ "state": {
+  "mode": "brief",
+  "question": null,
+  "documents": [],
+  "queries": [
+   {
+    "trigger_id": "lipids",
+    "query": "statin indication and intensity when LDL cholesterol is above goal"
+   }
+  ]
+ },
+ "rubrics": {
+  "routing_correct": true,
+  "schema_valid": true
+ },
+ "expect": {
+  "handoffs": [
+   [
+    "supervisor",
+    "evidence_retriever",
+    "chart_triggers"
+   ],
+   [
+    "evidence_retriever",
+    "supervisor",
+    "worker_finished"
+   ],
+   [
+    "supervisor",
+    "critic",
+    "applicability_check"
+   ],
+   [
+    "critic",
+    "supervisor",
+    "worker_finished"
+   ],
+   [
+    "supervisor",
+    "done",
+    "worker_finished"
+   ]
+  ]
+ }
+}

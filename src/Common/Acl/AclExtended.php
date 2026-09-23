@@ -577,6 +577,24 @@ class AclExtended
         return empty($gacl->search_acl('admin', 'super', false, false, $aro_group_name)) ? false : true;
     }
 
+    // check if an ACO id (as submitted by the ACL admin form) is the admin/super ACO
+    public static function isSuperuserAco(int|string $aco_id): bool
+    {
+        if (!is_numeric($aco_id)) {
+            return false;
+        }
+        $gacl = self::collectGaclApiObject();
+        if (!$gacl instanceof GaclApi) {
+            return false;
+        }
+        $aco_data = $gacl->get_object_data((int) $aco_id, 'ACO');
+        if (!isset($aco_data[0]) || !is_array($aco_data[0])) {
+            return false;
+        }
+        $row = $aco_data[0];
+        return ($row[0] ?? null) === 'admin' && ($row[1] ?? null) === 'super';
+    }
+
     //
     // Returns acl listings(including return value) via xml message.
     //   $err = error strings (array)

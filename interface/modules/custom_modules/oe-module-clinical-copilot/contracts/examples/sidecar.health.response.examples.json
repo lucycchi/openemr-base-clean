@@ -1,0 +1,23 @@
+{
+  "accept": [
+    {
+      "status": "ok",
+      "prompt_version": "2026-09-21.1",
+      "model": "gpt-4o-mini",
+      "parser": "pymupdf+tesseract"
+    }
+  ],
+  "reject": [
+    {
+      "status": "ok",
+      "prompt_version": "2026-09-21.1",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "status": "alive",
+      "prompt_version": "x",
+      "model": "m",
+      "parser": "p"
+    }
+  ]
+}

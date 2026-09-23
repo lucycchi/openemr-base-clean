@@ -1,0 +1,72 @@
+{
+  "doc_type": "lab_pdf",
+  "patient_name_on_report": "Test Zeta",
+  "collection_date": "2026-09-18",
+  "reported_date": "2026-09-19",
+  "lab_name": "Regional Reference Laboratory",
+  "results": [
+    {
+      "analyte": "Total Cholesterol",
+      "value": "212",
+      "unit": "mg/dL",
+      "reference_range": "<200",
+      "abnormal_flag": "H",
+      "page": 1,
+      "row_text": "Total Cholesterol 212 H mg/dL <200 100"
+    },
+    {
+      "analyte": "LDL Cholesterol",
+      "value": "100",
+      "unit": "mg/dL",
+      "reference_range": "<100",
+      "abnormal_flag": "H",
+      "page": 1,
+      "row_text": "LDL Cholesterol 100 H mg/dL <100 118"
+    },
+    {
+      "analyte": "HDL Cholesterol",
+      "value": "48",
+      "unit": "mg/dL",
+      "reference_range": ">40",
+      "abnormal_flag": null,
+      "page": 1,
+      "row_text": "HDL Cholesterol 48 mg/dL >40 45"
+    },
+    {
+      "analyte": "Triglycerides",
+      "value": "160",
+      "unit": "mg/dL",
+      "reference_range": "<150",
+      "abnormal_flag": "H",
+      "page": 1,
+      "row_text": "Triglycerides 160 H mg/dL <150 140"
+    },
+    {
+      "analyte": "Glucose",
+      "value": "92",
+      "unit": "mg/dL",
+      "reference_range": "70-100",
+      "abnormal_flag": null,
+      "page": 1,
+      "row_text": "Glucose 92 mg/dL 70-100 95"
+    },
+    {
+      "analyte": "Creatinine",
+      "value": "1.1",
+      "unit": "mg/dL",
+      "reference_range": "0.6-1.2",
+      "abnormal_flag": null,
+      "page": 1,
+      "row_text": "Creatinine 1.1 mg/dL 0.6-1.2 1.0"
+    },
+    {
+      "analyte": "Potassium",
+      "value": "4.4",
+      "unit": "mmol/L",
+      "reference_range": "3.5-5.1",
+      "abnormal_flag": null,
+      "page": 1,
+      "row_text": "Potassium 4.4 mmol/L 3.5-5.1 4.2"
+    }
+  ]
+}

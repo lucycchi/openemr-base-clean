@@ -1,0 +1,30 @@
+{
+  "id": "52-facts-intake-items-become-cited-facts",
+  "guards": "invariant",
+  "failure_mode": "Every intake entry the extractor anchored must reach the physician as a cited fact of the right category (medications and allergies must-surface, chief concern and family history shown), and the form's name and date of birth, which differ from the chart, must yield document_mismatch facts while never being stored.",
+  "mode": "facts",
+  "doc_type": "intake_form",
+  "fixture": "intake-full.pdf",
+  "model_output": "intake-full.model.json",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "anchor_correct": true
+  },
+  "expect": {
+    "status": "extracted",
+    "categories": {
+      "intake_med": 4,
+      "intake_allergy": 2,
+      "intake_chief_concern": 1,
+      "intake_family_history": 3,
+      "document_mismatch": 2
+    },
+    "cited": [
+      "intake_med",
+      "intake_allergy",
+      "intake_chief_concern",
+      "intake_family_history"
+    ]
+  }
+}

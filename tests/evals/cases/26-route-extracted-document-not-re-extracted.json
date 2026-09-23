@@ -1,0 +1,30 @@
+{
+  "id": "26-route-extracted-document-not-re-extracted",
+  "guards": "boundary",
+  "failure_mode": "An already-extracted document must not be sent to the model again (idempotency at the routing level).",
+  "mode": "route",
+  "state": {
+    "mode": "extract",
+    "question": null,
+    "documents": [
+      {
+        "document_id": 1,
+        "doc_type": "lab_pdf",
+        "status": "extracted"
+      }
+    ]
+  },
+  "rubrics": {
+    "routing_correct": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "handoffs": [
+      [
+        "supervisor",
+        "done",
+        "already_extracted"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,193 @@
+{
+  "description": "Analyte name (as commonly printed) to LOINC code and canonical unit. Used by the sidecar's anchor step to code extracted lab results and to flag unit mismatches; results whose analyte is absent here are stored with loinc=null and are not compared to reference ranges. Extend deliberately: each entry is a clinical coding decision.",
+  "analytes": {
+    "Glucose": {
+      "loinc": "2345-7",
+      "unit": "mg/dL"
+    },
+    "BUN": {
+      "loinc": "3094-0",
+      "unit": "mg/dL"
+    },
+    "Blood Urea Nitrogen": {
+      "loinc": "3094-0",
+      "unit": "mg/dL"
+    },
+    "Creatinine": {
+      "loinc": "2160-0",
+      "unit": "mg/dL"
+    },
+    "eGFR": {
+      "loinc": "62238-1",
+      "unit": "mL/min/1.73m2"
+    },
+    "Sodium": {
+      "loinc": "2951-2",
+      "unit": "mmol/L"
+    },
+    "Potassium": {
+      "loinc": "2823-3",
+      "unit": "mmol/L"
+    },
+    "Chloride": {
+      "loinc": "2075-0",
+      "unit": "mmol/L"
+    },
+    "CO2": {
+      "loinc": "2028-9",
+      "unit": "mmol/L"
+    },
+    "Calcium": {
+      "loinc": "17861-6",
+      "unit": "mg/dL"
+    },
+    "Total Protein": {
+      "loinc": "2885-2",
+      "unit": "g/dL"
+    },
+    "Albumin": {
+      "loinc": "1751-7",
+      "unit": "g/dL"
+    },
+    "Total Bilirubin": {
+      "loinc": "1975-2",
+      "unit": "mg/dL"
+    },
+    "Alkaline Phosphatase": {
+      "loinc": "6768-6",
+      "unit": "U/L"
+    },
+    "ALT": {
+      "loinc": "1742-6",
+      "unit": "U/L"
+    },
+    "AST": {
+      "loinc": "1920-8",
+      "unit": "U/L"
+    },
+    "Total Cholesterol": {
+      "loinc": "2093-3",
+      "unit": "mg/dL"
+    },
+    "Cholesterol": {
+      "loinc": "2093-3",
+      "unit": "mg/dL"
+    },
+    "LDL Cholesterol": {
+      "loinc": "2089-1",
+      "unit": "mg/dL"
+    },
+    "LDL": {
+      "loinc": "2089-1",
+      "unit": "mg/dL"
+    },
+    "HDL Cholesterol": {
+      "loinc": "2085-9",
+      "unit": "mg/dL"
+    },
+    "HDL": {
+      "loinc": "2085-9",
+      "unit": "mg/dL"
+    },
+    "Triglycerides": {
+      "loinc": "2571-8",
+      "unit": "mg/dL"
+    },
+    "Hemoglobin A1c": {
+      "loinc": "4548-4",
+      "unit": "%"
+    },
+    "HbA1c": {
+      "loinc": "4548-4",
+      "unit": "%"
+    },
+    "A1c": {
+      "loinc": "4548-4",
+      "unit": "%"
+    },
+    "Hemoglobin": {
+      "loinc": "718-7",
+      "unit": "g/dL"
+    },
+    "Hematocrit": {
+      "loinc": "4544-3",
+      "unit": "%"
+    },
+    "WBC": {
+      "loinc": "6690-2",
+      "unit": "10^3/uL"
+    },
+    "White Blood Cell Count": {
+      "loinc": "6690-2",
+      "unit": "10^3/uL"
+    },
+    "RBC": {
+      "loinc": "789-8",
+      "unit": "10^6/uL"
+    },
+    "Platelets": {
+      "loinc": "777-3",
+      "unit": "10^3/uL"
+    },
+    "Platelet Count": {
+      "loinc": "777-3",
+      "unit": "10^3/uL"
+    },
+    "MCV": {
+      "loinc": "787-2",
+      "unit": "fL"
+    },
+    "MCH": {
+      "loinc": "785-6",
+      "unit": "pg"
+    },
+    "MCHC": {
+      "loinc": "786-4",
+      "unit": "g/dL"
+    },
+    "RDW": {
+      "loinc": "788-0",
+      "unit": "%"
+    },
+    "TSH": {
+      "loinc": "3016-3",
+      "unit": "uIU/mL"
+    },
+    "Free T4": {
+      "loinc": "3024-7",
+      "unit": "ng/dL"
+    },
+    "Vitamin D": {
+      "loinc": "1989-3",
+      "unit": "ng/mL"
+    },
+    "25-OH Vitamin D": {
+      "loinc": "1989-3",
+      "unit": "ng/mL"
+    },
+    "Vitamin B12": {
+      "loinc": "2132-9",
+      "unit": "pg/mL"
+    },
+    "Ferritin": {
+      "loinc": "2276-4",
+      "unit": "ng/mL"
+    },
+    "Iron": {
+      "loinc": "2498-4",
+      "unit": "ug/dL"
+    },
+    "Uric Acid": {
+      "loinc": "3084-1",
+      "unit": "mg/dL"
+    },
+    "Magnesium": {
+      "loinc": "19123-9",
+      "unit": "mg/dL"
+    },
+    "Phosphorus": {
+      "loinc": "2777-1",
+      "unit": "mg/dL"
+    }
+  }
+}

@@ -1,0 +1,66 @@
+meta {
+  name: 10 Brief (facts cite the document)
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/chat.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: brief
+}
+
+assert {
+  res.status: eq 200
+  res.body.facts_hash: isString
+  res.body.correlation_id: isString
+}
+
+tests {
+  test("at least one fact is cited to the uploaded document with a page and a bounding box", function () {
+    const id = String(bru.getVar('document_id'));
+    const cited = res.getBody().facts.filter(f => f.citation && f.citation.source_type === 'document' && f.citation.source_id === id);
+    expect(cited, 'facts citing the document').to.not.be.empty;
+    const anchored = cited.find(f => f.citation.anchored === true);
+    expect(anchored, 'an anchored document fact').to.exist;
+    expect(anchored.citation.bbox).to.include.keys('page', 'x0', 'y0', 'x1', 'y1');
+  });
+
+  test("the guideline section is present and every card cites a corpus document", function () {
+    const g = res.getBody().guidelines;
+    expect(g, 'guidelines section').to.exist;
+    expect(['ok', 'no_triggers', 'unavailable']).to.include(g.status);
+    expect(g.triggers_version).to.be.a('string');
+    g.cards.forEach(card => {
+      expect(card.chunks, card.trigger_id + ' passages').to.not.be.empty;
+      card.chunks.forEach(c => expect(c.source_id).to.match(/^(acc-aha-2018-cholesterol|acc-aha-2017-hypertension|ada-2025-standards|kdigo-2024-ckd|anemia-adults-primary-care|uspstf-screening)$/));
+      expect(card.applicable, card.trigger_id + ' verdict').to.not.equal(false);
+      expect(card.checked_label).to.be.a('string');
+    });
+  });
+}
+
+script:post-response {
+  bru.setVar('facts_hash', res.body.facts_hash);
+}
+
+docs {
+  The briefing for the demo patient now includes lab_abnormal facts read from
+  the document, each with a citation of source_type "document", the page and
+  the bounding box of the cell the value was read from (the panel draws the
+  highlight from these). A patient with no prior visit still sees them:
+  document facts are new information regardless of visit history (eval case 50).
+  Values the anchor step could not prove appear as extraction_unverified facts
+  instead of vanishing. The response also carries `guidelines`: what the
+  corpus says about the topics this chart raised, one card per fired trigger
+  with the passages and the critic's verdict (cards the critic rejected are
+  dropped). Contract: chat.briefing.response, fact, citation.
+}

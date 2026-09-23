@@ -1,0 +1,19 @@
+{
+  "id": "48-boundary-lab-result-without-unit",
+  "guards": "boundary",
+  "failure_mode": "Missing data in a lab row: the model could not read the unit. The result must still anchor on analyte and value alone (the unit is optional in the contract), be stored with a null unit, and must not be flagged as a unit mismatch or compared against a reference range it cannot be matched to.",
+  "mode": "anchor",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-layout1.pdf",
+  "model_output": "lab-missing-unit.model.json",
+  "truth": "lab-missing-unit.truth.json",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "anchor_correct": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "status": "extracted"
+  }
+}

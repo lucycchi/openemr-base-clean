@@ -1,0 +1,53 @@
+meta {
+  name: 08 Documents: extract
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/documents.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: extract
+  document_id: {{document_id}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq extracted
+  res.body.correlation_id: isString
+}
+
+tests {
+  test("a fresh extraction returns the supervisor's handoffs and anchoring counts; a repeat says already", function () {
+    const b = res.getBody();
+    if (b.already === true) {
+      expect(b.confidence).to.be.a('number');
+      return;
+    }
+    expect(b.handoffs).to.be.an('array').with.length.of.at.least(3);
+    expect(b.handoffs[0]).to.include({ from: 'supervisor', to: 'intake_extractor', reason: 'stored_document' });
+    expect(b.results_persisted).to.be.at.least(1);
+    expect(b.unverified).to.be.a('number');
+    expect(b.unextracted).to.be.a('number');
+    expect(b.confidence).to.be.within(0, 1);
+  });
+}
+
+docs {
+  Runs the document through the sidecar's graph: the supervisor routes to the
+  intake_extractor (PyMuPDF text, tesseract for scans, one model call per
+  page), every proposed value is anchored to its own table row on the page,
+  and the anchored results are written to procedure_order/report/result with
+  a citation each. The response carries the persisted/unverified/unextracted
+  counts, the confidence (share of fields anchored) and the handoff log. The
+  first run takes 5-20 s; a second run for the same document answers already=true
+  without running anything. Contract: documents.extract.response.
+}

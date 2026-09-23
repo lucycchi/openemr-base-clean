@@ -1,0 +1,37 @@
+docs {
+  # Clinical Co-Pilot API collection, Week 2
+
+  The Week 2 endpoints and workflows: a lab PDF attached to a chart, extracted
+  by the sidecar with every value anchored to the page, surfacing as cited
+  facts in the briefing; a treatment question answered with guideline
+  evidence; the same actions refused without a CSRF token and for a user
+  without the documents permission; and the pre-warm status endpoint. Week 1's
+  collection (../../clinical_copilot_week1/api-collection) covers the chat
+  path in depth; this one is independent of it.
+
+  Run top to bottom ("Run collection"). Requests 3-5 establish the admin
+  session on a quiet demo patient (docPid) and capture the CSRF token; 6-11
+  are the document workflow; 12 is the CSRF refusal; 13-16 start a second
+  session as a restricted user; 17 is the pre-warm status.
+
+   1. Health                      liveness, no auth
+   2. Ready                       dependency probes, no auth
+   3. Login page                  starts the OpenEMR session
+   4. Login                       authenticates (admin by default)
+   5. Open demo chart             sets the session patient; captures csrf_token
+   6. Documents: list             what is attached to this chart (may be empty)
+   7. Documents: upload lab PDF   201 stored, or 200 existing on a re-run; captures document_id
+   8. Documents: extract          the sidecar graph runs; anchored results persisted; handoffs returned
+   9. Documents: list again       the document reads "extracted" with its confidence
+  10. Brief                       facts now carry document citations (page, bounding box)
+  11. Ask a treatment question    answer with guideline passages cited by id, and the routing log
+  12. Upload without CSRF         403
+  13-15. Restricted user          new session, login, open the same chart
+  16. Restricted documents list   403 "not authorized to manage documents"
+  17. Pre-warm status             enabled flag and the last sweep's counts, no auth
+
+  Select the `local` or `vps` environment. The collection captures the
+  session cookie itself (run the CLI with --disable-cookies). The upload is
+  idempotent per patient (same bytes = same document), so the collection can
+  be run repeatedly; it never deletes what it attached.
+}

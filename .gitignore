@@ -51,3 +51,12 @@ docker/development-easy-redis/docker-compose.override.yml
 compose.override.yml
 tmp/
 .webpack-cache/
+
+# graphify knowledge graph + local Claude hooks
+graphify-out/
+src/graphify-out/
+.claude/settings.json
+
+# personal interview notes, not part of the submission
+clinical_copilot/INTERVIEW_PREP.md
+clinical_copilot/INTERVIEW_PREP2.md

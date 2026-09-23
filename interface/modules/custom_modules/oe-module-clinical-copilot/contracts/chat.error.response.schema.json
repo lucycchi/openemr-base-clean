@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/chat.error.response.schema.json",
+  "title": "chat.php error response",
+  "description": "Body for every non-200 outcome of chat.php and for a 200 that carries a request error. 401 not authenticated; 403 CSRF failed or ACL denied ('You are not authorized to view this chart'); 400 no patient selected, unknown action, or question missing; 500 internal error (logged with stack trace under the same correlation id). Never contains an exception message or any chart data.",
+  "type": "object",
+  "properties": {
+    "error": {
+      "type": "string",
+      "description": "Physician-facing message.",
+      "minLength": 1
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Present on every error that reached the controller; quote it when reporting a problem.",
+      "pattern": "^[0-9a-f]{32}$"
+    }
+  },
+  "required": ["error"],
+  "additionalProperties": false
+}

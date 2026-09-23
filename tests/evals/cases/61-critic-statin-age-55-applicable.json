@@ -1,0 +1,23 @@
+{
+ "id": "61-critic-statin-age-55-applicable",
+ "guards": "invariant",
+ "failure_mode": "For a 55-year-old the same passage's population includes the patient; the critic must answer applicable so the card stays. A false here would hide relevant guidance. Recorded verdict; the live twin is case 64.",
+ "mode": "critic",
+ "passage": "In adults 40 to 75 years of age with LDL-C 70 to 189 mg/dL and a 10-year ASCVD risk of 7.5 percent or higher, moderate-intensity statin therapy is recommended after a clinician-patient risk discussion.",
+ "fact_lines": [
+  "LDL Cholesterol 165 mg/dL on 2026-09-10 (above the standard range 0-129 mg/dL)"
+ ],
+ "age": 55,
+ "sex": "M",
+ "recorded": {
+  "applicable": true,
+  "reason": "The passage applies to adults 40 to 75 years of age; the patient is 55."
+ },
+ "rubrics": {
+  "applicability_correct": true,
+  "schema_valid": true
+ },
+ "expect": {
+  "applicable": true
+ }
+}

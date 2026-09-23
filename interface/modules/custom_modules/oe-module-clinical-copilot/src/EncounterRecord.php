@@ -1,0 +1,31 @@
+<?php
+
+/**
+ * One encounter row as the assembler needs it.
+ *
+ * @package   OpenEMR
+ * @link      https://www.open-emr.org
+ * @author    Lucy Chi <lucychi@berkeley.edu>
+ * @copyright Copyright (c) 2026 Lucy Chi
+ * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
+ */
+
+declare(strict_types=1);
+
+namespace OpenEMR\Modules\ClinicalCopilot;
+
+/**
+ * One visit from the chart. $sensitivity is OpenEMR's per-encounter
+ * confidentiality level ('normal', 'high', ...); the chart source uses it to
+ * drop encounters the current user is not cleared to see.
+ */
+final readonly class EncounterRecord
+{
+    public function __construct(
+        public int $id,
+        public \DateTimeImmutable $date,
+        public string $sensitivity,
+        public string $reason,
+    ) {
+    }
+}

@@ -1,0 +1,90 @@
+{
+  "label": "20260923T2105Z-10vu-brief",
+  "base_url": "http://localhost:8300",
+  "scenario": "brief",
+  "vus": 10,
+  "duration": "2m0s",
+  "finished_at": "2026-09-23T21:07:44.163Z",
+  "requests_total": 530,
+  "throughput_rps": 4.21,
+  "http_failed_pct": 0,
+  "copilot_request_error_pct": 0,
+  "summary_unavailable_pct": 0,
+  "verification_fail_pct": 0,
+  "brief_cache_hit_pct": 69.8,
+  "briefs": 255,
+  "asks": 0,
+  "guideline_hit_pct": null,
+  "extractions": 0,
+  "extract_ok_pct": null,
+  "extract_verified_pct": null,
+  "extract_confidence_p50": null,
+  "model_calls": 77,
+  "sentences_kept": 989,
+  "sentences_stripped": 10,
+  "latency_ms": {
+    "all_http": {
+      "count": 530,
+      "p50": 1659,
+      "p95": 5377,
+      "p99": 9529,
+      "max": 13001
+    },
+    "login": {
+      "count": 10,
+      "p50": 890,
+      "p95": 926,
+      "p99": 929,
+      "max": 930
+    },
+    "chart_open": {
+      "count": 255,
+      "p50": 1796,
+      "p95": 2395,
+      "p99": 2688,
+      "max": 2726
+    },
+    "brief": {
+      "count": 255,
+      "p50": 536,
+      "p95": 7962,
+      "p99": 11948,
+      "max": 13001
+    },
+    "brief_cache_hit": {
+      "count": 178,
+      "p50": 499,
+      "p95": 807,
+      "p99": 6658,
+      "max": 9217
+    },
+    "brief_cold": {
+      "count": 77,
+      "p50": 4173,
+      "p95": 10146,
+      "p99": 12703,
+      "max": 13001
+    },
+    "ask": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "upload": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "extract": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    }
+  }
+}

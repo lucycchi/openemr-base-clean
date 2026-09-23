@@ -1,0 +1,17 @@
+# 20260923T1522Z-50vu-brief  2026-09-23T15:36:20.732Z  https://146-190-139-37.sslip.io
+scenario=brief vus=50 duration=2m0s
+requests=406 throughput=2.7 req/s  http_failed=25.37%  copilot_errors=47.64%
+briefs=115 (cache hit 87%)  asks=0 (guideline hit null%)  model_calls=13  summary_unavailable=0%  verification_fail=0%
+extractions=0  extracted=null%  fully_verified=null%  confidence_p50=null
+sentences kept=361 stripped=0
+
+endpoint          n      p50     p95     p99     max  (ms)
+all_http          406    5610   55211   60126   60129
+login              50   21370   27521   27574   27591
+chart_open        191   35530   60117   60126   60129
+brief             115    2937    8210   14975   26462
+brief_cache_hit    87    2723    4110   10288   15809
+brief_cold         13    6815   16495   24468   26462
+ask                 0    null    null    null    null
+upload              0    null    null    null    null
+extract             0    null    null    null    null

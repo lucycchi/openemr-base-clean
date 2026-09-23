@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/fact.schema.json",
+  "title": "Fact",
+  "description": "One verified chart fact as rendered to the panel. Produced by deterministic PHP (FactAssembler); the language model only ever cites facts by id and never produces them. Fact values are clinical strings and numbers; they never contain the patient's name, date of birth, MRN, address or phone.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Content-derived id: first 8 hex chars of sha256(service, record_id, field). Stable across requests for the same underlying row.",
+      "pattern": "^[0-9a-f]{8}$"
+    },
+    "category": {
+      "type": "string",
+      "description": "Fact category; must_surface categories are appended by the OmissionGuard if the narration does not cite them.",
+      "enum": [
+        "prior_visit",
+        "prior_visit_plan",
+        "prior_visit_assessment",
+        "encounter",
+        "medication_new",
+        "medication_changed",
+        "medication_active",
+        "medication_stopped",
+        "allergy_new",
+        "allergy_active",
+        "allergy_medication_hit",
+        "lab_critical",
+        "lab_abnormal",
+        "vital_abnormal",
+        "lab_delta",
+        "vital_delta",
+        "lab_normal",
+        "problem_new",
+        "problem_resolved",
+        "lab_pending",
+        "truncation",
+        "extraction_unverified",
+        "intake_chief_concern",
+        "intake_med",
+        "intake_allergy",
+        "intake_family_history",
+        "document_mismatch"
+      ]
+    },
+    "value": {
+      "type": "string",
+      "description": "Rendered, human-readable value. Every number and date the model states must appear verbatim in the cited fact's value.",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "description": "Provenance as <service>#<record_id>.<field>, e.g. PrescriptionService#17.drug.",
+      "pattern": "^[A-Za-z]+#[0-9]+\\.[A-Za-z_]+$"
+    },
+    "must_surface": {
+      "type": "boolean",
+      "description": "True when the OmissionGuard guarantees this fact reaches the physician even if the model omits it."
+    },
+    "citation": {
+      "$ref": "citation.schema.json",
+      "description": "Week 2: machine-readable provenance. For a chart fact this repeats source as a chart citation; for a value from an uploaded document it carries the document id, page and bounding box the panel highlights."
+    }
+  },
+  "required": [
+    "id",
+    "category",
+    "value",
+    "source",
+    "must_surface",
+    "citation"
+  ],
+  "additionalProperties": false
+}

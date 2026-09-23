@@ -1,0 +1,33 @@
+[project]
+name = "copilot-sidecar"
+version = "0.1.0"
+description = "Clinical Co-Pilot week 2 sidecar: document extraction with row-level anchoring, guideline retrieval, and a deterministic supervisor"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.8",
+  "pymupdf>=1.24",
+  "pytesseract>=0.3.13",
+  "pillow>=10",
+  "openai>=1.50",
+  "langgraph>=0.2",
+  "rank-bm25>=0.2",
+  "numpy>=1.26",
+  "cohere>=5.10",
+  "httpx>=0.27",
+  "jsonschema>=4.23",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-json-report>=1.5"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["copilot_sidecar*"]

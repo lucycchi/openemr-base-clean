@@ -1,0 +1,137 @@
+# Single-VPS deployment of this fork using the flex image.
+#
+# The flex image clones FLEX_REPOSITORY at container start and builds it
+# (composer + npm), so the fork's custom modules are present without a
+# custom image. docker/production/docker-compose.yml cannot be used as-is:
+# it pulls the upstream openemr/openemr:latest image, which does not
+# contain this fork.
+#
+# Usage on the VPS (Docker + compose plugin installed):
+#   mkdir -p ~/openemr && cd ~/openemr
+#   copy docker-compose.yml and .env.example here (see README.md)
+#   cp .env.example .env   # set passwords and DOMAIN; put the deploy key in ./deploy-ssh
+#   docker compose up -d
+# First start takes ~10 minutes (clone + composer + npm). Redeploys are
+# driven by .gitlab-ci.yml (docker compose up -d --force-recreate openemr).
+services:
+  mysql:
+    restart: always
+    image: mariadb:11.8.8@sha256:be1ef4fe5f14589325c08a41c76334097ce66c86264b75e1d28342c742782a61
+    command: ['mariadbd', '--character-set-server=utf8mb4']
+    volumes:
+      - databasevolume:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set in .env}
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      start_period: 1m
+      start_interval: 10s
+      interval: 1m
+      timeout: 5s
+      retries: 3
+
+  openemr:
+    restart: always
+    image: openemr/openemr:flex@sha256:1d2c8345a320cf2985c9d02138951267739ec498559ca724b3d5397e4568482e
+    # openemr.sh's FLEX_REPOSITORY path does `git clone "$FLEX_REPOSITORY" --branch ...`
+    # with no explicit target dir, so git names the clone after the repo URL's
+    # basename (here "openemr-base-clean"). The script's own rsync step is
+    # hardcoded to read from ./openemr, so any fork not literally named
+    # "openemr" fails every time with "destination path ... already exists"
+    # on retry. (Tried bypassing the block with EASY_DEV_MODE_NEW/EMPTY, and
+    # tried replicating the clone+rsync ourselves - both have side effects:
+    # EASY_DEV_MODE_NEW drags in an unrelated couchdb devtools step this image
+    # doesn't have, and auto_configure.php is not just an existence gate, it's
+    # the actual PHP script the later MySQL auto-setup step runs - deleting it
+    # breaks setup.)
+    #
+    # Fix: `git config url.insteadOf` rewrites the URL git actually fetches
+    # from, but the clone directory name comes from the literal argument on
+    # the command line, evaluated before that rewrite. So point FLEX_REPOSITORY
+    # at a URL whose basename is "openemr" and redirect it to the real fork -
+    # openemr.sh's own clone lands in ./openemr like it would for any
+    # upstream-named repo, and every step after it runs unmodified.
+    # (The GitLab project is literally named "openemr", so the rewrite is a
+    # no-op there; it is kept so FLEX_REPOSITORY can point anywhere.)
+    #
+    # The GitLab instance rejects HTTPS git auth (deploy tokens and PATs both
+    # get 401 through its proxy), so the clone goes over SSH with a read-only
+    # deploy key mounted at /root/.ssh. The flex image has git but no ssh
+    # client, hence the apk add.
+    command: >
+      sh -c "apk add --no-cache openssh-client > /dev/null &&
+      git config --global url.\"${FLEX_REPOSITORY:?set in .env}\".insteadOf https://flex.invalid/openemr.git &&
+      FLEX_REPOSITORY=https://flex.invalid/openemr.git ./openemr.sh"
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - sitesvolume:/var/www/localhost/htdocs/openemr/sites:rw
+      - logvolume:/var/log
+      # id_ed25519 (0600) + known_hosts; see README "Deploy key"
+      - ./deploy-ssh:/root/.ssh:ro
+    environment:
+      # ssh://git@labs.gauntletai.com:22022/lucychi/openemr.git
+      FLEX_REPOSITORY: ${FLEX_REPOSITORY:?set in .env}
+      GIT_SSH_COMMAND: ssh -i /root/.ssh/id_ed25519 -o UserKnownHostsFile=/root/.ssh/known_hosts -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes
+      FLEX_REPOSITORY_BRANCH: ${FLEX_REPOSITORY_BRANCH:-audit}
+      MYSQL_HOST: mysql
+      MYSQL_ROOT_PASS: ${MYSQL_ROOT_PASSWORD:?set in .env}
+      MYSQL_USER: openemr
+      MYSQL_PASS: ${MYSQL_PASS:?set in .env}
+      OE_USER: admin
+      OE_PASS: ${OE_PASS:?set in .env}
+      # Agent + observability (read by the clinical-copilot module)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
+      ALERT_WEBHOOK_SECRET: ${ALERT_WEBHOOK_SECRET:-}
+      LANGFUSE_WEBHOOK_SECRET: ${LANGFUSE_WEBHOOK_SECRET:-}
+      # Week 2 sidecar (extraction, retrieval, supervisor); compose service name below.
+      COPILOT_SIDECAR_URL: http://copilot-sidecar:8000
+      COHERE_API_KEY: ${COHERE_API_KEY:-}
+      OPENEMR_SETTING_site_addr_oath: https://${DOMAIN:?set in .env}
+      OPENEMR_SETTING_rest_api: 1
+      OPENEMR_SETTING_rest_fhir_api: 1
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/bin/curl", "--fail", "--insecure", "--location", "--silent", "https://localhost/meta/health/readyz"]
+      start_period: 15m
+      start_interval: 30s
+      interval: 1m
+      timeout: 5s
+      retries: 3
+
+  copilot-sidecar:
+    # Clinical Co-Pilot week 2 sidecar. Built on the VPS from ./copilot-sidecar
+    # (rsynced by docker/vps/deploy.sh); contracts are mounted read-only from
+    # ./copilot-contracts. Stateless for PHI, internal network only (no ports).
+    # Sized for this droplet: PyMuPDF + tesseract, not Docling (W2_ARCHITECTURE.md).
+    build:
+      context: ./copilot-sidecar
+    restart: always
+    volumes:
+      - ./copilot-contracts:/contracts:ro
+    environment:
+      COPILOT_CONTRACTS_DIR: /contracts
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      COHERE_API_KEY: ${COHERE_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+volumes:
+  databasevolume: {}
+  sitesvolume: {}
+  logvolume: {}

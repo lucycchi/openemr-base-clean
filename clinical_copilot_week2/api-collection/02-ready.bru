@@ -1,0 +1,26 @@
+meta {
+  name: 02 Ready
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php
+}
+
+assert {
+  res.status: eq 200
+  res.body.dependencies.contracts: eq ok
+  res.body.dependencies.database: eq ok
+  res.body.dependencies.openai: eq ok
+  res.body.dependencies.sidecar: eq ok
+}
+
+docs {
+  Probes the module's own runtime pieces (the contract validator library and
+  the contract files; missing on a build without them, which is not ready),
+  the database, OpenAI, Langfuse and (Week 2) the sidecar's own /ready,
+  each bounded to 2 s. 503 if the database or OpenAI is down; 200 "degraded"
+  if only Langfuse or the sidecar is (briefings still work; extraction and
+  guideline evidence do not). Cached 60 s. Contract: ready.response.
+}

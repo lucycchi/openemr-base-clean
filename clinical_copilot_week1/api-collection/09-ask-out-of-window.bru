@@ -1,0 +1,36 @@
+meta {
+  name: 09 Ask outside the briefing window (not_in_facts)
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/chat.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: ask
+  facts_hash: {{facts_hash}}
+  question: What was the patient's blood pressure at the visit before last?
+  transcript: []
+}
+
+assert {
+  res.status: eq 200
+  res.body.chart_changed: eq false
+  res.body.answer.type: eq not_in_facts
+  res.body.answer.stripped: eq 0
+}
+
+docs {
+  Eval case 10. The briefing covers changes since the prior visit plus
+  active meds and allergies; blood pressure two visits ago is outside it.
+  The model must answer not_in_facts rather than invent or misattribute a
+  value. The panel renders "Not in the facts for this briefing window."
+}

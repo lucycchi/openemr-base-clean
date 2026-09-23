@@ -1,0 +1,34 @@
+meta {
+  name: 15 Restricted user: open chart
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/interface/patient_file/summary/demographics.php?set_pid={{pid}}
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const html = typeof res.body === 'string' ? res.body : JSON.stringify(res.body);
+  const m = html.match(/data-csrf="([^"]+)"/);
+  if (m) {
+    bru.setVar('csrf_token', m[1]);
+  } else {
+    throw new Error('Co-Pilot panel not found on the dashboard for the restricted user');
+  }
+}
+
+docs {
+  The dashboard and the panel shell still render (OpenEMR menu-level access);
+  the refusal happens at the data layer in the next request, which is the
+  point: authorization is enforced where the chart is read, not where the
+  link is shown.
+}

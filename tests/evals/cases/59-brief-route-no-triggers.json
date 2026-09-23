@@ -1,0 +1,25 @@
+{
+ "id": "59-brief-route-no-triggers",
+ "guards": "boundary",
+ "failure_mode": "A brief run with no fired triggers must be one hop to done with reason no_triggers: no retrieval, no critic, no model call.",
+ "mode": "route",
+ "state": {
+  "mode": "brief",
+  "question": null,
+  "documents": [],
+  "queries": []
+ },
+ "rubrics": {
+  "routing_correct": true,
+  "schema_valid": true
+ },
+ "expect": {
+  "handoffs": [
+   [
+    "supervisor",
+    "done",
+    "no_triggers"
+   ]
+  ]
+ }
+}

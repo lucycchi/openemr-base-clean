@@ -1,0 +1,34 @@
+{
+  "accept": [
+    {
+      "from": "supervisor",
+      "to": "intake_extractor",
+      "reason": "stored_document",
+      "state_keys_changed": [],
+      "ms": 3
+    },
+    {
+      "from": "supervisor",
+      "to": "evidence_retriever",
+      "reason": "chart_triggers",
+      "state_keys_changed": [],
+      "ms": 0
+    },
+    {
+      "from": "supervisor",
+      "to": "critic",
+      "reason": "applicability_check",
+      "state_keys_changed": [],
+      "ms": 0
+    }
+  ],
+  "reject": [
+    {
+      "from": "supervisor",
+      "to": "nowhere",
+      "reason": "stored_document",
+      "state_keys_changed": [],
+      "ms": 0
+    }
+  ]
+}

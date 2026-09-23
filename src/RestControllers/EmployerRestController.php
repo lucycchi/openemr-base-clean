@@ -19,6 +19,22 @@ use OpenEMR\Services\Search\TokenSearchValue;
 
 class EmployerRestController
 {
+    /**
+     * Query-parameter names accepted by the employer search.  Search keys become column names in the service layer,
+     * so anything not listed here is dropped before it reaches the query.
+     *
+     * @var list<string>
+     */
+    private const SUPPORTED_SEARCH_FIELDS = [
+        "id",
+        "uuid",
+        "puuid",
+        "pid",
+        "name",
+        "occupation",
+        "industry",
+    ];
+
     private $employerService;
 
     public function __construct()
@@ -52,6 +68,11 @@ class EmployerRestController
     )]
     public function getAll($searchParams)
     {
+        $searchParams = array_filter(
+            $searchParams,
+            fn($key): bool => in_array($key, self::SUPPORTED_SEARCH_FIELDS, true),
+            ARRAY_FILTER_USE_KEY
+        );
         if (isset($searchParams['id'])) {
             $searchParams['id'] = new TokenSearchField('id', new TokenSearchValue($searchParams['id']), false);
         }

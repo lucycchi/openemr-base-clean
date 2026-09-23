@@ -19,6 +19,7 @@ export default [{
         "interface/forms/eye_mag/js",
         "interface/forms/questionnaire_assessments/lforms",
         "interface/main/calendar/modules/PostCalendar/pnincludes/*.js",
+        "interface/modules/custom_modules/oe-module-clinical-copilot/public/assets/vendor",
         "interface/modules/custom_modules/oe-module-comlink-telehealth/public/assets/js/dist",
         "interface/modules/custom_modules/oe-module-comlink-telehealth/public/assets/js/src/cvb.min.js",
         "interface/modules/zend_modules/public/js/lib/**/*.js",

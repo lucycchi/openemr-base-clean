@@ -1,0 +1,46 @@
+{
+  "id": "44-absent-intake-items-unverified",
+  "guards": "invariant",
+  "failure_mode": "An intake medication, allergy or family-history line the form does not mention must come back unverified; this is the intake-side version of the anchoring invariant and the claim case 21 documents.",
+  "mode": "absent",
+  "doc_type": "intake_form",
+  "fixture": "intake-full.pdf",
+  "proposal": {
+    "form_date": "09/20/2026",
+    "name": null,
+    "dob": null,
+    "sex": null,
+    "phone": null,
+    "chief_concern": "crushing chest pain at rest",
+    "medications": [
+      {
+        "name": "warfarin",
+        "dose": "5 mg",
+        "frequency": "daily",
+        "page": 1
+      }
+    ],
+    "allergies": [
+      {
+        "substance": "latex",
+        "reaction": "anaphylaxis",
+        "page": 1
+      }
+    ],
+    "family_history": [
+      {
+        "relative": "brother",
+        "condition": "colon cancer",
+        "page": 1
+      }
+    ]
+  },
+  "rubrics": {
+    "anchor_correct": true,
+    "citation_present": true
+  },
+  "expect": {
+    "status": "extracted",
+    "anchored_absent": 0
+  }
+}

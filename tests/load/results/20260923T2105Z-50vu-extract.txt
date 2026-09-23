@@ -1,0 +1,17 @@
+# 20260923T2105Z-50vu-extract  2026-09-23T21:27:19.405Z  http://localhost:8300
+scenario=extract vus=50 duration=2m0s
+requests=1066 throughput=8.01 req/s  http_failed=0%  copilot_errors=0%
+briefs=0 (cache hit null%)  asks=0 (guideline hit null%)  model_calls=322  summary_unavailable=87.27%  verification_fail=null%
+extractions=322  extracted=12.73%  fully_verified=12.73%  confidence_p50=0
+sentences kept=0 stripped=0
+
+endpoint          n      p50     p95     p99     max  (ms)
+all_http         1066    4469   13971   16272   20418
+login              50    7571   11347   11846   12016
+chart_open        322    9808   13824   15211   15854
+brief               0    null    null    null    null
+brief_cache_hit  null    null    null    null    null
+brief_cold       null    null    null    null    null
+ask                 0    null    null    null    null
+upload            322    1526    3033    3377    3964
+extract           322    6038   15650   18012   20418

@@ -179,6 +179,13 @@ repos:
 
 - repo: local
   hooks:
+  - id: copilot-eval-gate
+    name: Clinical Co-Pilot eval gate (deterministic cases vs tests/evals/baseline.json)
+    entry: tests/evals/gate.sh pre-commit
+    language: system
+    files: ^(tests/evals/|interface/modules/custom_modules/oe-module-clinical-copilot/)
+    pass_filenames: false
+
   - id: php-syntax-check
     name: PHP Syntax Check
     entry: php -l

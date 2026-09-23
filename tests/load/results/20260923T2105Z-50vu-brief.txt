@@ -1,0 +1,17 @@
+# 20260923T2105Z-50vu-brief  2026-09-23T21:18:55.724Z  http://localhost:8300
+scenario=brief vus=50 duration=2m0s
+requests=954 throughput=7.49 req/s  http_failed=0%  copilot_errors=0%
+briefs=427 (cache hit 99.53%)  asks=0 (guideline hit null%)  model_calls=2  summary_unavailable=0%  verification_fail=0%
+extractions=0  extracted=null%  fully_verified=null%  confidence_p50=null
+sentences kept=1641 stripped=41
+
+endpoint          n      p50     p95     p99     max  (ms)
+all_http          954    3574   13211   14889   16449
+login              50    8406   13134   14185   14214
+chart_open        427   10530   14111   15400   16210
+brief             427    2286    3464    3909   16449
+brief_cache_hit   425    2284    3452    3738    4372
+brief_cold          2   13771   16182   16396   16449
+ask                 0    null    null    null    null
+upload              0    null    null    null    null
+extract             0    null    null    null    null

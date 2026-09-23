@@ -1,0 +1,259 @@
+{
+  "accept": [
+    {
+      "doc_type": "intake_form",
+      "form_date": null,
+      "form_date_citation": null,
+      "demographics": {
+        "name": null,
+        "dob": null,
+        "sex": null,
+        "phone": null
+      },
+      "chief_concern": {
+        "value": "chest tightness on stairs",
+        "citation": {
+          "source_type": "document",
+          "source_id": "1",
+          "page_or_section": "1",
+          "field_or_chunk_id": "/results/0/value",
+          "quote_or_value": "92",
+          "anchored": true,
+          "bbox": {
+            "page": 1,
+            "x0": 10,
+            "y0": 10,
+            "x1": 50,
+            "y1": 20,
+            "origin": "top-left",
+            "units": "pt",
+            "page_w": 612,
+            "page_h": 792
+          }
+        }
+      },
+      "medications": [
+        {
+          "name": "lisinopril",
+          "dose": "10 mg",
+          "frequency": "daily",
+          "citation": {
+            "source_type": "document",
+            "source_id": "1",
+            "page_or_section": "1",
+            "field_or_chunk_id": "/results/0/value",
+            "quote_or_value": "92",
+            "anchored": true,
+            "bbox": {
+              "page": 1,
+              "x0": 10,
+              "y0": 10,
+              "x1": 50,
+              "y1": 20,
+              "origin": "top-left",
+              "units": "pt",
+              "page_w": 612,
+              "page_h": 792
+            }
+          }
+        }
+      ],
+      "allergies": [],
+      "family_history": [
+        {
+          "relative": "father",
+          "condition": "MI at 55",
+          "citation": {
+            "source_type": "document",
+            "source_id": "1",
+            "page_or_section": "1",
+            "field_or_chunk_id": "/results/0/value",
+            "quote_or_value": "92",
+            "anchored": true,
+            "bbox": {
+              "page": 1,
+              "x0": 10,
+              "y0": 10,
+              "x1": 50,
+              "y1": 20,
+              "origin": "top-left",
+              "units": "pt",
+              "page_w": 612,
+              "page_h": 792
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "reject": [
+    {
+      "doc_type": "intake_form",
+      "form_date": null,
+      "form_date_citation": null,
+      "demographics": {
+        "name": null,
+        "dob": null,
+        "sex": null,
+        "phone": null
+      },
+      "chief_concern": {
+        "value": "",
+        "citation": {
+          "source_type": "document",
+          "source_id": "1",
+          "page_or_section": "1",
+          "field_or_chunk_id": "/results/0/value",
+          "quote_or_value": "92",
+          "anchored": true,
+          "bbox": {
+            "page": 1,
+            "x0": 10,
+            "y0": 10,
+            "x1": 50,
+            "y1": 20,
+            "origin": "top-left",
+            "units": "pt",
+            "page_w": 612,
+            "page_h": 792
+          }
+        }
+      },
+      "medications": [
+        {
+          "name": "lisinopril",
+          "dose": "10 mg",
+          "frequency": "daily",
+          "citation": {
+            "source_type": "document",
+            "source_id": "1",
+            "page_or_section": "1",
+            "field_or_chunk_id": "/results/0/value",
+            "quote_or_value": "92",
+            "anchored": true,
+            "bbox": {
+              "page": 1,
+              "x0": 10,
+              "y0": 10,
+              "x1": 50,
+              "y1": 20,
+              "origin": "top-left",
+              "units": "pt",
+              "page_w": 612,
+              "page_h": 792
+            }
+          }
+        }
+      ],
+      "allergies": [],
+      "family_history": [
+        {
+          "relative": "father",
+          "condition": "MI at 55",
+          "citation": {
+            "source_type": "document",
+            "source_id": "1",
+            "page_or_section": "1",
+            "field_or_chunk_id": "/results/0/value",
+            "quote_or_value": "92",
+            "anchored": true,
+            "bbox": {
+              "page": 1,
+              "x0": 10,
+              "y0": 10,
+              "x1": 50,
+              "y1": 20,
+              "origin": "top-left",
+              "units": "pt",
+              "page_w": 612,
+              "page_h": 792
+            }
+          }
+        }
+      ]
+    },
+    {
+      "doc_type": "intake_form",
+      "form_date": null,
+      "form_date_citation": null,
+      "demographics": {
+        "name": null,
+        "dob": null,
+        "sex": null,
+        "phone": null
+      },
+      "chief_concern": {
+        "value": "chest tightness on stairs",
+        "citation": {
+          "source_type": "document",
+          "source_id": "1",
+          "page_or_section": "1",
+          "field_or_chunk_id": "/results/0/value",
+          "quote_or_value": "92",
+          "anchored": true,
+          "bbox": {
+            "page": 1,
+            "x0": 10,
+            "y0": 10,
+            "x1": 50,
+            "y1": 20,
+            "origin": "top-left",
+            "units": "pt",
+            "page_w": 612,
+            "page_h": 792
+          }
+        }
+      },
+      "medications": [
+        {
+          "name": "x",
+          "citation": {
+            "source_type": "document",
+            "source_id": "1",
+            "page_or_section": "1",
+            "field_or_chunk_id": "/results/0/value",
+            "quote_or_value": "92",
+            "anchored": true,
+            "bbox": {
+              "page": 1,
+              "x0": 10,
+              "y0": 10,
+              "x1": 50,
+              "y1": 20,
+              "origin": "top-left",
+              "units": "pt",
+              "page_w": 612,
+              "page_h": 792
+            }
+          }
+        }
+      ],
+      "allergies": [],
+      "family_history": [
+        {
+          "relative": "father",
+          "condition": "MI at 55",
+          "citation": {
+            "source_type": "document",
+            "source_id": "1",
+            "page_or_section": "1",
+            "field_or_chunk_id": "/results/0/value",
+            "quote_or_value": "92",
+            "anchored": true,
+            "bbox": {
+              "page": 1,
+              "x0": 10,
+              "y0": 10,
+              "x1": 50,
+              "y1": 20,
+              "origin": "top-left",
+              "units": "pt",
+              "page_w": 612,
+              "page_h": 792
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+meta {
+  name: 13 Restricted user: login page (new session)
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/interface/login/login.php?site=default
+}
+
+script:pre-request {
+  // Start from an empty jar so the admin session from 03-04 is not reused.
+  bru.setVar("cookie", "");
+}
+
+script:post-response {
+  const raw = (res.headers && res.headers["set-cookie"]) || res.getHeader("set-cookie");
+  const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+  const pairs = list.map(c => String(c).split(";")[0]).filter(c => !/=deleted$/.test(c));
+  const jar = {};
+  pairs.forEach(p => { jar[p.split("=")[0]] = p; });
+  bru.setVar("cookie", Object.values(jar).join("; "));
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Requests 13-16 repeat the login and chart-open flow as a user without the
+  patients/med and encounters/notes ACLs (restrictedUser in the environment;
+  receptionist on the seed data) and show the tool layer refusing.
+}

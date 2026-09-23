@@ -1,0 +1,48 @@
+{
+ "description": "Adult vital-sign thresholds the briefing judges form_vitals readings against. OpenEMR stores weight in pounds, height in inches and temperature in Fahrenheit; blood pressure as two strings. `abnormal` bounds make a reading new since the prior visit a must-surface fact; `delta` thresholds make a change versus the most recent prior reading of the same vital a fact, so every routine visit is not noise. Adults only: the assembler emits no abnormal facts for a patient under 18. Every row is a clinical decision: cite the source and extend deliberately.",
+ "version": "2026-09-23.1",
+ "abnormal": {
+  "bp": {
+   "systolic_high": 140,
+   "diastolic_high": 90,
+   "source": "2017 ACC/AHA: stage 2 hypertension at 140/90 or above (decision B-1)"
+  },
+  "pulse": {
+   "low": 50,
+   "high": 100,
+   "source": "Adult resting heart rate outside 50-100 bpm"
+  },
+  "spo2": {
+   "low": 94,
+   "source": "Resting oxygen saturation below 94 percent in adults"
+  },
+  "temperature_f": {
+   "high": 100.4,
+   "source": "Fever at or above 100.4 F (38.0 C)"
+  },
+  "respiration": {
+   "high": 20,
+   "source": "Adult resting respiratory rate above 20 per minute"
+  },
+  "bmi": {
+   "low": 18.5,
+   "high": 30,
+   "source": "WHO/CDC: underweight below 18.5, obesity at 30 or above"
+  }
+ },
+ "delta": {
+  "weight_lb": {
+   "absolute": 5,
+   "percent": 5,
+   "source": "A change of 5 lb or 5 percent since the prior reading is worth a look"
+  },
+  "systolic": {
+   "absolute": 20,
+   "source": "A systolic change of 20 mmHg since the prior reading"
+  },
+  "bmi": {
+   "absolute": 2,
+   "source": "A BMI change of 2 since the prior reading"
+  }
+ }
+}

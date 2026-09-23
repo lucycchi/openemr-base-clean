@@ -1,0 +1,32 @@
+{
+ "id": "55-trigger-age-exclusion-suppresses-lipids",
+ "guards": "boundary",
+ "failure_mode": "The same LDL on an 82-year-old must not fire the cholesterol topic: the 2018 AHA/ACC primary-prevention statin guidance is for ages 40-75, and a card for it would be misleading. An unknown age must not suppress the rule, because an exclusion cannot be proven.",
+ "mode": "triggers",
+ "facts": [
+  {
+   "id": "0a1b2c3d",
+   "service": "ObservationLabService",
+   "record_id": 901,
+   "field": "result",
+   "value": "LDL Cholesterol 165 mg/dL on 2026-09-10 (above the standard range 0-129 mg/dL)",
+   "category": "lab_abnormal",
+   "attributes": {
+    "loinc": "2089-1",
+    "direction": "above"
+   }
+  }
+ ],
+ "active_problems": [],
+ "patient": {
+  "age": 82,
+  "sex": "F"
+ },
+ "rubrics": {
+  "factually_consistent": true
+ },
+ "expect": {
+  "fired": [],
+  "because": {}
+ }
+}

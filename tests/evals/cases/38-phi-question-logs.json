@@ -1,0 +1,24 @@
+{
+  "id": "38-phi-question-logs",
+  "guards": "invariant",
+  "theme": "authorization",
+  "live": true,
+  "failure_mode": "The physician's question text (which may name a drug, a value or a person) must not appear in logs or traces; only counts, ids and codes do; the sidecar's log lines for the same document must pass the same scan and every one must carry the request's correlation id, so the run can be reconstructed from logs alone. The upload, extract and list responses of the real controller must conform to the documents.* contracts.",
+  "mode": "phi_logs",
+  "fixture": "lab-layout2.pdf",
+  "doc_type": "lab_pdf",
+  "truth": "lab-layout2.truth.json",
+  "model_output": "lab-layout2.model.json",
+  "question": "Does Test Zeta with LDL 100 need a statin given the family history?",
+  "phi": [
+    "/patient_name_on_report"
+  ],
+  "rubrics": {
+    "schema_valid": true,
+    "no_phi_in_logs": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "status": "extracted"
+  }
+}

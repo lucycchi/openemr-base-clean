@@ -1,0 +1,301 @@
+{
+ "accept": [
+  {
+   "correlation_id": "abcdefgh-1",
+   "extractions": [
+    {
+     "document_id": 1,
+     "status": "extracted",
+     "failure_reason": null,
+     "extraction": {
+      "doc_type": "lab_pdf",
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "2026-09-15",
+      "collection_date_citation": {
+       "source_type": "document",
+       "source_id": "1",
+       "page_or_section": "1",
+       "field_or_chunk_id": "/results/0/value",
+       "quote_or_value": "92",
+       "anchored": true,
+       "bbox": {
+        "page": 1,
+        "x0": 10,
+        "y0": 10,
+        "x1": 50,
+        "y1": 20,
+        "origin": "top-left",
+        "units": "pt",
+        "page_w": 612,
+        "page_h": 792
+       }
+      },
+      "reported_date": null,
+      "reported_date_citation": null,
+      "lab_name": "Synthetic Labs",
+      "results": [
+       {
+        "analyte": "Glucose",
+        "loinc": "2345-7",
+        "value": "92",
+        "unit": "mg/dL",
+        "reference_range": "70-99",
+        "abnormal_flag": null,
+        "unit_mismatch": false,
+        "citation": {
+         "source_type": "document",
+         "source_id": "1",
+         "page_or_section": "1",
+         "field_or_chunk_id": "/results/0/value",
+         "quote_or_value": "92",
+         "anchored": true,
+         "bbox": {
+          "page": 1,
+          "x0": 10,
+          "y0": 10,
+          "x1": 50,
+          "y1": 20,
+          "origin": "top-left",
+          "units": "pt",
+          "page_w": 612,
+          "page_h": 792
+         }
+        }
+       }
+      ],
+      "unextracted": []
+     },
+     "confidence": 1.0,
+     "retries": 0
+    }
+   ],
+   "chunks": [],
+   "handoffs": [],
+   "usage": [
+    {
+     "model": "gpt-4o-mini",
+     "kind": "chat",
+     "input": 10,
+     "output": 5
+    }
+   ]
+  },
+  {
+   "correlation_id": "c0ffee00-brief-0001",
+   "extractions": [],
+   "chunks": [],
+   "handoffs": [
+    {
+     "from": "supervisor",
+     "to": "evidence_retriever",
+     "reason": "chart_triggers",
+     "state_keys_changed": [],
+     "ms": 0
+    },
+    {
+     "from": "evidence_retriever",
+     "to": "supervisor",
+     "reason": "worker_finished",
+     "state_keys_changed": [
+      "evidence",
+      "usage"
+     ],
+     "ms": 40
+    },
+    {
+     "from": "supervisor",
+     "to": "done",
+     "reason": "worker_finished",
+     "state_keys_changed": [],
+     "ms": 0
+    }
+   ],
+   "usage": [
+    {
+     "model": "gpt-4o-mini",
+     "kind": "chat",
+     "input": 10,
+     "output": 5
+    }
+   ],
+   "evidence": [
+    {
+     "trigger_id": "lipids",
+     "chunks": [
+      {
+       "chunk_id": "a1b2c3d4e5f6",
+       "source_id": "acc-aha-2018-cholesterol",
+       "section": "2018 AHA/ACC cholesterol > Statin therapy",
+       "quote": "In adults 40 to 75 years of age with LDL-C 70 to 189 mg/dL, moderate-intensity statin therapy is recommended when the 10-year ASCVD risk is 7.5 percent or higher.",
+       "score": 0.83
+      }
+     ],
+     "applicable": null,
+     "reason": null
+    }
+   ]
+  }
+ ],
+ "reject": [
+  {
+   "correlation_id": "x",
+   "extractions": [],
+   "chunks": [
+    {
+     "chunk_id": "c"
+    }
+   ],
+   "handoffs": [],
+   "usage": []
+  },
+  {
+   "correlation_id": "abcdefgh-1",
+   "extractions": [
+    {
+     "document_id": 1,
+     "status": "extracted",
+     "failure_reason": null,
+     "extraction": {
+      "doc_type": "lab_pdf",
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "2026-09-15",
+      "collection_date_citation": {
+       "source_type": "document",
+       "source_id": "1",
+       "page_or_section": "1",
+       "field_or_chunk_id": "/results/0/value",
+       "quote_or_value": "92",
+       "anchored": true,
+       "bbox": {
+        "page": 1,
+        "x0": 10,
+        "y0": 10,
+        "x1": 50,
+        "y1": 20,
+        "origin": "top-left",
+        "units": "pt",
+        "page_w": 612,
+        "page_h": 792
+       }
+      },
+      "reported_date": null,
+      "reported_date_citation": null,
+      "lab_name": "Synthetic Labs",
+      "results": [
+       {
+        "analyte": "Glucose",
+        "loinc": "2345-7",
+        "value": "92",
+        "unit": "mg/dL",
+        "reference_range": "70-99",
+        "abnormal_flag": null,
+        "unit_mismatch": false,
+        "citation": {
+         "source_type": "document",
+         "source_id": "1",
+         "page_or_section": "1",
+         "field_or_chunk_id": "/results/0/value",
+         "quote_or_value": "92",
+         "anchored": true,
+         "bbox": {
+          "page": 1,
+          "x0": 10,
+          "y0": 10,
+          "x1": 50,
+          "y1": 20,
+          "origin": "top-left",
+          "units": "pt",
+          "page_w": 612,
+          "page_h": 792
+         }
+        }
+       }
+      ],
+      "unextracted": []
+     },
+     "confidence": 1.0,
+     "retries": -1
+    }
+   ],
+   "chunks": [],
+   "handoffs": [],
+   "usage": [
+    {
+     "model": "gpt-4o-mini",
+     "kind": "chat",
+     "input": 10,
+     "output": 5
+    }
+   ]
+  },
+  {
+   "correlation_id": "c0ffee00-brief-0001",
+   "extractions": [],
+   "chunks": [],
+   "handoffs": [
+    {
+     "from": "supervisor",
+     "to": "evidence_retriever",
+     "reason": "chart_triggers",
+     "state_keys_changed": [],
+     "ms": 0
+    },
+    {
+     "from": "evidence_retriever",
+     "to": "supervisor",
+     "reason": "worker_finished",
+     "state_keys_changed": [
+      "evidence",
+      "usage"
+     ],
+     "ms": 40
+    },
+    {
+     "from": "supervisor",
+     "to": "done",
+     "reason": "worker_finished",
+     "state_keys_changed": [],
+     "ms": 0
+    }
+   ],
+   "usage": [
+    {
+     "model": "gpt-4o-mini",
+     "kind": "chat",
+     "input": 10,
+     "output": 5
+    }
+   ],
+   "evidence": [
+    {
+     "trigger_id": "lipids",
+     "chunks": [
+      {
+       "chunk_id": "a1b2c3d4e5f6",
+       "source_id": "acc-aha-2018-cholesterol",
+       "section": "2018 AHA/ACC cholesterol > Statin therapy",
+       "quote": "In adults 40 to 75 years of age with LDL-C 70 to 189 mg/dL, moderate-intensity statin therapy is recommended when the 10-year ASCVD risk is 7.5 percent or higher.",
+       "score": 0.83
+      },
+      {
+       "chunk_id": "a1b2c3d4e5f6",
+       "source_id": "acc-aha-2018-cholesterol",
+       "section": "2018 AHA/ACC cholesterol > Statin therapy",
+       "quote": "In adults 40 to 75 years of age with LDL-C 70 to 189 mg/dL, moderate-intensity statin therapy is recommended when the 10-year ASCVD risk is 7.5 percent or higher.",
+       "score": 0.83
+      },
+      {
+       "chunk_id": "a1b2c3d4e5f6",
+       "source_id": "acc-aha-2018-cholesterol",
+       "section": "2018 AHA/ACC cholesterol > Statin therapy",
+       "quote": "In adults 40 to 75 years of age with LDL-C 70 to 189 mg/dL, moderate-intensity statin therapy is recommended when the 10-year ASCVD risk is 7.5 percent or higher.",
+       "score": 0.83
+      }
+     ],
+     "applicable": null,
+     "reason": null
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,90 @@
+{
+  "label": "20260923T1522Z-10vu-mixed",
+  "base_url": "https://146-190-139-37.sslip.io",
+  "scenario": "mixed",
+  "vus": 10,
+  "duration": "2m0s",
+  "finished_at": "2026-09-23T15:27:26.451Z",
+  "requests_total": 257,
+  "throughput_rps": 1.95,
+  "http_failed_pct": 0,
+  "copilot_request_error_pct": 0,
+  "summary_unavailable_pct": 0,
+  "verification_fail_pct": 0,
+  "brief_cache_hit_pct": 99.06,
+  "briefs": 106,
+  "asks": 25,
+  "guideline_hit_pct": 0,
+  "extractions": 0,
+  "extract_ok_pct": null,
+  "extract_verified_pct": null,
+  "extract_confidence_p50": null,
+  "model_calls": 26,
+  "sentences_kept": 357,
+  "sentences_stripped": 0,
+  "latency_ms": {
+    "all_http": {
+      "count": 257,
+      "p50": 2392,
+      "p95": 10574,
+      "p99": 11434,
+      "max": 17884
+    },
+    "login": {
+      "count": 10,
+      "p50": 3461,
+      "p95": 3813,
+      "p99": 3835,
+      "max": 3840
+    },
+    "chart_open": {
+      "count": 106,
+      "p50": 8512,
+      "p95": 11060,
+      "p99": 11542,
+      "max": 12684
+    },
+    "brief": {
+      "count": 106,
+      "p50": 676,
+      "p95": 955,
+      "p99": 1066,
+      "max": 4547
+    },
+    "brief_cache_hit": {
+      "count": 105,
+      "p50": 676,
+      "p95": 946,
+      "p99": 1038,
+      "max": 1067
+    },
+    "brief_cold": {
+      "count": 1,
+      "p50": 4547,
+      "p95": 4547,
+      "p99": 4547,
+      "max": 4547
+    },
+    "ask": {
+      "count": 25,
+      "p50": 3523,
+      "p95": 10288,
+      "p99": 16129,
+      "max": 17884
+    },
+    "upload": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "extract": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    }
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/citation.schema.json",
+  "title": "Citation",
+  "description": "Machine-readable provenance for one clinical claim or extracted field. Every clinical claim the agent shows carries one. source_type=document citations are anchored (anchored=true, bbox present) only when deterministic code found the value on the page at row level; anchored=false means the model proposed a value the anchor step could not place, and the panel renders it as unverified. chart and guideline citations are always anchored=true with no bbox (the quote is the anchor).",
+  "type": "object",
+  "properties": {
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "chart",
+        "document",
+        "guideline"
+      ],
+      "description": "chart: an OpenEMR row (Week 1 fact). document: an uploaded lab PDF or intake form. guideline: a chunk of the guideline corpus."
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "chart: <service>#<record_id>. document: the OpenEMR documents.id. guideline: the manifest source id."
+    },
+    "page_or_section": {
+      "type": "string",
+      "description": "document: page number as a string. guideline: heading path of the chunk. chart: the field name."
+    },
+    "field_or_chunk_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "document: JSON pointer of the extracted field (e.g. /results/3/value). guideline: chunk id sha256(source_id|section|ordinal)[:12]. chart: the fact id."
+    },
+    "quote_or_value": {
+      "type": "string",
+      "description": "The verbatim text this citation points at."
+    },
+    "bbox": {
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Where on the source page a value was anchored. Coordinates are PDF points with a top-left origin, regardless of whether the page had a text layer (PyMuPDF words) or was OCRed (tesseract word boxes converted from pixels using the rasterization scale).",
+          "properties": {
+            "page": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "1-based page number."
+            },
+            "x0": {
+              "type": "number"
+            },
+            "y0": {
+              "type": "number"
+            },
+            "x1": {
+              "type": "number"
+            },
+            "y1": {
+              "type": "number"
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "top-left"
+              ]
+            },
+            "units": {
+              "type": "string",
+              "enum": [
+                "pt"
+              ]
+            },
+            "page_w": {
+              "type": "number",
+              "description": "Page width in points, so a viewer can scale the box to any render size."
+            },
+            "page_h": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "page",
+            "x0",
+            "y0",
+            "x1",
+            "y1",
+            "origin",
+            "units",
+            "page_w",
+            "page_h"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Where on the source page a value was anchored. Coordinates are PDF points with a top-left origin, regardless of whether the page had a text layer (PyMuPDF words) or was OCRed (tesseract word boxes converted from pixels using the rasterization scale)."
+    },
+    "row_bbox": {
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "The whole table row that supports a document value (analyte, value, unit together), for the viewer to outline.",
+          "properties": {
+            "page": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "1-based page number."
+            },
+            "x0": {
+              "type": "number"
+            },
+            "y0": {
+              "type": "number"
+            },
+            "x1": {
+              "type": "number"
+            },
+            "y1": {
+              "type": "number"
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "top-left"
+              ]
+            },
+            "units": {
+              "type": "string",
+              "enum": [
+                "pt"
+              ]
+            },
+            "page_w": {
+              "type": "number",
+              "description": "Page width in points, so a viewer can scale the box to any render size."
+            },
+            "page_h": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "page",
+            "x0",
+            "y0",
+            "x1",
+            "y1",
+            "origin",
+            "units",
+            "page_w",
+            "page_h"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The whole table row that supports a document value (analyte, value, unit together), for the viewer to outline."
+    },
+    "anchored": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "source_type",
+    "source_id",
+    "page_or_section",
+    "field_or_chunk_id",
+    "quote_or_value",
+    "anchored"
+  ],
+  "additionalProperties": false,
+  "anyOf": [
+    {
+      "description": "Not an anchored document citation: no bounding box is required.",
+      "not": {
+        "properties": {
+          "source_type": {
+            "const": "document"
+          },
+          "anchored": {
+            "const": true
+          }
+        },
+        "required": [
+          "source_type",
+          "anchored"
+        ]
+      }
+    },
+    {
+      "description": "An anchored document citation must carry the bounding box that proves it.",
+      "required": [
+        "bbox"
+      ],
+      "properties": {
+        "bbox": {
+          "type": "object"
+        }
+      }
+    }
+  ]
+}

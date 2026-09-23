@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/ready.response.schema.json",
+  "title": "ready.php response",
+  "description": "Readiness. Probes the database (SELECT 1), OpenAI (authenticated GET /v1/models) and Langfuse (GET /api/public/health), each bounded to 2 s, result cached 60 s. HTTP 503 with status=not_ready if database or openai fails; HTTP 200 with status=degraded if only langfuse fails; HTTP 200 status=ready otherwise. No authentication; reveals no key validity or quota state.",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "degraded",
+        "not_ready"
+      ]
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "Per-dependency result: 'ok' or a short failure reason.",
+      "properties": {
+        "contracts": {
+          "$ref": "#/$defs/probe",
+          "description": "Week 2: the module's own runtime pieces, the JSON Schema validator library and the contract files; required, because without them every sidecar reply and every model call fails."
+        },
+        "database": {
+          "$ref": "#/$defs/probe"
+        },
+        "openai": {
+          "$ref": "#/$defs/probe"
+        },
+        "langfuse": {
+          "$ref": "#/$defs/probe"
+        },
+        "sidecar": {
+          "$ref": "#/$defs/probe",
+          "description": "Week 2: GET /ready on the sidecar (its own local dependencies). Optional like langfuse: down means 'degraded' (documents cannot be extracted, questions are answered from facts only), never 'not_ready', because briefings do not need it."
+        }
+      },
+      "required": [
+        "contracts",
+        "database",
+        "openai",
+        "langfuse",
+        "sidecar"
+      ],
+      "additionalProperties": false
+    },
+    "degraded": {
+      "type": "array",
+      "description": "Optional dependencies that failed. Only langfuse is optional.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "langfuse",
+          "sidecar"
+        ]
+      }
+    },
+    "checked_at": {
+      "type": "string",
+      "description": "When the probes actually ran (ISO 8601 UTC)."
+    },
+    "age_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Seconds since checked_at; up to 60 when served from cache."
+    },
+    "from_cache": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "status",
+    "dependencies",
+    "degraded",
+    "checked_at",
+    "age_seconds",
+    "from_cache"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "probe": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "database query failed",
+        "database returned nothing",
+        "openai not configured",
+        "openai unreachable",
+        "openai unavailable",
+        "langfuse not configured",
+        "langfuse unreachable",
+        "langfuse unavailable",
+        "sidecar unreachable",
+        "sidecar not ready",
+        "sidecar unavailable",
+        "contract validator missing",
+        "contract files unreadable"
+      ]
+    }
+  }
+}

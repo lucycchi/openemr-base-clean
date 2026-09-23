@@ -1,0 +1,18 @@
+{
+  "id": "47-boundary-intake-blank-fields",
+  "guards": "boundary",
+  "failure_mode": "Missing data on an intake form: the model reports every field blank (null demographics, no chief concern, empty medication, allergy and family-history lists). The extraction must still be a valid intake-form document with empty lists and nulls, never an invented item and never a failure, so a mostly-empty form does not block the upload.",
+  "mode": "anchor",
+  "doc_type": "intake_form",
+  "fixture": "intake-full.pdf",
+  "model_output": "intake-blank.model.json",
+  "truth": "intake-blank.truth.json",
+  "rubrics": {
+    "schema_valid": true,
+    "factually_consistent": true,
+    "anchor_correct": true
+  },
+  "expect": {
+    "status": "extracted"
+  }
+}

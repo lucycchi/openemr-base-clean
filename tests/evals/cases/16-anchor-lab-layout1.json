@@ -1,0 +1,20 @@
+{
+  "id": "16-anchor-lab-layout1",
+  "guards": "invariant",
+  "failure_mode": "Cross-page attribution: a five-page report where every page has the same table layout. A value anchored to a row on the wrong page (same analyte name on another page, same number in a 'Previous' column) fails anchor_correct even though the number exists somewhere in the document; the page in the citation must be the page the truth file names.",
+  "mode": "anchor",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-layout1.pdf",
+  "model_output": "lab-layout1.model.json",
+  "truth": "lab-layout1.truth.json",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "anchor_correct": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "status": "extracted",
+    "unextracted": 0
+  }
+}

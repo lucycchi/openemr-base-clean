@@ -1,0 +1,48 @@
+meta {
+  name: 04 Login
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/interface/main/main_screen.php?auth=login&site=default
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  authUser: {{user}}
+  clearPass: {{password}}
+  new_login_session_management: 1
+  languageChoice: 1
+}
+
+settings {
+  followRedirects: false
+}
+
+script:post-response {
+  // Capture OpenEMR cookies explicitly so the collection also works in the
+  // Bruno CLI, which does not persist cookies between requests.
+  const raw = (res.headers && res.headers["set-cookie"]) || res.getHeader("set-cookie");
+  const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+  const pairs = list.map(c => String(c).split(";")[0]).filter(c => !/=deleted$/.test(c));
+  const jar = {};
+  String(bru.getVar("cookie") || "").split("; ").filter(Boolean).forEach(p => { jar[p.split("=")[0]] = p; });
+  pairs.forEach(p => { jar[p.split("=")[0]] = p; });
+  bru.setVar("cookie", Object.values(jar).join("; "));
+}
+
+assert {
+  res.status: eq 302
+}
+
+docs {
+  OpenEMR login. A 302 means the session was authenticated; the new session
+  cookie is captured into {{cookie}}. Change user/password in the environment
+  to test other roles (physician/physician allowed; receptionist/receptionist
+  refused at request 06).
+}

@@ -1,0 +1,266 @@
+{
+  "accept": [
+    {
+      "doc_type": "lab_pdf",
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "2026-09-15",
+      "collection_date_citation": {
+        "source_type": "document",
+        "source_id": "1",
+        "page_or_section": "1",
+        "field_or_chunk_id": "/results/0/value",
+        "quote_or_value": "92",
+        "anchored": true,
+        "bbox": {
+          "page": 1,
+          "x0": 10,
+          "y0": 10,
+          "x1": 50,
+          "y1": 20,
+          "origin": "top-left",
+          "units": "pt",
+          "page_w": 612,
+          "page_h": 792
+        }
+      },
+      "reported_date": null,
+      "reported_date_citation": null,
+      "lab_name": "Synthetic Labs",
+      "results": [
+        {
+          "analyte": "Glucose",
+          "loinc": "2345-7",
+          "value": "92",
+          "unit": "mg/dL",
+          "reference_range": "70-99",
+          "abnormal_flag": null,
+          "unit_mismatch": false,
+          "citation": {
+            "source_type": "document",
+            "source_id": "1",
+            "page_or_section": "1",
+            "field_or_chunk_id": "/results/0/value",
+            "quote_or_value": "92",
+            "anchored": true,
+            "bbox": {
+              "page": 1,
+              "x0": 10,
+              "y0": 10,
+              "x1": 50,
+              "y1": 20,
+              "origin": "top-left",
+              "units": "pt",
+              "page_w": 612,
+              "page_h": 792
+            }
+          }
+        }
+      ],
+      "unextracted": []
+    }
+  ],
+  "reject": [
+    {
+      "doc_type": "lab_pdf",
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "2026-09-15",
+      "collection_date_citation": {
+        "source_type": "document",
+        "source_id": "1",
+        "page_or_section": "1",
+        "field_or_chunk_id": "/results/0/value",
+        "quote_or_value": "92",
+        "anchored": true,
+        "bbox": {
+          "page": 1,
+          "x0": 10,
+          "y0": 10,
+          "x1": 50,
+          "y1": 20,
+          "origin": "top-left",
+          "units": "pt",
+          "page_w": 612,
+          "page_h": 792
+        }
+      },
+      "reported_date": null,
+      "reported_date_citation": null,
+      "lab_name": "Synthetic Labs",
+      "results": [],
+      "unextracted": []
+    },
+    {
+      "doc_type": "lab_pdf",
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "2026-09-15",
+      "collection_date_citation": {
+        "source_type": "document",
+        "source_id": "1",
+        "page_or_section": "1",
+        "field_or_chunk_id": "/results/0/value",
+        "quote_or_value": "92",
+        "anchored": true,
+        "bbox": {
+          "page": 1,
+          "x0": 10,
+          "y0": 10,
+          "x1": 50,
+          "y1": 20,
+          "origin": "top-left",
+          "units": "pt",
+          "page_w": 612,
+          "page_h": 792
+        }
+      },
+      "reported_date": null,
+      "reported_date_citation": null,
+      "lab_name": "Synthetic Labs",
+      "results": [
+        {
+          "analyte": "Glucose",
+          "loinc": "2345-7",
+          "value": "92",
+          "unit": "mg/dL",
+          "reference_range": "70-99",
+          "abnormal_flag": "X",
+          "unit_mismatch": false,
+          "citation": {
+            "source_type": "document",
+            "source_id": "1",
+            "page_or_section": "1",
+            "field_or_chunk_id": "/results/0/value",
+            "quote_or_value": "92",
+            "anchored": true,
+            "bbox": {
+              "page": 1,
+              "x0": 10,
+              "y0": 10,
+              "x1": 50,
+              "y1": 20,
+              "origin": "top-left",
+              "units": "pt",
+              "page_w": 612,
+              "page_h": 792
+            }
+          }
+        }
+      ],
+      "unextracted": []
+    },
+    {
+      "doc_type": "intake_form",
+      "patient_name_on_report": "Test Zeta",
+      "collection_date": "2026-09-15",
+      "collection_date_citation": {
+        "source_type": "document",
+        "source_id": "1",
+        "page_or_section": "1",
+        "field_or_chunk_id": "/results/0/value",
+        "quote_or_value": "92",
+        "anchored": true,
+        "bbox": {
+          "page": 1,
+          "x0": 10,
+          "y0": 10,
+          "x1": 50,
+          "y1": 20,
+          "origin": "top-left",
+          "units": "pt",
+          "page_w": 612,
+          "page_h": 792
+        }
+      },
+      "reported_date": null,
+      "reported_date_citation": null,
+      "lab_name": "Synthetic Labs",
+      "results": [
+        {
+          "analyte": "Glucose",
+          "loinc": "2345-7",
+          "value": "92",
+          "unit": "mg/dL",
+          "reference_range": "70-99",
+          "abnormal_flag": null,
+          "unit_mismatch": false,
+          "citation": {
+            "source_type": "document",
+            "source_id": "1",
+            "page_or_section": "1",
+            "field_or_chunk_id": "/results/0/value",
+            "quote_or_value": "92",
+            "anchored": true,
+            "bbox": {
+              "page": 1,
+              "x0": 10,
+              "y0": 10,
+              "x1": 50,
+              "y1": 20,
+              "origin": "top-left",
+              "units": "pt",
+              "page_w": 612,
+              "page_h": 792
+            }
+          }
+        }
+      ],
+      "unextracted": []
+    },
+    {
+      "doc_type": "lab_pdf",
+      "patient_name_on_report": "Test Zeta",
+      "collection_date_citation": {
+        "source_type": "document",
+        "source_id": "1",
+        "page_or_section": "1",
+        "field_or_chunk_id": "/results/0/value",
+        "quote_or_value": "92",
+        "anchored": true,
+        "bbox": {
+          "page": 1,
+          "x0": 10,
+          "y0": 10,
+          "x1": 50,
+          "y1": 20,
+          "origin": "top-left",
+          "units": "pt",
+          "page_w": 612,
+          "page_h": 792
+        }
+      },
+      "reported_date": null,
+      "reported_date_citation": null,
+      "lab_name": "Synthetic Labs",
+      "results": [
+        {
+          "analyte": "Glucose",
+          "loinc": "2345-7",
+          "value": "92",
+          "unit": "mg/dL",
+          "reference_range": "70-99",
+          "abnormal_flag": null,
+          "unit_mismatch": false,
+          "citation": {
+            "source_type": "document",
+            "source_id": "1",
+            "page_or_section": "1",
+            "field_or_chunk_id": "/results/0/value",
+            "quote_or_value": "92",
+            "anchored": true,
+            "bbox": {
+              "page": 1,
+              "x0": 10,
+              "y0": 10,
+              "x1": 50,
+              "y1": 20,
+              "origin": "top-left",
+              "units": "pt",
+              "page_w": 612,
+              "page_h": 792
+            }
+          }
+        }
+      ],
+      "unextracted": []
+    }
+  ]
+}

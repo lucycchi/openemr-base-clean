@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/chat.answer.response.schema.json",
+  "title": "chat.php answer response",
+  "description": "HTTP 200 body for action=ask when the facts hash still matches. Every kept sentence passed the same Verifier as a briefing; answers are never cached. Built by PanelPayload::answer().",
+  "type": "object",
+  "properties": {
+    "correlation_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "prior_visit": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "facts_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "$ref": "fact.schema.json"
+      }
+    },
+    "chart_changed": {
+      "const": false
+    },
+    "answer": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "cited: sentences answer from the facts. not_in_facts: declined (out of window, other patient, identifier request, or refused by QuestionScope before the model ran). error: the model call failed; see status.",
+          "enum": [
+            "cited",
+            "not_in_facts",
+            "error"
+          ]
+        },
+        "sentences": {
+          "type": "array",
+          "items": {
+            "$ref": "sentence.schema.json"
+          }
+        },
+        "stripped": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Sentences withheld by the Verifier (e.g. a computed number)."
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "AI summary unavailable: timed out",
+            "AI summary unavailable: provider busy, try again shortly",
+            "AI summary unavailable: provider error",
+            "AI summary unavailable: model declined",
+            "AI summary unavailable: malformed response"
+          ]
+        },
+        "tokens": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "completion": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "prompt",
+            "completion"
+          ],
+          "additionalProperties": false
+        },
+        "guidelines": {
+          "type": "array",
+          "description": "Week 2: guideline passages cited by the kept sentences (by chunk id, alongside fact ids). Rendered by the panel in a separate 'From guidelines' block, never mixed with the patient's facts. Empty when the question needed no guideline or the sidecar was unavailable.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "chunk_id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{12}$"
+              },
+              "source_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "section": {
+                "type": "string"
+              },
+              "quote": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "score": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "chunk_id",
+              "source_id",
+              "title",
+              "section",
+              "quote",
+              "url",
+              "score"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "type",
+        "sentences",
+        "stripped",
+        "status",
+        "tokens",
+        "guidelines"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "correlation_id",
+    "prior_visit",
+    "facts_hash",
+    "facts",
+    "chart_changed",
+    "answer"
+  ],
+  "additionalProperties": false
+}

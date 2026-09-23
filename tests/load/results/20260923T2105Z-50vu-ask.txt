@@ -1,0 +1,17 @@
+# 20260923T2105Z-50vu-ask  2026-09-23T21:24:34.352Z  http://localhost:8300
+scenario=ask vus=50 duration=2m0s
+requests=1144 throughput=8.54 req/s  http_failed=0%  copilot_errors=0%
+briefs=348 (cache hit 100%)  asks=348 (guideline hit 13.22%)  model_calls=348  summary_unavailable=0%  verification_fail=0%
+extractions=0  extracted=null%  fully_verified=null%  confidence_p50=null
+sentences kept=1521 stripped=43
+
+endpoint          n      p50     p95     p99     max  (ms)
+all_http         1144    6155   10014   11992   13837
+login              50    6690   12722   13111   13131
+chart_open        348    8015   11424   13408   13837
+brief             348    1682    2766    3055    3345
+brief_cache_hit   348    1682    2766    3055    3345
+brief_cold       null    null    null    null    null
+ask               348    6606    8380    9010   10748
+upload              0    null    null    null    null
+extract             0    null    null    null    null

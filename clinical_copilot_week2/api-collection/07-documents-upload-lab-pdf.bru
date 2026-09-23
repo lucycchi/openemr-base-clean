@@ -1,0 +1,48 @@
+meta {
+  name: 07 Documents: upload lab PDF
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/documents.php
+  body: multipartForm
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:multipart-form {
+  csrf_token_form: {{csrf_token}}
+  action: upload
+  doc_type: lab_pdf
+  file: @file(fixtures/lab-layout1.pdf)
+}
+
+assert {
+  res.body.document_id: isNumber
+  res.body.doc_type: eq lab_pdf
+  res.body.correlation_id: isString
+}
+
+tests {
+  test("201 when newly stored, 200 with existing=true on a re-run", function () {
+    expect([200, 201]).to.include(res.getStatus());
+    expect(res.getBody().existing).to.equal(res.getStatus() === 200);
+  });
+}
+
+script:post-response {
+  bru.setVar('document_id', res.body.document_id);
+}
+
+docs {
+  Stores the synthetic five-page lab report (fixtures/lab-layout1.pdf, a
+  generated file for a fictitious patient "Test Zeta") as an OpenEMR document
+  in the "Lab Report" category. The upload is deduplicated per patient on the
+  file's sha3-512: the first run answers 201, every later run 200 with
+  existing=true and the same document_id, so the collection is repeatable.
+  Only PDFs up to 20 MB are accepted (documents.error.response with a reason
+  otherwise). Contract: documents.upload.response.
+}

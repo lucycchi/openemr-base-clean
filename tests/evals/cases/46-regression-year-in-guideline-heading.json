@@ -1,0 +1,36 @@
+{
+  "id": "46-regression-year-in-guideline-heading",
+  "guards": "regression",
+  "failure_mode": "Regression found 2026-09-22: a sentence naming the guideline ('the 2018 AHA/ACC guideline') was stripped because 2018 appears in the passage's heading, not its body; the verifier now treats heading plus body as the cited text.",
+  "mode": "answer",
+  "facts": [],
+  "chunks": [
+    {
+      "chunk_id": "a1b2c3d4e5f6",
+      "source_id": "acc-aha-2018-cholesterol",
+      "title": "2018 AHA/ACC Guideline on the Management of Blood Cholesterol (summary)",
+      "section": "2018 AHA/ACC cholesterol guideline (summary) > Who benefits from statin therapy",
+      "quote": "For an LDL of 190 mg/dL or higher, high-intensity statin therapy is recommended without a risk calculation."
+    }
+  ],
+  "narration": {
+    "answer_type": "cited",
+    "sentences": [
+      {
+        "text": "The 2018 AHA/ACC cholesterol guideline recommends high-intensity statin therapy for an LDL of 190 mg/dL or higher.",
+        "fact_ids": [
+          "a1b2c3d4e5f6"
+        ]
+      }
+    ]
+  },
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "kept": 1,
+    "stripped": 0
+  }
+}

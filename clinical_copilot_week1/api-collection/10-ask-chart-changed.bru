@@ -1,0 +1,33 @@
+meta {
+  name: 10 Ask with stale facts_hash
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/chat.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: ask
+  facts_hash: 0000000000000000000000000000000000000000000000000000000000000000
+  question: Anything new?
+  transcript: []
+}
+
+assert {
+  res.status: eq 200
+  res.body.chart_changed: eq true
+}
+
+docs {
+  A facts_hash that does not match the current chart means the chart changed
+  since the briefing: the server returns fresh facts and chart_changed: true
+  instead of answering, and the panel restarts the thread.
+}

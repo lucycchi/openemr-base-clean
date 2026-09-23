@@ -1,0 +1,40 @@
+{
+  "id": "24-route-stored-document",
+  "guards": "boundary",
+  "failure_mode": "A stored document goes to the extractor exactly once, then done.",
+  "mode": "route",
+  "state": {
+    "mode": "extract",
+    "question": null,
+    "documents": [
+      {
+        "document_id": 1,
+        "doc_type": "lab_pdf",
+        "status": "stored"
+      }
+    ]
+  },
+  "rubrics": {
+    "routing_correct": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "handoffs": [
+      [
+        "supervisor",
+        "intake_extractor",
+        "stored_document"
+      ],
+      [
+        "intake_extractor",
+        "supervisor",
+        "worker_finished"
+      ],
+      [
+        "supervisor",
+        "done",
+        "no_question"
+      ]
+    ]
+  }
+}

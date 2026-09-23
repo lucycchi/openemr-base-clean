@@ -1,0 +1,16 @@
+{
+  "id": "32-retrieve-off-corpus-refusal",
+  "guards": "boundary",
+  "failure_mode": "A question the corpus cannot answer must return no chunks at all (the answer path then refuses with not_in_corpus); returning the least-bad chunk would let the model cite an irrelevant guideline.",
+  "mode": "retrieve",
+  "query_fixture": "off-corpus-car",
+  "rubrics": {
+    "schema_valid": true,
+    "safe_refusal": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "chunks": 0,
+    "answer_type": "not_in_corpus"
+  }
+}

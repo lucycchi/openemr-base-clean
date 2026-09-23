@@ -1,0 +1,21 @@
+{
+ "id": "63-critic-live-statin-age-82-not-applicable",
+ "guards": "invariant",
+ "live": true,
+ "failure_mode": "Live twin of case 60: the real critic model must judge the 40-75 statin passage not applicable to an 82-year-old. A drift here means the deployed critic no longer catches age-restricted guidance.",
+ "mode": "critic",
+ "passage": "In adults 40 to 75 years of age with LDL-C 70 to 189 mg/dL and a 10-year ASCVD risk of 7.5 percent or higher, moderate-intensity statin therapy is recommended after a clinician-patient risk discussion.",
+ "fact_lines": [
+  "LDL Cholesterol 165 mg/dL on 2026-09-10 (above the standard range 0-129 mg/dL)"
+ ],
+ "age": 82,
+ "sex": "F",
+ "recorded": null,
+ "rubrics": {
+  "applicability_correct": true,
+  "schema_valid": true
+ },
+ "expect": {
+  "applicable": false
+ }
+}

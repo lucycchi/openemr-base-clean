@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/sentence.schema.json",
+  "title": "Cited sentence",
+  "description": "One sentence of narration with the fact ids it is grounded in. The Verifier strips any sentence with no ids, an unknown id, or a number/date not present verbatim in a cited fact.",
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string",
+      "description": "The sentence as the model wrote it (or, after verification, as kept). Must not contain fact ids inline."
+    },
+    "fact_ids": {
+      "type": "array",
+      "description": "Ids of the facts this sentence is about. At least one is required for the sentence to be kept.",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["text", "fact_ids"],
+  "additionalProperties": false
+}

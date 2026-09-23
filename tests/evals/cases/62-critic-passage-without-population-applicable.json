@@ -1,0 +1,23 @@
+{
+ "id": "62-critic-passage-without-population-applicable",
+ "guards": "boundary",
+ "failure_mode": "A passage that states no population restriction must be judged applicable with a reason saying so; the critic must never invent a restriction to reject a card.",
+ "mode": "critic",
+ "passage": "Serum creatinine and estimated GFR should be measured, and albuminuria assessed, to stage chronic kidney disease.",
+ "fact_lines": [
+  "eGFR 52 mL/min/1.73m2 on 2026-09-10 (below the standard range 60 or above mL/min/1.73m2)"
+ ],
+ "age": null,
+ "sex": null,
+ "recorded": {
+  "applicable": true,
+  "reason": "The passage states no population restriction."
+ },
+ "rubrics": {
+  "applicability_correct": true,
+  "schema_valid": true
+ },
+ "expect": {
+  "applicable": true
+ }
+}

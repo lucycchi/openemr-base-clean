@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "Clinical Co-Pilot, Week 2",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

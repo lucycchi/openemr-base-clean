@@ -1,0 +1,40 @@
+{
+  "id": "43-absent-lab-values-unverified",
+  "guards": "invariant",
+  "failure_mode": "Values that are not printed on the report (a plausible analyte, a plausible number) must never anchor: the anchor step proves a value against the page, so an invented result has to come back unverified.",
+  "mode": "absent",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-layout1.pdf",
+  "proposal": {
+    "patient_name_on_report": "Test Zeta",
+    "collection_date": "2026-09-15",
+    "reported_date": null,
+    "lab_name": null,
+    "results": [
+      {
+        "analyte": "Ferritin",
+        "value": "12",
+        "unit": "ng/mL",
+        "reference_range": "30-300",
+        "abnormal_flag": "L",
+        "page": 1
+      },
+      {
+        "analyte": "Glucose",
+        "value": "999",
+        "unit": "mg/dL",
+        "reference_range": "70-99",
+        "abnormal_flag": "H",
+        "page": 1
+      }
+    ]
+  },
+  "rubrics": {
+    "anchor_correct": true,
+    "citation_present": true
+  },
+  "expect": {
+    "status": "extracted",
+    "anchored_absent": 0
+  }
+}

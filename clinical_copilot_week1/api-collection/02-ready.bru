@@ -1,0 +1,21 @@
+meta {
+  name: 02 Ready
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php
+}
+
+assert {
+  res.status: eq 200
+  res.body.dependencies.database: eq ok
+  res.body.dependencies.openai: eq ok
+}
+
+docs {
+  Probes the database, OpenAI (GET /models) and Langfuse, each bounded to 2s.
+  503 if database or OpenAI is down; 200 with status "degraded" if only
+  Langfuse is down or unconfigured. Result cached 60s (age_seconds, from_cache).
+}

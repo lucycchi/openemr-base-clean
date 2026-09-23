@@ -1,0 +1,26 @@
+{
+  "accept": [
+    {
+      "applicable": true,
+      "reason": "The passage states no population restriction."
+    },
+    {
+      "applicable": false,
+      "reason": "The passage applies to adults 40 to 75 years of age; the patient is 82."
+    }
+  ],
+  "reject": [
+    {
+      "applicable": "yes",
+      "reason": "x"
+    },
+    {
+      "applicable": true
+    },
+    {
+      "applicable": true,
+      "reason": "ok",
+      "extra": 1
+    }
+  ]
+}

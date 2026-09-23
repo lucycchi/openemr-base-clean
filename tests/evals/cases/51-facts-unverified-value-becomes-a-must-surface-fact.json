@@ -1,0 +1,49 @@
+{
+  "id": "51-facts-unverified-value-becomes-a-must-surface-fact",
+  "guards": "invariant",
+  "failure_mode": "A value the anchor step could not prove (here Glucose reported as 999, not on the page) must not vanish and must not become a lab row: it must surface as an extraction_unverified fact, must-surface, citing the document. The same category also carries every printed row the omission detector found unextracted (a two-result proposal against a twenty-row report leaves eighteen), so a thin extraction is visible as thin rather than silently short.",
+  "mode": "facts",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-layout1.pdf",
+  "proposal": {
+    "patient_name_on_report": "Test Zeta",
+    "collection_date": "2026-09-15",
+    "reported_date": null,
+    "lab_name": null,
+    "results": [
+      {
+        "analyte": "Glucose",
+        "value": "999",
+        "unit": "mg/dL",
+        "reference_range": "70-99",
+        "abnormal_flag": "H",
+        "page": 1
+      },
+      {
+        "analyte": "Hemoglobin",
+        "value": "10.6",
+        "unit": "g/dL",
+        "reference_range": "13.5-17.5",
+        "abnormal_flag": "L",
+        "page": 4
+      }
+    ]
+  },
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "anchor_correct": true
+  },
+  "expect": {
+    "status": "extracted",
+    "results_persisted": 1,
+    "unverified": 1,
+    "categories": {
+      "extraction_unverified": 1,
+      "lab_abnormal": 1
+    },
+    "cited": [
+      "lab_abnormal"
+    ]
+  }
+}

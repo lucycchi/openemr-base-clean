@@ -1,0 +1,250 @@
+{
+    "ran_at": "2026-09-23T20:57:30+00:00",
+    "cases": {
+        "01-uncited-sentence": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "02-unknown-fact-id": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "03-ungrounded-number": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "04-forced-omission": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "05-empty-fact-set": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "06-prompt-injection-in-fact": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "07-inline-citation-group": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "08-semantic-inversion-known-limitation": {
+            "schema_valid": "pass",
+            "citation_present": "pass"
+        },
+        "16-anchor-lab-layout1": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
+        },
+        "17-anchor-lab-layout1-scan": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
+        },
+        "18-anchor-hundred-in-three-columns": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
+        },
+        "21-anchor-intake-form": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
+        },
+        "23-route-no-documents-no-question": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "24-route-stored-document": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "25-route-question": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "26-route-extracted-document-not-re-extracted": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "27-route-unsupported-doc-type": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "28-route-document-and-question": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "29-retrieve-statin-ldl": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "30-retrieve-a1c-target": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "31-retrieve-anemia-workup": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "32-retrieve-off-corpus-refusal": {
+            "schema_valid": "pass",
+            "safe_refusal": "pass",
+            "factually_consistent": "pass"
+        },
+        "33-answer-guideline-and-fact-separated": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "34-answer-not-in-corpus-refusal": {
+            "schema_valid": "pass",
+            "safe_refusal": "pass",
+            "factually_consistent": "pass"
+        },
+        "35-answer-guideline-id-for-patient-claim": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "39-malformed-corrupt-pdf": {
+            "safe_refusal": "pass",
+            "schema_valid": "pass"
+        },
+        "40-malformed-encrypted-pdf": {
+            "safe_refusal": "pass",
+            "schema_valid": "pass"
+        },
+        "41-malformed-too-many-pages": {
+            "safe_refusal": "pass",
+            "schema_valid": "pass"
+        },
+        "42-malformed-blank-scan": {
+            "safe_refusal": "pass",
+            "schema_valid": "pass"
+        },
+        "43-absent-lab-values-unverified": {
+            "anchor_correct": "pass",
+            "citation_present": "pass"
+        },
+        "44-absent-intake-items-unverified": {
+            "anchor_correct": "pass",
+            "citation_present": "pass"
+        },
+        "45-regression-inline-guideline-citation": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "46-regression-year-in-guideline-heading": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "47-boundary-intake-blank-fields": {
+            "schema_valid": "pass",
+            "factually_consistent": "pass",
+            "anchor_correct": "pass"
+        },
+        "48-boundary-lab-result-without-unit": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
+        },
+        "49-boundary-lab-report-without-collection-date": {
+            "safe_refusal": "pass",
+            "schema_valid": "pass"
+        },
+        "50-facts-document-labs-surface-with-no-prior-visit": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass"
+        },
+        "51-facts-unverified-value-becomes-a-must-surface-fact": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass"
+        },
+        "52-facts-intake-items-become-cited-facts": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass"
+        },
+        "53-trigger-high-ldl-fires-lipids": {
+            "factually_consistent": "pass"
+        },
+        "54-trigger-normal-chart-fires-nothing": {
+            "factually_consistent": "pass"
+        },
+        "55-trigger-age-exclusion-suppresses-lipids": {
+            "factually_consistent": "pass"
+        },
+        "56-trigger-problem-list-fires-diabetes": {
+            "factually_consistent": "pass"
+        },
+        "57-brief-evidence-per-trigger": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "58-brief-route-chart-triggers-then-critic": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "59-brief-route-no-triggers": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "60-critic-statin-age-82-not-applicable": {
+            "applicability_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "61-critic-statin-age-55-applicable": {
+            "applicability_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "62-critic-passage-without-population-applicable": {
+            "applicability_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "65-trigger-pregnancy-suppresses-diabetes-and-anemia": {
+            "factually_consistent": "pass"
+        },
+        "66-briefing-guideline-sentence-cited": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "67-briefing-injection-in-plan-note": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        }
+    },
+    "rates": {
+        "schema_valid": 100,
+        "citation_present": 100,
+        "factually_consistent": 100,
+        "anchor_correct": 100,
+        "routing_correct": 100,
+        "safe_refusal": 100,
+        "applicability_correct": 100
+    }
+}

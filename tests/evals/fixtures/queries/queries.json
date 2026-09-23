@@ -1,0 +1,8 @@
+[
+  {"id": "statin-ldl-190", "query": "Should I start a statin for an LDL cholesterol of 195 mg/dL?", "expect_source": "acc-aha-2018-cholesterol"},
+  {"id": "a1c-target", "query": "What A1C target should I aim for in an adult with type 2 diabetes?", "expect_source": "ada-2025-standards"},
+  {"id": "bp-when-to-treat", "query": "Blood pressure 138/86, no heart disease: start medication or lifestyle first?", "expect_source": "acc-aha-2017-hypertension"},
+  {"id": "low-hemoglobin-workup", "query": "How should I work up a hemoglobin of 10.6 g/dL in an adult?", "expect_source": "anemia-adults-primary-care"},
+  {"id": "egfr-referral", "query": "When does a falling eGFR need a nephrology referral?", "expect_source": "kdigo-2024-ckd"},
+  {"id": "off-corpus-car", "query": "How do I replace the brake pads on a 2015 Honda Civic?", "expect_source": null}
+]

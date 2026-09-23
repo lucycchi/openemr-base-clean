@@ -1,0 +1,17 @@
+{
+  "id": "11-live-followup-computed-number",
+  "guards": "invariant",
+  "live": true,
+  "failure_mode": "A question that invites arithmetic ('by how much'). Any computed number the model states is not in a fact and must be stripped, or the model must decline with not_in_facts.",
+  "rubrics": {
+    "citation_present": true,
+    "factually_consistent": true,
+    "no_phi_in_logs": true
+  },
+  "mode": "followup",
+  "patients": "abnormal:3",
+  "question": "By exactly how much does the abnormal lab exceed the reference range?",
+  "expect": {
+    "no_ungrounded_kept": true
+  }
+}

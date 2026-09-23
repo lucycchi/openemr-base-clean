@@ -1,0 +1,32 @@
+meta {
+  name: 16 Restricted user: brief is refused (403)
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/chat.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: brief
+}
+
+assert {
+  res.status: eq 403
+  res.body.error: eq You are not authorized to view this chart
+  res.body.correlation_id: isString
+}
+
+docs {
+  The tool layer calls aclCheckCore('patients','med') and
+  ('encounters','notes') before any chart row is read. Refused requests are
+  logged with a correlation id and appear in Langfuse as denied, which is
+  metric 4 in KEY_METRICS.md.
+}

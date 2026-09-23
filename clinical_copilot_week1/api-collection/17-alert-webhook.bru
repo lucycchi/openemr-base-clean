@@ -1,0 +1,40 @@
+meta {
+  name: 17 Alert webhook receives a firing
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/alerts.php
+  body: json
+}
+
+headers {
+  X-Alert-Token: {{alertToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "id": "evt_collection_test",
+    "type": "alert.triggered",
+    "alert": { "name": "copilot p95 latency", "severity": "critical" },
+    "metric": { "name": "duration_ms", "value": 18211, "threshold": 15000 }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.received: eq true
+  res.body.alert: eq copilot p95 latency
+  res.body.severity: eq critical
+  res.body.correlation_id: isString
+}
+
+docs {
+  Simulates Langfuse firing an alert at the receiver documented in
+  clinical_copilot/ALERTS.md. Needs alertToken = ALERT_WEBHOOK_SECRET of the
+  target. Result: a WARNING "copilot alert received" in the app log and a
+  clinical-copilot-alert row in the OpenEMR audit log, both carrying the
+  returned correlation_id.
+}

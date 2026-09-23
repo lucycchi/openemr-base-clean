@@ -1,0 +1,39 @@
+{
+  "id": "02-unknown-fact-id",
+  "guards": "invariant",
+  "failure_mode": "The model cites an id that is not in the fact set (fabricated or stale reference). The sentence must be stripped.",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "factually_consistent": true
+  },
+  "mode": "briefing",
+  "facts": [
+    {
+      "id": "8be04b5a",
+      "service": "PrescriptionService",
+      "record_id": 17,
+      "field": "drug",
+      "value": "Lisinopril 10 MG Oral Tablet",
+      "category": "medication_new"
+    }
+  ],
+  "narration": {
+    "sentences": [
+      {
+        "text": "A new antibiotic was started.",
+        "fact_ids": [
+          "ffffffff"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "kept": 0,
+    "stripped": 1,
+    "omitted_ids": [
+      "8be04b5a"
+    ],
+    "total_failure": true
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "23-route-no-documents-no-question",
+  "guards": "boundary",
+  "failure_mode": "Nothing to do must be one hop to done, no worker and no model call.",
+  "mode": "route",
+  "state": {
+    "mode": "extract",
+    "question": null,
+    "documents": []
+  },
+  "rubrics": {
+    "routing_correct": true,
+    "schema_valid": true
+  },
+  "expect": {
+    "handoffs": [
+      [
+        "supervisor",
+        "done",
+        "no_documents"
+      ]
+    ]
+  }
+}

@@ -24,6 +24,22 @@ use Psr\Http\Message\ResponseInterface;
 
 class PrescriptionRestController
 {
+    /**
+     * Query-parameter names accepted by GET /api/prescription.  Search keys become column names in the service
+     * layer, so anything not listed here is dropped before it reaches the query (see PatientRestController).
+     *
+     * @var list<string>
+     */
+    private const SUPPORTED_SEARCH_FIELDS = [
+        "uuid",
+        "drug",
+        "active",
+        "intent",
+        "status",
+        "date_added",
+        "date_modified",
+    ];
+
     private readonly PrescriptionService $prescriptionService;
 
     public function __construct()
@@ -151,8 +167,13 @@ class PrescriptionRestController
     )]
     public function getAll(HttpRestRequest $request): ResponseInterface
     {
-        $search = $request->getQueryParams();
-        unset($search['_REWRITE_COMMAND']);
+        $queryParams = $request->getQueryParams();
+        $search = [];
+        foreach (self::SUPPORTED_SEARCH_FIELDS as $key) {
+            if (isset($queryParams[$key]) && is_string($queryParams[$key])) {
+                $search[$key] = $queryParams[$key];
+            }
+        }
         $processingResult = $this->prescriptionService->getAll($search);
         return RestControllerHelper::createProcessingResultResponse($request, $processingResult, 200, true);
     }

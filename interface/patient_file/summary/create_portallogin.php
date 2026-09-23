@@ -27,9 +27,29 @@ $session = \OpenEMR\Common\Session\SessionWrapperFactory::getInstance()->getActi
 $pid = $session->get('pid', 0);
 require_once('../../../library/amc.php');
 
+use OpenEMR\Common\Acl\AccessDeniedHelper;
+use OpenEMR\Common\Acl\AclMain;
+use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Common\{Csrf\CsrfUtils, Session\SessionWrapperFactory};
 use OpenEMR\Services\PatientAccessOnsiteService;
 use OpenEMR\Core\OEGlobalsBag;
+
+// Check authorization. The dashboard card that links here is gated by
+// patients/demo (see src/Patient/Cards/PortalCard.php); the handler must
+// enforce the same right itself since it writes the patient's portal
+// credentials and is reachable by direct URL.
+$portalPid = is_numeric($pid) ? (int) $pid : 0;
+if ($portalPid <= 0) {
+    AccessDeniedHelper::deny('No patient selected for portal credentials');
+}
+if (!AclMain::aclCheckCore('patients', 'demo', '', 'write')) {
+    AccessDeniedHelper::deny('Updating portal credentials is not authorized');
+}
+$squadRow = QueryUtils::querySingleRow("SELECT `squad` FROM `patient_data` WHERE `pid` = ?", [$portalPid]);
+$squad = is_array($squadRow) && is_string($squadRow['squad'] ?? null) ? $squadRow['squad'] : '';
+if ($squad !== '' && !AclMain::aclCheckCore('squads', $squad)) {
+    AccessDeniedHelper::deny('Unauthorized access to patient squad');
+}
 
 $patientAccessOnSiteService = new PatientAccessOnsiteService();
 $credentials = $patientAccessOnSiteService->getOnsiteCredentialsForPid($pid);

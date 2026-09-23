@@ -1,0 +1,31 @@
+meta {
+  name: 12 Upload without CSRF: refused
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/documents.php
+  body: multipartForm
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:multipart-form {
+  action: upload
+  doc_type: lab_pdf
+  file: @file(fixtures/lab-layout1.pdf)
+}
+
+assert {
+  res.status: eq 403
+  res.body.error: isString
+  res.body.correlation_id: isString
+}
+
+docs {
+  The CSRF token is required on every documents request; without it the file
+  is never read. Contract: documents.error.response.
+}

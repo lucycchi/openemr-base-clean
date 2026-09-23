@@ -1,0 +1,35 @@
+{
+  "accept": [
+    {
+      "error": "Not authenticated",
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    },
+    {
+      "error": "The file is larger than 20 MB",
+      "reason": "too_large",
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    },
+    {
+      "error": "The document service is unavailable; the file is stored and can be retried",
+      "reason": "timeout",
+      "document_id": 42,
+      "status": "stored",
+      "correlation_id": "0123456789abcdef0123456789abcdef"
+    }
+  ],
+  "reject": [
+    {
+      "error": "x"
+    },
+    {
+      "error": "x",
+      "correlation_id": "0123456789abcdef0123456789abcdef",
+      "reason": "disk_full"
+    },
+    {
+      "error": "x",
+      "correlation_id": "0123456789abcdef0123456789abcdef",
+      "exception": "RuntimeException: /var/www/secret"
+    }
+  ]
+}

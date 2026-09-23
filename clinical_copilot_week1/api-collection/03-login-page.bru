@@ -1,0 +1,30 @@
+meta {
+  name: 03 Login page (starts session)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/interface/login/login.php?site=default
+}
+
+script:post-response {
+  // Capture OpenEMR cookies explicitly so the collection also works in the
+  // Bruno CLI, which does not persist cookies between requests.
+  const raw = (res.headers && res.headers["set-cookie"]) || res.getHeader("set-cookie");
+  const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+  const pairs = list.map(c => String(c).split(";")[0]).filter(c => !/=deleted$/.test(c));
+  const jar = {};
+  String(bru.getVar("cookie") || "").split("; ").filter(Boolean).forEach(p => { jar[p.split("=")[0]] = p; });
+  pairs.forEach(p => { jar[p.split("=")[0]] = p; });
+  bru.setVar("cookie", Object.values(jar).join("; "));
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  OpenEMR issues the session cookie on the login page; the login POST must
+  follow it.
+}

@@ -73,6 +73,9 @@ services:
       # setting xdebug client host for cases where xdebug.discover_client_host fails
       XDEBUG_CLIENT_HOST: host.docker.internal
       GITHUB_COMPOSER_TOKEN: c313de1ed5a00eb6ff9309559ec9ad01fcc553f0
+      # Clinical Co-Pilot week 2: the extraction/retrieval sidecar (see
+      # interface/modules/custom_modules/oe-module-clinical-copilot/sidecar).
+      COPILOT_SIDECAR_URL: http://copilot-sidecar:8000
       GITHUB_COMPOSER_TOKEN_ENCODED: Z2hwX0NpbnJ4aXlNd0NzcGZXWG1UWFUwcXhGa040elFKSDJoZGJXVw==
       GITHUB_COMPOSER_TOKEN_ENCODED_ALTERNATE: '103 104 112 95 57 54 108 115 88 116 87 72 51 75 81 105 69 88 88 119 97 79 80 78 109 69 66 115 85 97 106 78 112 71 49 81 90 102 74 121'
       SELENIUM_USE_GRID: "true"
@@ -192,6 +195,32 @@ services:
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8025/api/v1/messages"]
       start_period: 10s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  copilot-sidecar:
+    # Clinical Co-Pilot week 2 sidecar: PDF parsing (PyMuPDF + tesseract),
+    # model extraction, row-level anchoring, guideline retrieval, supervisor.
+    # Stateless for PHI: no volumes except read-only contracts and eval fixtures.
+    build:
+      context: ${OPENEMR_DIR:-../..}/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar
+    restart: always
+    volumes:
+    - ${OPENEMR_DIR:-../..}/interface/modules/custom_modules/oe-module-clinical-copilot/contracts:/contracts:ro
+    - ${OPENEMR_DIR:-../..}/tests/evals/fixtures:/fixtures:ro
+    environment:
+      COPILOT_CONTRACTS_DIR: /contracts
+      COPILOT_FIXTURES_DIR: /fixtures/docs
+      COPILOT_QUERIES_DIR: /fixtures/queries
+      # Test-only /eval/* endpoints for tests/evals; never set on a deployed stack.
+      COPILOT_EVAL_ENDPOINTS: "1"
+    # The same root .env the openemr container reads through Dotenv
+    # (OPENAI_API_KEY, OPENAI_MODEL, COHERE_API_KEY); missing file is fine.
+    env_file:
+    - path: ${OPENEMR_DIR:-../..}/.env
+      required: false
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status == 200 else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3

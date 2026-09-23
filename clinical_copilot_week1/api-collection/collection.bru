@@ -1,0 +1,27 @@
+docs {
+  # Clinical Co-Pilot API collection
+
+  Run top to bottom ("Run collection"). Requests 3-6 establish the admin
+  session and capture the CSRF token and facts hash into variables that the
+  later requests use; 13-16 start a second session as a restricted user.
+
+   1. Health                    liveness, no auth
+   2. Ready                     dependency probes, no auth, cached 60s
+   3. Login page                starts the OpenEMR session
+   4. Login                     authenticates (admin by default)
+   5. Open chart                sets the session patient; captures csrf_token
+   6. Brief                     the verified briefing; captures facts_hash
+   7. Ask                       a cited follow-up
+   8. Ask for arithmetic        withheld: declined or stripped (eval case 11)
+   9. Ask outside the window    not_in_facts (eval case 10)
+  10. Ask with stale hash       chart_changed: true
+  11. Brief again               cache hit, zero tokens
+  12. Brief without CSRF        403
+  13-15. Restricted user        new session, login, open chart
+  16. Restricted user brief     403 "You are not authorized to view this chart"
+
+  Select the `local` or `vps` environment. The collection captures the
+  session cookie itself (run the CLI with --disable-cookies). The patient id
+  comes from the OpenEMR session set in request 5; a pid in the chat body is
+  ignored by design.
+}
