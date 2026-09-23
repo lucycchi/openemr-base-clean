@@ -36,6 +36,14 @@ use PHPUnit\Framework\TestCase;
 class DocumentIngestServiceTest extends TestCase
 {
     private int $pid;
+    /**
+     * The fixture's collection date, chosen per run. The service skips a
+     * result that duplicates an existing (LOINC, date, value) row for the
+     * patient, so a fixed date would collide with a real extraction of the
+     * bundled fixture on the seed patient (the API collection leaves one
+     * behind on a dev database) and the counts below would come out short.
+     */
+    private string $collected;
     /** @var list<int> */
     private array $documentIds = [];
 
@@ -53,6 +61,7 @@ class DocumentIngestServiceTest extends TestCase
         if ($this->pid <= 0) {
             self::markTestSkipped('needs a seeded patient');
         }
+        $this->collected = (new \DateTimeImmutable('2001-01-01 +' . random_int(0, 7000) . ' days'))->format('Y-m-d');
     }
 
     /**
@@ -106,8 +115,8 @@ class DocumentIngestServiceTest extends TestCase
     {
         $lab = new LabReportExtraction(
             'Test Zeta',
-            new \DateTimeImmutable('2026-09-15'),
-            $this->citation($documentId, '/collection_date', '2026-09-15', true),
+            new \DateTimeImmutable($this->collected),
+            $this->citation($documentId, '/collection_date', $this->collected, true),
             null,
             null,
             'Synthetic Labs',
