@@ -129,6 +129,49 @@ state: restarting it loses nothing.
 | **M1** | `model_error` / `timeout` from the sidecar on every document; `sidecar.chat` generations absent or slow | the same provider probe as Week 1 (`/ready` `openai`); the sidecar uses the same key | provider incident or key problem: Week 1 alert 2, step 1. The sidecar's per-page timeout is 45 s with one retry; nothing to tune during an incident |
 | **M2** | follow-up answers slow again on dense charts (case 12 pattern) | the `copilot.ask.llm` generation's `completion_tokens` | the six-sentence cap regressed (a prompt edit); `Prompt::followUpSystem()` must still carry it and `Prompt::VERSION` must have been bumped; the live eval gate refuses the push otherwise |
 
+## Which two rules are live: the Hobby plan
+
+Langfuse Cloud's Hobby plan (the project's plan as of 2026-09-22) allows
+**two alert rules per organisation**. Week 1 created two of the three
+paging rules in the UI, p95 latency and error rate (the recorded first
+firing was the error-rate rule), and kept tool failure rate as a dashboard
+widget. The other rules in this file, including 1b and the watched ones,
+are definitions until the plan allows more.
+
+**For Week 2 the two live slots should change.** The scores behind the
+rules now cover the agent: `request_ok` includes service-caused extraction
+and pre-warm failures, and `tool_ok` includes the sidecar's workers. That
+makes the two slots most valuable on:
+
+| Slot | Keep / change | Rule | Why this one |
+|---|---|---|---|
+| 1 | **change** from p95 latency to **3 · tool failure rate** (`tool_ok` share < 0.98) | the only rule that sees a failing worker, a sidecar outage on the answer path, or a broken PHP tool step, i.e. every Week 2 failure mode that is not a provider outage |
+| 2 | **keep** | **2 · error rate** (`request_ok` share < 0.95) | now also fires on a provider outage seen through the sidecar and on a failed pre-warm sweep |
+
+Latency moves to the dashboard: the chat p95 (rule 1) and extraction p95
+(rule 1b) stay as widgets that are read during working hours, and both
+come back as live rules the day the plan allows four. The reasoning: a
+slow summary is a degraded experience with the fact table already on
+screen, while a failing tool or a rising error rate is the product not
+working; with two slots, the slots go to the second kind.
+
+To make the change in the UI (Langfuse Cloud, *Alerts*): open the rule
+named `copilot p95 latency`, set data source to **Scores (boolean)**,
+filter score name = `tool_ok`, metric share of `true`, alert threshold
+`< 0.98`, warning `< 0.99`, window 15 minutes, no-data handling "keep
+previous severity", rename it `copilot tool failure rate`, save. Leave the
+error-rate rule as it is. The webhook automation is unchanged, so the next
+firing still lands in `alerts.php` and the audit log; proof of delivery is
+the same procedure as Week 1 ("Configuring the rules in Langfuse", step 3).
+Record the date of the change and the first firing here when done.
+
+**Change log**
+
+| Date | Live rules | Note |
+|---|---|---|
+| 2026-09-17 | p95 latency, error rate | Week 1; first firing recorded in the Week 1 file |
+| (pending) | tool failure rate, error rate | the Week 2 recommendation above; awaiting the change in the UI |
+
 ## Configuring the Week 2 rules in Langfuse
 
 Same recipe as Week 1 ("Configuring the rules in Langfuse"). The rules are
@@ -149,7 +192,7 @@ as two rules on the Hobby plan.
 | Automation | the Week 1 webhook | same | same | same |
 | Name | `copilot extraction p95` | `copilot extraction success` | `copilot verified share` | `copilot retrieval hits` |
 
-Rule 11 (readiness degraded) is not a Langfuse rule: it is an external
+The table above is the definition of every rule regardless of the plan; the section before it says which two are live. Rule 11 (readiness degraded) is not a Langfuse rule: it is an external
 uptime check on `/ready` (any monitor that can match a JSON field), posting
 to the same webhook with `X-Alert-Token` if it cannot sign.
 

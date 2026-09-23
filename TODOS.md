@@ -26,6 +26,12 @@ are scheduled as tasks 9.1 and 9.2 in
 
 ## Clinical Co-Pilot
 
+- **Repoint the two live Langfuse alert rules for Week 2 (Hobby plan: two rules).** Currently live: p95 latency
+  and error rate (Week 1). Change the p95 rule to the tool-failure rule (`tool_ok` share < 0.98) so the two slots
+  cover the sidecar's workers and the error rate; latency stays a dashboard widget until the plan allows four
+  rules. Exact UI steps and the change log: `clinical_copilot_week2/ALERTS.md` ("Which two rules are live").
+  Owner: Lucy (Langfuse UI); then record the date and the first firing in that change log.
+
 - ~~PHPStan level 10 is not clean for the Co-Pilot code (544 errors measured 2026-09-22).~~ **Done 2026-09-22:**
   `openemr-cmd pst` reports no errors; how, and how to keep it that way, is in
   `clinical_copilot_week2/STATIC_ANALYSIS.md`. The historical `tests/evals/spike/` scripts are excluded from

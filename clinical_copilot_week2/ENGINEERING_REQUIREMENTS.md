@@ -766,6 +766,16 @@ provider failure through the sidecar, and the answer-length regression.
    threshold that fits 20 s extractions would blind the chat rule.
    *Trade-off:* the plan's alert allowance (two rules on Hobby, per the
    Week 1 notes) may keep it a definition until the plan changes.
+2b. **On the Hobby plan, the two live slots go to tool failure rate and
+   error rate for Week 2.** The project is on Langfuse's Hobby plan (two
+   rules); Week 1 made p95 latency and error rate live. Because `tool_ok`
+   and `request_ok` now carry the sidecar's failures, those two rules
+   catch every Week 2 failure that is not pure latency, so the
+   recommendation is to repoint the p95 rule at `tool_ok` and read latency
+   from the dashboard until the plan allows four rules. The exact UI steps
+   and a change log are in ALERTS.md ("Which two rules are live").
+   *Trade-off:* no page on a slow-but-working summary; the fact table is
+   already on screen in that case.
 3. **The document's fault is not the service's.** A physician's encrypted
    PDF must not page anyone at night; the three document-caused codes are
    assigned by the parser before any model call, so a service fault cannot
@@ -792,8 +802,11 @@ cd clinical_copilot_week2/api-collection && npx --yes @usebruno/cli@2 run 02-rea
   service error; it no longer does, service failures still count (test).
 - No latency rule covered extraction, and no runbook covered any Week 2
   failure mode; both written in Week 2 ALERTS.md, with the Langfuse
-  definitions for the new rules. Whether the new rules are live in the UI
-  depends on the plan's alert allowance; the definitions stand either way.
+  definitions for the new rules.
+- The plan allows two live rules (Hobby). Which two should be live for
+  Week 2 is decided and written down (tool failure rate + error rate),
+  with the UI steps to make the change; the change itself is pending in
+  the Langfuse UI.
 
 ---
 
