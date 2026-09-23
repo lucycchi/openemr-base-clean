@@ -19,6 +19,15 @@
 //          cached, so every iteration makes one real model call.
 //   mixed  open chart + brief, then a follow-up on ASK_SHARE of iterations
 //          (default 30%) — the realistic clinic pattern from USERS.md.
+//   extract (Week 2) open the load patient's chart, upload the five-page
+//          synthetic lab report with a unique trailer (so the per-patient
+//          dedup never short-circuits it), then extract it: the sidecar parses
+//          the PDF, makes one model call per page, anchors every value and
+//          PHP persists the results. The heaviest path the product has.
+//
+// Week 2 also changed `ask`: every follow-up first goes through the sidecar's
+// evidence retriever (embedding + BM25 + rerank), so the ask latency includes
+// that leg and the summary records how often it found guideline passages.
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -34,6 +43,12 @@ const THINK_SECONDS = Number(__ENV.THINK || 1);
 const PIDS = (__ENV.PIDS || '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30')
     .split(',').map((s) => Number(s.trim())).filter((n) => n > 0);
 const LABEL = __ENV.LABEL || `${SCENARIO}-${__ENV.VUS || 'x'}vu`;
+// The document scenario uses one dedicated seed patient so the chart-opening
+// scenarios' charts stay as seeded; tests/load/cleanup-documents.php removes
+// what a run attached.
+const EXTRACT_PID = Number(__ENV.EXTRACT_PID || 30);
+// The fixture is read once at init (k6 forbids file reads inside iterations).
+const FIXTURE = SCENARIO === 'extract' ? open(__ENV.FIXTURE || '../evals/fixtures/docs/lab-layout1.pdf', 'b') : null;
 
 const MODULE = `${BASE}/interface/modules/custom_modules/oe-module-clinical-copilot/public`;
 
@@ -82,7 +97,15 @@ const verificationFail = new Rate('copilot_verification_fail');    // total_fail
 const cacheHits = new Rate('copilot_brief_cache_hit');
 const briefs = new Counter('copilot_briefs');
 const asks = new Counter('copilot_asks');
+const guidelineHits = new Rate('copilot_guideline_hit');            // ask answered with at least one guideline passage
 const modelCalls = new Counter('copilot_model_calls');
+// Week 2 document path.
+const uploadMs = new Trend('copilot_upload_ms', true);
+const extractMs = new Trend('copilot_extract_ms', true);
+const extractions = new Counter('copilot_extractions');
+const extractOk = new Rate('copilot_extract_ok');                    // status extracted
+const extractVerified = new Rate('copilot_extract_verified');        // extracted with nothing unverified and nothing unextracted
+const extractConfidence = new Trend('copilot_extract_confidence');   // share of fields anchored, 0-1
 const stripped = new Counter('copilot_sentences_stripped');
 const kept = new Counter('copilot_sentences_kept');
 
@@ -176,9 +199,65 @@ function ask(csrf, factsHash) {
     }
     modelCalls.add(1);
     summaryUnavailable.add(body.answer.status !== null);
+    guidelineHits.add(Array.isArray(body.answer.guidelines) && body.answer.guidelines.length > 0);
     stripped.add(body.answer.stripped || 0);
     kept.add((body.answer.sentences || []).length);
     check(res, { 'ask 200': () => true, 'ask answered or declined': () => body.answer.type !== 'error' });
+}
+
+// The fixture bytes plus a unique PDF comment after %%EOF: a different
+// sha3-512 per iteration, still a valid PDF (readers ignore trailing bytes).
+function uniquePdf() {
+    const trailer = `\n%k6 ${__VU}-${__ITER}-${Date.now()}\n`;
+    const a = new Uint8Array(FIXTURE);
+    const out = new Uint8Array(a.byteLength + trailer.length);
+    out.set(a, 0);
+    for (let i = 0; i < trailer.length; i++) {
+        out[a.byteLength + i] = trailer.charCodeAt(i);
+    }
+    return out.buffer;
+}
+
+// Upload the report as multipart (the way the panel does), then extract it.
+// Records the two latencies and what the extraction reported.
+function uploadAndExtract(csrf) {
+    const up = http.post(
+        `${MODULE}/documents.php`,
+        { csrf_token_form: csrf, action: 'upload', doc_type: 'lab_pdf', file: http.file(uniquePdf(), 'load.pdf', 'application/pdf') },
+        { tags: { name: 'upload' } },
+    );
+    uploadMs.add(up.timings.duration);
+    const upBody = parse(up);
+    const stored = (up.status === 201 || up.status === 200) && upBody && upBody.document_id;
+    requestErrors.add(!stored);
+    check(up, { 'upload stored': () => Boolean(stored), 'upload is new (dedup not hit)': () => up.status === 201 });
+    if (!stored) {
+        return;
+    }
+    const ex = http.post(
+        `${MODULE}/documents.php`,
+        { csrf_token_form: csrf, action: 'extract', document_id: String(upBody.document_id) },
+        { tags: { name: 'extract' }, timeout: '90s' },
+    );
+    extractMs.add(ex.timings.duration);
+    extractions.add(1);
+    const body = parse(ex);
+    const ok = ex.status === 200 && body && typeof body.status === 'string';
+    requestErrors.add(!ok);
+    if (!ok) {
+        extractOk.add(false);
+        return;
+    }
+    const extracted = body.status === 'extracted';
+    extractOk.add(extracted);
+    extractVerified.add(extracted && body.unverified === 0 && body.unextracted === 0);
+    if (typeof body.confidence === 'number') {
+        extractConfidence.add(body.confidence);
+    }
+    // One model call per page plus any re-ask: the sidecar reports the count as handoffs' worth of work; count the run.
+    modelCalls.add(Array.isArray(body.handoffs) ? 1 : 0);
+    summaryUnavailable.add(!extracted);
+    check(ex, { 'extract 200': () => true, 'extracted': () => extracted, 'not a repeat': () => body.already !== true });
 }
 
 // One iteration = one clinician visit: pick a patient round-robin across
@@ -186,6 +265,16 @@ function ask(csrf, factsHash) {
 export default function () {
     if (__ITER === 0) {
         login();
+    }
+    if (SCENARIO === 'extract') {
+        const csrf = openChart(EXTRACT_PID);
+        if (csrf) {
+            uploadAndExtract(csrf);
+        } else {
+            requestErrors.add(true);
+        }
+        sleep(THINK_SECONDS);
+        return;
     }
     const pid = PIDS[(__VU + __ITER) % PIDS.length];
     const csrf = openChart(pid);
@@ -235,6 +324,11 @@ export function handleSummary(data) {
         brief_cache_hit_pct: rate('copilot_brief_cache_hit'),
         briefs: count('copilot_briefs'),
         asks: count('copilot_asks'),
+        guideline_hit_pct: rate('copilot_guideline_hit'),
+        extractions: count('copilot_extractions'),
+        extract_ok_pct: rate('copilot_extract_ok'),
+        extract_verified_pct: rate('copilot_extract_verified'),
+        extract_confidence_p50: m.copilot_extract_confidence ? Number(m.copilot_extract_confidence.values.med.toFixed(3)) : null,
         model_calls: count('copilot_model_calls'),
         sentences_kept: count('copilot_sentences_kept'),
         sentences_stripped: count('copilot_sentences_stripped'),
@@ -246,13 +340,16 @@ export function handleSummary(data) {
             brief_cache_hit: row('copilot_brief_cache_hit_ms'),
             brief_cold: row('copilot_brief_cold_ms'),
             ask: { ...row('copilot_ask_ms'), count: count('copilot_asks') },
+            upload: { ...row('copilot_upload_ms'), count: count('copilot_extractions') },
+            extract: { ...row('copilot_extract_ms'), count: count('copilot_extractions') },
         },
     };
     const lines = [
         `# ${LABEL}  ${summary.finished_at}  ${BASE}`,
         `scenario=${SCENARIO} vus=${options.vus} duration=${options.duration}`,
         `requests=${summary.requests_total} throughput=${summary.throughput_rps} req/s  http_failed=${summary.http_failed_pct}%  copilot_errors=${summary.copilot_request_error_pct}%`,
-        `briefs=${summary.briefs} (cache hit ${summary.brief_cache_hit_pct}%)  asks=${summary.asks}  model_calls=${summary.model_calls}  summary_unavailable=${summary.summary_unavailable_pct}%  verification_fail=${summary.verification_fail_pct}%`,
+        `briefs=${summary.briefs} (cache hit ${summary.brief_cache_hit_pct}%)  asks=${summary.asks} (guideline hit ${summary.guideline_hit_pct}%)  model_calls=${summary.model_calls}  summary_unavailable=${summary.summary_unavailable_pct}%  verification_fail=${summary.verification_fail_pct}%`,
+        `extractions=${summary.extractions}  extracted=${summary.extract_ok_pct}%  fully_verified=${summary.extract_verified_pct}%  confidence_p50=${summary.extract_confidence_p50}`,
         `sentences kept=${summary.sentences_kept} stripped=${summary.sentences_stripped}`,
         '',
         'endpoint          n      p50     p95     p99     max  (ms)',

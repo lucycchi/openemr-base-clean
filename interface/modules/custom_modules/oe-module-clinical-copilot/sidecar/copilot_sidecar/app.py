@@ -26,6 +26,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
+from starlette.concurrency import run_in_threadpool
 
 from . import anchor, contracts, extractor, graph
 from . import retrieve as retrieve_module
@@ -131,7 +132,15 @@ async def run(request: Request) -> JSONResponse:
         return JSONResponse(content=hit[1])
 
     try:
-        state = graph.run(req.mode, req.correlation_id, req.facts_hash, req.question, req.documents)
+        # The graph is synchronous (model calls, OCR, retrieval). Running it on
+        # the thread pool keeps the event loop free, so concurrent runs overlap
+        # instead of queueing behind each other: the 2026-09-23 load baseline
+        # showed one blocked loop turning ten concurrent 12 s extractions into
+        # 60 s timeouts and ten 2.7 s retrievals into a 19 s follow-up p50.
+        # Each invocation carries its own state; the compiled graph is shared
+        # read-only. Context variables (the correlation id) propagate to the
+        # worker thread.
+        state = await run_in_threadpool(graph.run, req.mode, req.correlation_id, req.facts_hash, req.question, req.documents)
     except Exception as exc:  # never leak a traceback; the code is the message
         log.error("run failed", extra={"mode": req.mode, "code": "internal", "exception_class": type(exc).__name__, "ms": int((time.monotonic() - started) * 1000)})
         return _error(req.correlation_id, "internal", 500)

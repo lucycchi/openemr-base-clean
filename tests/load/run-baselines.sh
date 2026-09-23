@@ -17,7 +17,8 @@ LOGIN_USER=${LOGIN_USER:-admin}
 LOGIN_PASS=${LOGIN_PASS:-pass}
 DURATION=${DURATION:-2m}
 VUS_LIST=${VUS_LIST:-"10 50"}
-SCENARIOS=${SCENARIOS:-"brief mixed ask"}
+SCENARIOS=${SCENARIOS:-"brief mixed ask extract"}
+EXTRACT_PID=${EXTRACT_PID:-30}     # the document scenario's patient; cleaned with tests/load/cleanup-documents.php afterwards
 STATS=${STATS:-none}          # none | local | ssh
 SSH_HOST=${SSH_HOST:-do-openemr}
 RESULTS=${RESULTS:-tests/load/results}
@@ -45,7 +46,7 @@ for vus in $VUS_LIST; do
     # `|| true`: a failed threshold or crashed run must not abort the matrix.
     "$K6" run --quiet \
       -e BASE_URL="$BASE_URL" -e LOGIN_USER="$LOGIN_USER" -e LOGIN_PASS="$LOGIN_PASS" \
-      -e SCENARIO="$sc" -e VUS="$vus" -e DURATION="$DURATION" -e LABEL="$label" -e RESULTS_DIR="$RESULTS" \
+      -e SCENARIO="$sc" -e VUS="$vus" -e DURATION="$DURATION" -e LABEL="$label" -e RESULTS_DIR="$RESULTS" -e EXTRACT_PID="$EXTRACT_PID" \
       tests/load/copilot.js || true
     if [ -n "$sampler_pid" ]; then wait "$sampler_pid" || true; fi
     # 30 s gap so the next level starts from a quiet box and Langfuse windows do not overlap.

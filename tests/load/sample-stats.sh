@@ -15,7 +15,7 @@ while [ "$(date +%s)" -lt "$end" ]; do
   ts=$(date +%s)
   load1=$(cut -d' ' -f1 /proc/loadavg)
   docker stats --no-stream --format '{{.Name}},{{.CPUPerc}},{{.MemUsage}},{{.MemPerc}}' \
-    | grep -Ei 'openemr|mysql|mariadb' \
+    | grep -Ei 'openemr|mysql|mariadb|sidecar' \
     | while IFS=, read -r name cpu mem mempct; do
         cpu=${cpu%\%}; mempct=${mempct%\%}
         used=$(echo "$mem" | awk '{print $1}'); limit=$(echo "$mem" | awk '{print $3}')
