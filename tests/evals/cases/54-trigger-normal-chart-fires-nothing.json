@@ -1,0 +1,44 @@
+{
+ "id": "54-trigger-normal-chart-fires-nothing",
+ "guards": "boundary",
+ "failure_mode": "A chart with only in-range labs and an antihistamine must fire no guideline topic: the section then says nothing matched rather than showing a passage the chart never raised.",
+ "mode": "triggers",
+ "facts": [
+  {
+   "id": "1a1b2c3d",
+   "service": "ObservationLabService",
+   "record_id": 902,
+   "field": "result",
+   "value": "Sodium 139 mmol/L on 2026-09-10 (reference range 135-145 mmol/L)",
+   "category": "lab_normal",
+   "attributes": {
+    "loinc": "2951-2"
+   }
+  },
+  {
+   "id": "2a1b2c3d",
+   "service": "PrescriptionService",
+   "record_id": 17,
+   "field": "drug",
+   "value": "Cetirizine 10 MG Oral Tablet (started 2025-01-10)",
+   "category": "medication_active",
+   "attributes": {
+    "drug": "Cetirizine 10 MG Oral Tablet"
+   }
+  }
+ ],
+ "active_problems": [
+  "Seasonal allergic rhinitis"
+ ],
+ "patient": {
+  "age": 40,
+  "sex": "M"
+ },
+ "rubrics": {
+  "factually_consistent": true
+ },
+ "expect": {
+  "fired": [],
+  "because": {}
+ }
+}

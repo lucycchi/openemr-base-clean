@@ -1,0 +1,35 @@
+{
+ "id": "65-trigger-pregnancy-suppresses-diabetes-and-anemia",
+ "guards": "boundary",
+ "failure_mode": "A pregnancy diagnosis on the problem list must suppress both the adult anemia work-up topic and the ADA glycemic-target topic (nonpregnant adults), even though the hemoglobin is low and diabetes is on the list; showing either card would be guidance for the wrong population.",
+ "mode": "triggers",
+ "facts": [
+  {
+   "id": "3a1b2c3d",
+   "service": "ObservationLabService",
+   "record_id": 903,
+   "field": "result",
+   "value": "Hemoglobin 10.2 g/dL on 2026-09-10 (below the standard range 12-15.5 g/dL)",
+   "category": "lab_abnormal",
+   "attributes": {
+    "loinc": "718-7",
+    "direction": "below"
+   }
+  }
+ ],
+ "active_problems": [
+  "Type 2 diabetes mellitus without complications",
+  "Pregnancy, second trimester"
+ ],
+ "patient": {
+  "age": 31,
+  "sex": "F"
+ },
+ "rubrics": {
+  "factually_consistent": true
+ },
+ "expect": {
+  "fired": [],
+  "because": {}
+ }
+}

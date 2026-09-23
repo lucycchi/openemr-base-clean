@@ -35,13 +35,16 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Evals;
 
 use Composer\Autoload\ClassLoader;
+use DateTimeImmutable;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Modules\ClinicalCopilot\AclAuthorization;
+use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
 use OpenEMR\Modules\ClinicalCopilot\BriefingCache;
 use OpenEMR\Modules\ClinicalCopilot\CachedNarration;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\Contracts;
+use OpenEMR\Modules\ClinicalCopilot\Demographics;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocType;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentIngestService;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentStore;
@@ -52,6 +55,8 @@ use OpenEMR\Modules\ClinicalCopilot\Fact;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
 use OpenEMR\Modules\ClinicalCopilot\FactCategory;
 use OpenEMR\Modules\ClinicalCopilot\FactSet;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\FiredTrigger;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineTriggers;
 use OpenEMR\Modules\ClinicalCopilot\Llm\OpenAiClient;
 use OpenEMR\Modules\ClinicalCopilot\ModelOutput;
 use OpenEMR\Modules\ClinicalCopilot\Narration;
@@ -117,6 +122,12 @@ function factsFrom(array $rows): FactSet
         if (!is_array($r)) {
             throw new RuntimeException('fact row is not an object');
         }
+        $attributes = [];
+        foreach (map($r, 'attributes') as $k => $v) {
+            if (is_string($v)) {
+                $attributes[$k] = $v;
+            }
+        }
         $facts[] = new Fact(
             str($r, 'id'),
             str($r, 'service'),
@@ -124,6 +135,8 @@ function factsFrom(array $rows): FactSet
             str($r, 'field'),
             str($r, 'value'),
             FactCategory::from(str($r, 'category')),
+            null,
+            $attributes,
         );
     }
     return new FactSet($facts);
@@ -142,7 +155,7 @@ function narrationFrom(array $data): Narration
 }
 
 /** Rubric names the gate understands; a case lists the ones that apply to it. */
-const RUBRICS = ['schema_valid', 'citation_present', 'factually_consistent', 'safe_refusal', 'no_phi_in_logs', 'routing_correct', 'anchor_correct'];
+const RUBRICS = ['schema_valid', 'citation_present', 'factually_consistent', 'safe_refusal', 'no_phi_in_logs', 'routing_correct', 'anchor_correct', 'applicability_correct'];
 
 /**
  * Sidecar test endpoints (COPILOT_EVAL_ENDPOINTS=1 on the dev compose service).
@@ -428,7 +441,7 @@ function runRouteCase(array $case): array
 {
     $state = map($case, 'state');
     $t = hrtime(true);
-    $response = sidecarPost('/eval/route', ['mode' => str($state, 'mode', 'extract'), 'question' => $state['question'] ?? null, 'documents' => lst($state, 'documents')]);
+    $response = sidecarPost('/eval/route', ['mode' => str($state, 'mode', 'extract'), 'question' => $state['question'] ?? null, 'documents' => lst($state, 'documents'), 'queries' => lst($state, 'queries')]);
     $handoffs = array_map(mapOf(...), lst($response, 'handoffs'));
     $schemaErrors = [];
     foreach ($handoffs as $h) {
@@ -484,6 +497,144 @@ function runRetrieveCase(array $case): array
         $run['ungrounded_tokens'][] = sprintf('only %d chunks', count($chunks));
     }
     return $run;
+}
+
+/**
+ * Triggers mode: the chart-driven guideline rules, in process, no sidecar.
+ * The case supplies facts (with the attributes the assembler would set),
+ * the active problem titles and the patient's age and sex; the run reports
+ * which rules fired, in order, and why.
+ *
+ * @param array<string, mixed> $case
+ * @return array<string, mixed>
+ */
+function runTriggersCase(array $case): array
+{
+    $t = hrtime(true);
+    $facts = factsFrom(lst($case, 'facts'));
+    $problems = strings($case['active_problems'] ?? null);
+    $patient = map($case, 'patient');
+    $today = new DateTimeImmutable('2026-09-15 09:00:00');
+    $age = $patient['age'] ?? null;
+    $sex = $patient['sex'] ?? null;
+    $dob = is_int($age) ? $today->modify("-$age years")->modify('-1 day') : null;
+    $who = new Demographics(is_string($sex) && ($sex === 'M' || $sex === 'F') ? $sex : null, $dob);
+    $fired = (new GuidelineTriggers())->fire(new AssembledFacts($facts, null, $problems), $who, $today);
+    $because = [];
+    $reasons = [];
+    foreach ($fired as $f) {
+        $because[$f->id] = $f->factIds;
+        if ($f->reasons !== []) {
+            $reasons[$f->id] = $f->reasons;
+        }
+    }
+    $run = [
+        'ms' => (int) round((hrtime(true) - $t) / 1e6),
+        'fired' => array_map(static fn(FiredTrigger $f): string => $f->id, $fired),
+        'because' => $because,
+        'ungrounded_tokens' => [],
+    ];
+    if (array_key_exists('reasons', map($case, 'expect'))) {
+        $run['reasons'] = $reasons;
+    }
+    return $run;
+}
+
+/**
+ * Brief-evidence mode: one retrieval batch for the named triggers through
+ * /eval/brief-evidence, which uses the vectors committed in the sidecar
+ * index. Scores each trigger's top source and the no-duplicate rule.
+ *
+ * @param array<string, mixed> $case
+ * @return array<string, mixed>
+ */
+function runBriefEvidenceCase(array $case): array
+{
+    $rules = [];
+    foreach ((new GuidelineTriggers())->rules() as $rule) {
+        $rules[$rule->id] = $rule;
+    }
+    $queries = [];
+    foreach (strings($case['triggers'] ?? null) as $id) {
+        $rule = $rules[$id] ?? throw new RuntimeException("case names unknown trigger $id");
+        $queries[] = ['trigger_id' => $id, 'query' => $rule->query];
+    }
+    $t = hrtime(true);
+    $response = sidecarPost('/eval/brief-evidence', ['queries' => $queries]);
+    $evidence = array_map(mapOf(...), lst($response, 'evidence'));
+    $usage = array_map(mapOf(...), lst($response, 'usage'));
+    $schemaErrors = [];
+    $uncited = 0;
+    $seen = [];
+    $ungrounded = [];
+    $topSources = [];
+    $expect = map($case, 'expect');
+    $minChunks = int($expect, 'min_chunks_per_trigger', 1);
+    foreach ($evidence as $e) {
+        $chunks = array_map(mapOf(...), lst($e, 'chunks'));
+        $topSources[str($e, 'trigger_id')] = $chunks[0]['source_id'] ?? null;
+        if (count($chunks) < $minChunks) {
+            $ungrounded[] = sprintf('%s: only %d chunks', str($e, 'trigger_id'), count($chunks));
+        }
+        foreach ($chunks as $c) {
+            $schemaErrors = [...$schemaErrors, ...schemaErrors('run.response', ['correlation_id' => 'eval-brief-evidence-0', 'extractions' => [], 'chunks' => [$c], 'handoffs' => [], 'usage' => []])];
+            if (str($c, 'source_id') === '' || str($c, 'quote') === '' || str($c, 'chunk_id') === '') {
+                $uncited++;
+            }
+            if (isset($seen[str($c, 'chunk_id')])) {
+                $ungrounded[] = sprintf('chunk %s under two triggers', str($c, 'chunk_id'));
+            }
+            $seen[str($c, 'chunk_id')] = true;
+        }
+    }
+    // Each trigger's top source must be one of the documents the case allows for that topic.
+    $match = true;
+    foreach (map($expect, 'top_sources_allowed') as $trigger => $allowed) {
+        if (!in_array($topSources[$trigger] ?? null, strings($allowed), true)) {
+            $match = false;
+            $ungrounded[] = sprintf('%s: top source %s not in %s', (string) $trigger, json_encode($topSources[$trigger] ?? null), json_encode($allowed));
+        }
+    }
+    return [
+        'ms' => (int) round((hrtime(true) - $t) / 1e6),
+        'top_sources' => $topSources,
+        'top_sources_match' => $match,
+        'embedding_calls' => count(array_filter($usage, static fn(array $u): bool => str($u, 'kind') === 'embedding')),
+        'reranked' => ($response['reranked'] ?? false) === true,
+        'schema_errors' => $schemaErrors,
+        'uncited_kept' => $uncited,
+        'ungrounded_tokens' => $ungrounded,
+    ];
+}
+
+/**
+ * Critic mode: one applicability verdict through /eval/critic. A recorded
+ * verdict makes the case deterministic (the gate); `recorded: null` marks
+ * a live twin that asks the real model (run with --live).
+ *
+ * @param array<string, mixed> $case
+ * @return array<string, mixed>
+ */
+function runCriticCase(array $case): array
+{
+    $t = hrtime(true);
+    $recorded = is_array($case['recorded'] ?? null) ? $case['recorded'] : null;
+    $response = sidecarPost('/eval/critic', [
+        'passage' => str($case, 'passage'),
+        'fact_lines' => strings($case['fact_lines'] ?? null),
+        'age' => is_int($case['age'] ?? null) ? $case['age'] : null,
+        'sex' => is_string($case['sex'] ?? null) ? $case['sex'] : null,
+        'recorded' => $recorded,
+    ]);
+    $applicable = $response['applicable'] ?? null;
+    $reason = $response['reason'] ?? null;
+    return [
+        'ms' => (int) round((hrtime(true) - $t) / 1e6),
+        'applicable' => is_bool($applicable) ? $applicable : null,
+        'reason' => is_string($reason) ? $reason : null,
+        'schema_errors' => schemaErrors('llm.critic.output', ['applicable' => $applicable, 'reason' => $reason]),
+        'ungrounded_tokens' => [],
+    ];
 }
 
 /**
@@ -677,6 +828,7 @@ function evaluateRubrics(array $case, array $run, array $mismatches): array
             'no_phi_in_logs' => ($run['leaked_identifiers'] ?? null) === null ? 'na' : (($run['leaked_identifiers'] === [] && ($run['disallowed_log_fields'] ?? []) === [] && ($run['uncorrelated_log_lines'] ?? 0) === 0) ? 'pass' : 'fail'),
             'routing_correct' => ($run['handoffs'] ?? null) === null ? 'na' : (($run['handoffs'] === ($expect['handoffs'] ?? null)) ? 'pass' : 'fail'),
             'anchor_correct' => ($run['anchor_errors'] ?? null) === null ? 'na' : ($run['anchor_errors'] === [] ? 'pass' : 'fail'),
+            'applicability_correct' => !array_key_exists('applicable', $run) ? 'na' : (($run['applicable'] === ($expect['applicable'] ?? null)) ? 'pass' : 'fail'),
         };
     }
     return $out;
@@ -710,7 +862,7 @@ function compare(array $expect, array $actual): array
             }
             continue;
         }
-        if ($key === 'min_chunks' || $key === 'categories' || $key === 'absent' || $key === 'cited') {
+        if ($key === 'min_chunks' || $key === 'categories' || $key === 'absent' || $key === 'cited' || $key === 'min_chunks_per_trigger' || $key === 'top_sources_allowed') {
             continue; // scored into ungrounded_tokens / anchor_errors by the mode runner
         }
         if ($key === 'max_stripped') {
@@ -757,6 +909,12 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     $runs = [];
     if ($mode === 'facts') {
         $runs[] = runFactsCase($case);
+    } elseif ($mode === 'triggers') {
+        $runs[] = runTriggersCase($case);
+    } elseif ($mode === 'brief_evidence') {
+        $runs[] = runBriefEvidenceCase($case);
+    } elseif ($mode === 'critic') {
+        $runs[] = runCriticCase($case);
     } elseif ($mode === 'malformed') {
         $runs[] = runMalformedCase($case);
     } elseif ($mode === 'absent') {

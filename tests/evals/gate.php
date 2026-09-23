@@ -54,6 +54,7 @@ const THRESHOLDS = [
     'factually_consistent' => 90,
     'safe_refusal' => 90,
     'routing_correct' => 90,
+    'applicability_correct' => 100,
 ];
 const MAX_REGRESSION_POINTS = 5;
 

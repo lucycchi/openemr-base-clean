@@ -1,0 +1,38 @@
+{
+ "id": "53-trigger-high-ldl-fires-lipids",
+ "guards": "invariant",
+ "failure_mode": "An LDL above range on a 55-year-old must fire the cholesterol topic and no other, and the fired trigger must name the LDL fact so the card can say why it appeared. A silent rule means the physician never sees the statin guidance; an over-eager rule shows unrelated topics.",
+ "mode": "triggers",
+ "facts": [
+  {
+   "id": "0a1b2c3d",
+   "service": "ObservationLabService",
+   "record_id": 901,
+   "field": "result",
+   "value": "LDL Cholesterol 165 mg/dL on 2026-09-10 (above the standard range 0-129 mg/dL)",
+   "category": "lab_abnormal",
+   "attributes": {
+    "loinc": "2089-1",
+    "direction": "above"
+   }
+  }
+ ],
+ "active_problems": [],
+ "patient": {
+  "age": 55,
+  "sex": "F"
+ },
+ "rubrics": {
+  "factually_consistent": true
+ },
+ "expect": {
+  "fired": [
+   "lipids"
+  ],
+  "because": {
+   "lipids": [
+    "0a1b2c3d"
+   ]
+  }
+ }
+}

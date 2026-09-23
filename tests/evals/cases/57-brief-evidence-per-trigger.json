@@ -1,0 +1,45 @@
+{
+ "id": "57-brief-evidence-per-trigger",
+ "guards": "invariant",
+ "failure_mode": "Every trigger's fixed query must land in a document that covers its topic with at least one passage, using the committed query vectors (no embeddings call), and no passage may appear under two triggers. The screening query may top either the USPSTF summary or the ADA screening criteria (both state the 35-70, overweight rule); with the reranker active the ADA passage wins, without it the USPSTF one does. A query that drifts to an unrelated document would put the wrong guidance on a card.",
+ "mode": "brief_evidence",
+ "triggers": [
+  "lipids",
+  "diabetes",
+  "hypertension",
+  "anemia",
+  "ckd",
+  "screening"
+ ],
+ "rubrics": {
+  "schema_valid": true,
+  "citation_present": true,
+  "factually_consistent": true
+ },
+ "expect": {
+  "top_sources_allowed": {
+   "lipids": [
+    "acc-aha-2018-cholesterol"
+   ],
+   "diabetes": [
+    "ada-2025-standards"
+   ],
+   "hypertension": [
+    "acc-aha-2017-hypertension"
+   ],
+   "anemia": [
+    "anemia-adults-primary-care"
+   ],
+   "ckd": [
+    "kdigo-2024-ckd"
+   ],
+   "screening": [
+    "uspstf-screening",
+    "ada-2025-standards"
+   ]
+  },
+  "top_sources_match": true,
+  "min_chunks_per_trigger": 1,
+  "embedding_calls": 0
+ }
+}

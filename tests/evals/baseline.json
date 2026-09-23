@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-22T18:42:20+00:00",
+    "ran_at": "2026-09-23T20:11:17+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -186,6 +186,46 @@
             "schema_valid": "pass",
             "citation_present": "pass",
             "anchor_correct": "pass"
+        },
+        "53-trigger-high-ldl-fires-lipids": {
+            "factually_consistent": "pass"
+        },
+        "54-trigger-normal-chart-fires-nothing": {
+            "factually_consistent": "pass"
+        },
+        "55-trigger-age-exclusion-suppresses-lipids": {
+            "factually_consistent": "pass"
+        },
+        "56-trigger-problem-list-fires-diabetes": {
+            "factually_consistent": "pass"
+        },
+        "57-brief-evidence-per-trigger": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "58-brief-route-chart-triggers-then-critic": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "59-brief-route-no-triggers": {
+            "routing_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "60-critic-statin-age-82-not-applicable": {
+            "applicability_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "61-critic-statin-age-55-applicable": {
+            "applicability_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "62-critic-passage-without-population-applicable": {
+            "applicability_correct": "pass",
+            "schema_valid": "pass"
+        },
+        "65-trigger-pregnancy-suppresses-diabetes-and-anemia": {
+            "factually_consistent": "pass"
         }
     },
     "rates": {
@@ -194,6 +234,7 @@
         "factually_consistent": 100,
         "anchor_correct": 100,
         "routing_correct": 100,
-        "safe_refusal": 100
+        "safe_refusal": 100,
+        "applicability_correct": 100
     }
 }

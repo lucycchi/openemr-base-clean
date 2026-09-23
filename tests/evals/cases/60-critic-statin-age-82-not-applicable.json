@@ -1,0 +1,23 @@
+{
+ "id": "60-critic-statin-age-82-not-applicable",
+ "guards": "invariant",
+ "failure_mode": "The statin passage states an age range of 40 to 75; for an 82-year-old the critic must answer not applicable so the card is dropped. A true here would show age-restricted guidance to a patient outside it. Recorded verdict; the live twin is case 63.",
+ "mode": "critic",
+ "passage": "In adults 40 to 75 years of age with LDL-C 70 to 189 mg/dL and a 10-year ASCVD risk of 7.5 percent or higher, moderate-intensity statin therapy is recommended after a clinician-patient risk discussion.",
+ "fact_lines": [
+  "LDL Cholesterol 165 mg/dL on 2026-09-10 (above the standard range 0-129 mg/dL)"
+ ],
+ "age": 82,
+ "sex": "F",
+ "recorded": {
+  "applicable": false,
+  "reason": "The passage applies to adults 40 to 75 years of age; the patient is 82."
+ },
+ "rubrics": {
+  "applicability_correct": true,
+  "schema_valid": true
+ },
+ "expect": {
+  "applicable": false
+ }
+}
