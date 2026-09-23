@@ -116,4 +116,40 @@ final class SidecarClientTest extends TestCase
         $this->expectException(SidecarException::class);
         $this->client(self::reply() + ['debug' => 'trace text'])->answer(self::CORRELATION_ID, str_repeat('0', 64), 'q');
     }
+
+    public function testBriefSendsTriggerQueriesPatientAndFactsAndParsesEvidence(): void
+    {
+        $reply = self::reply() + ['evidence' => [['trigger_id' => 'lipids', 'chunks' => [['chunk_id' => 'aaaaaaaaaaaa', 'source_id' => 'acc-aha-2018-cholesterol', 'section' => 'T > S', 'quote' => 'A passage.', 'score' => 0.8]], 'applicable' => true, 'reason' => 'no restriction stated']]];
+        $client = $this->client($reply);
+        $trigger = new \OpenEMR\Modules\ClinicalCopilot\Guidelines\FiredTrigger('lipids', 'Cholesterol management', 'statin indication', 'acc-aha-2018-cholesterol', ['0a1b2c3d'], []);
+
+        $result = $client->brief(self::CORRELATION_ID, str_repeat('0', 64), [$trigger], ['LDL Cholesterol 165 mg/dL'], 55, 'M');
+
+        self::assertNotNull($this->sent);
+        $body = json_decode((string) $this->sent->getBody(), true, 16, JSON_THROW_ON_ERROR);
+        self::assertIsArray($body);
+        self::assertSame('brief', $body['mode']);
+        self::assertNull($body['question']);
+        self::assertSame([], $body['documents']);
+        self::assertSame([['trigger_id' => 'lipids', 'query' => 'statin indication']], $body['queries']);
+        self::assertSame(['age' => 55, 'sex' => 'M'], $body['patient']);
+        self::assertSame(['LDL Cholesterol 165 mg/dL'], $body['facts']);
+        self::assertCount(1, $result->evidence);
+        self::assertSame('lipids', $result->evidence[0]['trigger_id']);
+        self::assertTrue($result->evidence[0]['applicable']);
+        self::assertSame('aaaaaaaaaaaa', $result->evidence[0]['chunks'][0]['chunk_id']);
+    }
+
+    public function testBriefWithUnknownDemographicsSendsNulls(): void
+    {
+        $client = $this->client(self::reply());
+        $trigger = new \OpenEMR\Modules\ClinicalCopilot\Guidelines\FiredTrigger('ckd', 'Kidney function', 'ckd staging', 'kdigo-2024-ckd', [], []);
+
+        $client->brief(self::CORRELATION_ID, str_repeat('0', 64), [$trigger], [], null, null);
+
+        $body = json_decode((string) $this->sent?->getBody(), true, 16, JSON_THROW_ON_ERROR);
+        self::assertIsArray($body);
+        self::assertSame(['age' => null, 'sex' => null], $body['patient']);
+        self::assertSame([], $body['facts']);
+    }
 }

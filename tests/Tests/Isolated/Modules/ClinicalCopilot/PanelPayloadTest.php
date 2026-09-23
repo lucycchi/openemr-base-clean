@@ -156,4 +156,20 @@ final class PanelPayloadTest extends TestCase
         self::assertCount(2, $this->section($payload, 'facts'));
         self::assertArrayNotHasKey('answer', $payload);
     }
+
+    public function testBriefingPayloadCarriesTheGuidelineSectionOrNotConfigured(): void
+    {
+        $briefing = new BriefingResult([], 0, [], null, false, false, 0, 0);
+
+        $default = PanelPayload::briefing($this->assembled(null), $briefing, 'corr-1')['guidelines'];
+        self::assertIsArray($default);
+        self::assertSame('not_configured', $default['status']);
+        self::assertSame([], $default['cards']);
+
+        $section = \OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection::none('no_triggers');
+        $withSection = PanelPayload::briefing($this->assembled(null), $briefing, 'corr-1', $section)['guidelines'];
+        self::assertIsArray($withSection);
+        self::assertSame('no_triggers', $withSection['status']);
+        self::assertSame(\OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineTriggers::VERSION, $withSection['triggers_version']);
+    }
 }

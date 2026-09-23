@@ -14,21 +14,21 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+use GuzzleHttp\Client;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Events\Command\CommandRunnerFilterEvent;
 use OpenEMR\Events\PatientDemographics\RenderEvent;
-use GuzzleHttp\Client;
 use OpenEMR\Modules\ClinicalCopilot\Command\AttachCommand;
 use OpenEMR\Modules\ClinicalCopilot\Command\PrewarmCommand;
-use OpenEMR\Modules\ClinicalCopilot\Ops\NullTracer;
-use OpenEMR\Modules\ClinicalCopilot\Ops\LangfuseTracer;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentIngestService;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentStore;
 use OpenEMR\Modules\ClinicalCopilot\Documents\ExtractionRunner;
 use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarClient;
+use OpenEMR\Modules\ClinicalCopilot\Ops\LangfuseTracer;
+use OpenEMR\Modules\ClinicalCopilot\Ops\NullTracer;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -136,6 +136,7 @@ final class Bootstrap
   </div>
   <div class="card-body">
     <div id="copilot-narration" class="copilot-narration"></div>
+    <div id="copilot-guidelines" class="copilot-guidelines"></div>
     <div id="copilot-facts" class="copilot-facts"></div>
     <div id="copilot-documents" class="copilot-documents">
       <h6>Uploaded documents</h6>

@@ -1,80 +1,264 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://open-emr.org/clinical-copilot/contracts/chat.briefing.response.schema.json",
-  "title": "chat.php briefing response",
-  "description": "HTTP 200 body for action=brief. The fact table is always present and is rendered before any narration; narration.status is non-null when the model could not be used and explains why in physician-facing words. Built by PanelPayload::briefing().",
-  "type": "object",
-  "properties": {
-    "correlation_id": { "$ref": "#/$defs/correlation_id" },
-    "prior_visit": {
-      "type": ["string", "null"],
-      "description": "Date of the prior visit the facts are relative to (YYYY-MM-DD), or null for a first visit on record.",
-      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
-    },
-    "facts_hash": { "$ref": "#/$defs/facts_hash" },
-    "facts": { "$ref": "#/$defs/facts" },
-    "narration": {
-      "type": "object",
-      "properties": {
-        "sentences": {
-          "type": "array",
-          "description": "Sentences that passed the Verifier, in model order.",
-          "items": { "$ref": "sentence.schema.json" }
-        },
-        "stripped": { "type": "integer", "minimum": 0, "description": "Sentences the Verifier removed." },
-        "omitted_fact_ids": {
-          "type": "array",
-          "description": "Ids of must-surface facts the narration did not cite; the panel renders them under 'Also on file' straight from the fact table.",
-          "items": { "type": "string", "pattern": "^[0-9a-f]{8}$" }
-        },
-        "status": {
-          "type": ["string", "null"],
-          "description": "null on success. Otherwise a physician-facing reason the AI summary is unavailable.",
-          "enum": [
-            null,
-            "AI summary unavailable: timed out",
-            "AI summary unavailable: provider busy, try again shortly",
-            "AI summary unavailable: provider error",
-            "AI summary unavailable: model declined",
-            "AI summary unavailable: malformed response",
-            "AI summary unavailable: not configured on this server"
-          ]
-        },
-        "from_cache": { "type": "boolean", "description": "True when the verified narration was served from copilot_briefing_cache; tokens are then zero." },
-        "total_failure": { "type": "boolean", "description": "True when every sentence was stripped; the panel shows a distinct 'unable to verify' state and nothing is cached." },
-        "tokens": { "$ref": "#/$defs/tokens" },
-        "generated_at": { "type": ["string", "null"], "description": "ISO 8601 time (with offset, site zone) the cached narration was generated, e.g. by the morning pre-warm; null when it was generated in this request. A served narration is always verified against the chart as of now, so this dates the wording, not the facts." }
-      },
-      "required": ["sentences", "stripped", "omitted_fact_ids", "status", "from_cache", "total_failure", "tokens", "generated_at"],
-      "additionalProperties": false
-    }
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://open-emr.org/clinical-copilot/contracts/chat.briefing.response.schema.json",
+ "title": "chat.php briefing response",
+ "description": "HTTP 200 body for action=brief. The fact table is always present and is rendered before any narration; narration.status is non-null when the model could not be used and explains why in physician-facing words. Built by PanelPayload::briefing().",
+ "type": "object",
+ "properties": {
+  "correlation_id": {
+   "$ref": "#/$defs/correlation_id"
   },
-  "required": ["correlation_id", "prior_visit", "facts_hash", "facts", "narration"],
-  "additionalProperties": false,
-  "$defs": {
-    "correlation_id": {
-      "type": "string",
-      "description": "Request correlation id, also sent as the X-Correlation-Id header and used as the Langfuse trace id and audit-log key.",
-      "pattern": "^[0-9a-f]{32}$"
+  "prior_visit": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "description": "Date of the prior visit the facts are relative to (YYYY-MM-DD), or null for a first visit on record.",
+   "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+  },
+  "facts_hash": {
+   "$ref": "#/$defs/facts_hash"
+  },
+  "facts": {
+   "$ref": "#/$defs/facts"
+  },
+  "narration": {
+   "type": "object",
+   "properties": {
+    "sentences": {
+     "type": "array",
+     "description": "Sentences that passed the Verifier, in model order.",
+     "items": {
+      "$ref": "sentence.schema.json"
+     }
     },
-    "facts_hash": {
-      "type": "string",
-      "description": "sha256 over the sorted fact ids, categories and values. Send it back with every ask.",
-      "pattern": "^[0-9a-f]{64}$"
+    "stripped": {
+     "type": "integer",
+     "minimum": 0,
+     "description": "Sentences the Verifier removed."
     },
-    "facts": {
-      "type": "array",
-      "description": "Every fact assembled for this chart, at most 50 per category plus a truncation fact.",
-      "items": { "$ref": "fact.schema.json" }
+    "omitted_fact_ids": {
+     "type": "array",
+     "description": "Ids of must-surface facts the narration did not cite; the panel renders them under 'Also on file' straight from the fact table.",
+     "items": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}$"
+     }
+    },
+    "status": {
+     "type": [
+      "string",
+      "null"
+     ],
+     "description": "null on success. Otherwise a physician-facing reason the AI summary is unavailable.",
+     "enum": [
+      null,
+      "AI summary unavailable: timed out",
+      "AI summary unavailable: provider busy, try again shortly",
+      "AI summary unavailable: provider error",
+      "AI summary unavailable: model declined",
+      "AI summary unavailable: malformed response",
+      "AI summary unavailable: not configured on this server"
+     ]
+    },
+    "from_cache": {
+     "type": "boolean",
+     "description": "True when the verified narration was served from copilot_briefing_cache; tokens are then zero."
+    },
+    "total_failure": {
+     "type": "boolean",
+     "description": "True when every sentence was stripped; the panel shows a distinct 'unable to verify' state and nothing is cached."
     },
     "tokens": {
+     "$ref": "#/$defs/tokens"
+    },
+    "generated_at": {
+     "type": [
+      "string",
+      "null"
+     ],
+     "description": "ISO 8601 time (with offset, site zone) the cached narration was generated, e.g. by the morning pre-warm; null when it was generated in this request. A served narration is always verified against the chart as of now, so this dates the wording, not the facts."
+    }
+   },
+   "required": [
+    "sentences",
+    "stripped",
+    "omitted_fact_ids",
+    "status",
+    "from_cache",
+    "total_failure",
+    "tokens",
+    "generated_at"
+   ],
+   "additionalProperties": false
+  },
+  "guidelines": {
+   "type": "object",
+   "description": "What the guidelines say about this chart (Week 2 extension). status: ok (cards follow), no_triggers (no rule in contracts/guideline_triggers.json fired), unavailable (the sidecar could not be reached; the briefing is otherwise complete), not_configured. Cards quote guideline passages and say which facts raised the topic; they are never facts about the patient. A card the critic judged not applicable is dropped and counted in `dropped`.",
+   "properties": {
+    "status": {
+     "type": "string",
+     "enum": [
+      "ok",
+      "unavailable",
+      "no_triggers",
+      "not_configured"
+     ]
+    },
+    "triggers_version": {
+     "type": "string"
+    },
+    "dropped": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "cards": {
+     "type": "array",
+     "items": {
       "type": "object",
       "properties": {
-        "prompt": { "type": "integer", "minimum": 0 },
-        "completion": { "type": "integer", "minimum": 0 }
+       "trigger_id": {
+        "type": "string"
+       },
+       "label": {
+        "type": "string"
+       },
+       "because_fact_ids": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^[0-9a-f]{8}$"
+        }
+       },
+       "reasons": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "chunks": {
+        "type": "array",
+        "maxItems": 2,
+        "items": {
+         "type": "object",
+         "properties": {
+          "chunk_id": {
+           "type": "string"
+          },
+          "source_id": {
+           "type": "string"
+          },
+          "title": {
+           "type": "string"
+          },
+          "section": {
+           "type": "string"
+          },
+          "quote": {
+           "type": "string"
+          },
+          "url": {
+           "type": "string"
+          },
+          "score": {
+           "type": "number"
+          }
+         },
+         "required": [
+          "chunk_id",
+          "source_id",
+          "title",
+          "section",
+          "quote",
+          "url",
+          "score"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "applicable": {
+        "type": [
+         "boolean",
+         "null"
+        ]
+       },
+       "reason": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "checked_label": {
+        "type": "string"
+       }
       },
-      "required": ["prompt", "completion"],
+      "required": [
+       "trigger_id",
+       "label",
+       "because_fact_ids",
+       "reasons",
+       "chunks",
+       "applicable",
+       "reason",
+       "checked_label"
+      ],
       "additionalProperties": false
+     }
     }
+   },
+   "required": [
+    "status",
+    "triggers_version",
+    "dropped",
+    "cards"
+   ],
+   "additionalProperties": false
   }
+ },
+ "required": [
+  "correlation_id",
+  "prior_visit",
+  "facts_hash",
+  "facts",
+  "narration",
+  "guidelines"
+ ],
+ "additionalProperties": false,
+ "$defs": {
+  "correlation_id": {
+   "type": "string",
+   "description": "Request correlation id, also sent as the X-Correlation-Id header and used as the Langfuse trace id and audit-log key.",
+   "pattern": "^[0-9a-f]{32}$"
+  },
+  "facts_hash": {
+   "type": "string",
+   "description": "sha256 over the sorted fact ids, categories and values. Send it back with every ask.",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "facts": {
+   "type": "array",
+   "description": "Every fact assembled for this chart, at most 50 per category plus a truncation fact.",
+   "items": {
+    "$ref": "fact.schema.json"
+   }
+  },
+  "tokens": {
+   "type": "object",
+   "properties": {
+    "prompt": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "completion": {
+     "type": "integer",
+     "minimum": 0
+    }
+   },
+   "required": [
+    "prompt",
+    "completion"
+   ],
+   "additionalProperties": false
+  }
+ }
 }

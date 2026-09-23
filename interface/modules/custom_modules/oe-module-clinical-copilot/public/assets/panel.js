@@ -70,6 +70,7 @@
         file: document.getElementById('copilot-file'),
         status: document.getElementById('copilot-status'),
         narration: document.getElementById('copilot-narration'),
+        guidelines: document.getElementById('copilot-guidelines'),
         facts: document.getElementById('copilot-facts'),
         form: document.getElementById('copilot-ask'),
         question: document.getElementById('copilot-question'),
@@ -435,6 +436,46 @@
         return 'generated ' + when + ' · matches chart as of now';
     }
 
+    // Renders "What the guidelines say about this chart": one card per fired
+    // trigger, quoting the retrieved passages and naming the facts that raised
+    // the topic. Cards are guideline text, never facts about the patient, so
+    // their chips read "guideline" and their check label says what the critic
+    // did (or did not) verify. renderFacts() must run first: the "Because:"
+    // line looks facts up by id.
+    function renderGuidelines(g) {
+        els.guidelines.innerHTML = '';
+        if (!g || g.status === 'not_configured') return;
+        els.guidelines.appendChild(el('div', { class: 'copilot-label', text: 'What the guidelines say about this chart' }));
+        if (g.status === 'unavailable') {
+            els.guidelines.appendChild(el('div', { class: 'copilot-alert', text: 'Guideline evidence is unavailable right now. The chart facts above are complete.' }));
+            return;
+        }
+        if (g.status === 'no_triggers' || g.cards.length === 0) {
+            els.guidelines.appendChild(el('p', { class: 'copilot-muted', text: g.status === 'no_triggers' ? 'No guideline topic in the corpus matches this chart.' : 'No guideline passage matched the topics this chart raised.' }));
+            return;
+        }
+        g.cards.forEach(card => {
+            card.chunks.forEach(c => { state.guidelinesById[c.chunk_id] = c; });
+            const because = el('p', { class: 'copilot-because' }, ['Because: ']);
+            let parts = 0;
+            card.reasons.forEach(r => { because.appendChild(document.createTextNode((parts++ ? '; ' : '') + r)); });
+            card.because_fact_ids.forEach(id => {
+                const f = state.factsById[id];
+                if (!f) return;
+                because.appendChild(document.createTextNode((parts++ ? '; ' : '') + f.value + ' '));
+                because.appendChild(chip(id));
+            });
+            const node = el('div', { class: 'copilot-card', 'data-trigger': card.trigger_id }, [el('h6', { text: card.label }), because]);
+            card.chunks.forEach(c => {
+                node.appendChild(el('blockquote', { class: 'copilot-quote' }, [c.quote + ' ', chip(c.chunk_id, 'copilot-chip-ref')]));
+                const label = c.title + ' › ' + c.section;
+                node.appendChild(el('div', { class: 'copilot-source' }, [c.url ? el('a', { href: c.url, target: '_blank', rel: 'noopener', text: label }) : el('span', { text: label })]));
+            });
+            node.appendChild(el('div', { class: 'copilot-checked', text: card.checked_label + (card.reason ? ' · ' + card.reason : '') }));
+            els.guidelines.appendChild(node);
+        });
+    }
+
     // Renders the AI summary block. Three branches: the model failed (show the
     // status label), everything was stripped (say so), or normal. In every
     // case the "Also on file" list appends must-surface facts the model
@@ -517,6 +558,7 @@
             }
             renderFacts(json);
             renderNarration(json.narration);
+            renderGuidelines(json.guidelines);
             // The first 8 characters of the correlation id, so a clinician reporting a
             // problem can quote a reference that matches the server logs and trace.
             setStatus('ref ' + json.correlation_id.slice(0, 8));

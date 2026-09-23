@@ -19,6 +19,7 @@ use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\Contracts;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\FiredTrigger;
 
 /**
  * The only place PHP talks to the Python sidecar. One HTTP POST per run:
@@ -86,6 +87,28 @@ final class SidecarClient
     }
 
     /** Guideline evidence for a question (mode=answer): no documents, no patient identifiers. */
+    /**
+     * Brief mode: the chart's fired guideline triggers as fixed queries, the
+     * cited fact lines and the patient's age and sex for the critic. No
+     * question, no documents, no identifiers.
+     *
+     * @param list<FiredTrigger> $triggers
+     * @param list<string> $factLines
+     */
+    public function brief(string $correlationId, string $factsHash, array $triggers, array $factLines, ?int $age, ?string $sex): RunResult
+    {
+        return $this->run([
+            'mode' => 'brief',
+            'correlation_id' => $correlationId,
+            'facts_hash' => $factsHash,
+            'question' => null,
+            'documents' => [],
+            'queries' => array_map(static fn(FiredTrigger $t): array => $t->toQuery(), $triggers),
+            'patient' => ['age' => $age, 'sex' => $sex],
+            'facts' => $factLines,
+        ]);
+    }
+
     public function answer(string $correlationId, string $factsHash, string $question): RunResult
     {
         return $this->run(['mode' => 'answer', 'correlation_id' => $correlationId, 'facts_hash' => $factsHash, 'question' => $question, 'documents' => []]);

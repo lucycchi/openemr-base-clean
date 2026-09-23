@@ -32,8 +32,9 @@ final readonly class RunResult
      * @param list<array{chunk_id: string, source_id: string, section: string, quote: string, score: float}> $chunks
      * @param list<Handoff> $handoffs
      * @param list<UsageEntry> $usage
+     * @param list<array{trigger_id: string, chunks: list<array{chunk_id: string, source_id: string, section: string, quote: string, score: float}>, applicable: bool|null, reason: string|null}> $evidence brief mode: per-trigger passages and the critic's verdict
      */
-    public function __construct(public string $correlationId, public array $extractions, public array $chunks, public array $handoffs, public array $usage)
+    public function __construct(public string $correlationId, public array $extractions, public array $chunks, public array $handoffs, public array $usage, public array $evidence = [])
     {
     }
 
@@ -70,7 +71,31 @@ final readonly class RunResult
         $handoffs = $list($a['handoffs'], Handoff::fromArray(...));
         /** @var list<UsageEntry> $usage */
         $usage = $list($a['usage'], UsageEntry::fromArray(...));
-        return new self($a['correlation_id'], $extractions, $chunks, $handoffs, $usage);
+        // Brief mode only; absent from extract and answer runs, so it is optional.
+        $evidence = [];
+        $rawEvidence = $a['evidence'] ?? [];
+        if (!is_array($rawEvidence)) {
+            throw new SidecarException('schema_mismatch');
+        }
+        foreach ($rawEvidence as $e) {
+            if (!is_array($e) || !is_string($e['trigger_id'] ?? null) || !is_array($e['chunks'] ?? null)) {
+                throw new SidecarException('schema_mismatch');
+            }
+            $applicable = $e['applicable'] ?? null;
+            $reason = $e['reason'] ?? null;
+            if (($applicable !== null && !is_bool($applicable)) || ($reason !== null && !is_string($reason))) {
+                throw new SidecarException('schema_mismatch');
+            }
+            $ec = [];
+            foreach ($e['chunks'] as $c) {
+                if (!is_array($c) || !is_string($c['chunk_id'] ?? null) || !is_string($c['source_id'] ?? null) || !is_string($c['section'] ?? null) || !is_string($c['quote'] ?? null) || !is_numeric($c['score'] ?? null)) {
+                    throw new SidecarException('schema_mismatch');
+                }
+                $ec[] = ['chunk_id' => $c['chunk_id'], 'source_id' => $c['source_id'], 'section' => $c['section'], 'quote' => $c['quote'], 'score' => (float) $c['score']];
+            }
+            $evidence[] = ['trigger_id' => $e['trigger_id'], 'chunks' => $ec, 'applicable' => $applicable, 'reason' => $reason];
+        }
+        return new self($a['correlation_id'], $extractions, $chunks, $handoffs, $usage, $evidence);
     }
 
     /**

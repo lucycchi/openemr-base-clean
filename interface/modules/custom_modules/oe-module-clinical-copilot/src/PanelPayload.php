@@ -15,6 +15,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection;
+
 /**
  * Builds the JSON bodies chat.php returns to panel.js. Three shapes share a
  * common base (correlation id, prior visit date, facts hash, the full fact
@@ -28,9 +30,10 @@ final class PanelPayload
      *
      * @return array<string, mixed>
      */
-    public static function briefing(AssembledFacts $assembled, BriefingResult $briefing, string $correlationId): array
+    public static function briefing(AssembledFacts $assembled, BriefingResult $briefing, string $correlationId, ?GuidelineSection $guidelines = null): array
     {
         return self::base($assembled, $correlationId) + [
+            'guidelines' => ($guidelines ?? GuidelineSection::none('not_configured'))->toArray(),
             'narration' => [
                 'sentences' => self::sentences($briefing->sentences),
                 'stripped' => $briefing->strippedCount,

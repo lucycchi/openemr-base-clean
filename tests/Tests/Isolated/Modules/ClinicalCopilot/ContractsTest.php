@@ -213,6 +213,22 @@ final class ContractsTest extends TestCase
         self::assertConforms('chat.briefing.response', PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID));
     }
 
+    public function testBriefingPayloadWithGuidelineCardsConformsToContract(): void
+    {
+        $briefing = new BriefingResult([], 0, [], null, false, false, 0, 0);
+        $run = \OpenEMR\Modules\ClinicalCopilot\Documents\RunResult::fromArray(['correlation_id' => 'c', 'extractions' => [], 'chunks' => [], 'evidence' => [
+            ['trigger_id' => 'lipids', 'chunks' => [['chunk_id' => 'aaaaaaaaaaaa', 'source_id' => 'acc-aha-2018-cholesterol', 'section' => 'T > S', 'quote' => 'A passage.', 'score' => 0.8]], 'applicable' => true, 'reason' => 'no restriction stated'],
+            ['trigger_id' => 'anemia', 'chunks' => [['chunk_id' => 'bbbbbbbbbbbb', 'source_id' => 'anemia-adults-primary-care', 'section' => 'T > S', 'quote' => 'B passage.', 'score' => 0.7]], 'applicable' => null, 'reason' => null],
+        ], 'handoffs' => [], 'usage' => []]);
+        $triggers = [
+            new \OpenEMR\Modules\ClinicalCopilot\Guidelines\FiredTrigger('lipids', 'Cholesterol management', 'q', 'acc-aha-2018-cholesterol', [Fact::idFor('PrescriptionService', 17, 'drug')], []),
+            new \OpenEMR\Modules\ClinicalCopilot\Guidelines\FiredTrigger('anemia', 'Anemia', 'q', 'anemia-adults-primary-care', [], ['on the problem list: Anemia']),
+        ];
+        $section = \OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection::fromRun($triggers, $run, new \OpenEMR\Modules\ClinicalCopilot\GuidelineManifest());
+        self::assertConforms('chat.briefing.response', PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID, $section));
+        self::assertConforms('chat.briefing.response', PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID, \OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection::none('unavailable')));
+    }
+
     public function testBriefingPayloadWithProviderFailureConformsToContract(): void
     {
         $failed = new BriefingResult([], 0, [], 'AI summary unavailable: provider busy, try again shortly', false, false, 0, 0);

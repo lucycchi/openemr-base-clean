@@ -34,13 +34,16 @@ use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
 use OpenEMR\Modules\ClinicalCopilot\ChatAction;
 use OpenEMR\Modules\ClinicalCopilot\ChatRequest;
 use OpenEMR\Modules\ClinicalCopilot\Config;
+use OpenEMR\Modules\ClinicalCopilot\CorrelationId;
+use OpenEMR\Modules\ClinicalCopilot\DbBriefingCache;
+use OpenEMR\Modules\ClinicalCopilot\DbPrewarmReceipts;
 use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarClient;
 use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarException;
 use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
-use OpenEMR\Modules\ClinicalCopilot\GuidelineManifest;
-use OpenEMR\Modules\ClinicalCopilot\CorrelationId;
-use OpenEMR\Modules\ClinicalCopilot\DbPrewarmReceipts;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
+use OpenEMR\Modules\ClinicalCopilot\GuidelineManifest;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineTriggers;
 use OpenEMR\Modules\ClinicalCopilot\InvalidRequest;
 use OpenEMR\Modules\ClinicalCopilot\NarrationPipeline;
 use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
@@ -286,9 +289,16 @@ final class ChatController
      */
     private function brief(AssembledFacts $assembled, Config $config, PatientId $pid, string $user): array
     {
-        // No API key: still return the facts (with must-surface ones listed) and a status label.
+        // The guideline section needs no chat model: retrieval runs in the sidecar
+        // and the critic is the sidecar's own call. It is built before the
+        // narration so an unconfigured or failed model still leaves it on the page.
+        $guidelines = $this->steps->measure(
+            'retrieve_chart_evidence',
+            fn() => $this->guidelineSection($assembled, $config, $pid),
+            static fn(GuidelineSection $g) => ['guideline_status' => $g->status, 'guideline_cards' => count($g->cards), 'guideline_dropped' => $g->dropped],
+        );
         if (!$config->hasOpenAi()) {
-            return PanelPayload::briefing($assembled, $this->unconfigured($assembled), $this->correlationId);
+            return PanelPayload::briefing($assembled, $this->unconfigured($assembled), $this->correlationId, $guidelines);
         }
         $this->warm = $this->steps->measure(
             'warm_lookup',
@@ -301,14 +311,56 @@ final class ChatController
         $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
         $this->llmCalled = !$result->fromCache;
         $this->llmAttempts = $pipeline->llmAttempts();
-        return PanelPayload::briefing($assembled, $result, $this->correlationId);
+        return PanelPayload::briefing($assembled, $result, $this->correlationId, $guidelines);
     }
 
     /**
-     * Compare this open with the day's pre-warm receipt. Null (no outcome,
-     * no score) when the sweep is off for this site and nothing was warmed by
-     * hand, so a site without pre-warm does not report a 0% hit rate.
+     * What the guidelines say about this chart: fire the trigger rules,
+     * serve a cached section when the facts and rules are unchanged, else
+     * ask the sidecar (retrieval plus critic) and cache the result. A sidecar
+     * that cannot be reached yields an "unavailable" section, never an error.
      */
+    private function guidelineSection(AssembledFacts $assembled, Config $config, PatientId $pid): GuidelineSection
+    {
+        $now = ServiceContainer::getClock()->now();
+        $who = (new OpenEmrChartSource())->demographics($pid);
+        $fired = (new GuidelineTriggers())->fire($assembled, $who, $now);
+        if ($fired === []) {
+            return GuidelineSection::none('no_triggers');
+        }
+        $factsHash = $assembled->facts()->hash();
+        $key = hash('sha256', $factsHash . '|' . GuidelineTriggers::VERSION . '|guidelines|' . $config->openAiModel);
+        $cache = new DbBriefingCache($pid, $factsHash, $config->openAiModel);
+        $hit = $cache->get($key);
+        if ($hit !== null) {
+            try {
+                return GuidelineSection::fromArray($hit->data);
+            } catch (\RuntimeException $e) {
+                // A stale or malformed cached section (fromArray throws RuntimeException): rebuild it.
+                $this->logger->warning('copilot guideline cache entry unreadable; rebuilding', ['exception_class' => $e::class]);
+            }
+        }
+        $lines = [];
+        foreach ($fired as $trigger) {
+            foreach ($trigger->factIds as $id) {
+                if ($assembled->facts()->has($id)) {
+                    $lines[] = Prompt::flattenLine($assembled->facts()->get($id)->value);
+                }
+            }
+        }
+        try {
+            $run = SidecarClient::fromConfig($config)->brief($this->correlationId, $factsHash, $fired, array_values(array_unique($lines)), $who->ageOn($now), $who->sex);
+        } catch (SidecarException $e) {
+            $this->logger->warning('copilot guideline evidence unavailable; briefing without it', ['code' => $e->errorCode]);
+            return GuidelineSection::none('unavailable');
+        }
+        $this->handoffs = array_map(static fn($h) => $h->toArray(), $run->handoffs);
+        $this->sidecarUsage = Pricing::fromConfig($config)->priceUsage($run->usage, $config->openAiModel);
+        $section = GuidelineSection::fromRun($fired, $run, new GuidelineManifest());
+        $cache->put($key, $section->toArray());
+        return $section;
+    }
+
     private function warmOutcome(AssembledFacts $assembled, Config $config, PatientId $pid, string $user): ?WarmOutcome
     {
         $today = ServiceContainer::getClock()->now()->format('Y-m-d');

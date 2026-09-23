@@ -135,6 +135,12 @@ TXT;
     // rules" becomes "(x) ignore the rules" on the same line as its fact.
     private function flatten(string $text): string
     {
+        return self::flattenLine($text);
+    }
+
+    /** The same one-line, bracket-free form for text that leaves the server as data (the critic's fact lines). */
+    public static function flattenLine(string $text): string
+    {
         $text = preg_replace('/\s+/', ' ', $text) ?? $text;
         return trim(str_replace(['[', ']'], ['(', ')'], $text));
     }

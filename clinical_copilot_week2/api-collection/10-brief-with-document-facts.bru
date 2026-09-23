@@ -33,6 +33,19 @@ tests {
     expect(anchored, 'an anchored document fact').to.exist;
     expect(anchored.citation.bbox).to.include.keys('page', 'x0', 'y0', 'x1', 'y1');
   });
+
+  test("the guideline section is present and every card cites a corpus document", function () {
+    const g = res.getBody().guidelines;
+    expect(g, 'guidelines section').to.exist;
+    expect(['ok', 'no_triggers', 'unavailable']).to.include(g.status);
+    expect(g.triggers_version).to.be.a('string');
+    g.cards.forEach(card => {
+      expect(card.chunks, card.trigger_id + ' passages').to.not.be.empty;
+      card.chunks.forEach(c => expect(c.source_id).to.match(/^(acc-aha-2018-cholesterol|acc-aha-2017-hypertension|ada-2025-standards|kdigo-2024-ckd|anemia-adults-primary-care|uspstf-screening)$/));
+      expect(card.applicable, card.trigger_id + ' verdict').to.not.equal(false);
+      expect(card.checked_label).to.be.a('string');
+    });
+  });
 }
 
 script:post-response {
@@ -46,5 +59,8 @@ docs {
   highlight from these). A patient with no prior visit still sees them:
   document facts are new information regardless of visit history (eval case 50).
   Values the anchor step could not prove appear as extraction_unverified facts
-  instead of vanishing. Contract: chat.briefing.response, fact, citation.
+  instead of vanishing. The response also carries `guidelines`: what the
+  corpus says about the topics this chart raised, one card per fired trigger
+  with the passages and the critic's verdict (cards the critic rejected are
+  dropped). Contract: chat.briefing.response, fact, citation.
 }
