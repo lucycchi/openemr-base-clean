@@ -56,13 +56,21 @@ final class ReadinessTest extends TestCase
      * $this->calls and returns null (ok) or "<name> unreachable".
      * @return array<string, callable(): ?string>
      */
-    private function probes(bool $db = true, bool $openai = true, bool $langfuse = true, bool $sidecar = true): array
+    private function probes(bool $db = true, bool $openai = true, bool $langfuse = true, bool $sidecar = true, bool $contracts = true): array
     {
         $probe = fn(string $name, bool $ok) => function () use ($name, $ok): ?string {
             $this->calls[$name] = ($this->calls[$name] ?? 0) + 1;
             return $ok ? null : "$name unreachable";
         };
-        return ['database' => $probe('database', $db), 'openai' => $probe('openai', $openai), 'langfuse' => $probe('langfuse', $langfuse), 'sidecar' => $probe('sidecar', $sidecar)];
+        return ['contracts' => $probe('contracts', $contracts), 'database' => $probe('database', $db), 'openai' => $probe('openai', $openai), 'langfuse' => $probe('langfuse', $langfuse), 'sidecar' => $probe('sidecar', $sidecar)];
+    }
+
+    public function testMissingModuleRuntimePiecesIsNotReady(): void
+    {
+        // The validator library or the contract files missing from a build: every extraction and question would 500.
+        $report = (new Readiness($this->probes(contracts: false), new ReadinessCache(), new FixedClock(new DateTimeImmutable('2026-09-15 10:00:00'))))->check();
+        self::assertFalse($report->ready);
+        self::assertSame(503, $report->httpStatus());
     }
 
     public function testSidecarDownIsDegradedButReady(): void
@@ -85,7 +93,7 @@ final class ReadinessTest extends TestCase
 
         self::assertTrue($report->ready);
         self::assertSame(200, $report->httpStatus());
-        self::assertSame(['database' => 'ok', 'openai' => 'ok', 'langfuse' => 'ok', 'sidecar' => 'ok'], $report->dependencies);
+        self::assertSame(['contracts' => 'ok', 'database' => 'ok', 'openai' => 'ok', 'langfuse' => 'ok', 'sidecar' => 'ok'], $report->dependencies);
         self::assertSame([], $report->degraded);
     }
 

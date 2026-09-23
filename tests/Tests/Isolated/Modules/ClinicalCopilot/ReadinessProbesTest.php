@@ -45,7 +45,14 @@ final class ReadinessProbesTest extends TestCase
     public function testTheProbesAreTheFourDependenciesTheReportNames(): void
     {
         $config = new Config('sk-test', 'gpt-4o-mini', 'https://cloud.langfuse.com', 'pk', 'sk');
-        self::assertSame(['database', 'openai', 'langfuse', 'sidecar'], array_keys(ReadinessProbes::probes($config, new Client())));
+        self::assertSame(['contracts', 'database', 'openai', 'langfuse', 'sidecar'], array_keys(ReadinessProbes::probes($config, new Client())));
+    }
+
+    public function testTheContractsProbeIsOkWhenTheValidatorAndTheFilesArePresent(): void
+    {
+        // In this test process the library is installed and the files are on disk: the probe passes.
+        // The failure branches (library missing, files unreadable) are what a production build without them reports.
+        self::assertNull(self::probe('contracts', []));
     }
 
     public function testSidecarReadyIsOkNotReadyIsAReasonAndUnreachableIsAReason(): void

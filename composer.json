@@ -62,6 +62,7 @@
         "guzzlehttp/guzzle": "^7.10.0",
         "guzzlehttp/psr7": "^2.8",
         "html2text/html2text": "^4.3.2",
+        "justinrainbow/json-schema": "^6.10",
         "kamermans/guzzle-oauth2-subscriber": "^1.1.1",
         "knplabs/knp-snappy": "^1.5.1",
         "laminas/laminas-code": "^4.16",
@@ -139,7 +140,6 @@
     "require-dev": {
         "ergebnis/composer-normalize": "^2.48",
         "iamcal/sql-parser": "^0.7.0",
-        "justinrainbow/json-schema": "^6.8",
         "league/flysystem-memory": "^3.31",
         "maglnet/composer-require-checker": "^4.0",
         "phpmyadmin/sql-parser": "^6.0",

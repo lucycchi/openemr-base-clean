@@ -17,6 +17,10 @@
       "type": "object",
       "description": "Per-dependency result: 'ok' or a short failure reason.",
       "properties": {
+        "contracts": {
+          "$ref": "#/$defs/probe",
+          "description": "Week 2: the module's own runtime pieces, the JSON Schema validator library and the contract files; required, because without them every sidecar reply and every model call fails."
+        },
         "database": {
           "$ref": "#/$defs/probe"
         },
@@ -32,6 +36,7 @@
         }
       },
       "required": [
+        "contracts",
         "database",
         "openai",
         "langfuse",
@@ -87,7 +92,9 @@
         "langfuse unavailable",
         "sidecar unreachable",
         "sidecar not ready",
-        "sidecar unavailable"
+        "sidecar unavailable",
+        "contract validator missing",
+        "contract files unreadable"
       ]
     }
   }

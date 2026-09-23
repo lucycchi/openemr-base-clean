@@ -21,6 +21,7 @@ use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Modules\ClinicalCopilot\Config;
+use OpenEMR\Modules\ClinicalCopilot\Contracts;
 
 /**
  * Builds the production Readiness checker with its four probes. Each probe
@@ -50,6 +51,24 @@ final class ReadinessProbes
     public static function probes(Config $config, ClientInterface $http): array
     {
         return [
+            // The module's own runtime pieces: the JSON Schema validator every
+            // sidecar reply is checked with, and the contract files it reads.
+            // A production image built without them answers 500 on every
+            // extraction and question; this probe makes that a not_ready
+            // instead (found on the 2026-09-23 deploy, when the validator was
+            // still a dev-only dependency).
+            'contracts' => static function (): ?string {
+                if (!class_exists(\JsonSchema\Validator::class)) {
+                    return 'contract validator missing';
+                }
+                try {
+                    Contracts::schema('run.response');
+                    Contracts::schema('llm.briefing.output');
+                } catch (\RuntimeException | \InvalidArgumentException | \JsonException) {
+                    return 'contract files unreadable';
+                }
+                return null;
+            },
             'database' => static function (): ?string {
                 try {
                     $row = QueryUtils::querySingleRow('SELECT 1', [], false);
