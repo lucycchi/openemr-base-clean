@@ -2,14 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-emr.org/clinical-copilot/contracts/run.request.schema.json",
   "title": "Sidecar run request",
-  "description": "PHP -> sidecar POST /run. Two modes: extract (documents carry bytes; the graph runs the intake_extractor) and answer (a question; the graph runs the evidence_retriever). The sidecar never receives patient identifiers: facts_hash is the Week 1 fact-set hash, question text is the physician's words (it may name drugs or labs, never the patient). correlation_id is the idempotency key for 10 minutes.",
+  "description": "PHP -> sidecar POST /run. Three modes: extract (documents carry bytes; the graph runs the intake_extractor), answer (a question; the graph runs the evidence_retriever) and brief (the chart's fired guideline triggers as fixed queries, no question; the graph runs the evidence_retriever once for all of them, then the critic). The sidecar never receives patient identifiers: facts_hash is the Week 1 fact-set hash, question text is the physician's words (it may name drugs or labs, never the patient). correlation_id is the idempotency key for 10 minutes.",
   "type": "object",
   "properties": {
     "mode": {
       "type": "string",
       "enum": [
         "extract",
-        "answer"
+        "answer",
+        "brief"
       ]
     },
     "correlation_id": {
@@ -72,6 +73,32 @@
         ],
         "additionalProperties": false
       }
+    },
+    "queries": {
+      "type": "array",
+      "maxItems": 20,
+      "description": "brief mode only: one entry per guideline trigger the chart fired (contracts/guideline_triggers.json); the query text is the rule's fixed query, whose vector the index build committed.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "trigger_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "pattern": "^[a-z0-9_-]+$"
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "trigger_id",
+          "query"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "required": [
@@ -81,5 +108,35 @@
     "question",
     "documents"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "properties": {
+        "mode": {
+          "enum": [
+            "extract",
+            "answer"
+          ]
+        },
+        "queries": {
+          "maxItems": 0
+        }
+      }
+    },
+    {
+      "properties": {
+        "mode": {
+          "enum": [
+            "brief"
+          ]
+        },
+        "question": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "queries"
+      ]
+    }
+  ]
 }

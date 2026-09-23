@@ -107,3 +107,39 @@ def test_graph_is_drawable() -> None:
     # The compiled graph exposes its structure; this is what W2_ARCHITECTURE.md's diagram is checked against.
     nodes = set(G.get_graph().nodes)
     assert {"supervisor", "intake_extractor", "evidence_retriever"} <= nodes
+
+
+# -- brief mode (chart-driven guideline evidence) ---------------------------
+
+def test_brief_with_queries_routes_to_retriever_once_with_chart_triggers() -> None:
+    from copilot_sidecar.schemas import TriggerEvidence, TriggerQuery
+
+    calls = []
+
+    def many(queries):
+        calls.append([q.trigger_id for q in queries])
+        return [TriggerEvidence(trigger_id=q.trigger_id, chunks=[]) for q in queries], []
+
+    g = graph.build_graph(graph.stub_extract, graph.stub_retrieve, many)
+    s = graph.run("brief", "abcdefgh", "0" * 64, None, [], graph=g, queries=[TriggerQuery(trigger_id="lipids", query="statin indication"), TriggerQuery(trigger_id="ckd", query="CKD staging")])
+    assert calls == [["lipids", "ckd"]]
+    assert hops(s) == [("supervisor", "evidence_retriever", "chart_triggers"), ("evidence_retriever", "supervisor", "worker_finished"), ("supervisor", "done", "worker_finished")]
+    assert [e.trigger_id for e in s["evidence"]] == ["lipids", "ckd"]
+
+
+def test_brief_without_queries_routes_done_with_no_triggers() -> None:
+    s = run("brief", None, [])
+    assert hops(s) == [("supervisor", "done", "no_triggers")]
+    assert s["evidence"] == []
+
+
+def test_brief_retrieval_failure_is_reported_not_raised() -> None:
+    from copilot_sidecar.schemas import TriggerQuery
+
+    def broken(queries):
+        raise RuntimeError("index missing")
+
+    g = graph.build_graph(graph.stub_extract, graph.stub_retrieve, broken)
+    s = graph.run("brief", "abcdefgh", "0" * 64, None, [], graph=g, queries=[TriggerQuery(trigger_id="lipids", query="statin indication")])
+    assert hops(s) == [("supervisor", "evidence_retriever", "chart_triggers"), ("evidence_retriever", "supervisor", "worker_failed"), ("supervisor", "done", "worker_finished")]
+    assert s["evidence"] == []

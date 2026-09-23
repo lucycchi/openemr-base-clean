@@ -69,6 +69,20 @@ def main() -> None:
     (retrieve.INDEX_DIR / "chunks.json").write_text(json.dumps({"model": retrieve.EMBED_MODEL, "chunks": [c.__dict__ for c in chunks]}, indent=1) + "\n")
     np.save(retrieve.INDEX_DIR / "embeddings.npy", vecs)
     print(f"indexed {len(chunks)} chunks from {len({c.source_id for c in chunks})} documents ({usage.input} embedding tokens)")
+    # 3b. The guideline trigger queries (contracts/guideline_triggers.json):
+    #     fixed strings PHP sends in brief mode, embedded once here so a
+    #     briefing's retrieval costs no model call. Keyed by trigger id with
+    #     the query text, so retrieve.py can tell a changed query from a
+    #     committed one.
+    import os
+    contracts = Path(os.environ.get("COPILOT_CONTRACTS_DIR") or Path(__file__).resolve().parents[2] / "contracts")
+    rules_path = contracts / "guideline_triggers.json"
+    if rules_path.is_file():
+        rules = json.loads(rules_path.read_text())["rules"]
+        tvecs, tusage = retrieve.embed([r["query"] for r in rules])
+        table = {r["id"]: {"query": r["query"], "embedding": [round(float(x), 6) for x in v]} for r, v in zip(rules, tvecs)}
+        (retrieve.INDEX_DIR / "trigger_queries.json").write_text(json.dumps({"model": retrieve.EMBED_MODEL, "queries": table}, indent=1) + "\n")
+        print(f"embedded {len(rules)} trigger queries ({tusage.input} tokens)")
     # 4. Optional: the eval queries. Only when a directory was given, because
     #    this is a second API call and the queries live outside the sidecar.
     if len(sys.argv) > 1:

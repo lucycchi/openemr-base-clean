@@ -152,3 +152,46 @@ def test_proposal_contract_is_what_the_model_is_asked_to_fill(name: str) -> None
                 walk(v)
 
     walk(schema)
+
+
+# -- brief mode ---------------------------------------------------------------
+
+def _brief(**over) -> dict:
+    base = {"mode": "brief", "correlation_id": "abcdefgh-0002", "facts_hash": "0" * 64, "question": None, "documents": [],
+            "queries": [{"trigger_id": "lipids", "query": "statin indication and intensity when LDL cholesterol is above goal"}]}
+    base.update(over)
+    return base
+
+
+def test_run_request_accepts_brief_with_queries_and_rejects_brief_with_a_question() -> None:
+    v = validator("run.request")
+    assert v.is_valid(_brief())
+    schemas.RunRequest.model_validate(_brief())
+    with pytest.raises(ValidationError):
+        schemas.RunRequest.model_validate(_brief(question="what about statins?"))
+    with pytest.raises(ValidationError):
+        schemas.RunRequest.model_validate(_brief(mode="answer", question="x"))  # queries only travel with brief
+
+
+def test_handoff_reasons_and_run_modes_match_the_contracts() -> None:
+    import typing
+
+    handoff = json.loads((CONTRACTS / "handoff.schema.json").read_text())["properties"]
+    assert set(typing.get_args(schemas.HandoffReason)) == set(handoff["reason"]["enum"])
+    assert set(typing.get_args(schemas.Node)) == set(handoff["from"]["enum"])
+    request = json.loads((CONTRACTS / "run.request.schema.json").read_text())["properties"]
+    assert set(typing.get_args(schemas.RunRequest.model_fields["mode"].annotation)) == set(request["mode"]["enum"]) == {"extract", "answer", "brief"}
+
+
+def test_brief_response_with_evidence_round_trips_through_the_contract() -> None:
+    v = validator("run.response")
+    chunk = schemas.Chunk(chunk_id="a1b2c3d4e5f6", source_id="acc-aha-2018-cholesterol", section="Title > Statins", quote="A statin is recommended.", score=0.9)
+    resp = schemas.RunResponse(
+        correlation_id="abcdefgh-2", extractions=[], chunks=[],
+        evidence=[schemas.TriggerEvidence(trigger_id="lipids", chunks=[chunk])],
+        handoffs=[schemas.Handoff(**{"from": "supervisor", "to": "evidence_retriever", "reason": "chart_triggers", "state_keys_changed": [], "ms": 1})],
+        usage=[],
+    )
+    doc = json.loads(resp.model_dump_json(by_alias=True))
+    assert v.is_valid(doc), [e.message for e in v.iter_errors(doc)]
+    assert doc["evidence"][0]["applicable"] is None

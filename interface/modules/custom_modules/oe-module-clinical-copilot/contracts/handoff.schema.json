@@ -34,7 +34,10 @@
         "already_extracted",
         "unsupported_doc_type",
         "worker_finished",
-        "worker_failed"
+        "worker_failed",
+        "chart_triggers",
+        "no_triggers",
+        "applicability_check"
       ]
     },
     "state_keys_changed": {

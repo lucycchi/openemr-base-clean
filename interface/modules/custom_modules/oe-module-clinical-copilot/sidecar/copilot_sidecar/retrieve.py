@@ -59,7 +59,7 @@ from rank_bm25 import BM25Okapi
 
 from .llm import correlation_options
 from .logging_setup import correlation_id
-from .schemas import Chunk, Usage
+from .schemas import Chunk, TriggerEvidence, TriggerQuery, Usage
 
 log = logging.getLogger("copilot.retrieve")
 
@@ -72,6 +72,7 @@ RERANK_MODEL = "rerank-v3.5"
 RRF_K = 60  # the constant k in 1/(k + rank)
 CANDIDATES = 20  # how many fused candidates are kept for the floor and the rerank
 TOP = 5  # how many chunks the answer model receives
+PER_TRIGGER = 2  # brief mode: passages kept per fired trigger
 # The relevance floor. A candidate survives when any one of these holds:
 FLOOR = 0.25   # cosine at or above which the dense leg alone is enough
 WEAK = 0.15    # cosine a keyword hit must reach to count (a lone shared word is not relevance)
@@ -279,3 +280,60 @@ def retrieve(question: str, query_vec: np.ndarray | None = None, embed_query: bo
     # Counts and the ranking kind only: never the question or a chunk's text.
     log.info("retrieved", extra={"count": len(chunks), "kind": "rerank" if rerank_usage else "rrf", "ms": int((time.monotonic() - started) * 1000)})
     return chunks, usage
+
+
+_trigger_vectors: dict[str, tuple[str, np.ndarray]] | None = None
+
+
+def trigger_vectors(index_dir: Path = INDEX_DIR) -> dict[str, tuple[str, np.ndarray]]:
+    """The committed embeddings of the trigger rules' fixed queries
+    (corpus/index/trigger_queries.json, written by tools/build_index.py),
+    keyed by trigger id: (query text, vector). Empty when the file is absent,
+    in which case brief-mode queries are embedded live or run keyword-only."""
+    global _trigger_vectors
+    if _trigger_vectors is None:
+        path = index_dir / "trigger_queries.json"
+        table: dict[str, tuple[str, np.ndarray]] = {}
+        if path.is_file():
+            doc = json.loads(path.read_text())
+            for tid, entry in doc.get("queries", {}).items():
+                table[tid] = (entry["query"], np.array(entry["embedding"], dtype=np.float32))
+        _trigger_vectors = table
+    return _trigger_vectors
+
+
+def retrieve_many(queries: list[TriggerQuery]) -> tuple[list[TriggerEvidence], list[Usage]]:
+    """Brief mode: the top PER_TRIGGER passages for each fired trigger, in
+    one pass over the index. A query whose text matches its committed vector
+    costs no model call; any other query is embedded live when a key is
+    present, else searched keyword-only. A chunk appears under the first
+    trigger that retrieves it and under no other, so the panel never shows
+    the same passage twice."""
+    usage: list[Usage] = []
+    evidence: list[TriggerEvidence] = []
+    seen: set[str] = set()
+    started = time.monotonic()
+    committed = trigger_vectors()
+    for q in queries:
+        vec: np.ndarray | None = None
+        entry = committed.get(q.trigger_id)
+        if entry is not None and entry[0] == q.query:
+            vec = entry[1]
+        elif os.environ.get("OPENAI_API_KEY"):
+            vecs, u = embed([q.query])
+            vec = vecs[0]
+            usage.append(u)
+        cands = index().candidates(q.query, vec)
+        ranked, rerank_usage = rerank(q.query, cands)
+        usage.extend(rerank_usage)
+        chunks: list[Chunk] = []
+        for c, score in ranked:
+            if c.chunk_id in seen:
+                continue
+            seen.add(c.chunk_id)
+            chunks.append(Chunk(chunk_id=c.chunk_id, source_id=c.source_id, section=c.section, quote=c.text, score=round(score, 4)))
+            if len(chunks) == PER_TRIGGER:
+                break
+        evidence.append(TriggerEvidence(trigger_id=q.trigger_id, chunks=chunks))
+    log.info("retrieved", extra={"count": sum(len(e.chunks) for e in evidence), "kind": "brief", "ms": int((time.monotonic() - started) * 1000)})
+    return evidence, usage

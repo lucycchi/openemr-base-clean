@@ -233,3 +233,45 @@ def test_eval_anchor_refuses_paths_outside_the_fixtures_dir(client: TestClient) 
     assert r.status_code == 404
     r = client.post("/eval/anchor", json={"fixture": "junk.pdf", "doc_type": "lab_pdf", "proposal": proposal})
     assert r.status_code == 200 and r.json()["status"] == "failed"
+
+
+# -- brief mode ---------------------------------------------------------------
+
+def test_run_brief_returns_evidence_per_trigger_and_the_route(client: TestClient, monkeypatch) -> None:
+    from copilot_sidecar import retrieve as retrieve_module
+    from copilot_sidecar.schemas import Chunk, TriggerEvidence
+
+    def fake_many(queries):
+        return [TriggerEvidence(trigger_id=q.trigger_id, chunks=[Chunk(chunk_id="a1b2c3d4e5f6", source_id="acc-aha-2018-cholesterol", section="S", quote="Q", score=0.5)]) for q in queries], []
+
+    monkeypatch.setattr(retrieve_module, "retrieve_many", fake_many)
+    body = request(mode="brief", correlation_id="brief-app-0001", documents=[], queries=[{"trigger_id": "lipids", "query": "statin indication"}])
+    r = client.post("/run", json=body)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert [e["trigger_id"] for e in data["evidence"]] == ["lipids"]
+    assert data["evidence"][0]["chunks"][0]["chunk_id"] == "a1b2c3d4e5f6"
+    assert [(h["from"], h["to"], h["reason"]) for h in data["handoffs"]][0] == ("supervisor", "evidence_retriever", "chart_triggers")
+
+
+def test_eval_route_accepts_brief_queries(client: TestClient) -> None:
+    r = client.post("/eval/route", json={"mode": "brief", "question": None, "documents": [], "queries": [{"trigger_id": "lipids", "query": "statin indication"}]})
+    assert r.status_code == 200, r.text
+    assert [(h["from"], h["to"], h["reason"]) for h in r.json()["handoffs"]][0] == ("supervisor", "evidence_retriever", "chart_triggers")
+    r = client.post("/eval/route", json={"mode": "brief", "question": None, "documents": []})
+    assert [(h["from"], h["to"], h["reason"]) for h in r.json()["handoffs"]] == [("supervisor", "done", "no_triggers")]
+
+
+def test_eval_brief_evidence_uses_the_committed_trigger_vectors(client: TestClient, monkeypatch) -> None:
+    from copilot_sidecar import retrieve as retrieve_module
+
+    if not (retrieve_module.INDEX_DIR / "trigger_queries.json").exists():
+        pytest.skip("trigger query vectors not present")
+    monkeypatch.delenv("COHERE_API_KEY", raising=False)
+    monkeypatch.setattr(retrieve_module, "embed", lambda texts: (_ for _ in ()).throw(AssertionError("embed called")))
+    committed = json.loads((retrieve_module.INDEX_DIR / "trigger_queries.json").read_text())["queries"]
+    r = client.post("/eval/brief-evidence", json={"queries": [{"trigger_id": "lipids", "query": committed["lipids"]["query"]}]})
+    assert r.status_code == 200, r.text
+    ev = r.json()["evidence"]
+    assert ev[0]["trigger_id"] == "lipids" and ev[0]["chunks"][0]["source_id"] == "acc-aha-2018-cholesterol"
+    assert r.json()["usage"] == []

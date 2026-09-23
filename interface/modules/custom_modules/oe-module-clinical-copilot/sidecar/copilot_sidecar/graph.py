@@ -47,7 +47,7 @@ from typing import Callable, TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from . import extractor
-from .schemas import Chunk, Extraction, Handoff, RunDocument, Usage
+from .schemas import Chunk, Extraction, Handoff, RunDocument, Usage, TriggerEvidence, TriggerQuery
 
 log = logging.getLogger("copilot.graph")
 
@@ -61,6 +61,7 @@ SUPPORTED_DOC_TYPES = {"lab_pdf", "intake_form"}
 # which is how the eval harness substitutes stubs.
 ExtractFn = Callable[[RunDocument, str], tuple[Extraction, list[Usage]]]
 RetrieveFn = Callable[[str], tuple[list[Chunk], list[Usage]]]
+RetrieveManyFn = Callable[[list[TriggerQuery]], tuple[list[TriggerEvidence], list[Usage]]]
 
 
 # The shared state that travels from node to node. A TypedDict is a plain
@@ -76,6 +77,8 @@ class RunState(TypedDict, total=False):
     documents: list[RunDocument]
     extractions: list[Extraction]
     chunks: list[Chunk]
+    queries: list[TriggerQuery]  # brief mode: the chart's fired triggers
+    evidence: list[TriggerEvidence]  # brief mode: what the retriever found per trigger
     handoffs: list[Handoff]
     usage: list[Usage]
     next: str  # the supervisor's decision, read by the conditional edge
@@ -122,6 +125,14 @@ def supervisor_node(state: RunState) -> RunState:
         state["next"] = END
         return state
     # Answer mode with a question, first visit: one retrieval.
+    if state.get("mode") == "brief" and not state.get("retrieved_once"):
+        if state.get("queries"):
+            _hop(state, "supervisor", "evidence_retriever", "chart_triggers", [])
+            state["next"] = "evidence_retriever"
+            return state
+        _hop(state, "supervisor", "done", "no_triggers", [])
+        state["next"] = END
+        return state
     if state.get("mode") == "answer" and state.get("question") and not state.get("retrieved_once"):
         _hop(state, "supervisor", "evidence_retriever", "question_present", [])
         state["next"] = "evidence_retriever"
@@ -160,35 +171,43 @@ def make_extractor_node(extract: ExtractFn) -> Callable[[RunState], RunState]:
     return node
 
 
-def make_retriever_node(retrieve: RetrieveFn) -> Callable[[RunState], RunState]:
+def make_retriever_node(retrieve: RetrieveFn, retrieve_many: RetrieveManyFn) -> Callable[[RunState], RunState]:
     """Same pattern for the retriever."""
     def node(state: RunState) -> RunState:
+        changed = ["chunks", "usage"]
         # A retrieval failure (index missing, provider down) must not fail the
         # run: the answer proceeds with no evidence and the hop says
         # worker_failed, which PHP can surface.
         try:
-            chunks, usage = retrieve(state.get("question") or "")
-            state["chunks"] = chunks
+            if state.get("mode") == "brief":
+                # Brief mode: one batch over every fired trigger; the answer-mode leg is untouched.
+                evidence, usage = retrieve_many(state.get("queries") or [])
+                state["evidence"] = evidence
+                changed = ["evidence", "usage"]
+            else:
+                chunks, usage = retrieve(state.get("question") or "")
+                state["chunks"] = chunks
             state.setdefault("usage", []).extend(usage)
             reason = "worker_finished"
         except Exception:
             state["chunks"] = []
+            state["evidence"] = []
             reason = "worker_failed"
         state["retrieved_once"] = True
-        _hop(state, "evidence_retriever", "supervisor", reason, ["chunks", "usage"])
+        _hop(state, "evidence_retriever", "supervisor", reason, changed)
         return state
 
     return node
 
 
-def build_graph(extract: ExtractFn, retrieve: RetrieveFn):
+def build_graph(extract: ExtractFn, retrieve: RetrieveFn, retrieve_many: RetrieveManyFn | None = None):
     """Assembles and compiles the graph with the given workers."""
     # StateGraph(RunState) declares the shape of the shared state. add_node
     # registers a function under a name; add_edge fixes "after A, run B".
     g = StateGraph(RunState)
     g.add_node("supervisor", supervisor_node)
     g.add_node("intake_extractor", make_extractor_node(extract))
-    g.add_node("evidence_retriever", make_retriever_node(retrieve))
+    g.add_node("evidence_retriever", make_retriever_node(retrieve, retrieve_many or stub_retrieve_many))
     g.add_edge(START, "supervisor")
     # After the supervisor, call the lambda on the state and look its answer
     # (state["next"]) up in the mapping to find the next node, or END.
@@ -220,6 +239,14 @@ def no_retrieve(question: str) -> tuple[list[Chunk], list[Usage]]:
     return [], []
 
 
+def real_retrieve_many(queries: list[TriggerQuery]) -> tuple[list[TriggerEvidence], list[Usage]]:
+    """The production brief-mode worker. Imported at call time so a test can
+    replace retrieve.retrieve_many after the production graph was built."""
+    from . import retrieve as retrieve_module
+
+    return retrieve_module.retrieve_many(queries)
+
+
 # The compiled production graph, built on first use and reused by every run
 # (it is read-only once compiled; each run carries its own state).
 _graph = None
@@ -239,15 +266,16 @@ def production_graph():
             fn = retrieve_module.retrieve
         except ImportError:
             pass
-        _graph = build_graph(real_extract, fn)
+        _graph = build_graph(real_extract, fn, real_retrieve_many)
     return _graph
 
 
-def run(mode: str, correlation_id: str, facts_hash: str, question: str | None, documents: list[RunDocument], graph=None) -> RunState:
+def run(mode: str, correlation_id: str, facts_hash: str, question: str | None, documents: list[RunDocument], graph=None, queries: list[TriggerQuery] | None = None) -> RunState:
     """Runs one request through the graph and returns the final state.
     `graph` lets the eval endpoints pass a stubbed graph; otherwise the
     production graph is used. invoke() runs nodes until END is reached."""
     state: RunState = {"mode": mode, "correlation_id": correlation_id, "facts_hash": facts_hash, "question": question, "documents": documents,
+                       "queries": list(queries or []), "evidence": [],
                        "extractions": [], "chunks": [], "handoffs": [], "usage": [], "extracted_once": False, "retrieved_once": False}
     g = graph or production_graph()
     return g.invoke(state)  # type: ignore[return-value]
@@ -261,3 +289,8 @@ def stub_extract(doc: RunDocument, correlation_id: str) -> tuple[Extraction, lis
 def stub_retrieve(question: str) -> tuple[list[Chunk], list[Usage]]:
     """Eval stub: no chunks, no usage, no index needed."""
     return [], []
+
+
+def stub_retrieve_many(queries: list[TriggerQuery]) -> tuple[list[TriggerEvidence], list[Usage]]:
+    """Eval stub for brief mode: one empty evidence entry per trigger."""
+    return [TriggerEvidence(trigger_id=q.trigger_id, chunks=[]) for q in queries], []

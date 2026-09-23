@@ -52,7 +52,7 @@ from . import anchor, contracts, extractor, graph
 from . import retrieve as retrieve_module
 from .llm import PROMPT_VERSION
 from .logging_setup import bind_correlation_id, setup_logging
-from .schemas import IntakeFormProposal, LabReportProposal, RunError, RunRequest, RunResponse, SidecarHealth, SidecarReady
+from .schemas import IntakeFormProposal, LabReportProposal, RunError, RunRequest, RunResponse, SidecarHealth, SidecarReady, TriggerQuery
 
 # Module-level statements run once, when the process imports this file:
 # logging is configured before the first log line, and `app` is the object
@@ -98,6 +98,8 @@ def _cache_key(req: RunRequest) -> str:
     h.update(req.correlation_id.encode())
     h.update(req.mode.encode())
     h.update((req.question or "").encode())
+    for q in req.queries:
+        h.update(f"{q.trigger_id}:{q.query}".encode())
     for d in req.documents:
         h.update(f"{d.document_id}:{d.status}:{d.sha3_512}".encode())
     return h.hexdigest()
@@ -228,7 +230,7 @@ async def run(request: Request) -> JSONResponse:
         # seconds), and every other request would wait. run_in_threadpool
         # hands the call to a separate worker thread and `await` lets the
         # loop serve others until that thread is done.
-        state = await run_in_threadpool(graph.run, req.mode, req.correlation_id, req.facts_hash, req.question, req.documents)
+        state = await run_in_threadpool(graph.run, req.mode, req.correlation_id, req.facts_hash, req.question, req.documents, None, req.queries)
     except Exception as exc:  # never leak a traceback; the code is the message
         log.error("run failed", extra={"mode": req.mode, "code": "internal", "exception_class": type(exc).__name__, "ms": int((time.monotonic() - started) * 1000)})
         return _error(req.correlation_id, "internal", 500)
@@ -236,7 +238,7 @@ async def run(request: Request) -> JSONResponse:
     # writes handoffs with the key "from" (the Python attribute is from_);
     # json.loads turns the text back into plain data for JSONResponse and
     # for the cache.
-    resp = RunResponse(correlation_id=req.correlation_id, extractions=state["extractions"], chunks=state["chunks"], handoffs=state["handoffs"], usage=state["usage"])
+    resp = RunResponse(correlation_id=req.correlation_id, extractions=state["extractions"], chunks=state["chunks"], evidence=state.get("evidence", []), handoffs=state["handoffs"], usage=state["usage"])
     payload = json.loads(resp.model_dump_json(by_alias=True))
     log.info("run", extra={"mode": req.mode, "hops": len(state["handoffs"]), "count": len(state["extractions"]) + len(state["chunks"]), "ms": int((time.monotonic() - started) * 1000)})
     # Store the response, then drop every entry older than the TTL. The sweep
@@ -289,6 +291,13 @@ class RouteEvalRequest(BaseModel):
     mode: str
     question: str | None = None
     documents: list[RouteEvalDocument] = []
+    queries: list[TriggerQuery] = []
+
+
+class BriefEvidenceEvalRequest(BaseModel):
+    """Brief-mode retrieval for a list of fired triggers, offline when their
+    query text matches the committed vectors."""
+    queries: list[TriggerQuery]
 
 
 if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
@@ -351,9 +360,17 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
     def eval_route(req: RouteEvalRequest) -> dict:
         """The real graph with stubbed workers: returns the handoff log so the
         harness can score routing without a model or a parser."""
-        g = graph.build_graph(graph.stub_extract, graph.stub_retrieve)
-        state = graph.run(req.mode, "eval-route-000", "0" * 64, req.question, req.documents, graph=g)  # type: ignore[arg-type]
-        return {"handoffs": [h.model_dump(by_alias=True) for h in state["handoffs"]], "extractions": len(state["extractions"]), "chunks": len(state["chunks"])}
+        g = graph.build_graph(graph.stub_extract, graph.stub_retrieve, graph.stub_retrieve_many)
+        state = graph.run(req.mode, "eval-route-000", "0" * 64, req.question, req.documents, graph=g, queries=req.queries)  # type: ignore[arg-type]
+        return {"handoffs": [h.model_dump(by_alias=True) for h in state["handoffs"]], "extractions": len(state["extractions"]), "chunks": len(state["chunks"]), "evidence": len(state.get("evidence", []))}
+
+    @app.post("/eval/brief-evidence")
+    def eval_brief_evidence(req: BriefEvidenceEvalRequest) -> dict:
+        """Brief-mode retrieval per trigger; the harness scores each trigger's top source."""
+        from . import retrieve as retrieve_module
+
+        evidence, usage = retrieve_module.retrieve_many(req.queries)
+        return {"evidence": [e.model_dump() for e in evidence], "usage": [u.model_dump() for u in usage], "reranked": any(u.kind == "rerank" for u in usage)}
 
     @app.post("/eval/phi")
     def eval_phi(req: AnchorEvalRequest) -> dict:

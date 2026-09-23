@@ -46,7 +46,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Strict(BaseModel):
@@ -248,6 +248,9 @@ HandoffReason = Literal[
     "unsupported_doc_type",
     "worker_finished",
     "worker_failed",
+    "chart_triggers",  # brief mode: the chart fired guideline topics, retrieve them
+    "no_triggers",  # brief mode: no topic applies, nothing to retrieve
+    "applicability_check",  # brief mode: the critic checks each passage's population against the chart
 ]
 
 
@@ -299,9 +302,16 @@ class RunDocument(Strict):
     bytes_base64: str | None
 
 
+class TriggerQuery(Strict):
+    """One guideline topic the chart fired (brief mode): the rule id and its
+    fixed retrieval query, whose vector the index build committed."""
+    trigger_id: str = Field(min_length=1, max_length=40, pattern=r"^[a-z0-9_-]+$")
+    query: str = Field(min_length=1, max_length=500)
+
+
 class RunRequest(Strict):
     """What PHP posts to /run."""
-    mode: Literal["extract", "answer"]  # which worker the supervisor may use
+    mode: Literal["extract", "answer", "brief"]  # which worker the supervisor may use
     # Ties this run to PHP's logs and the trace. min_length=8 rejects an empty
     # or throwaway id that would orphan the trace.
     correlation_id: str = Field(min_length=8)
@@ -313,6 +323,15 @@ class RunRequest(Strict):
     # what is sent to the embeddings model.
     question: str | None = Field(max_length=2000)
     documents: list[RunDocument]
+    queries: list[TriggerQuery] = Field(default_factory=list, max_length=20)  # brief mode: the chart's fired triggers
+
+    @model_validator(mode="after")
+    def _brief_shape(self) -> "RunRequest":
+        if self.mode == "brief" and self.question is not None:
+            raise ValueError("brief mode carries no question")
+        if self.mode != "brief" and self.queries:
+            raise ValueError("queries travel only with brief mode")
+        return self
 
 
 # Why a document could not be extracted, in the words the UI shows:
@@ -351,12 +370,23 @@ class Chunk(Strict):
     score: float  # rerank relevance (0..1) or fused rank score, 4 decimals
 
 
+class TriggerEvidence(Strict):
+    """Brief mode: the passages retrieved for one fired trigger, and the
+    critic's verdict on whether they describe this patient's population
+    (None until the critic has run or when it could not)."""
+    trigger_id: str
+    chunks: list[Chunk] = Field(default_factory=list, max_length=2)
+    applicable: bool | None = None
+    reason: str | None = Field(default=None, max_length=500)
+
+
 class RunResponse(Strict):
     """What /run returns on success."""
     correlation_id: str
     extractions: list[Extraction]
     # At most five passages: the cap the answer model is given (retrieve.TOP).
     chunks: list[Chunk] = Field(max_length=5)
+    evidence: list[TriggerEvidence] = Field(default_factory=list)  # brief mode only
     handoffs: list[Handoff]  # the route log, one entry per hop
     usage: list[Usage]  # every paid call the run made
 

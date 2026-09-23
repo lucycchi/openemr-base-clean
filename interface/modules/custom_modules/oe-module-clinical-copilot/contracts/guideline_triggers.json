@@ -44,7 +44,7 @@
   {
    "id": "diabetes",
    "label": "Diabetes care",
-   "query": "A1c target and monitoring frequency in type 2 diabetes",
+   "query": "individualized A1c goal for adults with type 2 diabetes and frequency of A1c testing",
    "source": "ada-2025-standards",
    "note": "ADA glycemic targets are for nonpregnant adults with type 2 diabetes.",
    "any": [
@@ -164,7 +164,7 @@
   {
    "id": "screening",
    "label": "Diabetes screening",
-   "query": "screening for prediabetes and type 2 diabetes in adults",
+   "query": "USPSTF recommendation on screening asymptomatic adults aged 35 to 70 with overweight or obesity for prediabetes and type 2 diabetes",
    "source": "uspstf-screening",
    "note": "USPSTF 2021: adults 35-70 with overweight or obesity; not for people with diabetes or with a recent A1c. The briefing's facts cover results since the prior visit, so 'recent' means an A1c in this briefing.",
    "all": [

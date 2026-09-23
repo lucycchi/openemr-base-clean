@@ -92,3 +92,53 @@ def test_chunk_ids_are_stable_and_index_matches_corpus(index) -> None:
 # made mostly of them cannot score against every chunk at once.
 def test_tokenizer_drops_stop_words() -> None:
     assert retrieve.tokenize("How do I start a statin?") == ["start", "statin"]
+
+
+# -- trigger queries: committed vectors, one batch per briefing ---------------
+
+TRIGGERS = retrieve.INDEX_DIR / "trigger_queries.json"
+RULES = Path(os.environ.get("COPILOT_CONTRACTS_DIR", "/contracts")) / "guideline_triggers.json"
+
+
+def _no_embed(texts):
+    raise AssertionError("the embeddings API must not be called for a committed trigger query")
+
+
+@pytest.mark.skipif(not TRIGGERS.exists() or not RULES.exists(), reason="trigger query vectors or rules not present")
+def test_retrieve_many_uses_committed_vectors_and_tops_each_rules_source(index, monkeypatch) -> None:
+    from copilot_sidecar.schemas import TriggerQuery
+
+    monkeypatch.delenv("COHERE_API_KEY", raising=False)
+    monkeypatch.setattr(retrieve, "embed", _no_embed)
+    rules = {r["id"]: r for r in json.loads(RULES.read_text())["rules"]}
+    queries = [TriggerQuery(trigger_id=rid, query=r["query"]) for rid, r in rules.items()]
+    evidence, usage = retrieve.retrieve_many(queries)
+    assert usage == []
+    assert [e.trigger_id for e in evidence] == list(rules)
+    for e in evidence:
+        assert e.chunks, f"{e.trigger_id} retrieved nothing"
+        assert len(e.chunks) <= retrieve.PER_TRIGGER
+        assert e.chunks[0].source_id == rules[e.trigger_id]["source"], (e.trigger_id, [c.source_id for c in e.chunks])
+    ids = [c.chunk_id for e in evidence for c in e.chunks]
+    assert len(ids) == len(set(ids)), "a chunk must appear under one trigger only"
+
+
+def test_retrieve_many_off_corpus_query_returns_no_chunks(index, monkeypatch) -> None:
+    from copilot_sidecar.schemas import TriggerQuery
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("COHERE_API_KEY", raising=False)
+    evidence, usage = retrieve.retrieve_many([TriggerQuery(trigger_id="cars", query="best sports car tyres for the track")])
+    assert [e.trigger_id for e in evidence] == ["cars"]
+    assert evidence[0].chunks == []
+    assert usage == []
+
+
+@pytest.mark.skipif(not TRIGGERS.exists(), reason="trigger query vectors not present")
+def test_committed_trigger_vectors_match_the_rules_file() -> None:
+    committed = json.loads(TRIGGERS.read_text())
+    rules = {r["id"]: r["query"] for r in json.loads(RULES.read_text())["rules"]} if RULES.exists() else {}
+    assert committed["model"] == retrieve.EMBED_MODEL
+    for rid, query in rules.items():
+        assert rid in committed["queries"], f"rebuild the index: no vector for trigger {rid}"
+        assert committed["queries"][rid]["query"] == query, f"rebuild the index: trigger {rid} query text changed"
