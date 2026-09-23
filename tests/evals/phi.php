@@ -21,6 +21,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Evals;
 
+use DateTimeImmutable;
 use Document;
 use Monolog\Handler\TestHandler;
 use Monolog\Logger;
@@ -81,20 +82,38 @@ function runPhiCase(array $case): array
 
     $fixture = __DIR__ . '/fixtures/docs/' . str($case, 'fixture');
     $tmp = tempnam(sys_get_temp_dir(), 'phi-') ?: throw new RuntimeException('tempnam');
-    copy($fixture, $tmp);
+    $hasFixture = is_string($case['fixture'] ?? null) && $case['fixture'] !== '';
+    if ($hasFixture) {
+        copy($fixture, $tmp);
+    }
     $documentId = null;
     $status = null;
     $answerType = null;
     $bodies = [];
+    // A case may seed a SOAP plan on a fresh encounter dated yesterday, so it is the
+    // prior visit's plan when the chart is briefed; identifiers in it must stay out of logs.
+    $seededEncounter = null;
+    $seededSoap = null;
+    $hash = '';
+    if (is_string($case['soap_plan'] ?? null) && $case['soap_plan'] !== '') {
+        $yesterday = (new DateTimeImmutable('yesterday'))->format('Y-m-d 10:00:00');
+        $encounterNumber = 900000 + $pid;
+        $seededEncounter = (int) QueryUtils::sqlInsert("INSERT INTO form_encounter (date, reason, pid, encounter, provider_id, facility_id, sensitivity) VALUES (?, 'Follow-up', ?, ?, 1, 3, '')", [$yesterday, $pid, $encounterNumber]);
+        QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES (?, ?, 'New Patient Encounter', ?, ?, 'admin', 'Default', 1, 0, 'newpatient')", [$yesterday, $encounterNumber, $seededEncounter, $pid]);
+        $seededSoap = (int) QueryUtils::sqlInsert("INSERT INTO form_soap (date, pid, user, groupname, authorized, activity, subjective, objective, assessment, plan) VALUES (?, ?, 'admin', 'Default', 1, 1, '', '', '', ?)", [$yesterday, $pid, $case['soap_plan']]);
+        QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES (?, ?, 'SOAP', ?, ?, 'admin', 'Default', 1, 0, 'soap')", [$yesterday, $encounterNumber, $seededSoap, $pid]);
+    }
     try {
         // Upload through the real controller. The controller echoes its JSON reply, so
         // output buffering (ob_start / ob_get_clean) captures it as a string instead.
-        $req = Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'upload', 'doc_type' => str($case, 'doc_type')], [], ['file' => new UploadedFile($tmp, basename($fixture), 'application/pdf', null, true)]);
-        ob_start();
-        (new DocumentController($logger, $req, null, $tracer))->handleRequest();
-        $body = json_decode((string) ob_get_clean(), true);
-        $bodies['upload'] = $body;
-        $documentId = is_array($body) && is_int($body['document_id'] ?? null) ? $body['document_id'] : null;
+        if ($hasFixture) {
+            $req = Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'upload', 'doc_type' => str($case, 'doc_type')], [], ['file' => new UploadedFile($tmp, basename($fixture), 'application/pdf', null, true)]);
+            ob_start();
+            (new DocumentController($logger, $req, null, $tracer))->handleRequest();
+            $body = json_decode((string) ob_get_clean(), true);
+            $bodies['upload'] = $body;
+            $documentId = is_array($body) && is_int($body['document_id'] ?? null) ? $body['document_id'] : null;
+        }
         if ($documentId !== null) {
             $req = Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'extract', 'document_id' => (string) $documentId]);
             ob_start();
@@ -106,12 +125,15 @@ function runPhiCase(array $case): array
             (new DocumentController($logger, Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'list']), null, $tracer))->handleRequest();
             $bodies['list'] = json_decode((string) ob_get_clean(), true);
         }
-        if (is_string($case['question'] ?? null)) {
+        if (is_string($case['question'] ?? null) || $seededSoap !== null) {
             // Brief first (the ask needs the facts hash), then ask through the real controller.
             ob_start();
             (new ChatController($logger, Request::create('/chat.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'brief']), null, $tracer))->handleRequest();
             $brief = json_decode((string) ob_get_clean(), true);
             $hash = is_array($brief) && is_string($brief['facts_hash'] ?? null) ? $brief['facts_hash'] : '';
+            $bodies['brief'] = $brief;
+        }
+        if (is_string($case['question'] ?? null)) {
             ob_start();
             (new ChatController($logger, Request::create('/chat.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'ask', 'question' => $case['question'], 'facts_hash' => $hash, 'transcript' => '[]']), null, $tracer))->handleRequest();
             $ans = json_decode((string) ob_get_clean(), true);
@@ -122,6 +144,14 @@ function runPhiCase(array $case): array
         @unlink($tmp);
         if ($documentId !== null) {
             removeDocument($documentId);
+        }
+        if ($seededSoap !== null) {
+            QueryUtils::sqlStatementThrowException("DELETE FROM forms WHERE formdir = 'soap' AND form_id = ?", [$seededSoap]);
+            QueryUtils::sqlStatementThrowException("DELETE FROM form_soap WHERE id = ?", [$seededSoap]);
+        }
+        if ($seededEncounter !== null) {
+            QueryUtils::sqlStatementThrowException("DELETE FROM forms WHERE formdir = 'newpatient' AND form_id = ?", [$seededEncounter]);
+            QueryUtils::sqlStatementThrowException("DELETE FROM form_encounter WHERE id = ?", [$seededEncounter]);
         }
         QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$pid]);
     }

@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-23T20:11:17+00:00",
+    "ran_at": "2026-09-23T20:57:30+00:00",
     "cases": {
         "09-live-seed-patients-zero-strips": {
             "citation_present": "pass",
@@ -82,6 +82,10 @@
         "64-critic-live-statin-age-55-applicable": {
             "applicability_correct": "pass",
             "schema_valid": "pass"
+        },
+        "68-phi-plan-note-logs": {
+            "no_phi_in_logs": "pass",
+            "factually_consistent": "pass"
         }
     },
     "rates": {

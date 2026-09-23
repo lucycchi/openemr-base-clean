@@ -33,6 +33,10 @@ class OpenEmrChartSourceTest extends TestCase
     private array $listIds = [];
     /** @var list<int> */
     private array $vitalIds = [];
+    /** @var list<int> */
+    private array $soapIds = [];
+    /** @var list<int> */
+    private array $clinicalNoteIds = [];
 
     protected function setUp(): void
     {
@@ -51,6 +55,14 @@ class OpenEmrChartSourceTest extends TestCase
         }
         foreach ($this->listIds as $id) {
             QueryUtils::sqlStatementThrowException("DELETE FROM lists WHERE id = ?", [$id]);
+        }
+        foreach ($this->soapIds as $id) {
+            QueryUtils::sqlStatementThrowException("DELETE FROM forms WHERE formdir = 'soap' AND form_id = ?", [$id]);
+            QueryUtils::sqlStatementThrowException("DELETE FROM form_soap WHERE id = ?", [$id]);
+        }
+        foreach ($this->clinicalNoteIds as $id) {
+            QueryUtils::sqlStatementThrowException("DELETE FROM forms WHERE formdir = 'clinical_notes' AND form_id = ?", [$id]);
+            QueryUtils::sqlStatementThrowException("DELETE FROM form_clinical_notes WHERE form_id = ?", [$id]);
         }
         foreach ($this->vitalIds as $id) {
             QueryUtils::sqlStatementThrowException("DELETE FROM forms WHERE formdir = 'vitals' AND form_id = ?", [$id]);
@@ -212,5 +224,33 @@ class OpenEmrChartSourceTest extends TestCase
         self::assertNull($vitals[$malformed]->systolic);
         self::assertNull($vitals[$malformed]->diastolic);
         self::assertNull($vitals[$malformed]->weightLb);
+    }
+
+    public function testNotesForTheEncounterSkipDeletedFormsAndOtherEncounters(): void
+    {
+        $encounter = 424242;
+        $soap = (int) QueryUtils::sqlInsert("INSERT INTO form_soap (date, pid, user, groupname, authorized, activity, subjective, objective, assessment, plan) VALUES ('2026-09-01 10:30:00', ?, 'admin', 'Default', 1, 1, 'S', 'O', 'Chart test assessment', 'Chart test plan: recheck labs.')", [$this->pid]);
+        $this->soapIds[] = $soap;
+        QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES ('2026-09-01 10:30:00', ?, 'SOAP', ?, ?, 'admin', 'Default', 1, 0, 'soap')", [$encounter, $soap, $this->pid]);
+        $deletedSoap = (int) QueryUtils::sqlInsert("INSERT INTO form_soap (date, pid, user, groupname, authorized, activity, subjective, objective, assessment, plan) VALUES ('2026-09-01 11:00:00', ?, 'admin', 'Default', 1, 1, '', '', '', 'Deleted plan')", [$this->pid]);
+        $this->soapIds[] = $deletedSoap;
+        QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES ('2026-09-01 11:00:00', ?, 'SOAP', ?, ?, 'admin', 'Default', 1, 1, 'soap')", [$encounter, $deletedSoap, $this->pid]);
+        $otherSoap = (int) QueryUtils::sqlInsert("INSERT INTO form_soap (date, pid, user, groupname, authorized, activity, subjective, objective, assessment, plan) VALUES ('2026-08-01 11:00:00', ?, 'admin', 'Default', 1, 1, '', '', '', 'Other encounter plan')", [$this->pid]);
+        $this->soapIds[] = $otherSoap;
+        QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES ('2026-08-01 11:00:00', ?, 'SOAP', ?, ?, 'admin', 'Default', 1, 0, 'soap')", [$encounter + 1, $otherSoap, $this->pid]);
+        $noteForm = 4242420;
+        QueryUtils::sqlInsert("INSERT INTO form_clinical_notes (form_id, date, pid, encounter, user, groupname, authorized, activity, code, codetext, description, clinical_notes_type) VALUES (?, '2026-09-01', ?, ?, 'admin', 'Default', 1, 1, '', '', 'Progress note: continue current therapy.', 'progress_note')", [$noteForm, $this->pid, (string) $encounter]);
+        $this->clinicalNoteIds[] = $noteForm;
+        QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES ('2026-09-01 12:00:00', ?, 'Clinical Notes', ?, ?, 'admin', 'Default', 1, 0, 'clinical_notes')", [$encounter, $noteForm, $this->pid]);
+
+        $notes = (new OpenEmrChartSource())->notes(new PatientId($this->pid), $encounter);
+        $texts = array_map(static fn($n) => [$n->kind->name, $n->text], $notes);
+        usort($texts, static fn(array $a, array $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+
+        self::assertSame([
+            ['Assessment', 'Chart test assessment'],
+            ['Plan', 'Chart test plan: recheck labs.'],
+            ['Plan', 'Progress note: continue current therapy.'],
+        ], $texts);
     }
 }

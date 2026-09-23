@@ -926,7 +926,7 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         // trace? The case's "phi" list is JSON pointers into truth.json naming the values
         // to search for (the patient name printed on the report, for instance).
         require_once __DIR__ . '/phi.php';
-        $truth = jsonFile(__DIR__ . '/fixtures/docs/' . str($case, 'truth'));
+        $truth = is_string($case['truth'] ?? null) ? jsonFile(__DIR__ . '/fixtures/docs/' . $case['truth']) : [];
         $out = runPhiCase($case);
         $rendered = implode("\n", [...$out['logs'], ...$out['traces']]);
         $phi = [];
@@ -941,6 +941,10 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         }
         if (is_string($case['question'] ?? null)) {
             $phi[] = $case['question'];
+        }
+        // Literal identifiers a case planted itself (a name, a date of birth, a phone in a seeded note).
+        foreach (strings($case['phi_literals'] ?? null) as $literal) {
+            $phi[] = $literal;
         }
         // Two checks on PHP's side: no PHI string anywhere in the rendered logs and traces
         // (case-insensitive), and no log context key outside the allowlist below. The
@@ -957,7 +961,8 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         if (is_string($case['question'] ?? null)) {
             $sidecarBody['question'] = $case['question'];
         }
-        $sidecar = sidecarPost('/eval/phi', $sidecarBody);
+        // The sidecar's own log scan needs a document; a note-only case has none to send.
+        $sidecar = is_string($case['fixture'] ?? null) && $case['fixture'] !== '' ? sidecarPost('/eval/phi', $sidecarBody) : ['lines' => [], 'correlation_id' => '', 'extra_keys_seen' => [], 'allowlist' => []];
         $sidecarLines = strings($sidecar['lines'] ?? null);
         $cid = str($sidecar, 'correlation_id');
         $uncorrelated = 0;

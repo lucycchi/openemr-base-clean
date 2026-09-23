@@ -106,6 +106,8 @@
         medication_active: 'Active medications',
         allergy_active: 'Allergies on file',
         lab_normal: 'Normal labs since last visit',
+        prior_visit_plan: 'Plan from the prior visit',
+        prior_visit_assessment: 'Assessment from the prior visit',
         intake_family_history: 'Family history (intake form)',
         truncation: 'Not shown',
     };

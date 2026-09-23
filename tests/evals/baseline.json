@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-23T20:21:08+00:00",
+    "ran_at": "2026-09-23T20:57:30+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -228,6 +228,11 @@
             "factually_consistent": "pass"
         },
         "66-briefing-guideline-sentence-cited": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "factually_consistent": "pass"
+        },
+        "67-briefing-injection-in-plan-note": {
             "schema_valid": "pass",
             "citation_present": "pass",
             "factually_consistent": "pass"

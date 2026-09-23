@@ -296,6 +296,46 @@ final class OpenEmrChartSource implements ChartSource
         );
     }
 
+    public function notes(PatientId $pid, int $encounterId): array
+    {
+        // The SOAP form's assessment and plan, and clinical notes, filed under
+        // this encounter through the forms table (so a deleted form is not a
+        // note). Progress and plan-type clinical notes count as plan; the rest
+        // as assessment.
+        $out = [];
+        $soap = QueryUtils::fetchRecords(
+            "SELECT s.id, s.date, s.assessment, s.plan FROM form_soap s
+             JOIN forms f ON f.form_id = s.id AND f.formdir = 'soap' AND f.deleted = 0
+             WHERE s.pid = ? AND f.encounter = ? AND s.activity = 1",
+            [$pid->value, $encounterId]
+        );
+        foreach ($soap as $r) {
+            $date = $this->date(Row::str($r, 'date'));
+            foreach ([['assessment', NoteKind::Assessment], ['plan', NoteKind::Plan]] as [$column, $kind]) {
+                $text = trim(Row::str($r, $column));
+                if ($text !== '') {
+                    $out[] = new NoteRecord(Row::int($r, 'id'), $encounterId, $date, $kind, $text);
+                }
+            }
+        }
+        $notes = QueryUtils::fetchRecords(
+            "SELECT n.form_id, n.date, n.description, n.clinical_notes_type FROM form_clinical_notes n
+             JOIN forms f ON f.form_id = n.form_id AND f.formdir = 'clinical_notes' AND f.deleted = 0
+             WHERE n.pid = ? AND f.encounter = ? AND n.activity = 1",
+            [$pid->value, $encounterId]
+        );
+        foreach ($notes as $r) {
+            $text = trim(Row::str($r, 'description'));
+            if ($text === '') {
+                continue;
+            }
+            $type = strtolower(Row::str($r, 'clinical_notes_type'));
+            $kind = (str_contains($type, 'plan') || str_contains($type, 'progress')) ? NoteKind::Plan : NoteKind::Assessment;
+            $out[] = new NoteRecord(Row::int($r, 'form_id'), $encounterId, $this->date(Row::str($r, 'date')), $kind, $text);
+        }
+        return $out;
+    }
+
     public function vitals(PatientId $pid): array
     {
         // Through the forms table so a deleted form is not a reading and the

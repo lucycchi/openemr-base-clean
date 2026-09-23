@@ -37,6 +37,9 @@ interface ChartSource
     /** @return list<ProblemRecord> active problems only */
     public function problems(PatientId $pid): array;
 
+    /** @return list<NoteRecord> the SOAP assessment/plan and clinical notes filed under one encounter */
+    public function notes(PatientId $pid, int $encounterId): array;
+
     /** @return list<VitalRecord> every vital-signs reading on the chart, newest last or in any order */
     public function vitals(PatientId $pid): array;
 

@@ -23,6 +23,8 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 enum FactCategory: string
 {
     case PriorVisit = 'prior_visit';
+    case PriorVisitPlan = 'prior_visit_plan';
+    case PriorVisitAssessment = 'prior_visit_assessment';
     case Encounter = 'encounter';
     case MedicationNew = 'medication_new';
     case MedicationChanged = 'medication_changed';
@@ -78,8 +80,10 @@ enum FactCategory: string
             self::ExtractionUnverified,
             self::IntakeMedication,
             self::IntakeAllergy,
-            self::DocumentMismatch => true,
+            self::DocumentMismatch,
+            self::PriorVisitPlan => true,
             self::PriorVisit,
+            self::PriorVisitAssessment,
             self::Encounter,
             self::MedicationActive,
             self::AllergyActive,

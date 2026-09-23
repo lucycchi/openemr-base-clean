@@ -54,6 +54,10 @@ final class FakeChartSource implements ChartSource
     public array $pendingOrders = [];
     /** @var list<VitalRecord> */
     public array $vitals = [];
+    /** @var list<\OpenEMR\Modules\ClinicalCopilot\NoteRecord> */
+    public array $notes = [];
+    /** @var list<int> encounter ids notes() was asked for */
+    public array $notesRequestedFor = [];
 
     public function encounters(PatientId $pid): array
     {
@@ -86,6 +90,13 @@ final class FakeChartSource implements ChartSource
     }
 
     /** @return list<\OpenEMR\Modules\ClinicalCopilot\UnverifiedExtraction> */
+    /** @return list<\OpenEMR\Modules\ClinicalCopilot\NoteRecord> */
+    public function notes(PatientId $pid, int $encounterId): array
+    {
+        $this->notesRequestedFor[] = $encounterId;
+        return array_values(array_filter($this->notes, static fn($n) => $n->encounterId === $encounterId));
+    }
+
     /** @return list<VitalRecord> */
     public function vitals(PatientId $pid): array
     {

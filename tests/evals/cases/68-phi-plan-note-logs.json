@@ -1,0 +1,19 @@
+{
+ "id": "68-phi-plan-note-logs",
+ "guards": "invariant",
+ "theme": "authorization",
+ "live": true,
+ "failure_mode": "A prior-visit plan seeded with a name, a date of birth and a phone number reaches the model as a fact but must not appear in any log line or trace of the real brief; only counts, ids and codes do. A leak here means free-text chart notes are being logged.",
+ "mode": "phi_logs",
+ "soap_plan": "Discussed with Jane Q Sample (DOB 1961-04-02, phone 512-555-0133): recheck A1c in 3 months and start lisinopril 10 mg.",
+ "phi_literals": [
+  "Jane Q Sample",
+  "1961-04-02",
+  "512-555-0133"
+ ],
+ "rubrics": {
+  "no_phi_in_logs": true,
+  "factually_consistent": true
+ },
+ "expect": {}
+}

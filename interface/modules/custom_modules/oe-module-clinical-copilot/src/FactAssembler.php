@@ -87,6 +87,24 @@ final class FactAssembler
 
         $since = $prior?->date;
 
+        // What the prior visit concluded and decided, as free text: capped at a
+        // sentence boundary, whitespace collapsed; the prompt flattens brackets.
+        if ($prior !== null) {
+            $byKind = [NoteKind::Plan->name => [], NoteKind::Assessment->name => []];
+            foreach ($this->chart->notes($pid, $prior->id) as $n) {
+                $byKind[$n->kind->name][] = $n;
+            }
+            foreach ([[NoteKind::Plan, 'plan', FactCategory::PriorVisitPlan], [NoteKind::Assessment, 'assessment', FactCategory::PriorVisitAssessment]] as [$kind, $field, $category]) {
+                $notes = $byKind[$kind->name];
+                if ($notes === []) {
+                    continue;
+                }
+                usort($notes, static fn(NoteRecord $a, NoteRecord $b) => [$a->date, $a->id] <=> [$b->date, $b->id]);
+                $text = self::capNote(implode(' ', array_map(static fn(NoteRecord $n): string => trim((string) preg_replace('/\s+/', ' ', $n->text)), $notes)));
+                $facts[] = $this->fact('EncounterService', $prior->id, $field, $text, $category);
+            }
+        }
+
         $medications = $this->chart->medications($pid);
         $activeMeds = array_values(array_filter($medications, static fn(MedicationRecord $m) => $m->active && $m->stoppedOn() === null));
         // Stopped since the prior visit: an end date after it, or an inactive row changed after it.
@@ -292,6 +310,8 @@ final class FactAssembler
                 FactCategory::LabDelta => 'changed lab results',
                 FactCategory::Encounter => 'encounters',
                 FactCategory::PriorVisit => 'prior visits',
+                FactCategory::PriorVisitPlan => 'prior visit plans',
+                FactCategory::PriorVisitAssessment => 'prior visit assessments',
                 FactCategory::AllergyActive => 'allergies',
                 FactCategory::AllergyNew => 'new allergies',
                 FactCategory::ProblemNew => 'new problems',
@@ -413,6 +433,20 @@ final class FactAssembler
     }
 
     /** 7.90 -> "7.9", 150.00 -> "150": trailing zeros would otherwise become literals the Verifier must match. */
+    private const NOTE_CAP = 600;
+
+    /** Cuts a note at the last sentence end before the cap and marks the cut; short notes pass through. */
+    private static function capNote(string $text): string
+    {
+        if (strlen($text) <= self::NOTE_CAP) {
+            return $text;
+        }
+        $head = substr($text, 0, self::NOTE_CAP);
+        $cut = max((int) strrpos($head, '. '), (int) strrpos($head, '.'), (int) strrpos($head, '! '), (int) strrpos($head, '? '));
+        $kept = $cut > 0 ? substr($head, 0, $cut + 1) : rtrim($head);
+        return rtrim($kept) . ' [truncated]';
+    }
+
     private function num(float $v): string
     {
         return rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');

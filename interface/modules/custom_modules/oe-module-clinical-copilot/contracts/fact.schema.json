@@ -15,6 +15,8 @@
       "description": "Fact category; must_surface categories are appended by the OmissionGuard if the narration does not cite them.",
       "enum": [
         "prior_visit",
+        "prior_visit_plan",
+        "prior_visit_assessment",
         "encounter",
         "medication_new",
         "medication_changed",
