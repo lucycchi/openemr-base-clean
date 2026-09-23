@@ -136,6 +136,19 @@ final class OpenEmrChartSource implements ChartSource
      *
      * @param array<mixed> $r  a lab row as the query layer returns it
      */
+    public function demographics(PatientId $pid): Demographics
+    {
+        $row = QueryUtils::querySingleRow("SELECT sex, DOB FROM patient_data WHERE pid = ?", [$pid->value]);
+        if (!is_array($row)) {
+            return Demographics::unknown();
+        }
+        $dob = Row::str($row, 'DOB');
+        return new Demographics(
+            Demographics::normaliseSex(Row::str($row, 'sex')),
+            $this->hasDate($dob) ? $this->date($dob) : null,
+        );
+    }
+
     private function documentCitation(array $r): ?Citation
     {
         $docId = $r['doc_id'] ?? null;

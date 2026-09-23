@@ -16,6 +16,7 @@ namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support;
 
 use OpenEMR\Modules\ClinicalCopilot\AllergyRecord;
 use OpenEMR\Modules\ClinicalCopilot\ChartSource;
+use OpenEMR\Modules\ClinicalCopilot\Demographics;
 use OpenEMR\Modules\ClinicalCopilot\EncounterRecord;
 use OpenEMR\Modules\ClinicalCopilot\LabRecord;
 use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
@@ -31,6 +32,7 @@ use OpenEMR\Modules\ClinicalCopilot\ProblemRecord;
 final class FakeChartSource implements ChartSource
 {
     /** @var list<\OpenEMR\Modules\ClinicalCopilot\UnverifiedExtraction> */
+    public ?Demographics $demographics = null;
     public array $unverified = [];
     /** @var list<\OpenEMR\Modules\ClinicalCopilot\IntakeRecord> */
     public array $intake = [];
@@ -87,5 +89,10 @@ final class FakeChartSource implements ChartSource
     public function intakeRecords(PatientId $pid): array
     {
         return $this->intake;
+    }
+
+    public function demographics(PatientId $pid): Demographics
+    {
+        return $this->demographics ?? Demographics::unknown();
     }
 }

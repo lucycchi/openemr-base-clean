@@ -50,4 +50,7 @@ interface ChartSource
      * @return list<IntakeRecord>
      */
     public function intakeRecords(PatientId $pid): array;
+
+    /** Sex at birth and date of birth, for reference-interval selection and age gates; never a fact. */
+    public function demographics(PatientId $pid): Demographics;
 }
