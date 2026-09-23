@@ -1,0 +1,200 @@
+{
+ "description": "Chart-driven guideline triggers. Each rule fires when any matcher in `any` matches a fact or the problem list (or every matcher in `all` does), and no matcher in `exclude` does. Matchers: {category, loinc[], direction?} on lab facts; {category, drug_regex} on medication facts; {category, vital} on vital facts; {problem_regex} against active problem titles; {age_below|age_above|age_between} against the patient's age (an unknown age never satisfies an `all` age matcher and never fires an `exclude` age matcher); {category_present[], loinc[]} true when any fact of those categories carries that LOINC. `source` must be a document in sidecar/corpus/manifest.json; `query` is the fixed retrieval query the sidecar embeds at index build. Every rule is a clinical decision: cite the reasoning in `note`.",
+ "version": "2026-09-23.1",
+ "rules": [
+  {
+   "id": "lipids",
+   "label": "Cholesterol management",
+   "query": "statin indication and intensity when LDL cholesterol is above goal",
+   "source": "acc-aha-2018-cholesterol",
+   "note": "2018 AHA/ACC primary-prevention statin recommendations apply to ages 40-75.",
+   "any": [
+    {
+     "category": "lab_abnormal",
+     "loinc": [
+      "2089-1",
+      "2093-3"
+     ],
+     "direction": "above"
+    },
+    {
+     "category": "lab_critical",
+     "loinc": [
+      "2089-1"
+     ]
+    },
+    {
+     "category": "medication_active",
+     "drug_regex": "statin\\b|atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin"
+    },
+    {
+     "category": "medication_new",
+     "drug_regex": "statin\\b|atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin"
+    }
+   ],
+   "exclude": [
+    {
+     "age_below": 40
+    },
+    {
+     "age_above": 75
+    }
+   ]
+  },
+  {
+   "id": "diabetes",
+   "label": "Diabetes care",
+   "query": "A1c target and monitoring frequency in type 2 diabetes",
+   "source": "ada-2025-standards",
+   "note": "ADA glycemic targets are for nonpregnant adults with type 2 diabetes.",
+   "any": [
+    {
+     "category": "lab_abnormal",
+     "loinc": [
+      "4548-4",
+      "2345-7"
+     ],
+     "direction": "above"
+    },
+    {
+     "category": "lab_critical",
+     "loinc": [
+      "4548-4",
+      "2345-7"
+     ]
+    },
+    {
+     "problem_regex": "diabet"
+    },
+    {
+     "category": "medication_active",
+     "drug_regex": "metformin|glipizide|glimepiride|sitagliptin|empagliflozin|dapagliflozin|liraglutide|semaglutide|insulin"
+    }
+   ],
+   "exclude": [
+    {
+     "problem_regex": "type 1"
+    },
+    {
+     "problem_regex": "pregnan"
+    }
+   ]
+  },
+  {
+   "id": "hypertension",
+   "label": "Blood pressure",
+   "query": "blood pressure target and treatment threshold in adults",
+   "source": "acc-aha-2017-hypertension",
+   "note": "2017 ACC/AHA adult classification and treatment thresholds.",
+   "any": [
+    {
+     "category": "vital_abnormal",
+     "vital": "bp"
+    },
+    {
+     "problem_regex": "hypertens"
+    }
+   ],
+   "exclude": [
+    {
+     "problem_regex": "pregnan"
+    }
+   ]
+  },
+  {
+   "id": "anemia",
+   "label": "Anemia",
+   "query": "evaluation of anemia in adults",
+   "source": "anemia-adults-primary-care",
+   "note": "Adult, non-pregnant work-up; a high hemoglobin is not anemia.",
+   "any": [
+    {
+     "category": "lab_abnormal",
+     "loinc": [
+      "718-7"
+     ],
+     "direction": "below"
+    },
+    {
+     "category": "lab_critical",
+     "loinc": [
+      "718-7"
+     ],
+     "direction": "below"
+    }
+   ],
+   "exclude": [
+    {
+     "problem_regex": "pregnan"
+    }
+   ]
+  },
+  {
+   "id": "ckd",
+   "label": "Kidney function",
+   "query": "CKD staging and monitoring by eGFR and albuminuria",
+   "source": "kdigo-2024-ckd",
+   "note": "KDIGO 2024 staging by eGFR; a raised creatinine or reduced eGFR or a CKD diagnosis.",
+   "any": [
+    {
+     "category": "lab_abnormal",
+     "loinc": [
+      "62238-1"
+     ],
+     "direction": "below"
+    },
+    {
+     "category": "lab_critical",
+     "loinc": [
+      "62238-1"
+     ]
+    },
+    {
+     "category": "lab_abnormal",
+     "loinc": [
+      "2160-0"
+     ],
+     "direction": "above"
+    },
+    {
+     "problem_regex": "chronic kidney|\\bckd\\b"
+    }
+   ]
+  },
+  {
+   "id": "screening",
+   "label": "Diabetes screening",
+   "query": "screening for prediabetes and type 2 diabetes in adults",
+   "source": "uspstf-screening",
+   "note": "USPSTF 2021: adults 35-70 with overweight or obesity; not for people with diabetes or with a recent A1c. The briefing's facts cover results since the prior visit, so 'recent' means an A1c in this briefing.",
+   "all": [
+    {
+     "age_between": [
+      35,
+      70
+     ]
+    },
+    {
+     "category": "vital_abnormal",
+     "vital": "bmi"
+    }
+   ],
+   "exclude": [
+    {
+     "problem_regex": "diabet"
+    },
+    {
+     "category_present": [
+      "lab_normal",
+      "lab_abnormal",
+      "lab_critical",
+      "lab_delta"
+     ],
+     "loinc": [
+      "4548-4"
+     ]
+    }
+   ]
+  }
+ ]
+}

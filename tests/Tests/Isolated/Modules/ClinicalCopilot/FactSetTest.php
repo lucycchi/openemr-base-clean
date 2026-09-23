@@ -55,4 +55,13 @@ final class FactSetTest extends TestCase
 
         self::assertSame(hash('sha256', "a1b2c3d4\tmedication_active\tMetformin 500 MG"), $set->hash());
     }
+
+    public function testAttributesDoNotChangeTheHashOrLines(): void
+    {
+        $plain = new Fact(Fact::idFor('S', 1, 'f'), 'S', 1, 'f', 'LDL 165', FactCategory::LabAbnormal);
+        $attributed = new Fact(Fact::idFor('S', 1, 'f'), 'S', 1, 'f', 'LDL 165', FactCategory::LabAbnormal, null, ['loinc' => '2089-1', 'direction' => 'above']);
+
+        self::assertSame((new FactSet([$plain]))->hash(), (new FactSet([$attributed]))->hash());
+        self::assertSame((new FactSet([$plain]))->lines(), (new FactSet([$attributed]))->lines());
+    }
 }

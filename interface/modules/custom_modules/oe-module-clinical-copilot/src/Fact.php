@@ -39,6 +39,8 @@ final readonly class Fact
         public string $value,
         public FactCategory $category,
         public ?Citation $citation = null,
+        /** @var array<string, string> structured hints for the guideline trigger rules (loinc, direction, drug, title, vital); never hashed, sent or shown */
+        public array $attributes = [],
     ) {
     }
 

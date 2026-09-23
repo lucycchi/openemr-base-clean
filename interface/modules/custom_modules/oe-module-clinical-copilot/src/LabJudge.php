@@ -67,7 +67,8 @@ final class LabJudge
                 $parts[] = "flagged $flag by the lab";
             }
             $parts[] = $printed !== null ? "lab's range $printedText" : $standardClause;
-            return new LabJudgement(LabVerdict::Critical, implode('; ', array_filter($parts)), $this->rangeClause($printed, $printedText, $standard));
+            $direction = $standard !== null && $standard->isCritical($value) ? ($standard->panicLow !== null && $value < $standard->panicLow ? 'below' : 'above') : self::flagDirection($flag);
+            return new LabJudgement(LabVerdict::Critical, implode('; ', array_filter($parts)), $this->rangeClause($printed, $printedText, $standard), $direction);
         }
 
         if ($flagAbnormal || $printedOut || $standardOut) {
@@ -98,7 +99,8 @@ final class LabJudge
                     $parts[] = 'no range printed on the report';
                 }
             }
-            return new LabJudgement(LabVerdict::Abnormal, implode('; ', array_filter($parts)), $this->rangeClause($printed, $printedText, $standard));
+            $direction = $printedOut ? self::direction($value, $printed[0], $printed[1]) : ($standardOut ? self::direction($value, $standard->low, $standard->high) : self::flagDirection($flag));
+            return new LabJudgement(LabVerdict::Abnormal, implode('; ', array_filter($parts)), $this->rangeClause($printed, $printedText, $standard), $direction);
         }
 
         if ($printed === null && $standard === null) {
@@ -154,6 +156,15 @@ final class LabJudge
         $low = (float) $m[1];
         $high = (float) $m[2];
         return $low < $high ? [$low, $high] : null;
+    }
+
+    private static function flagDirection(string $flag): ?string
+    {
+        return match ($flag) {
+            'high', 'hh', 'h', 'vhigh' => 'above',
+            'low', 'll', 'l', 'vlow' => 'below',
+            default => null,
+        };
     }
 
     private static function direction(float $value, ?float $low, ?float $high): string

@@ -22,6 +22,8 @@ final readonly class LabJudgement
         public LabVerdict $verdict,
         public string $clause,
         public string $rangeClause,
+        /** 'above' or 'below' the range or limit that was violated, null when nothing was */
+        public ?string $direction = null,
     ) {
     }
 }

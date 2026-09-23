@@ -21,10 +21,18 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final readonly class AssembledFacts
 {
+    /** @param list<string> $activeProblemTitles every active problem on the chart, new or old, for the trigger rules; not facts */
     public function __construct(
         private FactSet $facts,
         private ?EncounterRecord $priorEncounter,
+        private array $activeProblemTitles = [],
     ) {
+    }
+
+    /** @return list<string> */
+    public function activeProblemTitles(): array
+    {
+        return $this->activeProblemTitles;
     }
 
     public function facts(): FactSet

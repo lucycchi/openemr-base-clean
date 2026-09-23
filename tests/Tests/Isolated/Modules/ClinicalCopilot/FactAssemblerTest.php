@@ -399,6 +399,25 @@ final class FactAssemblerTest extends TestCase
         return new LabRecord($id, $encounterId, $loinc, $name, $value, $units, new DateTimeImmutable($date), $citation, $unitMismatch, $printedRange, $labFlag, $text);
     }
 
+    public function testAssemblerSetsTriggerAttributesOnLabMedicationAndProblemFacts(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [$this->lab(930, '2089-1', 'LDL Cholesterol', 165.0, 'mg/dL', '2026-09-10')];
+        $this->chart->medications = [new MedicationRecord(31, 'Atorvastatin 20 MG Oral Tablet', new DateTimeImmutable('2026-09-05'), true)];
+        $this->chart->problems = [new ProblemRecord(41, 'Essential hypertension', new DateTimeImmutable('2026-09-06')), new ProblemRecord(42, 'Type 2 diabetes mellitus', new DateTimeImmutable('2020-01-01'))];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $ldl = $this->factsIn($result, FactCategory::LabAbnormal)[0];
+        self::assertSame(['loinc' => '2089-1', 'direction' => 'above'], $ldl->attributes);
+        $med = $this->factsIn($result, FactCategory::MedicationNew)[0];
+        self::assertSame(['drug' => 'Atorvastatin 20 MG Oral Tablet'], $med->attributes);
+        $problem = $this->factsIn($result, FactCategory::ProblemNew)[0];
+        self::assertSame(['title' => 'Essential hypertension'], $problem->attributes);
+        // Every active problem, new or old, is available to the trigger rules without being a fact.
+        self::assertSame(['Essential hypertension', 'Type 2 diabetes mellitus'], $result->activeProblemTitles());
+    }
+
     // -- Task 2: ranges from the lab, the report and the standard table ------
 
     public function testAbnormalFromBuiltInRangeWhenReportPrintedNone(): void

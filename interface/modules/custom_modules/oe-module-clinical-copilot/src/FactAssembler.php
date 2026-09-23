@@ -93,7 +93,7 @@ final class FactAssembler
         foreach ($activeMeds as $m) {
             $facts[] = $this->fact('PrescriptionService', $m->id, 'drug', $this->dated($m->drug, 'started', $m->startDate, $m->startDateProvenance), $this->isNew($m->startDate, $since)
                 ? FactCategory::MedicationNew
-                : FactCategory::MedicationActive);
+                : FactCategory::MedicationActive, null, ['drug' => $m->drug]);
         }
 
         // Every allergy becomes a fact; new ones since the prior visit are flagged.
@@ -144,7 +144,11 @@ final class FactAssembler
                 LabVerdict::Unranged => null,
             };
             if ($category !== null) {
-                $facts[] = $this->fact('ObservationLabService', $l->id, 'result', $text, $category, $l->citation);
+                $attributes = $l->loinc === '' ? [] : ['loinc' => $l->loinc];
+                if ($judged->direction !== null) {
+                    $attributes['direction'] = $judged->direction;
+                }
+                $facts[] = $this->fact('ObservationLabService', $l->id, 'result', $text, $category, $l->citation, $attributes);
             }
             if ($l->value === null || $l->loinc === '') {
                 continue;
@@ -164,9 +168,11 @@ final class FactAssembler
             }
         }
 
+        $activeProblemTitles = [];
         foreach ($this->chart->problems($pid) as $p) {
+            $activeProblemTitles[] = $p->title;
             if ($this->isNew($p->beginDate, $since)) {
-                $facts[] = $this->fact('ConditionService', $p->id, 'title', $p->title, FactCategory::ProblemNew);
+                $facts[] = $this->fact('ConditionService', $p->id, 'title', $p->title, FactCategory::ProblemNew, null, ['title' => $p->title]);
             }
         }
 
@@ -185,7 +191,7 @@ final class FactAssembler
             }
         }
 
-        return new AssembledFacts(new FactSet($this->capPerCategory($facts)), $prior);
+        return new AssembledFacts(new FactSet($this->capPerCategory($facts)), $prior, $activeProblemTitles);
     }
 
     private const CAP_PER_CATEGORY = 50;
@@ -262,9 +268,10 @@ final class FactAssembler
         return rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
     }
 
-    private function fact(string $service, int $recordId, string $field, string $value, FactCategory $category, ?Citation $citation = null): Fact
+    /** @param array<string, string> $attributes */
+    private function fact(string $service, int $recordId, string $field, string $value, FactCategory $category, ?Citation $citation = null, array $attributes = []): Fact
     {
-        return new Fact(Fact::idFor($service, $recordId, $field), $service, $recordId, $field, $value, $category, $citation);
+        return new Fact(Fact::idFor($service, $recordId, $field), $service, $recordId, $field, $value, $category, $citation, $attributes);
     }
 
     // The date is part of the fact value so the model can cite it and the
