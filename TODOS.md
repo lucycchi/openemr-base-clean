@@ -153,3 +153,41 @@ are scheduled as tasks 9.1 and 9.2 in
 **Depends on:** None
 
 ## Completed
+
+### Noted during the 8.5 comment pass (2026-09-23), not changed
+
+The pass was comments only. These are the spots the readers flagged while
+writing them; none changes a test today.
+
+- **`llm.propose` constructs the OpenAI client before the `try`.** With no
+  `OPENAI_API_KEY` the constructor raises `OpenAIError`, not `ModelError`, so
+  a run ends as a 500 `internal` instead of a per-document `model_error`.
+  Readiness (`openai_key`) prevents it in practice. Move the construction
+  inside the `try` or map the error.
+- **Timeout detection in `llm.propose` is a substring match** on the
+  exception text; use the exception type.
+- **`graph.supervisor_node` labels the hop after the extractor `no_question`**
+  rather than `worker_finished`. Pinned by `test_supervisor.py`; decide which
+  is meant and align the contract's enum comment.
+- **Idempotency key includes the correlation id**, so a PHP retry that mints
+  a new id re-runs the graph; `facts_hash` is not in the key. Documented as
+  is; revisit with the retry policy.
+- **`anchor.column_bounds` is dead code** (no callers) with a stale docstring.
+- **`persistLab` units column has two identical ternary branches** (unit
+  stored as printed either way; only the abnormal flag is blanked on
+  mismatch). Simplify.
+- **`panel.js extractDocument` reports every failure as a timeout**, including
+  a network error or a non-JSON reply; `brief()` distinguishes `AbortError`,
+  `extractDocument` should too. All three fetch helpers call `r.json()`
+  unconditionally, so an HTML error page lands in the generic catch.
+- **`source-viewer.js go()` is not awaited** from prev/next; two fast clicks
+  can render onto the same canvas concurrently, which PDF.js rejects.
+  `state.rotation` is declared and never read.
+- **Fixture gaps.** `lab-missing-unit`, `intake-blank` and `lab-no-date` have
+  truth/model JSON but no PDF and no generator function; `lab-multipage` and
+  `lab-unreadable` from task 9.3 do not exist. Folded into 9.3.
+- **`ReadinessProbesTest::testTheProbesAreTheFourDependencies...`** asserts
+  five probes; rename.
+- **Uvicorn's access line** (client, method, path, status) is logged in the
+  `event` field unfiltered; not PHI, but the comment in `logging_setup.py`
+  says "path only".
