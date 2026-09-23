@@ -1110,14 +1110,64 @@ final class FactAssemblerTest extends TestCase
         self::assertSame([], $this->factsIn($result, FactCategory::LabNormal), 'no range at all: no fact, as before');
     }
 
-    public function testLabBeforeThePriorVisitIsNotFlagged(): void
+    public function testLabBeforeThePriorVisitIsNotFlaggedWhenANewerDrawExists(): void
     {
         $this->withPriorVisitOn('2026-09-01 10:00:00');
-        $this->chart->labs = [$this->lab(901, '4548-4', 'Hemoglobin A1c', 7.8, '%', '2026-08-10')];
+        $this->chart->labs = [
+            $this->lab(901, '4548-4', 'Hemoglobin A1c', 7.8, '%', '2026-08-10'),
+            $this->lab(902, '2951-2', 'Sodium', 139.0, 'mmol/L', '2026-09-10'),
+        ];
 
         $result = $this->assembler()->assemble(new PatientId(7), null);
 
-        self::assertSame([], $this->factsIn($result, FactCategory::LabAbnormal));
+        self::assertSame([], $this->factsIn($result, FactCategory::LabAbnormal), 'an older draw before the prior visit is not shown when a newer one exists');
+        self::assertCount(1, $this->factsIn($result, FactCategory::LabNormal));
+    }
+
+    // -- The most recent lab draw is always shown (rule added 2026-09-23) --------
+
+    public function testMostRecentLabDrawIsShownEvenWhenItPredatesThePriorVisit(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [
+            $this->lab(901, '4548-4', 'Hemoglobin A1c', 7.8, '%', '2026-08-10'),
+            $this->lab(902, '2951-2', 'Sodium', 139.0, 'mmol/L', '2026-08-10'),
+            $this->lab(890, '4548-4', 'Hemoglobin A1c', 7.0, '%', '2026-06-10'),
+            $this->lab(891, '2823-3', 'Potassium', 5.9, 'mmol/L', '2026-06-10'),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $abnormal = $this->factsIn($result, FactCategory::LabAbnormal);
+        self::assertCount(1, $abnormal, 'the latest draw is shown; the June potassium is not');
+        self::assertSame('Hemoglobin A1c 7.8 % on 2026-08-10 (above the standard range 4-5.6 %)', $abnormal[0]->value);
+        $normal = $this->factsIn($result, FactCategory::LabNormal);
+        self::assertCount(1, $normal);
+        self::assertSame('Sodium 139 mmol/L on 2026-08-10 (reference range 135-145 mmol/L)', $normal[0]->value);
+        $delta = $this->factsIn($result, FactCategory::LabDelta);
+        self::assertCount(1, $delta);
+        self::assertStringStartsWith('Hemoglobin A1c changed from 7 % (2026-06-10) to 7.8 % (2026-08-10)', $delta[0]->value);
+    }
+
+    public function testMostRecentDrawIsShownOnAFirstVisitWithoutADocument(): void
+    {
+        $this->chart->encounters = [];
+        $this->chart->labs = [$this->lab(903, '2823-3', 'Potassium', 5.9, 'mmol/L', '2019-03-04')];
+
+        $abnormal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::LabAbnormal);
+
+        self::assertCount(1, $abnormal);
+        self::assertSame('Potassium 5.9 mmol/L on 2019-03-04 (above the standard range 3.5-5.1 mmol/L)', $abnormal[0]->value);
+    }
+
+    public function testMostRecentDrawRuleDoesNotDuplicateLabsAlreadyNewSincePriorVisit(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [$this->lab(904, '4548-4', 'Hemoglobin A1c', 7.8, '%', '2026-09-10')];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        self::assertCount(1, $this->factsIn($result, FactCategory::LabAbnormal));
     }
 
     public function testChangeSincePriorResultOfSameTestIsADeltaFact(): void

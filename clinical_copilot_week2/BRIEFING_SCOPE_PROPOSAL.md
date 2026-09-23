@@ -14,7 +14,7 @@ capped at 50 facts.
 | form_encounter | Prior visit date and reason | Latest encounter before the open one, minus sensitivity-restricted |
 | prescriptions | Active medications; new if started after the prior visit | active = 1 and no end date |
 | lists (allergy) | Allergies; new since prior visit; allergy-to-drug matches | no end date |
-| procedure_result | Out-of-range labs; labs that changed vs the previous value | numeric results only; new since prior visit |
+| procedure_result | Out-of-range, normal and critical labs; labs that changed vs the previous value | new since the prior visit, **or part of the most recent draw on the chart, whatever its date** (rule added 2026-09-23); numeric and qualitative |
 | lists (medical_problem) | New problems | begun after prior visit |
 | copilot_intake | Chief concern, meds, allergies, family history from intake form | uploaded since prior visit |
 | copilot_document_fact | Unverified extractions; name/DOB mismatch | uploaded since prior visit |
@@ -41,7 +41,8 @@ Known gaps in the current set:
 
 ## A. Reference ranges on every lab, abnormal flagging
 
-Goal: every lab result new since the prior visit carries a reference range,
+Goal: every lab result new since the prior visit, and every result in the most
+recent draw on the chart whatever its date, carries a reference range,
 whether or not the PDF printed one, and out-of-range or lab-flagged results
 are surfaced as must-surface facts.
 
@@ -88,7 +89,8 @@ range wins when printed, built-in only fills gaps" (quieter).
 New category `LabNormal` (not must-surface): one fact per result new since
 the prior visit that is inside range, with the range in the text:
 "Sodium 139 mmol/L on 2026-09-10 (reference range 135-145)". Rendered in the
-panel as a collapsed "Normal labs since last visit" section, last in order.
+panel as a collapsed "Normal labs (since last visit, and the latest draw)"
+section, last in order.
 The model gets them so follow-up questions about normal values are
 answerable; the briefing prompt's ordering rule keeps them at the end.
 
@@ -111,6 +113,16 @@ glucose <50 or >400, sodium <120 or >160, hemoglobin <7, platelets <50), become
 priority list.
 
 Decision needed (A-3): include the critical tier now or later.
+
+### A6. The most recent draw is always shown (added 2026-09-23)
+
+Every result sharing the latest result date on the chart is judged and
+shown, even when that date is on or before the prior visit, so the
+physician always sees the latest labs on file. Older results still follow
+the since-the-prior-visit rule. The fact carries the result's date, and
+the prompt tells the model never to call such a result new. On a first
+visit this also shows the most recent draw from the chart, not only
+document-cited results.
 
 ## B. Vitals
 

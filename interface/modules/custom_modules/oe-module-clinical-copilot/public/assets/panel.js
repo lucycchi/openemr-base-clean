@@ -85,7 +85,7 @@
     const CATEGORY_LABELS = {
         lab_critical: 'Critical lab values',
         allergy_medication_hit: 'Allergy / medication matches',
-        lab_abnormal: 'Abnormal labs since last visit',
+        lab_abnormal: 'Abnormal labs (since last visit, and the latest draw)',
         vital_abnormal: 'Abnormal vital signs',
         lab_pending: 'Labs ordered, no result on file',
         medication_stopped: 'Stopped medications',
@@ -107,7 +107,7 @@
         encounter: 'Visits since last visit',
         medication_active: 'Active medications',
         allergy_active: 'Allergies on file',
-        lab_normal: 'Normal labs since last visit',
+        lab_normal: 'Normal labs (since last visit, and the latest draw)',
         prior_visit: 'Prior visit',
         truncation: 'Not shown',
     };

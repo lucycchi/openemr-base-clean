@@ -333,6 +333,7 @@ Tasks 9.1 and 9.2 are the two items from last week's submission feedback.
 - [x] 11.9 Vital signs: abnormal against `contracts/vital_thresholds.json`, deltas past noise thresholds; adults only; hypertension and screening triggers fire on them.
 - [x] 11.10 The prior visit's assessment and plan (SOAP and clinical notes), capped at 600 characters at a sentence boundary; PHI-in-logs live case 68 and injection case 67.
 - [x] 11.11 Evals: 17 new cases (53-68: triggers, brief evidence, brief routing, critic recorded and live, briefing guideline sentence, plan injection, plan PHI); rubric `applicability_correct` at 100; deterministic gate 52/52; live baseline keeps the prior verdicts plus the new cases.
+- [x] 11.13 The most recent lab draw (every result on the latest result date) is always shown in the briefing, whatever its date relative to the prior visit; older results keep the since-the-prior-visit rule (2026-09-23, user decision).
 - [x] 11.12 Load baselines re-run on the dev stack and recorded as run 3 in BASELINES.md (the droplet is re-measured after the next deploy); the smoke seeds a current visit, an abnormal vitals reading, a pending order and a prior-visit plan for the demo patient and asserts the new sections render; `gate.sh` runs as the web user when invoked as root inside the container.
 
 ### Deferred to TODOS.md

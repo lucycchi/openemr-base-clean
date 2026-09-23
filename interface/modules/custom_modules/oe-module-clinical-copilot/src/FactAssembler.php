@@ -174,9 +174,15 @@ final class FactAssembler
             fn(LabRecord $l) => !isset($hiddenEncounterIds[$l->encounterId])
         ));
         usort($labs, fn(LabRecord $a, LabRecord $b) => [$b->date, $b->id] <=> [$a->date, $a->id]);
+        // The most recent draw (every result sharing the latest result date) is always
+        // shown, however old, so the physician sees the latest labs on file even when
+        // the prior visit came after them (rule added 2026-09-23). Everything older
+        // must be new since the prior visit; on a first visit, document-cited results
+        // still count.
+        $latestDraw = $labs === [] ? null : $labs[0]->date->format('Y-m-d');
         foreach ($labs as $i => $l) {
-            // Only what is new since the prior visit; on a first visit, document-cited results still count.
-            if (!$this->isNew($l->date, $since) && !($l->citation !== null && $since === null)) {
+            $inLatestDraw = $l->date->format('Y-m-d') === $latestDraw;
+            if (!$inLatestDraw && !$this->isNew($l->date, $since) && !($l->citation !== null && $since === null)) {
                 continue;
             }
             $judged = $this->judge->judge($l, $sex, $age);
