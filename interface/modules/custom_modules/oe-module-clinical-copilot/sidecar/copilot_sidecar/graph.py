@@ -41,13 +41,14 @@ taken, so a run can be replayed from its route log.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from typing import Callable, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
 from . import extractor
-from .schemas import Chunk, Extraction, Handoff, RunDocument, Usage, TriggerEvidence, TriggerQuery
+from .schemas import Chunk, Extraction, Handoff, RunDocument, Usage, TriggerEvidence, TriggerQuery, PatientContext
 
 log = logging.getLogger("copilot.graph")
 
@@ -62,6 +63,7 @@ SUPPORTED_DOC_TYPES = {"lab_pdf", "intake_form"}
 ExtractFn = Callable[[RunDocument, str], tuple[Extraction, list[Usage]]]
 RetrieveFn = Callable[[str], tuple[list[Chunk], list[Usage]]]
 RetrieveManyFn = Callable[[list[TriggerQuery]], tuple[list[TriggerEvidence], list[Usage]]]
+CriticFn = Callable[[str, list[str], int | None, str | None], tuple[bool, str, Usage]]
 
 
 # The shared state that travels from node to node. A TypedDict is a plain
@@ -79,6 +81,9 @@ class RunState(TypedDict, total=False):
     chunks: list[Chunk]
     queries: list[TriggerQuery]  # brief mode: the chart's fired triggers
     evidence: list[TriggerEvidence]  # brief mode: what the retriever found per trigger
+    patient: PatientContext | None  # brief mode: age and sex for the critic
+    facts: list[str]  # brief mode: the cited fact lines for the critic
+    critic_once: bool  # the critic runs at most once per run
     handoffs: list[Handoff]
     usage: list[Usage]
     next: str  # the supervisor's decision, read by the conditional edge
@@ -99,7 +104,7 @@ def _hop(state: RunState, from_: str, to: str, reason: str, changed: list[str]) 
     state["_t"] = now
 
 
-def supervisor_node(state: RunState) -> RunState:
+def supervisor_node(state: RunState, critic_enabled: bool = False) -> RunState:
     """The deterministic supervisor. Looks at the state and writes the next
     destination into state["next"], recording a hop with a reason code for
     every decision, including "nothing to do". No model is consulted."""
@@ -132,6 +137,12 @@ def supervisor_node(state: RunState) -> RunState:
             return state
         _hop(state, "supervisor", "done", "no_triggers", [])
         state["next"] = END
+        return state
+    # Brief mode, after retrieval: the critic checks each passage's population once,
+    # only when there is something to check and a critic is configured.
+    if state.get("mode") == "brief" and critic_enabled and not state.get("critic_once") and any(e.chunks for e in state.get("evidence", [])):
+        _hop(state, "supervisor", "critic", "applicability_check", [])
+        state["next"] = "critic"
         return state
     if state.get("mode") == "answer" and state.get("question") and not state.get("retrieved_once"):
         _hop(state, "supervisor", "evidence_retriever", "question_present", [])
@@ -200,21 +211,53 @@ def make_retriever_node(retrieve: RetrieveFn, retrieve_many: RetrieveManyFn) -> 
     return node
 
 
-def build_graph(extract: ExtractFn, retrieve: RetrieveFn, retrieve_many: RetrieveManyFn | None = None):
+def make_critic_node(critic: CriticFn) -> Callable[[RunState], RunState]:
+    """The critic worker: one verdict per trigger with passages. A failed
+    call leaves that trigger's verdict None (unknown); the hop reports
+    worker_failed only when every verdict failed."""
+    def node(state: RunState) -> RunState:
+        patient = state.get("patient")
+        facts = state.get("facts") or []
+        updated: list[TriggerEvidence] = []
+        attempted = 0
+        succeeded = 0
+        for e in state.get("evidence", []):
+            if not e.chunks:
+                updated.append(e)
+                continue
+            attempted += 1
+            try:
+                ok, reason, usage = critic("\n\n".join(c.quote for c in e.chunks), facts, patient.age if patient else None, patient.sex if patient else None)
+                state.setdefault("usage", []).append(usage)
+                updated.append(e.model_copy(update={"applicable": ok, "reason": reason}))
+                succeeded += 1
+            except Exception:
+                updated.append(e.model_copy(update={"applicable": None, "reason": None}))
+        state["evidence"] = updated
+        state["critic_once"] = True
+        _hop(state, "critic", "supervisor", "worker_finished" if succeeded or not attempted else "worker_failed", ["evidence", "usage"])
+        return state
+
+    return node
+
+
+def build_graph(extract: ExtractFn, retrieve: RetrieveFn, retrieve_many: RetrieveManyFn | None = None, critic: CriticFn | None = None):
     """Assembles and compiles the graph with the given workers."""
     # StateGraph(RunState) declares the shape of the shared state. add_node
     # registers a function under a name; add_edge fixes "after A, run B".
     g = StateGraph(RunState)
-    g.add_node("supervisor", supervisor_node)
+    g.add_node("supervisor", lambda state: supervisor_node(state, critic_enabled=critic is not None))
+    g.add_node("critic", make_critic_node(critic or stub_critic))
     g.add_node("intake_extractor", make_extractor_node(extract))
     g.add_node("evidence_retriever", make_retriever_node(retrieve, retrieve_many or stub_retrieve_many))
     g.add_edge(START, "supervisor")
     # After the supervisor, call the lambda on the state and look its answer
     # (state["next"]) up in the mapping to find the next node, or END.
-    g.add_conditional_edges("supervisor", lambda s: s["next"], {"intake_extractor": "intake_extractor", "evidence_retriever": "evidence_retriever", END: END})
+    g.add_conditional_edges("supervisor", lambda s: s["next"], {"intake_extractor": "intake_extractor", "evidence_retriever": "evidence_retriever", "critic": "critic", END: END})
     # Both workers always report back to the supervisor.
     g.add_edge("intake_extractor", "supervisor")
     g.add_edge("evidence_retriever", "supervisor")
+    g.add_edge("critic", "supervisor")
     # compile() turns the description into a runnable object with .invoke().
     return g.compile()
 
@@ -237,6 +280,14 @@ def real_extract(doc: RunDocument, correlation_id: str) -> tuple[Extraction, lis
 def no_retrieve(question: str) -> tuple[list[Chunk], list[Usage]]:
     """Placeholder until Phase 6 lands the retriever: no chunks, no usage."""
     return [], []
+
+
+def real_critic(passage: str, fact_lines: list[str], age: int | None, sex: str | None) -> tuple[bool, str, Usage]:
+    """The production critic. Imported at call time so a test can replace
+    llm.applicable after the production graph was built."""
+    from . import llm as llm_module
+
+    return llm_module.applicable(passage, fact_lines, age, sex)
 
 
 def real_retrieve_many(queries: list[TriggerQuery]) -> tuple[list[TriggerEvidence], list[Usage]]:
@@ -266,16 +317,18 @@ def production_graph():
             fn = retrieve_module.retrieve
         except ImportError:
             pass
-        _graph = build_graph(real_extract, fn, real_retrieve_many)
+        # The critic is wired only when a model key is present at start-up, so a
+        # deployment without one skips the check instead of failing every brief.
+        _graph = build_graph(real_extract, fn, real_retrieve_many, real_critic if os.environ.get("OPENAI_API_KEY") else None)
     return _graph
 
 
-def run(mode: str, correlation_id: str, facts_hash: str, question: str | None, documents: list[RunDocument], graph=None, queries: list[TriggerQuery] | None = None) -> RunState:
+def run(mode: str, correlation_id: str, facts_hash: str, question: str | None, documents: list[RunDocument], graph=None, queries: list[TriggerQuery] | None = None, patient: PatientContext | None = None, facts: list[str] | None = None) -> RunState:
     """Runs one request through the graph and returns the final state.
     `graph` lets the eval endpoints pass a stubbed graph; otherwise the
     production graph is used. invoke() runs nodes until END is reached."""
     state: RunState = {"mode": mode, "correlation_id": correlation_id, "facts_hash": facts_hash, "question": question, "documents": documents,
-                       "queries": list(queries or []), "evidence": [],
+                       "queries": list(queries or []), "evidence": [], "patient": patient, "facts": list(facts or []), "critic_once": False,
                        "extractions": [], "chunks": [], "handoffs": [], "usage": [], "extracted_once": False, "retrieved_once": False}
     g = graph or production_graph()
     return g.invoke(state)  # type: ignore[return-value]
@@ -292,5 +345,11 @@ def stub_retrieve(question: str) -> tuple[list[Chunk], list[Usage]]:
 
 
 def stub_retrieve_many(queries: list[TriggerQuery]) -> tuple[list[TriggerEvidence], list[Usage]]:
-    """Eval stub for brief mode: one empty evidence entry per trigger."""
-    return [TriggerEvidence(trigger_id=q.trigger_id, chunks=[]) for q in queries], []
+    """Eval stub for brief mode: one placeholder passage per trigger, so the
+    route through the critic is visible without an index."""
+    return [TriggerEvidence(trigger_id=q.trigger_id, chunks=[Chunk(chunk_id="000000000000", source_id="stub", section="stub", quote="stub passage", score=0.0)]) for q in queries], []
+
+
+def stub_critic(passage: str, fact_lines: list[str], age: int | None, sex: str | None) -> tuple[bool, str, Usage]:
+    """Eval stub: every passage applies, no model, no usage cost recorded as tokens."""
+    return True, "stub: no population restriction stated", Usage(model="stub", kind="chat", input=0, output=0)

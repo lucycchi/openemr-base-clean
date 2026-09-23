@@ -46,7 +46,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
 
 class Strict(BaseModel):
@@ -309,6 +309,20 @@ class TriggerQuery(Strict):
     query: str = Field(min_length=1, max_length=500)
 
 
+class PatientContext(Strict):
+    """Brief mode: the two demographic facts the critic needs to judge a
+    passage's population. Never an identifier."""
+    age: int | None = Field(default=None, ge=0, le=130)
+    sex: Literal["M", "F"] | None = None
+
+
+class CriticVerdict(Strict):
+    """What the critic model returns for one passage: whether its stated
+    population includes the patient, and why, drawn from the passage."""
+    applicable: StrictBool  # strict: lax mode would read the string "yes" as true
+    reason: str = Field(max_length=500)
+
+
 class RunRequest(Strict):
     """What PHP posts to /run."""
     mode: Literal["extract", "answer", "brief"]  # which worker the supervisor may use
@@ -324,13 +338,15 @@ class RunRequest(Strict):
     question: str | None = Field(max_length=2000)
     documents: list[RunDocument]
     queries: list[TriggerQuery] = Field(default_factory=list, max_length=20)  # brief mode: the chart's fired triggers
+    patient: PatientContext | None = None  # brief mode: age and sex for the critic
+    facts: list[str] = Field(default_factory=list, max_length=200)  # brief mode: the fact lines the triggers cited, already flattened
 
     @model_validator(mode="after")
     def _brief_shape(self) -> "RunRequest":
         if self.mode == "brief" and self.question is not None:
             raise ValueError("brief mode carries no question")
-        if self.mode != "brief" and self.queries:
-            raise ValueError("queries travel only with brief mode")
+        if self.mode != "brief" and (self.queries or self.facts or self.patient is not None):
+            raise ValueError("queries, facts and patient travel only with brief mode")
         return self
 
 

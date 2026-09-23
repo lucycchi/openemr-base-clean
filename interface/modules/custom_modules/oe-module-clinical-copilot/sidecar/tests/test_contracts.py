@@ -61,6 +61,7 @@ MODELS = {
     "run.request": schemas.RunRequest, "run.response": schemas.RunResponse, "run.error": schemas.RunError,
     "llm.lab-proposal.output": schemas.LabReportProposal, "llm.intake-proposal.output": schemas.IntakeFormProposal,
     "sidecar.health.response": schemas.SidecarHealth, "sidecar.ready.response": schemas.SidecarReady,
+    "llm.critic.output": schemas.CriticVerdict,
 }
 
 
@@ -195,3 +196,24 @@ def test_brief_response_with_evidence_round_trips_through_the_contract() -> None
     doc = json.loads(resp.model_dump_json(by_alias=True))
     assert v.is_valid(doc), [e.message for e in v.iter_errors(doc)]
     assert doc["evidence"][0]["applicable"] is None
+
+
+def test_run_request_carries_patient_context_and_facts_only_in_brief_mode() -> None:
+    v = validator("run.request")
+    body = _brief(patient={"age": 55, "sex": "M"}, facts=["LDL Cholesterol 165 mg/dL on 2026-09-10"])
+    assert v.is_valid(body), [e.message for e in v.iter_errors(body)]
+    schemas.RunRequest.model_validate(body)
+    bad = {"mode": "answer", "correlation_id": "abcdefgh-0003", "facts_hash": "0" * 64, "question": "x", "documents": [], "facts": ["a fact"]}
+    assert not v.is_valid(bad)
+    with pytest.raises(ValidationError):
+        schemas.RunRequest.model_validate(bad)
+
+
+def test_critic_output_contract_is_strict_and_matches_its_model() -> None:
+    fmt = contracts.openai_response_format("llm.critic.output")
+    assert fmt["json_schema"]["strict"] is True
+    schema = fmt["json_schema"]["schema"]
+    assert set(schema["required"]) == {"applicable", "reason"} and schema["additionalProperties"] is False
+    schemas.CriticVerdict.model_validate({"applicable": True, "reason": "no restriction stated"})
+    with pytest.raises(ValidationError):
+        schemas.CriticVerdict.model_validate({"applicable": "yes", "reason": "x"})

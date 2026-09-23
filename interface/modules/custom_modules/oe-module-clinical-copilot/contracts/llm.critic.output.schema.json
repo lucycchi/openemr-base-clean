@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/llm.critic.output.schema.json",
+  "title": "LLM critic output",
+  "description": "What the critic model returns for one retrieved guideline passage (brief mode): whether the passage's stated population includes the patient, and a one-sentence reason drawn from the passage. Sent by the sidecar as response_format.json_schema with strict: true. The reason is shown to the clinician beside the card's 'checked' label; it is never advice and never a fact about the patient.",
+  "type": "object",
+  "properties": {
+    "applicable": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 500
+    }
+  },
+  "required": [
+    "applicable",
+    "reason"
+  ],
+  "additionalProperties": false
+}

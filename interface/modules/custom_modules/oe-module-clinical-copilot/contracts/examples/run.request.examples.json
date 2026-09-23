@@ -26,6 +26,13 @@
           "trigger_id": "lipids",
           "query": "statin indication and intensity when LDL cholesterol is above goal"
         }
+      ],
+      "patient": {
+        "age": 55,
+        "sex": "M"
+      },
+      "facts": [
+        "LDL Cholesterol 165 mg/dL on 2026-09-10 (above the standard range 0-129 mg/dL)"
       ]
     }
   ],
@@ -61,6 +68,16 @@
           "trigger_id": "lipids",
           "query": "statin indication and intensity when LDL cholesterol is above goal"
         }
+      ]
+    },
+    {
+      "mode": "answer",
+      "correlation_id": "c0ffee00-answer-0009",
+      "facts_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "question": "should I start a statin?",
+      "documents": [],
+      "facts": [
+        "a fact"
       ]
     }
   ]

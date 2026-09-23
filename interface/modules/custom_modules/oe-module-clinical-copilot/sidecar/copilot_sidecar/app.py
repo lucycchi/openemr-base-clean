@@ -52,7 +52,7 @@ from . import anchor, contracts, extractor, graph
 from . import retrieve as retrieve_module
 from .llm import PROMPT_VERSION
 from .logging_setup import bind_correlation_id, setup_logging
-from .schemas import IntakeFormProposal, LabReportProposal, RunError, RunRequest, RunResponse, SidecarHealth, SidecarReady, TriggerQuery
+from .schemas import IntakeFormProposal, LabReportProposal, RunError, RunRequest, RunResponse, SidecarHealth, SidecarReady, TriggerQuery, CriticVerdict
 
 # Module-level statements run once, when the process imports this file:
 # logging is configured before the first log line, and `app` is the object
@@ -230,7 +230,7 @@ async def run(request: Request) -> JSONResponse:
         # seconds), and every other request would wait. run_in_threadpool
         # hands the call to a separate worker thread and `await` lets the
         # loop serve others until that thread is done.
-        state = await run_in_threadpool(graph.run, req.mode, req.correlation_id, req.facts_hash, req.question, req.documents, None, req.queries)
+        state = await run_in_threadpool(graph.run, req.mode, req.correlation_id, req.facts_hash, req.question, req.documents, None, req.queries, req.patient, req.facts)
     except Exception as exc:  # never leak a traceback; the code is the message
         log.error("run failed", extra={"mode": req.mode, "code": "internal", "exception_class": type(exc).__name__, "ms": int((time.monotonic() - started) * 1000)})
         return _error(req.correlation_id, "internal", 500)
@@ -292,6 +292,15 @@ class RouteEvalRequest(BaseModel):
     question: str | None = None
     documents: list[RouteEvalDocument] = []
     queries: list[TriggerQuery] = []
+
+
+class CriticEvalRequest(BaseModel):
+    """One critic verdict: recorded (no model) when `recorded` is given, else live."""
+    passage: str
+    fact_lines: list[str] = []
+    age: int | None = None
+    sex: str | None = None
+    recorded: CriticVerdict | None = None
 
 
 class BriefEvidenceEvalRequest(BaseModel):
@@ -360,9 +369,22 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
     def eval_route(req: RouteEvalRequest) -> dict:
         """The real graph with stubbed workers: returns the handoff log so the
         harness can score routing without a model or a parser."""
-        g = graph.build_graph(graph.stub_extract, graph.stub_retrieve, graph.stub_retrieve_many)
+        g = graph.build_graph(graph.stub_extract, graph.stub_retrieve, graph.stub_retrieve_many, graph.stub_critic)
         state = graph.run(req.mode, "eval-route-000", "0" * 64, req.question, req.documents, graph=g, queries=req.queries)  # type: ignore[arg-type]
         return {"handoffs": [h.model_dump(by_alias=True) for h in state["handoffs"]], "extractions": len(state["extractions"]), "chunks": len(state["chunks"]), "evidence": len(state.get("evidence", []))}
+
+    @app.post("/eval/critic")
+    def eval_critic(req: CriticEvalRequest) -> dict:
+        """The critic's verdict for one passage: the recorded one when given (deterministic), else the live model."""
+        if req.recorded is not None:
+            return {"applicable": req.recorded.applicable, "reason": req.recorded.reason, "usage": []}
+        from . import llm as llm_module
+
+        try:
+            ok, reason, usage = llm_module.applicable(req.passage, req.fact_lines, req.age, req.sex)
+        except llm_module.ModelError as exc:
+            raise HTTPException(502, exc.code)
+        return {"applicable": ok, "reason": reason, "usage": [usage.model_dump()]}
 
     @app.post("/eval/brief-evidence")
     def eval_brief_evidence(req: BriefEvidenceEvalRequest) -> dict:

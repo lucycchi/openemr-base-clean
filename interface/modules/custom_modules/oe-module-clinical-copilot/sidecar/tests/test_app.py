@@ -275,3 +275,37 @@ def test_eval_brief_evidence_uses_the_committed_trigger_vectors(client: TestClie
     ev = r.json()["evidence"]
     assert ev[0]["trigger_id"] == "lipids" and ev[0]["chunks"][0]["source_id"] == "acc-aha-2018-cholesterol"
     assert r.json()["usage"] == []
+
+
+def test_eval_critic_returns_a_recorded_verdict_without_a_model_call(client: TestClient, monkeypatch) -> None:
+    from copilot_sidecar import llm as llm_module
+
+    monkeypatch.setattr(llm_module, "applicable", lambda *a, **k: (_ for _ in ()).throw(AssertionError("model called")))
+    r = client.post("/eval/critic", json={"passage": "In adults 40 to 75 ...", "fact_lines": ["LDL 165"], "age": 82, "sex": "F", "recorded": {"applicable": False, "reason": "ages 40 to 75; patient is 82"}})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"applicable": False, "reason": "ages 40 to 75; patient is 82", "usage": []}
+
+
+def test_run_brief_passes_patient_and_facts_to_the_critic(client: TestClient, monkeypatch) -> None:
+    from copilot_sidecar import llm as llm_module, retrieve as retrieve_module
+    from copilot_sidecar.schemas import Chunk, TriggerEvidence, Usage
+
+    seen = {}
+
+    def fake_many(queries):
+        return [TriggerEvidence(trigger_id=q.trigger_id, chunks=[Chunk(chunk_id="a1b2c3d4e5f6", source_id="acc-aha-2018-cholesterol", section="S", quote="In adults 40 to 75", score=0.5)]) for q in queries], []
+
+    def fake_applicable(passage, fact_lines, age, sex, client=None):
+        seen.update(passage=passage, facts=fact_lines, age=age, sex=sex)
+        return False, "ages 40 to 75; patient is 82", Usage(model="m", kind="chat", input=5, output=1)
+
+    monkeypatch.setattr(retrieve_module, "retrieve_many", fake_many)
+    monkeypatch.setattr(llm_module, "applicable", fake_applicable)
+    monkeypatch.setenv("OPENAI_API_KEY", "test")
+    body = request(mode="brief", correlation_id="brief-critic-0001", documents=[], queries=[{"trigger_id": "lipids", "query": "statin indication"}], patient={"age": 82, "sex": "F"}, facts=["LDL Cholesterol 165 mg/dL"])
+    r = client.post("/run", json=body)
+    assert r.status_code == 200, r.text
+    ev = r.json()["evidence"][0]
+    assert (ev["applicable"], ev["reason"]) == (False, "ages 40 to 75; patient is 82")
+    assert seen == {"passage": "In adults 40 to 75", "facts": ["LDL Cholesterol 165 mg/dL"], "age": 82, "sex": "F"}
+    assert ("supervisor", "critic", "applicability_check") in [(h["from"], h["to"], h["reason"]) for h in r.json()["handoffs"]]
