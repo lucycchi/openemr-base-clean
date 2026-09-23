@@ -297,7 +297,7 @@ on the droplet.
 
 ### Phase 8: Docs, deploy, video (Wednesday, ~2.5 h)
 
-- [ ] 8.1 Final deploy with `deploy.sh`; `run.php --live` on the droplet.
+- [x] 8.1 (done 2026-09-23: deployed `fc7aa13` after a first deploy exposed a dev-only dependency (see ENGINEERING_REQUIREMENTS.md § 3); verified on the droplet with both Bruno collections, Week 2 17/17 and Week 1 19/19, results in `api-collection/results-deployed.json`. `run.php --live` is not run on the droplet: its sidecar cases need the test-only `/eval/*` endpoints, which a deployment never enables; the collections are the deployed verification.) Final deploy with `deploy.sh`; `run.php --live` on the droplet.
 - [x] 8.2 (done 2026-09-23: ingestion, retrieval, gate and risks sections added; KEY_METRICS 8-11; README Week 1 vs Week 2, env-var table, five-command flow) `W2_ARCHITECTURE.md` (ingestion, graph, RAG, gate, risks, tradeoffs, the stack decision from 0.1); `KEY_METRICS.md` gains anchored-field rate, retrieval hit rate, routing accuracy, gate pass rate; README Week 1 vs Week 2, env-var table, five-command core flow, hook install.
 - [x] 8.3 (done 2026-09-23, v1 at the repo root) `COST_AND_LATENCY.md` first version: p50/p95 per step from the trace, bottleneck analysis, actual dev spend; the per-tier section is added Thursday (9.2).
 - [ ] 8.4 Demo video (3-5 min): upload → unverified field visible → click-to-source → guideline block → routing drawer → inject regression, hook refuses → Langfuse trace.

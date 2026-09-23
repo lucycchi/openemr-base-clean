@@ -101,3 +101,11 @@ Local dev stack, 2026-09-22, Bruno CLI 2.15.1: first run 17/17 requests,
 39/39 assertions, 5/5 tests in 28.6 s (07 answered 201, 08 ran the graph in
 ~10 s); second run 17/17 in ~6 s with 07 → 200 `existing: true` and 08 →
 `already: true`, proving the collection is repeatable.
+
+Deployed droplet (`vps` environment), 2026-09-23, build `fc7aa13`: 17/17
+requests, 41/41 assertions; extraction of the five-page report 14.2 s,
+brief with document facts 4.4 s, guideline question 2.5 s. The run is
+saved as [`results-deployed.json`](results-deployed.json) (Bruno's JSON
+report; no patient data, the demo chart only). The first deploy that day
+failed requests 08 and 11 with 500s, which is how a dev-only dependency
+was caught; see ENGINEERING_REQUIREMENTS.md § 3.
