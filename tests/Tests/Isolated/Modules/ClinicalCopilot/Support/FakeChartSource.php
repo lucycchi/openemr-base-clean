@@ -23,6 +23,7 @@ use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\PendingOrderRecord;
 use OpenEMR\Modules\ClinicalCopilot\ProblemRecord;
+use OpenEMR\Modules\ClinicalCopilot\VitalRecord;
 
 /**
  * ChartSource fed from public arrays. Tests build EncounterRecord /
@@ -51,6 +52,8 @@ final class FakeChartSource implements ChartSource
     public array $problems = [];
     /** @var list<PendingOrderRecord> */
     public array $pendingOrders = [];
+    /** @var list<VitalRecord> */
+    public array $vitals = [];
 
     public function encounters(PatientId $pid): array
     {
@@ -83,6 +86,12 @@ final class FakeChartSource implements ChartSource
     }
 
     /** @return list<\OpenEMR\Modules\ClinicalCopilot\UnverifiedExtraction> */
+    /** @return list<VitalRecord> */
+    public function vitals(PatientId $pid): array
+    {
+        return $this->vitals;
+    }
+
     /** @return list<PendingOrderRecord> */
     public function pendingOrders(PatientId $pid): array
     {

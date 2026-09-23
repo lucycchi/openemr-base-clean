@@ -31,6 +31,8 @@ class OpenEmrChartSourceTest extends TestCase
     private array $prescriptionIds = [];
     /** @var list<int> */
     private array $listIds = [];
+    /** @var list<int> */
+    private array $vitalIds = [];
 
     protected function setUp(): void
     {
@@ -49,6 +51,10 @@ class OpenEmrChartSourceTest extends TestCase
         }
         foreach ($this->listIds as $id) {
             QueryUtils::sqlStatementThrowException("DELETE FROM lists WHERE id = ?", [$id]);
+        }
+        foreach ($this->vitalIds as $id) {
+            QueryUtils::sqlStatementThrowException("DELETE FROM forms WHERE formdir = 'vitals' AND form_id = ?", [$id]);
+            QueryUtils::sqlStatementThrowException("DELETE FROM form_vitals WHERE id = ?", [$id]);
         }
         foreach ($this->orderIds as $oid) {
             QueryUtils::sqlStatementThrowException("DELETE pr FROM procedure_result pr JOIN procedure_report prp ON prp.procedure_report_id = pr.procedure_report_id WHERE prp.procedure_order_id = ?", [$oid]);
@@ -174,5 +180,37 @@ class OpenEmrChartSourceTest extends TestCase
         self::assertArrayHasKey($id, $problems, 'a resolved problem must be read');
         self::assertFalse($problems[$id]->active);
         self::assertSame('2026-09-06', $problems[$id]->endDate?->format('Y-m-d'));
+    }
+
+    private function vitalsRow(string $date, string $bps, string $bpd, ?float $weight, int $deleted): int
+    {
+        $id = (int) QueryUtils::sqlInsert("INSERT INTO form_vitals (date, pid, user, groupname, authorized, activity, bps, bpd, pulse, weight, BMI) VALUES (?, ?, 'admin', 'Default', 1, 1, ?, ?, 72, ?, 27.5)", [$date, $this->pid, $bps, $bpd, $weight]);
+        $this->vitalIds[] = $id;
+        QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES (?, 1, 'Vitals', ?, ?, 'admin', 'Default', 1, ?, 'vitals')", [$date, $id, $this->pid, $deleted]);
+        return $id;
+    }
+
+    public function testVitalsJoinFormsSkipDeletedAndParsePressures(): void
+    {
+        $kept = $this->vitalsRow('2026-09-10 09:00:00', '152', '94', 171.0, 0);
+        $deleted = $this->vitalsRow('2026-09-11 09:00:00', '160', '100', 170.0, 1);
+        $malformed = $this->vitalsRow('2026-09-12 09:00:00', 'N/A', '', null, 0);
+
+        $vitals = [];
+        foreach ((new OpenEmrChartSource())->vitals(new PatientId($this->pid)) as $v) {
+            $vitals[$v->id] = $v;
+        }
+
+        self::assertArrayHasKey($kept, $vitals);
+        self::assertSame(152, $vitals[$kept]->systolic);
+        self::assertSame(94, $vitals[$kept]->diastolic);
+        self::assertSame(171.0, $vitals[$kept]->weightLb);
+        self::assertSame(72.0, $vitals[$kept]->pulse);
+        self::assertSame(1, $vitals[$kept]->encounterId);
+        self::assertArrayNotHasKey($deleted, $vitals, 'a deleted form is not a reading');
+        self::assertArrayHasKey($malformed, $vitals);
+        self::assertNull($vitals[$malformed]->systolic);
+        self::assertNull($vitals[$malformed]->diastolic);
+        self::assertNull($vitals[$malformed]->weightLb);
     }
 }

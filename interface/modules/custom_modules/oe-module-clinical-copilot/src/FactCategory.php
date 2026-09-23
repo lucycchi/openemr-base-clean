@@ -35,6 +35,8 @@ enum FactCategory: string
     case LabAbnormal = 'lab_abnormal';
     case LabDelta = 'lab_delta';
     case LabNormal = 'lab_normal';
+    case VitalAbnormal = 'vital_abnormal';
+    case VitalDelta = 'vital_delta';
     case ProblemNew = 'problem_new';
     case ProblemResolved = 'problem_resolved';
     case LabPending = 'lab_pending';
@@ -70,6 +72,7 @@ enum FactCategory: string
             self::AllergyMedicationHit,
             self::LabCritical,
             self::LabAbnormal,
+            self::VitalAbnormal,
             self::ProblemNew,
             self::Truncation,
             self::ExtractionUnverified,
@@ -84,6 +87,7 @@ enum FactCategory: string
             self::IntakeFamilyHistory,
             self::LabNormal,
             self::ProblemResolved,
+            self::VitalDelta,
             self::LabDelta => false,
         };
     }

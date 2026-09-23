@@ -37,6 +37,7 @@ final class FactAssembler
         private readonly Authorization $auth,
         private readonly ClockInterface $clock,
         private readonly LabJudge $judge = new LabJudge(),
+        private readonly VitalThresholds $vitalThresholds = new VitalThresholds(),
     ) {
     }
 
@@ -147,7 +148,8 @@ final class FactAssembler
             }
         }
 
-        $sex = $this->chart->demographics($pid)->sex;
+        $who = $this->chart->demographics($pid);
+        $sex = $who->sex;
         $labs = array_values(array_filter(
             $this->chart->labs($pid),
             fn(LabRecord $l) => !isset($hiddenEncounterIds[$l->encounterId])
@@ -207,6 +209,27 @@ final class FactAssembler
             $resolvedOn = $p->resolvedOn();
             if ($resolvedOn !== null && $this->isNew($resolvedOn, $since)) {
                 $facts[] = $this->fact('ConditionService', $p->id, 'resolved', sprintf('%s resolved %s', $p->title, $resolvedOn->format('Y-m-d')), FactCategory::ProblemResolved, null, ['title' => $p->title]);
+            }
+        }
+
+        // Vital signs new since the prior visit: outside an adult threshold is a
+        // must-surface fact; a change past a noise threshold versus the most
+        // recent prior reading is a delta fact. No abnormal facts for a child.
+        $age = $who->ageOn($this->clock->now());
+        $vitals = array_values(array_filter($this->chart->vitals($pid), fn(VitalRecord $v) => !isset($hiddenEncounterIds[$v->encounterId])));
+        usort($vitals, fn(VitalRecord $a, VitalRecord $b) => [$b->date, $b->id] <=> [$a->date, $a->id]);
+        foreach ($vitals as $i => $v) {
+            if (!$this->isNew($v->date, $since)) {
+                continue;
+            }
+            $day = $v->date->format('Y-m-d');
+            if ($age === null || $age >= 18) {
+                foreach ($this->abnormalVitals($v, $day) as [$field, $text, $direction]) {
+                    $facts[] = $this->fact('VitalsService', $v->id, $field, $text, FactCategory::VitalAbnormal, null, ['vital' => $field, 'direction' => $direction]);
+                }
+            }
+            foreach ($this->vitalDeltas($v, $vitals, $i, $day) as [$field, $text]) {
+                $facts[] = $this->fact('VitalsService', $v->id, $field . '_delta', $text, FactCategory::VitalDelta, null, ['vital' => $field]);
             }
         }
 
@@ -277,6 +300,8 @@ final class FactAssembler
                 FactCategory::MedicationStopped => 'stopped medications',
                 FactCategory::ProblemResolved => 'resolved problems',
                 FactCategory::LabPending => 'labs ordered without a result',
+                FactCategory::VitalAbnormal => 'abnormal vital signs',
+                FactCategory::VitalDelta => 'changed vital signs',
                 FactCategory::Truncation => $label,
                 FactCategory::ExtractionUnverified => 'unverified document values',
                 FactCategory::IntakeChiefConcern => 'intake reasons for visit',
@@ -288,6 +313,87 @@ final class FactAssembler
             $kept[] = $this->fact('FactAssembler', 0, "truncated:$key", "$count additional $label not shown", FactCategory::Truncation);
         }
         return $kept;
+    }
+
+    /**
+     * Every reading in this set outside the adult bounds: [field, fact text, direction].
+     *
+     * @return list<array{string, string, string}>
+     */
+    private function abnormalVitals(VitalRecord $v, string $day): array
+    {
+        $out = [];
+        $bp = $this->vitalThresholds->abnormal('bp');
+        if ($v->systolic !== null && $v->diastolic !== null && isset($bp['systolic_high'], $bp['diastolic_high']) && ($v->systolic >= $bp['systolic_high'] || $v->diastolic >= $bp['diastolic_high'])) {
+            $out[] = ['bp', sprintf('Blood pressure %d/%d mmHg on %s (above %s/%s)', $v->systolic, $v->diastolic, $day, $this->num($bp['systolic_high']), $this->num($bp['diastolic_high'])), 'above'];
+        }
+        $pulse = $this->vitalThresholds->abnormal('pulse');
+        if ($v->pulse !== null && isset($pulse['low']) && $v->pulse < $pulse['low']) {
+            $out[] = ['pulse', sprintf('Pulse %s bpm on %s (below %s bpm)', $this->num($v->pulse), $day, $this->num($pulse['low'])), 'below'];
+        } elseif ($v->pulse !== null && isset($pulse['high']) && $v->pulse > $pulse['high']) {
+            $out[] = ['pulse', sprintf('Pulse %s bpm on %s (above %s bpm)', $this->num($v->pulse), $day, $this->num($pulse['high'])), 'above'];
+        }
+        $spo2 = $this->vitalThresholds->abnormal('spo2');
+        if ($v->spo2 !== null && isset($spo2['low']) && $v->spo2 < $spo2['low']) {
+            $out[] = ['spo2', sprintf('Oxygen saturation %s %% on %s (below %s %%)', $this->num($v->spo2), $day, $this->num($spo2['low'])), 'below'];
+        }
+        $temp = $this->vitalThresholds->abnormal('temperature_f');
+        if ($v->temperatureF !== null && isset($temp['high']) && $v->temperatureF >= $temp['high']) {
+            $out[] = ['temperature', sprintf('Temperature %s F on %s (at or above %s F)', $this->num($v->temperatureF), $day, $this->num($temp['high'])), 'above'];
+        }
+        $resp = $this->vitalThresholds->abnormal('respiration');
+        if ($v->respiration !== null && isset($resp['high']) && $v->respiration > $resp['high']) {
+            $out[] = ['respiration', sprintf('Respiration %s per minute on %s (above %s per minute)', $this->num($v->respiration), $day, $this->num($resp['high'])), 'above'];
+        }
+        $bmi = $this->vitalThresholds->abnormal('bmi');
+        if ($v->bmi !== null && isset($bmi['low']) && $v->bmi < $bmi['low']) {
+            $out[] = ['bmi', sprintf('BMI %s on %s (below %s)', $this->num($v->bmi), $day, $this->num($bmi['low'])), 'below'];
+        } elseif ($v->bmi !== null && isset($bmi['high']) && $v->bmi >= $bmi['high']) {
+            $out[] = ['bmi', sprintf('BMI %s on %s (at or above %s)', $this->num($v->bmi), $day, $this->num($bmi['high'])), 'above'];
+        }
+        return $out;
+    }
+
+    /**
+     * Changes versus the most recent earlier reading that measured the same
+     * vital, past the noise thresholds: [field, fact text].
+     *
+     * @param list<VitalRecord> $vitals newest first
+     * @return list<array{string, string}>
+     */
+    private function vitalDeltas(VitalRecord $v, array $vitals, int $index, string $day): array
+    {
+        $out = [];
+        $earlier = static function (callable $get) use ($vitals, $index): ?VitalRecord {
+            for ($j = $index + 1, $n = count($vitals); $j < $n; $j++) {
+                if ($get($vitals[$j]) !== null) {
+                    return $vitals[$j];
+                }
+            }
+            return null;
+        };
+        $weight = $this->vitalThresholds->delta('weight_lb');
+        $prev = $v->weightLb === null ? null : $earlier(static fn(VitalRecord $r) => $r->weightLb);
+        if ($prev !== null && $prev->weightLb !== null) {
+            $diff = $v->weightLb - $prev->weightLb;
+            $pct = $prev->weightLb > 0 ? abs($diff) / $prev->weightLb * 100 : 0.0;
+            if (abs($diff) >= ($weight['absolute'] ?? PHP_FLOAT_MAX) || $pct >= ($weight['percent'] ?? PHP_FLOAT_MAX)) {
+                $out[] = ['weight', sprintf('Weight changed from %s lb (%s) to %s lb (%s): %s %s lb (%d %%)', $this->num($prev->weightLb), $prev->date->format('Y-m-d'), $this->num($v->weightLb), $day, $diff > 0 ? 'up' : 'down', $this->num(abs($diff)), (int) round($pct))];
+            }
+        }
+        $systolic = $this->vitalThresholds->delta('systolic');
+        $prev = $v->systolic === null ? null : $earlier(static fn(VitalRecord $r) => $r->systolic);
+        if ($prev !== null && $prev->systolic !== null && abs($v->systolic - $prev->systolic) >= ($systolic['absolute'] ?? PHP_FLOAT_MAX)) {
+            $diff = $v->systolic - $prev->systolic;
+            $out[] = ['bp', sprintf('Systolic blood pressure changed from %d (%s) to %d (%s): %s %d', $prev->systolic, $prev->date->format('Y-m-d'), $v->systolic, $day, $diff > 0 ? 'up' : 'down', abs($diff))];
+        }
+        $bmi = $this->vitalThresholds->delta('bmi');
+        $prev = $v->bmi === null ? null : $earlier(static fn(VitalRecord $r) => $r->bmi);
+        if ($prev !== null && $prev->bmi !== null && abs($v->bmi - $prev->bmi) >= ($bmi['absolute'] ?? PHP_FLOAT_MAX)) {
+            $diff = $v->bmi - $prev->bmi;
+            $out[] = ['bmi', sprintf('BMI changed from %s (%s) to %s (%s): %s %s', $this->num($prev->bmi), $prev->date->format('Y-m-d'), $this->num($v->bmi), $day, $diff > 0 ? 'up' : 'down', $this->num(abs($diff)))];
+        }
+        return $out;
     }
 
     /**

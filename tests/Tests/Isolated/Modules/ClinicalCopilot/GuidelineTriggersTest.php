@@ -175,4 +175,50 @@ final class GuidelineTriggersTest extends TestCase
         self::assertIsArray($file);
         self::assertSame(GuidelineTriggers::VERSION, $file['version']);
     }
+
+    public function testAbnormalBloodPressureFiresHypertension(): void
+    {
+        $bp = $this->fact(1, FactCategory::VitalAbnormal, 'Blood pressure 152/94 mmHg on 2026-09-10 (above 140/90)', ['vital' => 'bp', 'direction' => 'above']);
+
+        $fired = $this->fire($this->assembled([$bp]), $this->aged(50));
+
+        self::assertArrayHasKey('hypertension', $fired);
+        self::assertSame([$bp->id], $fired['hypertension']->factIds);
+    }
+
+    public function testScreeningFiresOnAgeAndBmiWithoutDiabetesOrARecentA1c(): void
+    {
+        $bmi = $this->fact(1, FactCategory::VitalAbnormal, 'BMI 31.2 on 2026-09-10 (at or above 30)', ['vital' => 'bmi', 'direction' => 'above']);
+        $a1c = $this->fact(2, FactCategory::LabNormal, 'Hemoglobin A1c 5.4 % on 2026-09-10 (reference range 4-5.6 %)', ['loinc' => '4548-4']);
+
+        self::assertArrayHasKey('screening', $this->fire($this->assembled([$bmi]), $this->aged(50)));
+        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([$bmi]), $this->aged(72)));
+        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([$bmi], ['Type 2 diabetes mellitus']), $this->aged(50)));
+        self::assertArrayNotHasKey('screening', $this->fire($this->assembled([$bmi, $a1c]), $this->aged(50)));
+    }
+
+    public function testEveryRuleMatcherNamesAKnownCategory(): void
+    {
+        $file = json_decode((string) file_get_contents(self::MODULE . '/contracts/guideline_triggers.json'), true, 16, JSON_THROW_ON_ERROR);
+        self::assertIsArray($file);
+        self::assertIsArray($file['rules']);
+        foreach ($file['rules'] as $rule) {
+            self::assertIsArray($rule);
+            self::assertIsString($rule['id']);
+            foreach (['any', 'all', 'exclude'] as $list) {
+                $matchers = $rule[$list] ?? [];
+                self::assertIsArray($matchers);
+                foreach ($matchers as $matcher) {
+                    self::assertIsArray($matcher);
+                    $present = $matcher['category_present'] ?? [];
+                    self::assertIsArray($present);
+                    $categories = isset($matcher['category']) ? [$matcher['category']] : [];
+                    foreach ([...$categories, ...$present] as $category) {
+                        self::assertIsString($category);
+                        self::assertNotNull(FactCategory::tryFrom($category), "rule {$rule['id']} names unknown category $category");
+                    }
+                }
+            }
+        }
+    }
 }

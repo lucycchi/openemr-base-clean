@@ -296,6 +296,44 @@ final class OpenEmrChartSource implements ChartSource
         );
     }
 
+    public function vitals(PatientId $pid): array
+    {
+        // Through the forms table so a deleted form is not a reading and the
+        // encounter id is known (for the sensitivity filter). Pressures are
+        // strings in OpenEMR; anything that is not a whole number becomes null.
+        $rows = QueryUtils::fetchRecords(
+            "SELECT fv.id, fv.date, f.encounter, fv.bps, fv.bpd, fv.pulse, fv.oxygen_saturation, fv.temperature, fv.respiration, fv.weight, fv.BMI
+             FROM form_vitals fv
+             JOIN forms f ON f.form_id = fv.id AND f.formdir = 'vitals' AND f.deleted = 0
+             WHERE fv.pid = ? AND fv.activity = 1",
+            [$pid->value]
+        );
+        $int = static function (mixed $v): ?int {
+            $t = is_scalar($v) ? trim((string) $v) : '';
+            return preg_match('/^\d{2,3}$/', $t) === 1 ? (int) $t : null;
+        };
+        $num = static function (mixed $v): ?float {
+            $t = is_scalar($v) ? trim((string) $v) : '';
+            return is_numeric($t) && (float) $t > 0 ? (float) $t : null;
+        };
+        return array_map(
+            fn(array $r) => new VitalRecord(
+                Row::int($r, 'id'),
+                Row::int($r, 'encounter'),
+                $this->date(Row::str($r, 'date')),
+                $int($r['bps'] ?? null),
+                $int($r['bpd'] ?? null),
+                $num($r['pulse'] ?? null),
+                $num($r['oxygen_saturation'] ?? null),
+                $num($r['temperature'] ?? null),
+                $num($r['respiration'] ?? null),
+                $num($r['weight'] ?? null),
+                $num($r['BMI'] ?? null),
+            ),
+            $rows
+        );
+    }
+
     public function pendingOrders(PatientId $pid): array
     {
         // Orders with no report at all, still open, and not the module's own

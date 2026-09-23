@@ -31,6 +31,7 @@ use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\PendingOrderRecord;
 use OpenEMR\Modules\ClinicalCopilot\ProblemRecord;
+use OpenEMR\Modules\ClinicalCopilot\VitalRecord;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeAuthorization;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeChartSource;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FixedClock;
@@ -417,6 +418,156 @@ final class FactAssemblerTest extends TestCase
         self::assertSame(['title' => 'Essential hypertension'], $problem->attributes);
         // Every active problem, new or old, is available to the trigger rules without being a fact.
         self::assertSame(['Essential hypertension', 'Type 2 diabetes mellitus'], $result->activeProblemTitles());
+    }
+
+    // -- Task 10: vital signs ---------------------------------------------------
+
+    private function vitals(int $id, string $date, ?int $sys = null, ?int $dia = null, ?float $pulse = null, ?float $spo2 = null, ?float $tempF = null, ?float $resp = null, ?float $weightLb = null, ?float $bmi = null, int $encounterId = 100): VitalRecord
+    {
+        return new VitalRecord($id, $encounterId, new DateTimeImmutable($date), $sys, $dia, $pulse, $spo2, $tempF, $resp, $weightLb, $bmi);
+    }
+
+    private function adult(): void
+    {
+        $this->chart->demographics = new Demographics('F', new DateTimeImmutable('1975-04-02'));
+    }
+
+    public function testHighBloodPressureIsAbnormal(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        $this->chart->vitals = [$this->vitals(701, '2026-09-10', 152, 94)];
+
+        $abnormal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::VitalAbnormal);
+
+        self::assertCount(1, $abnormal);
+        self::assertSame('Blood pressure 152/94 mmHg on 2026-09-10 (above 140/90)', $abnormal[0]->value);
+        self::assertSame('VitalsService', $abnormal[0]->service);
+        self::assertSame(701, $abnormal[0]->recordId);
+        self::assertSame('bp', $abnormal[0]->field);
+        self::assertTrue($abnormal[0]->category->mustSurface());
+        self::assertSame(['vital' => 'bp', 'direction' => 'above'], $abnormal[0]->attributes);
+    }
+
+    public function testLowSpo2IsAbnormal(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        $this->chart->vitals = [$this->vitals(702, '2026-09-10', spo2: 91.0)];
+
+        $abnormal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::VitalAbnormal);
+
+        self::assertCount(1, $abnormal);
+        self::assertSame('Oxygen saturation 91 % on 2026-09-10 (below 94 %)', $abnormal[0]->value);
+        self::assertSame(['vital' => 'spo2', 'direction' => 'below'], $abnormal[0]->attributes);
+    }
+
+    public function testHighBmiIsAbnormal(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        $this->chart->vitals = [$this->vitals(703, '2026-09-10', bmi: 31.2)];
+
+        $abnormal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::VitalAbnormal);
+
+        self::assertCount(1, $abnormal);
+        self::assertSame('BMI 31.2 on 2026-09-10 (at or above 30)', $abnormal[0]->value);
+        self::assertSame(['vital' => 'bmi', 'direction' => 'above'], $abnormal[0]->attributes);
+    }
+
+    public function testFeverAndBradycardiaAndTachypnoeaAreAbnormal(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        $this->chart->vitals = [$this->vitals(704, '2026-09-10', pulse: 45.0, tempF: 101.2, resp: 24.0)];
+
+        $abnormal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::VitalAbnormal);
+        $texts = array_map(fn(Fact $f) => $f->value, $abnormal);
+        sort($texts);
+
+        self::assertSame([
+            'Pulse 45 bpm on 2026-09-10 (below 50 bpm)',
+            'Respiration 24 per minute on 2026-09-10 (above 20 per minute)',
+            'Temperature 101.2 F on 2026-09-10 (at or above 100.4 F)',
+        ], $texts);
+    }
+
+    public function testNormalVitalsProduceNoFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        $this->chart->vitals = [$this->vitals(705, '2026-09-10', 122, 78, 72.0, 98.0, 98.4, 14.0, 160.0, 24.1)];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        self::assertSame([], $this->factsIn($result, FactCategory::VitalAbnormal));
+        self::assertSame([], $this->factsIn($result, FactCategory::VitalDelta));
+    }
+
+    public function testVitalBeforePriorVisitIsNotAFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        $this->chart->vitals = [$this->vitals(706, '2026-08-10', 160, 100)];
+
+        self::assertSame([], $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::VitalAbnormal));
+    }
+
+    public function testWeightDeltaUnderThresholdIsNotAFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        $this->chart->vitals = [$this->vitals(707, '2026-09-10', weightLb: 178.0), $this->vitals(700, '2026-03-02', weightLb: 182.0)];
+
+        self::assertSame([], $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::VitalDelta));
+    }
+
+    public function testWeightAndSystolicDeltasOverThresholdAreDeltaFacts(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        $this->chart->vitals = [$this->vitals(708, '2026-09-10', 152, 94, weightLb: 171.0), $this->vitals(700, '2026-03-02', 128, 80, weightLb: 182.0)];
+
+        $texts = array_map(fn(Fact $f) => $f->value, $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::VitalDelta));
+        sort($texts);
+
+        self::assertSame([
+            'Systolic blood pressure changed from 128 (2026-03-02) to 152 (2026-09-10): up 24',
+            'Weight changed from 182 lb (2026-03-02) to 171 lb (2026-09-10): down 11 lb (6 %)',
+        ], $texts);
+        self::assertFalse(FactCategory::VitalDelta->mustSurface());
+    }
+
+    public function testMalformedBloodPressureIsSkipped(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->adult();
+        // The chart source maps an unparseable pressure to null; nothing is judged and nothing crashes.
+        $this->chart->vitals = [$this->vitals(709, '2026-09-10', null, null, 70.0)];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        self::assertSame([], $this->factsIn($result, FactCategory::VitalAbnormal));
+        self::assertSame([], $this->factsIn($result, FactCategory::VitalDelta));
+    }
+
+    public function testUnder18ProducesNoVitalAbnormalFacts(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->demographics = new Demographics('M', new DateTimeImmutable('2012-06-01'));
+        $this->chart->vitals = [$this->vitals(710, '2026-09-10', 152, 94, 45.0)];
+
+        self::assertSame([], $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::VitalAbnormal));
+    }
+
+    public function testVitalFromASensitiveEncounterTheUserMayNotSeeIsExcluded(): void
+    {
+        $this->auth->deny('sensitivities', 'high');
+        $this->adult();
+        $this->chart->encounters = [$this->encounter(99, '2026-09-01 10:00:00'), $this->encounter(120, '2026-09-10 09:00:00', 'high')];
+        $this->chart->vitals = [$this->vitals(711, '2026-09-10', 152, 94, encounterId: 120)];
+
+        self::assertSame([], $this->factsIn($this->assembler()->assemble(new PatientId(7), 130), FactCategory::VitalAbnormal));
     }
 
     // -- Task 9: chart-state changes ------------------------------------------
