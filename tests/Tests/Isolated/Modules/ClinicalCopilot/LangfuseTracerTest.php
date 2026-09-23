@@ -246,6 +246,137 @@ final class LangfuseTracerTest extends TestCase
         self::assertSame(['input' => 606, 'output' => 295, 'totalCost' => 0.000268], $batch[3]['body']['usage']);
     }
 
+    // ---- Week 2: the sidecar in the trace ----------------------------------
+
+    /** @return list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}> */
+    private static function handoffs(string $outcome = 'worker_finished'): array
+    {
+        return [
+            ['from' => 'supervisor', 'to' => 'intake_extractor', 'reason' => 'stored_document', 'state_keys_changed' => [], 'ms' => 2],
+            ['from' => 'intake_extractor', 'to' => 'supervisor', 'reason' => $outcome, 'state_keys_changed' => ['extractions', 'usage'], 'ms' => 4100],
+            ['from' => 'supervisor', 'to' => 'done', 'reason' => 'no_question', 'state_keys_changed' => [], 'ms' => 1],
+        ];
+    }
+
+    private function extractionTrace(string $outcome = 'worker_finished', int $unverified = 0): RequestTrace
+    {
+        return new RequestTrace(
+            correlationId: 'corr-abc',
+            name: 'copilot.documents.extract',
+            user: 'physician',
+            startedAtMs: 1_700_000_000_000,
+            durationMs: 4300,
+            metadata: ['http_status' => 200, 'doc_type' => 'lab_pdf', 'status' => $outcome === 'worker_finished' ? 'extracted' : 'failed', 'unverified' => $unverified, 'unextracted' => 0, 'handoffs' => self::handoffs($outcome), 'model_calls' => 3, 'sidecar_retries' => 1],
+            model: null,
+            promptTokens: 0,
+            completionTokens: 0,
+            llmDurationMs: 4100,
+            status: null,
+            steps: [new Step('sidecar_extract_and_persist', 1_700_000_000_050, 4200, null, ['handoffs' => 3])],
+            costUsd: 0.0015,
+            sidecarUsage: [
+                ['model' => 'gpt-4o-mini', 'kind' => 'chat', 'input' => 1200, 'output' => 300, 'cost_usd' => 0.00036],
+                ['model' => 'gpt-4o-mini', 'kind' => 'chat', 'input' => 900, 'output' => 200, 'cost_usd' => 0.000255],
+                ['model' => 'gpt-4o-mini', 'kind' => 'chat', 'input' => 400, 'output' => 80, 'cost_usd' => 0.000108],
+            ],
+        );
+    }
+
+    public function testEachWorkerHandoffBecomesASpanInsideTheSidecarStep(): void
+    {
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($this->extractionTrace());
+
+        $spans = $this->types('span-create');
+        self::assertSame(['sidecar_extract_and_persist', 'sidecar.intake_extractor'], array_map(static fn(array $e) => is_array($e['body']) ? $e['body']['name'] : null, $spans));
+        $worker = $spans[1]['body'];
+        self::assertIsArray($worker);
+        // Opens 2 ms after the PHP step that called the sidecar, lasts the worker's own 4,100 ms.
+        self::assertSame('2023-11-14T22:13:20.052Z', $worker['startTime']);
+        self::assertSame('2023-11-14T22:13:24.152Z', $worker['endTime']);
+        self::assertSame('DEFAULT', $worker['level']);
+        self::assertSame(['routed_because' => 'stored_document', 'outcome' => 'worker_finished', 'duration_ms' => 4100], $worker['metadata']);
+    }
+
+    public function testAFailedWorkerIsAnErrorSpanAndRoutingScoresFalse(): void
+    {
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($this->extractionTrace('worker_failed'));
+
+        $worker = $this->types('span-create')[1]['body'];
+        self::assertIsArray($worker);
+        self::assertSame('ERROR', $worker['level']);
+        self::assertSame('worker_failed', $worker['statusMessage']);
+        $scores = $this->scores();
+        self::assertFalse($scores['routing_ok']);
+        self::assertFalse($scores['extraction_ok']);
+        self::assertFalse($scores['extraction_verified']);
+    }
+
+    public function testEverySidecarModelCallIsItsOwnGenerationAndNoAggregateIsSent(): void
+    {
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($this->extractionTrace());
+
+        $gens = $this->types('generation-create');
+        self::assertCount(3, $gens, 'one generation per sidecar call, no aggregate');
+        foreach ($gens as $g) {
+            self::assertIsArray($g['body']);
+            self::assertSame('sidecar.chat', $g['body']['name']);
+            self::assertSame('gpt-4o-mini', $g['body']['model']);
+            self::assertSame('corr-abc', $g['body']['traceId']);
+        }
+        $first = $gens[0]['body'];
+        self::assertIsArray($first);
+        self::assertSame(['input' => 1200, 'output' => 300, 'totalCost' => 0.00036], $first['usage']);
+        $trace = $this->types('trace-create')[0]['body'];
+        self::assertIsArray($trace);
+        self::assertIsArray($trace['metadata']);
+        self::assertSame(0.0015, $trace['metadata']['cost_usd']);
+        self::assertSame(1, $trace['metadata']['sidecar_retries']);
+    }
+
+    public function testExtractionScoresVerifiedOnlyWhenNothingWasUnverified(): void
+    {
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($this->extractionTrace('worker_finished', 2));
+
+        $scores = $this->scores();
+        self::assertTrue($scores['extraction_ok']);
+        self::assertFalse($scores['extraction_verified']);
+        self::assertTrue($scores['routing_ok']);
+        self::assertArrayNotHasKey('verification_pass', $scores, 'an extraction is not a narration');
+        self::assertArrayNotHasKey('retrieval_hit', $scores);
+    }
+
+    public function testAFollowUpScoresRetrievalHitFromTheChunkCount(): void
+    {
+        $ask = new RequestTrace('corr-abc', 'copilot.ask', 'physician', 1_700_000_000_000, 900, ['http_status' => 200, 'guideline_chunks' => 0, 'handoffs' => [['from' => 'supervisor', 'to' => 'evidence_retriever', 'reason' => 'question_present', 'state_keys_changed' => [], 'ms' => 1], ['from' => 'evidence_retriever', 'to' => 'supervisor', 'reason' => 'worker_finished', 'state_keys_changed' => ['chunks'], 'ms' => 300], ['from' => 'supervisor', 'to' => 'done', 'reason' => 'worker_finished', 'state_keys_changed' => [], 'ms' => 0]], 'verification_pass' => true], 'gpt-4o-mini', 500, 40, 600, null, [], 0.0001, [['model' => 'text-embedding-3-small', 'kind' => 'embedding', 'input' => 12, 'output' => 0, 'cost_usd' => 0.00000024]]);
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($ask);
+
+        $scores = $this->scores();
+        self::assertFalse($scores['retrieval_hit']);
+        self::assertTrue($scores['routing_ok']);
+        self::assertTrue($scores['verification_pass']);
+        // The sidecar's embedding call (which ran first) and the PHP model call are separate generations.
+        self::assertSame(['sidecar.embedding', 'copilot.ask.llm'], array_map(static fn(array $e) => is_array($e['body']) ? $e['body']['name'] : null, $this->types('generation-create')));
+        $retriever = $this->types('span-create')[0]['body'] ?? null;
+        self::assertIsArray($retriever);
+        self::assertSame('sidecar.evidence_retriever', $retriever['name']);
+    }
+
+    public function testAPrewarmSweepScoresOkWhenNoPatientErrored(): void
+    {
+        $sweep = new RequestTrace('corr-abc', 'copilot.prewarm', 'cron', 1_700_000_000_000, 12000, ['scheduled' => 8, 'warmed' => 6, 'already_cached' => 2, 'skipped' => 0, 'errored' => 0, 'queue_depth_after' => 0], null, 0, 0, 0, null);
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($sweep);
+        self::assertSame(['request_ok' => true, 'tool_ok' => true, 'prewarm_ok' => true], $this->scores());
+    }
+
+    public function testAPrewarmSweepWithAnErroredPatientScoresFalse(): void
+    {
+        $failed = new RequestTrace('corr-abc', 'copilot.prewarm', 'cron', 1_700_000_000_000, 12000, ['scheduled' => 8, 'warmed' => 5, 'already_cached' => 2, 'skipped' => 0, 'errored' => 1, 'queue_depth_after' => 1], null, 0, 0, 0, '1 of 8 scheduled patients errored');
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($failed);
+        $scores = $this->scores();
+        self::assertFalse($scores['prewarm_ok']);
+        self::assertFalse($scores['request_ok'], 'a sweep with errors is a failed request');
+    }
+
     public function testNoGenerationEventWhenTheModelWasNotCalled(): void
     {
         $trace = new RequestTrace('corr-2', 'copilot.brief', 'admin', 1_700_000_000_000, 5, ['from_cache' => true], null, 0, 0, 0, null);

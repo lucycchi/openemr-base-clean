@@ -57,6 +57,11 @@
             "minimum": 0,
             "maximum": 1,
             "description": "Anchored fields / cited fields."
+          },
+          "retries": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Model calls beyond the one per page: 1 when the omission detector re-asked for the rows the first pass skipped, else 0. Retries inside the OpenAI client (network, 429, 5xx) are not counted here; they are invisible to the sidecar's code."
           }
         },
         "required": [
@@ -64,7 +69,8 @@
           "status",
           "failure_reason",
           "extraction",
-          "confidence"
+          "confidence",
+          "retries"
         ],
         "additionalProperties": false
       }

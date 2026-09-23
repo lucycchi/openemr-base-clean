@@ -196,6 +196,8 @@ class Extraction(Strict):
     failure_reason: FailureReason | None
     extraction: LabReport | IntakeForm | None
     confidence: float = Field(ge=0, le=1)
+    # Model calls beyond one per page (the omission-driven re-ask), for the dashboard's retry count.
+    retries: int = Field(ge=0, default=0)
 
 
 class Chunk(Strict):

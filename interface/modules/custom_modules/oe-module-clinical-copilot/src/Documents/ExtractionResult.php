@@ -22,6 +22,8 @@ final readonly class ExtractionResult
         public ?string $failureReason,
         public LabReportExtraction|IntakeExtraction|null $extraction,
         public float $confidence,
+        /** Model calls beyond one per page (the sidecar's omission-driven re-ask); the dashboard's retry count. */
+        public int $retries = 0,
     ) {
     }
 
@@ -39,6 +41,7 @@ final readonly class ExtractionResult
         if ($status === DocumentStatus::Extracted && $ext === null) {
             throw new SidecarException('schema_mismatch');
         }
-        return new self($a['document_id'], $status, is_string($a['failure_reason'] ?? null) ? $a['failure_reason'] : null, $ext, (float) $a['confidence']);
+        $retries = $a['retries'] ?? 0;
+        return new self($a['document_id'], $status, is_string($a['failure_reason'] ?? null) ? $a['failure_reason'] : null, $ext, (float) $a['confidence'], is_int($retries) && $retries >= 0 ? $retries : 0);
     }
 }

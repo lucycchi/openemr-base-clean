@@ -22,6 +22,9 @@ use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
 use OpenEMR\Modules\ClinicalCopilot\PrewarmRow;
 use OpenEMR\Modules\ClinicalCopilot\PrewarmStatus;
+use OpenEMR\Modules\ClinicalCopilot\Ops\NullTracer;
+use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
+use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
 use OpenEMR\Modules\ClinicalCopilot\RunLock;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Command\Command;
@@ -45,6 +48,8 @@ final class PrewarmCommand extends Command
         private readonly ClockInterface $clock,
         private readonly DateTimeZone $tz,
         private readonly RunLock $lock,
+        /** Week 2: the sweep is the module's queue; one trace per run makes its depth and outcome chartable. */
+        private readonly Tracer $tracer = new NullTracer(),
     ) {
         parent::__construct(self::NAME);
     }
@@ -102,6 +107,32 @@ final class PrewarmCommand extends Command
             }
         }
         $modelCalls = count(array_filter($summary->rows, static fn(PrewarmRow $r) => $r->modelCalled));
+        // One trace per sweep: the queue's size (scheduled), what drained it
+        // (warmed / already cached / skipped), what is left over (errored),
+        // and its throughput. The tracer scores prewarm_ok from these fields.
+        $this->tracer->record(new RequestTrace(
+            $summary->runId,
+            'copilot.prewarm',
+            'cron',
+            (int) round(microtime(true) * 1000) - $totalMs,
+            $totalMs,
+            [
+                'date' => $day->format('Y-m-d'),
+                'dry_run' => $dryRun,
+                'scheduled' => $summary->scheduled,
+                'warmed' => $summary->warmed,
+                'already_cached' => $summary->alreadyCached,
+                'skipped' => $summary->skipped,
+                'errored' => $summary->errored,
+                'model_calls' => $modelCalls,
+                'queue_depth_after' => $summary->errored,
+            ],
+            null,
+            0,
+            0,
+            0,
+            $summary->errored > 0 ? sprintf('%d of %d scheduled patients errored', $summary->errored, $summary->scheduled) : null,
+        ));
         $output->writeln(sprintf(
             'prewarm date=%s scheduled=%d warmed=%d already_cached=%d skipped=%d errored=%d model_calls=%d total_ms=%d',
             $day->format('Y-m-d'),

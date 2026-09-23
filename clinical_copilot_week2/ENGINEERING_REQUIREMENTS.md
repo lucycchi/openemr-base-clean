@@ -15,7 +15,8 @@ Paths are relative to the repository root; `<module>/` is
 | 1 | [Test design for boundaries, invariants, and regression](#1-test-design-for-boundaries-invariants-and-regression) | Done, enforced by the push gate | 2026-09-22 |
 | 2 | [Correlation id across every service boundary](#2-correlation-id-across-every-service-boundary) | Done, enforced by the push gate (sidecar gap found and fixed during the audit) | 2026-09-22 |
 | 3 | [Canonical contracts as the source of truth](#3-canonical-contracts-as-the-source-of-truth) | Done, enforced by the push gate (documents endpoint and PHP-side gaps found and fixed during the audit) | 2026-09-22 |
-| 4–9 | Dashboard, API collection, health/ready, alerts, baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
+| 4 | [Dashboards](#4-dashboards-request-count-error-count-latency-queue-depth-event-retries-decision-outcomes) | Done for the Week 2 agent (worker spans, per-call generations, retries, five scores, the pre-warm queue); widgets defined, screenshots pending; OTLP migration deferred to Phase 9 | 2026-09-22 |
+| 5–9 | API collection, health/ready, alerts, baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
 
 ---
 
@@ -420,6 +421,121 @@ and watch PHP refuse the reply as `schema_mismatch`.
   as `anyOf`).
 
 Not yet on the droplet; ships with the Phase 8 deploy.
+
+---
+
+## 4. Dashboards: request count, error count, latency, queue depth, event retries, decision outcomes
+
+> Build a dashboard (LangSmith, Langfuse, Braintrust, or equivalent) that
+> shows in real time: total requests, error rate, p50/p95 latency, tool
+> call counts, retry counts, and verification pass/fail rate. This is the
+> minimum — add metrics that matter for your specific agent design.
+
+### How it is met
+
+The dashboard is Langfuse Cloud, fed by [`<module>/src/Ops/LangfuseTracer.php`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Ops/LangfuseTracer.php)
+on every request. Week 1 established the pattern (one trace per request,
+one span per tool step, a generation per model call, boolean scores for the
+rates, three alerts) and documented every widget field-by-field in
+[Week 1 DASHBOARD.md](../clinical_copilot_week1/DASHBOARD.md). Week 2's
+agent design added things that pattern did not see, and this audit made
+them visible. The Week 2 record is [DASHBOARD.md](DASHBOARD.md).
+
+| Required metric | Where it comes from | Week 2 change |
+|---|---|---|
+| Total requests | one trace per request; names `copilot.brief`, `copilot.ask`, `copilot.documents.extract`, `copilot.documents.upload`, `copilot.prewarm` | two document traces and the sweep trace added |
+| Error rate | `request_ok` score; `http_status` and `status` in metadata | extraction and sweep traces carry it too |
+| p50 / p95 latency | trace `duration_ms`; per-step spans | worker spans give the sidecar's own latency inside the PHP step |
+| Tool call counts | spans per tool step | **`sidecar.intake_extractor` and `sidecar.evidence_retriever` are spans now** (derived from the supervisor's handoff log), so the workers count as tools and a `worker_failed` hop is an ERROR span |
+| Retry counts | `llm_attempts` / `llm_retried` (PHP client) | **`sidecar_retries`** from a new required `retries` field in `run.response` (the sidecar's omission-driven re-ask) |
+| Verification pass/fail | `verification_pass` score (narration) | **`extraction_verified`** score for documents: extracted with nothing unverified and nothing unextracted |
+| Queue depth | Week 1: not applicable | **the pre-warm sweep is traced** (`copilot.prewarm`: `scheduled`, `warmed`, `already_cached`, `skipped`, `errored`, `queue_depth_after`, throughput) with a `prewarm_ok` score |
+| Decision outcomes | `answer_type`, `chart_changed`, `from_cache`, `denied` | plus `doc_type`, `status`, `failure_reason`, `confidence`, `unverified`, `unextracted`, `guideline_chunks`, `reranked`, and the full `handoffs` list; **`routing_ok`** and **`retrieval_hit`** scores |
+| Tokens and cost | one generation per PHP model call | **one generation per sidecar call** (`sidecar.chat` per page, `sidecar.embedding`, `sidecar.rerank`) with cost; embedding and rerank list prices added to `Pricing`; trace `cost_usd` is the sum |
+
+Agent-specific metrics beyond the minimum (all defined widget-by-widget
+in DASHBOARD.md): extraction success rate, fully-verified share,
+unverified/unextracted per document, extraction confidence by document
+type, routing outcomes, retrieval hit rate, rerank share, sidecar model
+calls/tokens/cost by kind and model, pre-warm queue size and throughput.
+
+### Decisions and trade-offs
+
+1. **One emitter.** The sidecar never talks to Langfuse; PHP derives worker
+   spans and per-call generations from what the sidecar returns
+   (`handoffs`, `usage`). One set of keys, one PHI allowlist, one place
+   to change when the ingestion API moves. *Trade-off:* worker span times
+   are reconstructed from hop durations, anchored on the PHP step that made
+   the call, accurate to the millisecond counts the sidecar measured but
+   not to its wall clock.
+2. **No double counting.** An extraction trace has no aggregate generation;
+   its model calls are the `sidecar.chat` generations. The chat path keeps
+   the aggregate for the PHP call and adds the sidecar's embedding/rerank
+   beside it. *Trade-off:* a widget summing generations across all trace
+   names is still correct; one that expected exactly one generation per
+   trace is not.
+3. **Rates are scores.** Langfuse charts a boolean score's average as a
+   rate and can alert on it; metadata can only be filtered. Five Week 2
+   scores follow the Week 1 three, each emitted only on traces where the
+   outcome was decided so one kind of request never dilutes another's
+   rate. *Trade-off:* more events per trace.
+4. **Retries are a contract field, not an inference.** `run.response`
+   extractions gained `retries` (contract, Pydantic, shared examples, PHP
+   parser, `ContractsTest`, `test_contracts.py`). Inferring it from
+   `model_calls − pages` would break silently when the call pattern
+   changes. *Trade-off:* transport-level retries inside the OpenAI client
+   library are not visible to the sidecar's code and are not counted; the
+   contract says so.
+5. **The sweep is the queue, and the trace is per sweep.** Per-patient
+   detail stays in the receipt table (it is patient-scoped); the trace
+   carries the counts and the total duration, which is what a queue widget
+   needs. *Trade-off:* per-patient warm latency is not in Langfuse.
+6. **Widgets are built in the UI; there is no dashboards API.** Checked
+   (`GET /api/public/dashboards` is a 404); the definitions in DASHBOARD.md
+   are the reproducible artefact, screenshots are the evidence.
+7. **The ingestion path stays on v3 this week.** Langfuse Cloud delays it by
+   minutes and shuts it down for non-score events on 2026-11-16; the OTLP
+   migration is a Phase 9 item (`TODOS.md`). "Real time" therefore means
+   "within about ten minutes" until then. *Trade-off:* deliberate; the
+   night before the Wednesday gate is the wrong time for a transport
+   rewrite with its own failure modes.
+
+### Verify it
+
+```bash
+openemr-cmd e 'php vendor/bin/phpunit -c phpunit-isolated.xml --filter "LangfuseTracerTest|PrewarmCommandTest|ContractsTest|ContractExamplesTest"'
+openemr-cmd e 'php tests/evals/smoke.php http://openemr 2'    # real traces; then read them back with the project's keys
+```
+
+Read-back after the smoke run of 2026-09-22 (v2 observations API, the
+window covering one upload + extract of the five-page synthetic lab report
+and one guideline question):
+
+| Observation | Count | Note |
+|---|---|---|
+| SPAN `copilot.documents.extract` → `sidecar_extract_and_persist` → **`sidecar.intake_extractor`** | 1 each | the worker span reports 11.2 s, inside the PHP step |
+| GENERATION **`sidecar.chat`** | 5 | one per page; no re-ask this run (`sidecar_retries` 0) |
+| SPAN `copilot.ask` → `retrieve_evidence` → **`sidecar.evidence_retriever`** | 1 each | the worker span reports 1.0 s |
+| GENERATION **`sidecar.embedding`**, **`sidecar.rerank`**, `copilot.ask.llm` | 1 each | the query embedding, the Cohere rerank (a key was configured), the PHP answer call |
+| Scores `extraction_ok`, `extraction_verified`, `routing_ok` ×2, `retrieval_hit` | all `true` | visible within a minute; the spans and generations took about 25 minutes to appear (v3 ingestion delay) |
+
+The list projection of the v2 API omits model, usage and metadata; those
+are on the observation detail and in the UI.
+
+### What the audit found and fixed (2026-09-22)
+
+- The sidecar's workers were not tool calls in the dashboard (handoffs
+  were a metadata blob): worker spans added.
+- Sidecar model calls were collapsed into one generation; embedding and
+  rerank were neither traced nor costed: one generation per call, list
+  prices added, trace cost is the sum.
+- Sidecar retries were unobservable: `retries` added to the contract and
+  surfaced as `sidecar_retries`.
+- No Week 2 outcome was a chartable rate: five scores added.
+- The pre-warm queue sent nothing: one trace per sweep with the queue
+  numbers and a `prewarm_ok` score.
+- Documented as DASHBOARD.md with every widget's definition. Not yet on
+  the droplet; ships with the Phase 8 deploy.
 
 ---
 

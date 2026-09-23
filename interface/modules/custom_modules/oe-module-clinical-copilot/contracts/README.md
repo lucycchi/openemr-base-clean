@@ -61,7 +61,7 @@ code outside an enum, a missing required field, a value out of range).
 | `intake-form.schema.json` | sidecar → PHP: extraction of an intake form | Same. |
 | `handoff.schema.json` | sidecar → PHP: one supervisor routing step | Every hop in `run.response.handoffs`; written to Langfuse spans and the panel drawer. Reasons are fixed codes so they are safe to log. |
 | `run.request.schema.json` | PHP → sidecar `POST /run` | `SidecarClient` builds it; the sidecar rejects anything else (422). No patient identifiers cross this boundary. |
-| `run.response.schema.json` | sidecar → PHP, success | **Validated at runtime** by `SidecarClient` (`Contracts::violations`) before any of it is typed or persisted: an unknown key, a reason code outside the enum or a malformed chunk id is `schema_mismatch`, whatever the typed parser would tolerate. Carries `usage` for `Pricing`. |
+| `run.response.schema.json` | sidecar → PHP, success | **Validated at runtime** by `SidecarClient` (`Contracts::violations`) before any of it is typed or persisted: an unknown key, a reason code outside the enum or a malformed chunk id is `schema_mismatch`, whatever the typed parser would tolerate. Carries `usage` for `Pricing` (one entry per model call, each traced as a generation) and, per extraction, `retries` (the sidecar's omission-driven re-ask count, for the dashboard). |
 | `run.error.schema.json` | sidecar → PHP, failure | Fixed error codes only. |
 
 ## Rules

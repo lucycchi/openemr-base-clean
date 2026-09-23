@@ -231,7 +231,9 @@ final class DocumentController
         }
         $tokens = $run->chatTokens();
         $llmMs = array_sum(array_map(static fn(Handoff $h): int => $h->from === 'intake_extractor' ? $h->ms : 0, $run->handoffs));
-        $cost = Pricing::fromConfig($this->config)->costUsd($this->config->openAiModel, $tokens['prompt'], $tokens['completion']);
+        // Every model call the sidecar made, priced: the trace gets one generation per call.
+        $priced = Pricing::fromConfig($this->config)->priceUsage($run->usage, $this->config->openAiModel);
+        $cost = Pricing::totalCost($priced);
         $this->logger->notice('copilot document extracted', [
             'document_id' => $doc['document_id'],
             'doc_type' => $doc['doc_type']->value,
@@ -242,6 +244,7 @@ final class DocumentController
             'unverified' => $persisted['unverified'],
             'unextracted' => $persisted['unextracted'],
             'model_calls' => $tokens['calls'],
+            'sidecar_retries' => $extraction->retries,
             'prompt_tokens' => $tokens['prompt'],
             'completion_tokens' => $tokens['completion'],
             'cost_usd' => $cost,
@@ -266,14 +269,19 @@ final class DocumentController
                 'unextracted' => $persisted['unextracted'],
                 'handoffs' => array_map(static fn(Handoff $h): array => $h->toArray(), $run->handoffs),
                 'model_calls' => $tokens['calls'],
+                'llm_attempts' => $tokens['calls'],
+                'sidecar_retries' => $extraction->retries,
+                'llm_retried' => $extraction->retries > 0,
             ],
-            $this->config->openAiModel,
+            // The sidecar's calls are traced one generation each (sidecarUsage), so no aggregate generation here.
+            null,
             $tokens['prompt'],
             $tokens['completion'],
             $llmMs,
             $extraction->failureReason,
             $this->steps->all(),
             $cost,
+            $priced,
         ));
         return [
             'document_id' => $doc['document_id'],

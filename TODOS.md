@@ -136,7 +136,7 @@ are scheduled as tasks 9.1 and 9.2 in
 
 ### Move Langfuse to the v4 OpenTelemetry write path
 
-**What:** Replace the `/api/public/ingestion` batch call in `LangfuseTracer` with OTLP export (or the v4 SDK path).
+**What:** Replace the `/api/public/ingestion` batch call in `LangfuseTracer` with OTLP export (or the v4 SDK path). Confirmed 2026-09-22: every ingestion response now carries the shutdown notice (non-score events rejected from 2026-11-16); the legacy read APIs are already closed to this organisation. Scheduled for Phase 9; see clinical_copilot_week2/DASHBOARD.md § Decisions, item 7.
 
 **Why:** Langfuse Cloud reports the v3 ingestion API deprecated with v4-only write mode from 2026-11-16, and data on the v3 API is delayed about 10 minutes. Real-time dashboards need the OTel path.
 

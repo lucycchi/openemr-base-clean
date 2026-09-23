@@ -90,6 +90,12 @@ final class ChatController
      * @var list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}>
      */
     private array $handoffs = [];
+    /**
+     * Week 2: the sidecar's model calls for this question (embedding, rerank), priced, for the trace.
+     *
+     * @var list<array{model: string, kind: string, input: int, output: int, cost_usd: ?float}>
+     */
+    private array $sidecarUsage = [];
     private readonly PrewarmReceipts $receipts;
     private ?WarmOutcome $warm = null;
 
@@ -214,7 +220,7 @@ final class ChatController
         $tokens = is_array($outcome['tokens'] ?? null) ? $outcome['tokens'] : [];
         $promptTokens = is_int($tokens['prompt'] ?? null) ? $tokens['prompt'] : 0;
         $completionTokens = is_int($tokens['completion'] ?? null) ? $tokens['completion'] : 0;
-        $costUsd = $this->llmCalled ? Pricing::fromConfig($config)->costUsd($config->openAiModel, $promptTokens, $completionTokens) : 0.0;
+        $costUsd = Pricing::totalCost($this->sidecarUsage, $this->llmCalled ? Pricing::fromConfig($config)->costUsd($config->openAiModel, $promptTokens, $completionTokens) : 0.0);
         $status = is_string($outcome['status'] ?? null) ? $outcome['status'] : null;
         $metadata = [
             'action' => $action,
@@ -234,6 +240,7 @@ final class ChatController
             'llm_retried' => $this->llmAttempts > 1,
             'guideline_chunks' => is_array($outcome['guidelines'] ?? null) ? count($outcome['guidelines']) : null,
             'handoffs' => $this->handoffs,
+            'reranked' => array_filter($this->sidecarUsage, static fn(array $u): bool => $u['kind'] === 'rerank') !== [],
         ] + ($this->warm?->toLogContext() ?? []);
         // One line per failed tool with the real reason (the user-facing
         // status label above is deliberately vague), then one line per request
@@ -266,6 +273,7 @@ final class ChatController
             $status,
             $this->steps->all(),
             $costUsd,
+            $this->sidecarUsage,
         ));
         $this->respond($payload, $httpStatus);
     }
@@ -353,6 +361,7 @@ final class ChatController
             );
             $evidence = EvidenceSet::fromRun($run->chunks, new GuidelineManifest());
             $handoffs = array_map(static fn($h) => $h->toArray(), $run->handoffs);
+            $this->sidecarUsage = Pricing::fromConfig($config)->priceUsage($run->usage, $config->openAiModel);
         } catch (SidecarException $e) {
             $this->logger->warning('copilot evidence retrieval unavailable; answering from facts only', ['code' => $e->errorCode]);
         }

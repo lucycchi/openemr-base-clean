@@ -209,6 +209,18 @@ fail the gate if any sidecar line lacks the request's id.
 
 ## Findings and open issues (running log)
 
+- **2026-09-22, the Week 2 agent in the dashboard.** The sidecar's workers
+  were invisible to Langfuse's tool-call widgets (handoffs travelled as a
+  metadata blob), its per-page model calls, embedding and rerank were
+  collapsed into one generation with under-counted cost, its retries were
+  not in the contract, no Week 2 outcome was a chartable rate, and the
+  pre-warm sweep (a real queue) sent nothing. Now: one span per worker hop
+  (ERROR on `worker_failed`), one generation per sidecar call with cost,
+  `retries` in `run.response`, five scores (`extraction_ok`,
+  `extraction_verified`, `retrieval_hit`, `routing_ok`, `prewarm_ok`), and
+  one `copilot.prewarm` trace per sweep with the queue numbers. Widgets and
+  decisions: [DASHBOARD.md](DASHBOARD.md).
+
 - **2026-09-22, follow-up answers capped at six sentences** (`Prompt::VERSION`
   `2026-09-22.5`). The live gate refused three pushes on case 12: for the
   28-fact seed chart, the ambiguous question "Is it higher than it was last

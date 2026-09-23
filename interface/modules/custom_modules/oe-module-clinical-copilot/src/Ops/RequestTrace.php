@@ -25,6 +25,7 @@ final readonly class RequestTrace
     /**
      * @param array<string, scalar|null|list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}>> $metadata  scalars, plus the Week 2 handoff list
      * @param list<Step> $steps
+     * @param list<array{model: string, kind: string, input: int, output: int, cost_usd: ?float}> $sidecarUsage  Week 2: one entry per model call the sidecar made (chat per page, embedding, rerank), each becoming a generation
      */
     public function __construct(
         public string $correlationId,
@@ -40,6 +41,7 @@ final readonly class RequestTrace
         public ?string $status,
         public array $steps = [],
         public ?float $costUsd = null,
+        public array $sidecarUsage = [],
     ) {
     }
 }

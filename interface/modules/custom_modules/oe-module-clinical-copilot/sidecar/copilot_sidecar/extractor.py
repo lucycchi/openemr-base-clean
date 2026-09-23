@@ -40,6 +40,7 @@ def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, p
 
     usage: list[Usage] = []
     raw = None
+    retries = 0
     if proposal is None:
         try:
             proposal, raw, usage = _propose_per_page(doc_type, parsed)
@@ -66,6 +67,7 @@ def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, p
         try:
             p = llm.propose(doc_type, rows_text, extra_task=llm.RETRY_TASK)
             usage.append(p.usage)
+            retries += 1
             extra = p.data
             assert isinstance(extra, LabReportProposal)
             merged = proposal.model_copy(update={"results": [*proposal.results, *extra.results]})
@@ -91,7 +93,7 @@ def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, p
             "confidence": conf,
         },
     )
-    return ExtractOutcome(Extraction(document_id=document_id, status="extracted", failure_reason=None, extraction=built, confidence=conf), usage, raw)
+    return ExtractOutcome(Extraction(document_id=document_id, status="extracted", failure_reason=None, extraction=built, confidence=conf, retries=retries), usage, raw)
 
 
 def _propose_per_page(doc_type: str, parsed: parse.ParsedDocument) -> tuple[LabReportProposal | IntakeFormProposal, str, list[Usage]]:

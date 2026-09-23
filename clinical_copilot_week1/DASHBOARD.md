@@ -1,5 +1,7 @@
 # DASHBOARD.md — Clinical Co-Pilot observability dashboard
 
+> Week 2 (sidecar workers, document extraction, retrieval, the pre-warm queue) is documented in [../clinical_copilot_week2/DASHBOARD.md](../clinical_copilot_week2/DASHBOARD.md); this file remains the Week 1 record.
+
 The dashboard lives in Langfuse Cloud (`us.cloud.langfuse.com`, project
 "My Project", org "lucycchi's Organization"). It reads the trace, span,
 generation and score events the module writes on every request

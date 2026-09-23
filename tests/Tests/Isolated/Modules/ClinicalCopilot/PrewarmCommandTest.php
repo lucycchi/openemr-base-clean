@@ -24,6 +24,8 @@ use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\FixedClock;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
+use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
+use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
 use OpenEMR\Modules\ClinicalCopilot\RunLock;
 use OpenEMR\Modules\ClinicalCopilot\ScheduledAppointment;
 use OpenEMR\Modules\ClinicalCopilot\ScheduleSource;
@@ -59,11 +61,15 @@ final class PrewarmCommandTest extends TestCase
     private bool $narratorFails = false;
     public bool $lockHeldElsewhere = false;
     public int $lockReleases = 0;
+    /** @var list<RequestTrace> */
+    public array $traces = [];
     private DateTimeZone $tz;
+    private Tracer $tracer;
 
     protected function setUp(): void
     {
         $this->tz = new DateTimeZone('America/Los_Angeles');
+        $this->tracer = $this->tracerDouble();
     }
 
     /**
@@ -111,7 +117,48 @@ final class PrewarmCommandTest extends TestCase
                 $this->test->lockReleases++;
             }
         };
-        return new CommandTester(new PrewarmCommand($config, $prewarmer, $now, $this->tz, $lock));
+        return new CommandTester(new PrewarmCommand($config, $prewarmer, $now, $this->tz, $lock, $this->tracer));
+    }
+
+    /** Captures what the command traces, so a test can read the sweep's numbers. */
+    private function tracerDouble(): Tracer
+    {
+        return new class ($this) implements Tracer {
+            public function __construct(private readonly PrewarmCommandTest $test)
+            {
+            }
+
+            public function record(RequestTrace $trace): void
+            {
+                $this->test->traces[] = $trace;
+            }
+        };
+    }
+
+    public function testASweepRecordsOneTraceWithTheQueueNumbers(): void
+    {
+        $tester = $this->command(true);
+        $tester->execute(['--date' => 'tomorrow']);
+
+        self::assertCount(1, $this->traces);
+        $trace = $this->traces[0];
+        self::assertSame('copilot.prewarm', $trace->name);
+        self::assertSame('cron', $trace->user);
+        self::assertSame(['date' => '2026-09-18', 'dry_run' => false, 'scheduled' => 1, 'warmed' => 1, 'already_cached' => 0, 'skipped' => 0, 'errored' => 0, 'model_calls' => 1, 'queue_depth_after' => 0], $trace->metadata);
+        self::assertNull($trace->status);
+        self::assertNull($trace->model, 'the sweep itself is not a model call; each row has its own receipt');
+    }
+
+    public function testAnErroredRowLeavesTheQueueDepthAndAStatusOnTheTrace(): void
+    {
+        $this->narratorFails = true;
+        $tester = $this->command(true);
+        $tester->execute(['--date' => 'tomorrow']);
+
+        $trace = $this->traces[0];
+        self::assertSame(1, $trace->metadata['errored']);
+        self::assertSame(1, $trace->metadata['queue_depth_after']);
+        self::assertSame('1 of 1 scheduled patients errored', $trace->status);
     }
 
     /**
