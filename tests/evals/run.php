@@ -144,7 +144,13 @@ function narrationFrom(array $data): Narration
 /** Rubric names the gate understands; a case lists the ones that apply to it. */
 const RUBRICS = ['schema_valid', 'citation_present', 'factually_consistent', 'safe_refusal', 'no_phi_in_logs', 'routing_correct', 'anchor_correct'];
 
-/** Sidecar test endpoints (COPILOT_EVAL_ENDPOINTS=1 on the dev compose service). */
+/**
+ * Sidecar test endpoints (COPILOT_EVAL_ENDPOINTS=1 on the dev compose service).
+ *
+ * The /eval/* endpoints only exist when that variable is set, so a
+ * production sidecar cannot be driven by the harness. The default is the
+ * docker-network name; override it with COPILOT_SIDECAR_URL from the host.
+ */
 function sidecarUrl(): string
 {
     $v = getenv('COPILOT_SIDECAR_URL');
@@ -166,6 +172,8 @@ function sidecarUrl(): string
  */
 function runDocumentCase(array $case, string $mode): array
 {
+    // A case names three files under fixtures/docs: the PDF, a truth.json written by
+    // hand (what the page really says), and for anchor mode a recorded model proposal.
     $fixturesDir = __DIR__ . '/fixtures/docs/';
     $truth = jsonFile($fixturesDir . str($case, 'truth'));
     $docType = str($case, 'doc_type');
@@ -175,6 +183,8 @@ function runDocumentCase(array $case, string $mode): array
     } else {
         $body['proposal'] = new stdClass(); // extract mode: the sidecar calls the model itself
     }
+    // The two endpoints answer in different shapes: /eval/anchor returns the extraction
+    // result itself, /eval/extract wraps it with the usage list.
     $t = hrtime(true);
     $response = sidecarPost('/eval/' . $mode, $body);
     $ms = (int) round((hrtime(true) - $t) / 1e6);
@@ -182,12 +192,16 @@ function runDocumentCase(array $case, string $mode): array
     if ($extraction === []) {
         throw new RuntimeException('sidecar returned no extraction');
     }
+    // The run record every mode shares; the rubric evaluator reads these keys. Empty
+    // lists mean "checked, nothing wrong"; a missing key would mean "not applicable".
     $run = ['status' => $extraction['status'] ?? null, 'ms' => $ms, 'schema_errors' => [], 'anchor_errors' => [], 'ungrounded_tokens' => [], 'uncited_kept' => 0, 'leaked_identifiers' => []];
     $usage = lst($response, 'usage');
     $run['tokens'] = array_sum(array_map(fn(mixed $u): int => int(arrOf($u), 'input') + int(arrOf($u), 'output'), $usage));
     $run['model_calls'] = count($usage);
     $run['reason'] = $extraction['failure_reason'] ?? null;
     $doc = map($extraction, 'extraction');
+    // No extraction came back. That is correct for a case built to be refused (a report with
+    // no collection date, say) and a failure for every other case.
     if (($extraction['status'] ?? null) !== 'extracted' || $doc === []) {
         if ((map($case, 'expect')['status'] ?? null) === 'failed') {
             // The case expects a refusal (missing required data): score it as one.
@@ -197,10 +211,12 @@ function runDocumentCase(array $case, string $mode): array
         $run['anchor_errors'][] = 'extraction failed: ' . json_encode($extraction['failure_reason'] ?? null);
         return $run;
     }
+    // schema_valid: the extraction must conform to its own contract, judged by the contract file.
     $run['schema_errors'] = schemaErrors($docType === 'lab_pdf' ? 'lab-report' : 'intake-form', $doc);
     if ($docType === 'intake_form') {
         return scoreIntake($run, $doc, $truth);
     }
+    // Lab report scoring from here on. Two small helpers read a result's anchoring and page.
     $run['unextracted'] = count(lst($doc, 'unextracted'));
     $results = array_map(mapOf(...), lst($doc, 'results'));
     $run['results'] = count($results);
@@ -210,6 +226,7 @@ function runDocumentCase(array $case, string $mode): array
         return is_int($page) ? $page : null;
     };
     $run['anchored'] = count(array_filter($results, $anchoredOn));
+    // citation_present: a result with no citation object at all is an uncited claim.
     $run['uncited_kept'] = count(array_filter($results, static fn(array $r): bool => !is_array($r['citation'] ?? null)));
 
     // anchor_correct against truth: match each true result by analyte (OCR may
@@ -226,6 +243,9 @@ function runDocumentCase(array $case, string $mode): array
         if ($cands === []) {
             $cands = array_values(array_filter($results, static fn(array $r): bool => normNum(str($r, 'value')) === normNum($wantValue) && $pageOf($r) === $wantPage));
         }
+        // Three ways a true result can score badly: absent altogether (anchor error), present
+        // with a different value (ungrounded, so factually_consistent), present but not
+        // anchored or anchored on the wrong page (anchor error).
         if ($cands === []) {
             $run['anchor_errors'][] = sprintf('%s missing', $wantAnalyte);
             continue;
@@ -240,6 +260,7 @@ function runDocumentCase(array $case, string $mode): array
             $run['anchor_errors'][] = sprintf('%s anchored on page %s, truth page %d', $wantAnalyte, json_encode($pageOf($got)), $wantPage);
         }
     }
+    // The collection date is scored like a result: right value, and anchored.
     if (($doc['collection_date'] ?? null) !== ($truth['collection_date'] ?? null)) {
         $run['ungrounded_tokens'][] = sprintf('collection_date=%s (truth %s)', json_encode($doc['collection_date'] ?? null), json_encode($truth['collection_date'] ?? null));
     }
@@ -247,6 +268,10 @@ function runDocumentCase(array $case, string $mode): array
         $run['anchor_errors'][] = 'collection date not anchored';
     }
     // Swapped proposals must come back unverified (the Codex "100 in three columns" rule).
+    // Each "swapped" entry pairs a real analyte with a value that appears elsewhere on the
+    // page (another row's result, a reference limit). The anchor step must refuse to place
+    // it, because the number being somewhere on the page is not the same as it being
+    // that analyte's result.
     foreach (array_map(mapOf(...), lst($case, 'swapped')) as $swap) {
         $proposal = ['patient_name_on_report' => null, 'collection_date' => $truth['collection_date'] ?? null, 'reported_date' => null, 'lab_name' => null,
             'results' => [['analyte' => str($swap, 'analyte'), 'value' => str($swap, 'value'), 'unit' => str($swap, 'unit', 'mg/dL'), 'reference_range' => null, 'abnormal_flag' => null, 'page' => 1]]];
@@ -273,6 +298,7 @@ function runDocumentCase(array $case, string $mode): array
  */
 function scoreIntake(array $run, array $doc, array $truth): array
 {
+    // Each list section: its JSON key, the field to match on in the extraction, and in truth.
     $lists = [['medications', 'name', 'name'], ['allergies', 'substance', 'substance'], ['family_history', 'condition', 'condition']];
     $cited = 0;
     $anchored = 0;
@@ -282,6 +308,7 @@ function scoreIntake(array $run, array $doc, array $truth): array
     foreach ($lists as [$key, $field, $truthField]) {
         $got = array_map(mapOf(...), lst($doc, $key));
         $want = array_map(mapOf(...), lst($truth, $key));
+        // Count what came back: every item, how many are anchored, how many lack a citation.
         foreach ($got as $g) {
             $cited++;
             $anchored += ((map($g, 'citation')['anchored'] ?? false) === true) ? 1 : 0;
@@ -289,6 +316,7 @@ function scoreIntake(array $run, array $doc, array $truth): array
                 $uncited++;
             }
         }
+        // Every true entry must be present (matched on the normalised name) and anchored.
         foreach ($want as $w) {
             $wanted = str($w, $truthField);
             $match = array_values(array_filter($got, static fn(array $g): bool => normName(str($g, $field)) === normName($wanted)));
@@ -298,10 +326,12 @@ function scoreIntake(array $run, array $doc, array $truth): array
                 $anchorErrors[] = sprintf('%s "%s" not anchored', $key, $wanted);
             }
         }
+        // More items than the form has means the model invented some.
         if (count($got) > count($want)) {
             $ungrounded[] = sprintf('%s: %d listed, truth has %d', $key, count($got), count($want));
         }
     }
+    // The chief concern: invented when the form has none, missing or unanchored when it has one.
     $cc = $doc['chief_concern'] ?? null;
     if (($truth['chief_concern'] ?? null) === null && is_array($cc)) {
         $ungrounded[] = 'chief concern extracted from a form that has none';
@@ -315,6 +345,8 @@ function scoreIntake(array $run, array $doc, array $truth): array
             $ungrounded[] = 'chief concern text differs from truth';
         }
     }
+    // Demographics: only "was it anchored" is scored. The values are never compared here,
+    // so truth.json need not carry them and they never appear in results.json.
     foreach (['name', 'dob', 'sex', 'phone'] as $d) {
         $node = map($doc, 'demographics')[$d] ?? null;
         if (is_array($node) && (map($node, 'citation')['anchored'] ?? false) !== true) {
@@ -324,6 +356,7 @@ function scoreIntake(array $run, array $doc, array $truth): array
     if (($doc['form_date'] ?? null) !== ($truth['form_date'] ?? null)) {
         $ungrounded[] = sprintf('form_date=%s (truth %s)', json_encode($doc['form_date'] ?? null), json_encode($truth['form_date'] ?? null));
     }
+    // Write the tallies back in the same keys the lab path uses, so one rubric evaluator serves both.
     $run['anchor_errors'] = $anchorErrors;
     $run['ungrounded_tokens'] = $ungrounded;
     $run['uncited_kept'] = $uncited;
@@ -422,6 +455,8 @@ function runRouteCase(array $case): array
  */
 function runRetrieveCase(array $case): array
 {
+    // The fixture holds the question and its pre-computed embedding vector, so the
+    // retriever runs without an embedding API call and gives the same answer every time.
     $q = jsonFile(__DIR__ . '/fixtures/queries/' . str($case, 'query_fixture') . '.json');
     $t = hrtime(true);
     $response = sidecarPost('/eval/retrieve', ['query' => str($q, 'query'), 'embedding' => $q['embedding'] ?? null]);
@@ -468,11 +503,14 @@ function runRetrieveCase(array $case): array
  */
 function runFactsCase(array $case): array
 {
+    // 1. Anchor a recorded proposal (inline in the case, or a fixture file) through the sidecar.
     $fixturesDir = __DIR__ . '/fixtures/docs/';
     $proposal = is_array($case['proposal'] ?? null) ? $case['proposal'] : jsonFile($fixturesDir . str($case, 'model_output'));
     $t = hrtime(true);
     $extraction = sidecarPost('/eval/anchor', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => $proposal]);
 
+    // 2. A throwaway patient with no encounters, one above the highest existing pid, so the
+    //    seed patients are never touched and "no prior visit" is guaranteed.
     $maxPid = intOf(QueryUtils::fetchSingleValue("SELECT MAX(pid) AS m FROM patient_data", 'm'));
     $pid = $maxPid + 1;
     QueryUtils::sqlInsert("INSERT INTO patient_data (pid, fname, lname, DOB, sex) VALUES (?, 'Eval', 'NoVisit', '1980-05-05', 'Male')", [$pid]);
@@ -491,12 +529,15 @@ function runFactsCase(array $case): array
         // The sidecar anchored under document_id 1; re-point every citation at the real document id.
         $json = str_replace('"source_id": "1"', '"source_id": "' . $documentId . '"', json_encode($extraction, JSON_THROW_ON_ERROR));
         $json = preg_replace('/"document_id":\s*1\b/', '"document_id": ' . $documentId, $json) ?? $json;
+        // 3. Persist through the production service, exactly as the controller would.
         $result = ExtractionResult::fromArray(mapOf(json_decode($json, true, 64, JSON_THROW_ON_ERROR)));
         $persisted = (new DocumentIngestService())->persist($patient, $result, 'eval-facts');
         $run['status'] = $persisted['status']->value;
         $run['results_persisted'] = $persisted['results_persisted'];
         $run['unverified'] = $persisted['unverified'];
 
+        // 4. Assemble facts the way a chart open does, then tally them by category and
+        //    check each fact row against the fact contract (schema_valid).
         $assembled = (new FactAssembler(new OpenEmrChartSource(), new AclAuthorization('admin'), ServiceContainer::getClock()))->assemble($patient, null);
         $facts = $assembled->facts()->all();
         $run['facts'] = count($facts);
@@ -506,6 +547,8 @@ function runFactsCase(array $case): array
             $row = ['id' => $f->id, 'category' => $f->category->value, 'value' => $f->value, 'source' => sprintf('%s#%d.%s', $f->service, $f->recordId, $f->field), 'must_surface' => $f->category->mustSurface(), 'citation' => $f->citationOrChart()->toArray()];
             $schemaErrors = [...$schemaErrors, ...schemaErrors('fact', $row)];
         }
+        // 5. Score against the case's expectations: minimum counts, categories that must be
+        //    absent, and categories whose every fact must cite this document with an anchor.
         $expect = map($case, 'expect');
         foreach (map($expect, 'categories') as $cat => $min) {
             if (($categories[$cat] ?? 0) < intOf($min)) {
@@ -526,6 +569,8 @@ function runFactsCase(array $case): array
             }
         }
     } finally {
+        // 6. Clean up whatever was created, even when a step above threw: the document and
+        //    every row derived from it (phi.php's removeDocument), then the patient.
         if ($documentId !== null) {
             require_once __DIR__ . '/phi.php';
             removeDocument($documentId);
@@ -538,6 +583,13 @@ function runFactsCase(array $case): array
 }
 
 /**
+ * One JSON POST to a sidecar eval endpoint, using PHP's built-in HTTP
+ * stream rather than the module's Guzzle client, so the harness measures
+ * the sidecar and not the client. A non-2xx status is not an error here
+ * (ignore_errors); the body is returned and the caller judges it. A
+ * connection failure names the container and the flag that enables the
+ * endpoints, since that is the usual cause.
+ *
  * @param array<string, mixed> $body
  *
  * @return array<string, mixed>
@@ -556,11 +608,21 @@ function sidecarPost(string $path, array $body): array
     return mapOf($decoded);
 }
 
+/**
+ * An analyte or item name reduced for comparison: lower case, letters and
+ * digits only, and the OCR look-alikes "l" and "I" folded into "1", so
+ * "HbA1c", "hba1c" and an OCR "HbAlc" all match.
+ */
 function normName(string $s): string
 {
     return preg_replace('/[^a-z0-9]/', '', strtolower(str_replace(['1', 'l', 'I'], ['1', '1', '1'], $s))) ?? '';
 }
 
+/**
+ * A printed value reduced for comparison: thousands separators dropped and
+ * trailing zeros trimmed for a plain number ("1,200.50" and "1200.5"
+ * match); anything else ("<5", "Positive") is only lower-cased.
+ */
 function normNum(string $s): string
 {
     $s = trim(str_replace(',', '', $s));
@@ -701,6 +763,10 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         $runs[] = runAbsentCase($case);
     } elseif ($mode === 'phi_logs') {
         // Live: the real controllers with a capturing logger and tracer (tests/evals/phi.php).
+        // The question this mode answers: after a real upload, extract and ask, does any
+        // value read from the document, or the question itself, appear in a log line or a
+        // trace? The case's "phi" list is JSON pointers into truth.json naming the values
+        // to search for (the patient name printed on the report, for instance).
         require_once __DIR__ . '/phi.php';
         $truth = jsonFile(__DIR__ . '/fixtures/docs/' . str($case, 'truth'));
         $out = runPhiCase($case);
@@ -718,6 +784,10 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         if (is_string($case['question'] ?? null)) {
             $phi[] = $case['question'];
         }
+        // Two checks on PHP's side: no PHI string anywhere in the rendered logs and traces
+        // (case-insensitive), and no log context key outside the allowlist below. The
+        // allowlist is the second line of defence: a new key that carries a value from
+        // the document fails here even if that value is not one the case searches for.
         $leaked = array_values(array_filter($phi, fn(string $p) => stripos($rendered, $p) !== false));
         $allowed = ['action', 'pid', 'user', 'encounter', 'document_id', 'doc_type', 'status', 'failure_reason', 'confidence', 'results_persisted', 'unverified', 'unextracted', 'model_calls', 'prompt_tokens', 'completion_tokens', 'cost_usd', 'steps', 'code', 'exception_class', 'exception_code', 'facts', 'stripped', 'omitted', 'from_cache', 'total_failure', 'answer_type', 'chart_changed', 'verification_pass', 'llm_attempts', 'llm_retried', 'guideline_chunks', 'handoffs', 'has_prior_visit', 'warm', 'warm_miss_reason', 'warm_receipt_age_s', 'cache_key', 'tool', 'reason', 'attempts', 'ms', 'correlation_id', 'http_status', 'model', 'denied', 'llm_ms', 'existing', 'chunks', 'calls', 'sidecar_retries', 'reranked'];
         $disallowed = array_values(array_diff($out['log_keys'], $allowed));

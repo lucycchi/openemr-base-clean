@@ -14,6 +14,15 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Documents;
 
+/**
+ * Every way a sidecar call can fail, reduced to one short code the caller
+ * can branch on and log: unavailable (could not connect), timeout, the
+ * codes the sidecar itself returns in a run.error body, and
+ * schema_mismatch (the reply did not conform to the contract or a typed
+ * parser refused it). The original exception, when there is one, is kept
+ * as the "previous" so a log can still show the cause; only the code is
+ * ever shown to a user.
+ */
 final class SidecarException extends \RuntimeException
 {
     public function __construct(public readonly string $errorCode, ?\Throwable $previous = null)

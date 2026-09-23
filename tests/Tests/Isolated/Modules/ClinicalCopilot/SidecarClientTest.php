@@ -38,7 +38,13 @@ final class SidecarClientTest extends TestCase
 
     private ?RequestInterface $sent = null;
 
-    /** @param array<string, mixed> $reply */
+    /**
+     * A client whose HTTP layer answers with the given reply and records the
+     * request it was sent, so a test can inspect both directions. Nothing
+     * touches the network.
+     *
+     * @param array<string, mixed> $reply
+     */
     private function client(array $reply): SidecarClient
     {
         $stack = HandlerStack::create(new MockHandler([new Response(200, ['Content-Type' => 'application/json'], json_encode($reply, JSON_THROW_ON_ERROR))]));
@@ -48,7 +54,12 @@ final class SidecarClientTest extends TestCase
         return new SidecarClient(new Client(['handler' => $stack]), new Config('sk-test', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', ''));
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * The smallest run.response the contract accepts: one handoff, nothing
+     * else. Tests start from it and break one thing.
+     *
+     * @return array<string, mixed>
+     */
     private static function reply(): array
     {
         return [
@@ -60,6 +71,12 @@ final class SidecarClientTest extends TestCase
         ];
     }
 
+    /**
+     * Pins: a valid reply becomes a RunResult, and the correlation id is
+     * sent both as the X-Correlation-Id header and in the JSON body. A
+     * failure means the sidecar's log lines could no longer be tied to the
+     * PHP request that caused them.
+     */
     public function testAConformingReplyIsParsedAndTheIdTravelsAsHeaderAndBody(): void
     {
         $result = $this->client(self::reply())->answer(self::CORRELATION_ID, str_repeat('0', 64), 'Does this patient need a statin?');
@@ -73,6 +90,11 @@ final class SidecarClientTest extends TestCase
         self::assertSame(self::CORRELATION_ID, $body['correlation_id'] ?? null);
     }
 
+    /**
+     * Pins: the contract, not the typed parser, is the gate. A failure means
+     * a reply with a reason code outside the contract's list would be
+     * accepted and its free text could reach a log.
+     */
     public function testAReplyTheContractRejectsIsRefusedEvenWhenTheParserWouldAcceptIt(): void
     {
         // The typed parser ignores unknown keys and accepts any reason string;
@@ -84,6 +106,11 @@ final class SidecarClientTest extends TestCase
         $this->client($reply)->answer(self::CORRELATION_ID, str_repeat('0', 64), 'q');
     }
 
+    /**
+     * Pins: an extra top-level key is a contract breach. A failure means the
+     * sidecar could smuggle a field (debug output, for instance) past PHP
+     * without anyone noticing.
+     */
     public function testAnUnknownTopLevelKeyIsRefused(): void
     {
         $this->expectException(SidecarException::class);

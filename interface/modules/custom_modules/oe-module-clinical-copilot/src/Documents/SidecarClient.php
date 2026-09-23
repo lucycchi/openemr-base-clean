@@ -20,14 +20,39 @@ use GuzzleHttp\Exception\RequestException;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\Contracts;
 
+/**
+ * The only place PHP talks to the Python sidecar. One HTTP POST per run:
+ *
+ *   build run.request -> POST /run -> map transport errors to codes
+ *     -> decode JSON -> validate against run.response contract
+ *     -> RunResult::fromArray (typed objects) -> caller
+ *
+ * Two modes share the path: extract (documents in, extractions out) and
+ * answer (a question in, guideline chunks out). Nothing that identifies a
+ * patient is in either body: documents travel as bytes plus a hash, and the
+ * facts hash is a fingerprint, not data.
+ *
+ * "final" means no subclassing; the two readonly fields are set once in the
+ * constructor.
+ */
 final class SidecarClient
 {
+    /** How long one run may take end to end; a large scanned PDF with OCR needs most of this. */
     public const TIMEOUT_S = 60.0;
 
+    /**
+     * The HTTP client is injected so tests can hand in one with canned
+     * replies (see SidecarClientTest) and never touch the network.
+     */
     public function __construct(private readonly Client $http, private readonly Config $config)
     {
     }
 
+    /**
+     * Production wiring: a real client with the run timeout and a short
+     * connect timeout, so a sidecar that is down fails in five seconds
+     * rather than sixty.
+     */
     public static function fromConfig(Config $config): self
     {
         return new self(new Client(['timeout' => self::TIMEOUT_S, 'connect_timeout' => 5.0]), $config);
@@ -35,6 +60,10 @@ final class SidecarClient
 
     /**
      * Extract every stored document in $documents (id, type, hash, bytes).
+     *
+     * The bytes are base64-encoded into the JSON body. The hash lets the
+     * sidecar confirm it received what PHP stored, and status is always
+     * "stored" because only unread documents are sent.
      *
      * @param list<array{document_id: int, doc_type: DocType, sha3_512: string, bytes: string}> $documents
      */
@@ -62,7 +91,13 @@ final class SidecarClient
         return $this->run(['mode' => 'answer', 'correlation_id' => $correlationId, 'facts_hash' => $factsHash, 'question' => $question, 'documents' => []]);
     }
 
-    /** @param array<string, mixed> $body */
+    /**
+     * The one POST. Every failure becomes a SidecarException with a short
+     * code so the controller can log it and tell the user "stored, retry
+     * later" without ever showing an upstream message.
+     *
+     * @param array<string, mixed> $body
+     */
     private function run(array $body): RunResult
     {
         try {
@@ -74,12 +109,17 @@ final class SidecarClient
             }
             $response = $this->http->post(rtrim($this->config->sidecarUrl, '/') . '/run', ['json' => $body, 'headers' => $headers]);
         } catch (ConnectException $e) {
+            // Could not open a connection at all: the sidecar container is down or unreachable.
             throw new SidecarException('unavailable', $e);
         } catch (RequestException $e) {
+            // The connection worked but the request did not. With no response body,
+            // tell a timeout apart from any other transport failure by the message.
             $res = $e->getResponse();
             if ($res === null) {
                 throw new SidecarException(str_contains(strtolower($e->getMessage()), 'timed out') ? 'timeout' : 'unavailable', $e);
             }
+            // An HTTP error status: the sidecar's run.error body names the reason
+            // (encrypted, too_many_pages, ...). A body that cannot be parsed is "internal".
             $err = json_decode((string) $res->getBody(), true);
             $code = is_array($err) && is_string($err['code'] ?? null) ? $err['code'] : 'internal';
             throw new SidecarException($code, $e);

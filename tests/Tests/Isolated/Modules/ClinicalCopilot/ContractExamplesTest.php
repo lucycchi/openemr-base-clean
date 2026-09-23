@@ -69,6 +69,12 @@ final class ContractExamplesTest extends TestCase
         return $decoded;
     }
 
+    /**
+     * Pins: the JSON Schema itself gives the intended verdict on every
+     * example. A failure means a contract was edited so that it now refuses
+     * a document it should accept (or accepts one it should refuse), and the
+     * sidecar and PHP would start disagreeing at the boundary.
+     */
     #[DataProvider('exampleFiles')]
     public function testContractAcceptsAndRejectsItsExamples(string $name): void
     {
@@ -81,6 +87,12 @@ final class ContractExamplesTest extends TestCase
         }
     }
 
+    /**
+     * Pins: PHP's typed parsers are no stricter than the contract. A failure
+     * means a parser would throw schema_mismatch on a reply the contract
+     * (and the sidecar) consider valid, and a good extraction would be
+     * reported to the user as a sidecar error.
+     */
     #[DataProvider('exampleFiles')]
     public function testTypedParserAcceptsEveryAcceptedExample(string $name): void
     {
@@ -107,6 +119,11 @@ final class ContractExamplesTest extends TestCase
         self::assertSame(count($accepted), $parsed, "$name parser accepted every accepted example");
     }
 
+    /**
+     * Pins: every examples file belongs to a real contract. A failure means
+     * an examples file was renamed or a contract deleted, so the examples
+     * above would be silently testing nothing.
+     */
     public function testEveryExampleFileNamesAContract(): void
     {
         $names = array_keys(self::exampleFiles());

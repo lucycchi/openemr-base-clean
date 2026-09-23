@@ -14,6 +14,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Documents;
 
+/**
+ * Thrown by DocumentStore::store when a file is refused before anything is
+ * written. The reason is a short code (too_large, not_a_pdf) rather than a
+ * sentence: the controller maps it to the user-facing message and returns
+ * it in the JSON body, so the wording lives in one place.
+ */
 final class UploadRejected extends \RuntimeException
 {
     public function __construct(public readonly string $reason)

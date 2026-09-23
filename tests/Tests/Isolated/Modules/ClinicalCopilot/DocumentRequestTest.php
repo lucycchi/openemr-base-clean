@@ -56,7 +56,13 @@ final class DocumentRequestTest extends TestCase
         return $out;
     }
 
-    /** @param array<string, string> $body */
+    /**
+     * Pins: the contract and DocumentRequest::fromBag accept and refuse the
+     * same bodies. A failure means one of them changed without the other,
+     * so the documented request format and the real one have drifted.
+     *
+     * @param array<string, string> $body
+     */
     #[DataProvider('bodies')]
     public function testParserAgreesWithTheContract(array $body, bool $contractAccepts): void
     {
@@ -78,12 +84,22 @@ final class DocumentRequestTest extends TestCase
         }
     }
 
+    /**
+     * Pins: the file is required even when the form fields are perfect (the
+     * contract cannot see the multipart file). A failure would let an upload
+     * with no attachment reach the store.
+     */
     public function testUploadWithoutAFileIsRefusedEvenThoughTheFieldsConform(): void
     {
         $this->expectException(InvalidRequest::class);
         DocumentRequest::fromBag(new InputBag(['csrf_token_form' => 'tok', 'action' => 'upload', 'doc_type' => 'lab_pdf']), null);
     }
 
+    /**
+     * Pins: the document id arrives as text and leaves the parser as an int.
+     * A failure means the controller would be comparing a string with the
+     * database's integer id.
+     */
     public function testExtractExposesTheDocumentIdAsAnInteger(): void
     {
         $r = DocumentRequest::fromBag(new InputBag(['csrf_token_form' => 'tok', 'action' => 'extract', 'document_id' => '42']), null);

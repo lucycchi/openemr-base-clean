@@ -32,15 +32,27 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * The same upload-then-extract flow as the panel, minus the browser:
+ *
+ *   arguments -> DocumentStore::store -> ExtractionRunner::run -> summary
+ *
+ * Useful for loading a batch of test documents and for reproducing an
+ * extraction outside the UI. There is no session here, so there is no CSRF
+ * and no ACL check; whoever can run the console inside the container is
+ * trusted, and the uploader name is recorded from --user.
+ */
 final class AttachCommand extends Command
 {
     public const NAME = 'copilot:attach';
 
+    /** Both collaborators are injected so the command can be wired with test doubles. */
     public function __construct(private readonly DocumentStore $store, private readonly ExtractionRunner $runner)
     {
         parent::__construct(self::NAME);
     }
 
+    /** Declares the arguments and options Symfony Console parses and shows in --help. */
     protected function configure(): void
     {
         $this
@@ -53,8 +65,15 @@ final class AttachCommand extends Command
             ->addOption('json', null, InputOption::VALUE_NONE, 'Print the summary as JSON');
     }
 
+    /**
+     * Runs the flow and prints a summary. The exit code is the result: 2
+     * (INVALID) for bad arguments, 1 (FAILURE) when storage or the sidecar
+     * refused or the extraction failed, 0 only for "extracted".
+     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        // 1. Arguments. Console arguments arrive as strings (or null); each is narrowed here.
+        //    The pid must be all digits and positive; the doc_type must be one of the enum's values.
         $pidArg = $input->getArgument('pid');
         $file = $input->getArgument('file');
         $type = DocType::tryFrom(is_string($input->getArgument('doc_type')) ? $input->getArgument('doc_type') : '');
@@ -62,6 +81,7 @@ final class AttachCommand extends Command
             $output->writeln('<error>usage: copilot:attach <pid> <file.pdf> <lab_pdf|intake_form></error>');
             return Command::INVALID;
         }
+        // The "@" silences PHP's own warning for an unreadable path; the false return is handled.
         $bytes = @file_get_contents($file);
         if ($bytes === false) {
             $output->writeln('<error>cannot read file</error>');
@@ -70,23 +90,29 @@ final class AttachCommand extends Command
         $pid = new PatientId((int) $pidArg);
         $user = is_string($input->getOption('user')) ? $input->getOption('user') : 'admin';
         $correlationId = CorrelationId::generate();
+        // 2. Store, with the same size and PDF checks and the same per-patient dedup as the panel.
+        //    Owner user id 0: there is no logged-in OpenEMR user on the console.
         try {
             $stored = $this->store->store($pid, $type, basename($file), $bytes, $user, 0);
         } catch (UploadRejected $e) {
             $output->writeln('<error>upload rejected: ' . $e->reason . '</error>');
             return Command::FAILURE;
         }
+        // 3. Read the row back in the shape the runner wants (status, hash, type).
         $doc = $this->store->find($pid, $stored['document_id']);
         if ($doc === null) {
             $output->writeln('<error>stored document not found</error>');
             return Command::FAILURE;
         }
+        // 4. Extract and persist. On a sidecar failure the file stays stored, as in the panel.
         try {
             $outcome = $this->runner->run($pid, $doc, $correlationId);
         } catch (SidecarException $e) {
             $output->writeln(sprintf('<error>sidecar failed: %s (document %d is stored; retry later)</error>', $e->errorCode, $doc['document_id']));
             return Command::FAILURE;
         }
+        // 5. The summary: the same counts the panel logs. extraction is null when the document
+        //    was already extracted, so the confidence falls back to the stored row's value.
         $extraction = $outcome['extraction'];
         $summary = [
             'correlation_id' => $correlationId,
@@ -103,6 +129,7 @@ final class AttachCommand extends Command
             'handoffs' => array_map(static fn($h) => $h->from . ' -> ' . $h->to . ' (' . $h->reason . ')', $outcome['run']->handoffs ?? []),
             'model_calls' => $outcome['run']?->chatTokens()['calls'] ?? 0,
         ];
+        // --json for scripts; otherwise an aligned key/value listing for a person.
         if ($input->getOption('json')) {
             $output->writeln(json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
         } else {

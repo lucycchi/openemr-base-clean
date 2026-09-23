@@ -52,11 +52,18 @@ final class CapturingTracer implements Tracer
 }
 
 /**
+ * Plays one case through the real controllers as a logged-in user would:
+ * upload, extract, list, and optionally brief + ask. Every log record and
+ * trace the controllers emit is captured instead of written, and returned
+ * together with the response bodies, so the caller can search them.
+ *
  * @param array<string, mixed> $case  keys: fixture, doc_type, question, pid (optional)
  * @return array{logs: list<string>, traces: list<string>, log_keys: list<string>, status: ?string, answer_type: ?string, document_id: ?int, bodies: array<string, mixed>}
  */
 function runPhiCase(array $case): array
 {
+    // Stand in for a browser session: an admin user, a selected patient (the newest seed
+    // patient unless the case names one) and a CSRF token the controllers will accept.
     $session = SessionWrapperFactory::getInstance()->getActiveSession();
     $session->set('authUser', 'admin');
     $session->set('authUserID', 1);
@@ -67,6 +74,7 @@ function runPhiCase(array $case): array
     CsrfUtils::setupCsrfKey($session);
     $csrf = CsrfUtils::collectCsrfToken($session);
 
+    // Monolog's TestHandler keeps records in memory; the tracer above does the same for traces.
     $handler = new TestHandler();
     $logger = new Logger('phi', [$handler]);
     $tracer = new CapturingTracer();
@@ -79,7 +87,8 @@ function runPhiCase(array $case): array
     $answerType = null;
     $bodies = [];
     try {
-        // Upload through the real controller.
+        // Upload through the real controller. The controller echoes its JSON reply, so
+        // output buffering (ob_start / ob_get_clean) captures it as a string instead.
         $req = Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'upload', 'doc_type' => str($case, 'doc_type')], [], ['file' => new UploadedFile($tmp, basename($fixture), 'application/pdf', null, true)]);
         ob_start();
         (new DocumentController($logger, $req, null, $tracer))->handleRequest();
@@ -116,6 +125,8 @@ function runPhiCase(array $case): array
         }
         QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$pid]);
     }
+    // Render each log record as "message {context}" for the text scan, and collect the set of
+    // context keys for the allowlist check in run.php.
     $logs = [];
     $keys = [];
     foreach ($handler->getRecords() as $r) {
@@ -127,6 +138,13 @@ function runPhiCase(array $case): array
     return ['logs' => $logs, 'traces' => $tracer->payloads, 'log_keys' => array_keys($keys), 'status' => $status, 'answer_type' => $answerType, 'document_id' => $documentId, 'bodies' => $bodies];
 }
 
+/**
+ * Deletes a document and everything ingestion derived from it, in the
+ * order the foreign relationships require: lab results, report, order
+ * code and order (found through procedure_result.document_id), then the
+ * module's three tables, the file on disk, and OpenEMR's documents row.
+ * Shared with run.php's facts mode and the DB-backed PHPUnit tests.
+ */
 function removeDocument(int $id): void
 {
     foreach (QueryUtils::fetchRecords("SELECT DISTINCT po.procedure_order_id FROM procedure_order po JOIN procedure_report prp ON prp.procedure_order_id = po.procedure_order_id JOIN procedure_result pr ON pr.procedure_report_id = prp.procedure_report_id WHERE pr.document_id = ?", [$id]) as $o) {

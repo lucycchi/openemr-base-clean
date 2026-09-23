@@ -53,10 +53,14 @@ final class Contracts
         if ($real === false || !preg_match('/^[a-z][a-z0-9.-]*$/', $name)) {
             throw new \InvalidArgumentException('Unknown contract');
         }
+        // Decoded as objects (false), not arrays, because the validator library
+        // walks a schema as an object tree; depth 64 is ample for these files.
         $decoded = json_decode((string) file_get_contents($real), false, 64, JSON_THROW_ON_ERROR);
         if (!$decoded instanceof \stdClass) {
             throw new \RuntimeException('Contract is not a JSON object');
         }
+        // Contracts refer to each other by relative $ref ("citation.schema.json");
+        // pointing $id at the real file makes those resolve from the same folder.
         $decoded->{'$id'} = 'file://' . $real;
         return self::$loaded[$name] = $decoded;
     }
@@ -71,9 +75,12 @@ final class Contracts
      */
     public static function violations(string $name, mixed $data): array
     {
+        // PHP cannot tell an empty list from an empty object; the JSON round trip
+        // settles it the way the wire did, so the validator judges the real shape.
         $decoded = json_decode(json_encode($data, JSON_THROW_ON_ERROR), false, 512, JSON_THROW_ON_ERROR);
         $validator = new Validator();
         $validator->validate($decoded, self::schema($name), Constraint::CHECK_MODE_NORMAL);
+        // Each error becomes one "property: message" line, readable in a log or a test failure.
         $out = [];
         foreach ($validator->getErrors() as $error) {
             if (!is_array($error)) {

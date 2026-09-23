@@ -18,4 +18,7 @@ require_once __DIR__ . "/../../../../globals.php";
 
 use OpenEMR\Modules\ClinicalCopilot\Controller\DocumentController;
 
+// This file is deliberately two lines of logic: the web server maps the URL
+// here, and everything (parsing, CSRF, ACL, the work, the reply) lives in the
+// controller, which the eval harness can also drive in-process without HTTP.
 (new DocumentController())->handleRequest();

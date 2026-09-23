@@ -12,5 +12,13 @@
 -- Idempotent: MODIFY to the same definition is a no-op. The new kinds carry a
 -- flag only ("the name on the form does not match the chart"); the values
 -- from the form are compared and never stored.
+--
+-- The kind columns are ENUMs (a fixed list of allowed words), so adding a
+-- new kind means widening the list. MODIFY restates the whole column with
+-- the extra value appended; existing rows keep their values, and running
+-- this file a second time restates the same list, changing nothing.
+-- demographics_mismatch goes on copilot_intake (intake forms carry
+-- demographics); patient_mismatch goes on copilot_document_fact (a lab
+-- report carries only the patient's name).
 ALTER TABLE `copilot_intake` MODIFY `kind` ENUM('chief_concern','medication','allergy','family_history','form_date','demographics_mismatch') NOT NULL;
 ALTER TABLE `copilot_document_fact` MODIFY `kind` ENUM('lab_result','collection_date','reported_date','unextracted_row','intake_field','patient_mismatch') NOT NULL;

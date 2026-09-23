@@ -14,6 +14,17 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Documents;
 
+/**
+ * The life of an uploaded document, as recorded in copilot_document.status:
+ *
+ *   stored -> extracted   (the sidecar read it and the rows were written)
+ *   stored -> failed      (the sidecar refused it; failure_reason says why)
+ *   failed -> stored      (a retry resets it before sending the bytes again)
+ *
+ * The sidecar's own reply is only ever "extracted" or "failed"; "stored" is
+ * PHP's word for "uploaded, not yet read", which is why ExtractionResult
+ * refuses a reply that says stored.
+ */
 enum DocumentStatus: string
 {
     case Stored = 'stored';

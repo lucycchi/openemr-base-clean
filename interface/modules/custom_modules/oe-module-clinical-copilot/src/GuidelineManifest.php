@@ -14,11 +14,23 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * The list of guidelines in the corpus, keyed by source id, read from the
+ * manifest file the sidecar ships with. PHP needs it only to put a human
+ * title and a link next to a cited chunk; the retrieval itself happens in
+ * the sidecar.
+ */
 final class GuidelineManifest
 {
     /** @var array<string, array{title: string, publisher: string, year: int, url: string}> */
     private array $docs = [];
 
+    /**
+     * Reads the manifest once. A missing or malformed file yields an empty
+     * manifest rather than an error: the panel then shows the source id in
+     * place of a title, and answers still work. Each entry's fields are
+     * narrowed individually, with a harmless default for anything absent.
+     */
     public function __construct(?string $path = null)
     {
         $path ??= dirname(__DIR__) . '/sidecar/corpus/manifest.json';
@@ -36,7 +48,12 @@ final class GuidelineManifest
         }
     }
 
-    /** @return array{title: string, publisher: string, year: int, url: string}|null */
+    /**
+     * The manifest entry for a source id, or null when the corpus does not
+     * list it.
+     *
+     * @return array{title: string, publisher: string, year: int, url: string}|null
+     */
     public function document(string $sourceId): ?array
     {
         return $this->docs[$sourceId] ?? null;

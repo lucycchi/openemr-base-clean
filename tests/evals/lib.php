@@ -80,19 +80,29 @@ function strings(mixed $v): array
     return array_values(array_filter(is_array($v) ? $v : [], 'is_string'));
 }
 
-/** @param array<mixed> $a */
+/**
+ * The keyed form of strOf: the string at $a[$key], or the default when the key is absent.
+ *
+ * @param array<mixed> $a
+ */
 function str(array $a, string $key, string $default = ''): string
 {
     return strOf($a[$key] ?? null, $default);
 }
 
-/** @param array<mixed> $a */
+/**
+ * The keyed form of intOf: the int at $a[$key], or the default when the key is absent.
+ *
+ * @param array<mixed> $a
+ */
 function int(array $a, string $key, int $default = 0): int
 {
     return intOf($a[$key] ?? null, $default);
 }
 
 /**
+ * The keyed form of arrOf: the array at $a[$key], or [] when absent.
+ *
  * @param array<mixed> $a
  * @return array<mixed>
  */
@@ -102,6 +112,8 @@ function arr(array $a, string $key): array
 }
 
 /**
+ * The keyed form of mapOf: the JSON object at $a[$key] as a string-keyed array, or [].
+ *
  * @param array<mixed> $a
  * @return array<string, mixed>
  */
@@ -111,6 +123,8 @@ function map(array $a, string $key): array
 }
 
 /**
+ * The keyed form of listOf: the JSON array at $a[$key] as a list, or [].
+ *
  * @param array<mixed> $a
  * @return list<mixed>
  */

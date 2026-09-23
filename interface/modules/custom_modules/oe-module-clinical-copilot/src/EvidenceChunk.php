@@ -14,6 +14,18 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * A passage from a clinical guideline, found by the sidecar's retriever for
+ * the question being asked. It plays the role a Fact plays for chart data:
+ * the model may cite it (by chunkId) and the Verifier checks the sentence
+ * against its quote. It says what a guideline recommends; it never says
+ * anything about this patient.
+ *
+ * chunkId is the sidecar's stable id for the passage; sourceId names the
+ * guideline; section is the heading path; quote is the verbatim text;
+ * score is the retriever's relevance; title and url come from the corpus
+ * manifest (the sidecar sends ids only) and default to empty.
+ */
 final readonly class EvidenceChunk
 {
     public function __construct(
@@ -27,7 +39,12 @@ final readonly class EvidenceChunk
     ) {
     }
 
-    /** @return array{chunk_id: string, source_id: string, title: string, section: string, quote: string, url: string, score: float} */
+    /**
+     * The chunk as the panel receives it, so it can show the title and link
+     * beside a cited sentence.
+     *
+     * @return array{chunk_id: string, source_id: string, title: string, section: string, quote: string, url: string, score: float}
+     */
     public function toArray(): array
     {
         return ['chunk_id' => $this->chunkId, 'source_id' => $this->sourceId, 'title' => $this->title, 'section' => $this->section, 'quote' => $this->quote, 'url' => $this->url, 'score' => $this->score];

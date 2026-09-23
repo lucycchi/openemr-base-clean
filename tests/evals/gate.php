@@ -43,6 +43,9 @@ use Symfony\Component\Process\Process;
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once __DIR__ . '/lib.php';
 
+// Minimum pass rate per rubric, in percent. The four at 100 are the safety
+// rubrics: one wrong citation, one leaked identifier or one mis-anchored
+// value is one too many. The other three allow for model variance.
 const THRESHOLDS = [
     'schema_valid' => 100,
     'citation_present' => 100,
@@ -84,6 +87,8 @@ if (!is_array($summary) || !is_array($summary['cases'] ?? null)) {
     exit(1);
 }
 
+// Sort each ran case's pass/fail verdicts into the deterministic or the live
+// bucket; "na" verdicts and cases with none are dropped here, never counted.
 /** @var array<string, array<string, string>> $verdicts case id => rubric => pass|fail */
 $verdictsDet = [];
 $verdictsLive = [];
@@ -173,6 +178,9 @@ function gateSubset(string $label, array $verdicts, string $baselinePath, bool $
             }
         }
     }
+    // Three rate sets: this run over all its cases (for the threshold), and the baseline and
+    // this run over only the cases both have (for the regression comparison), so a newly
+    // added case cannot make the baseline look better or worse than it was.
     $common = array_intersect_key($verdicts, $baseCases);
     $baseRates = rates(array_intersect_key($baseCases, $verdicts));
     $commonRates = rates($common);
@@ -192,6 +200,8 @@ function gateSubset(string $label, array $verdicts, string $baselinePath, bool $
                 $regressed[] = $id;
             }
         }
+        // A regression needs both: a named case that flipped from pass to fail, and the
+        // rubric's rate over the common cases falling more than the allowed points.
         $base = $baseRates[$name] ?? null;
         $drop = ($base !== null && isset($commonRates[$name])) ? $base - $commonRates[$name] : 0.0;
         $belowThreshold = $now < $threshold;
@@ -226,6 +236,7 @@ function rates(array $verdicts): array
     return $out;
 }
 
+/** A rate for the table: one decimal and a percent sign, or n/a. */
 function fmt(?float $v): string
 {
     return $v === null ? 'n/a' : sprintf('%.1f%%', $v);

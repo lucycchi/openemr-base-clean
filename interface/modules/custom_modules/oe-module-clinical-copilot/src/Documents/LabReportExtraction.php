@@ -14,9 +14,27 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Documents;
 
+/**
+ * The sidecar's reading of a lab report PDF: the header facts (who the
+ * report names, when the specimen was collected, when it was reported,
+ * which lab ran it) and one LabResultExtraction per result row, plus the
+ * rows the model missed. DocumentIngestService turns this into OpenEMR's
+ * lab tables.
+ *
+ * JSON field -> property: patient_name_on_report -> patientNameOnReport
+ * (compared with the chart, never stored), collection_date ->
+ * collectionDate with collection_date_citation -> collectionDateCitation,
+ * reported_date / reported_date_citation -> reportedDate /
+ * reportedDateCitation (optional), lab_name -> labName (metadata, no
+ * citation), results -> results, unextracted -> unextracted.
+ */
 final readonly class LabReportExtraction
 {
     /**
+     * A report with no results at all is refused: the sidecar should have
+     * reported a failure instead, and an empty report would create an empty
+     * lab order in the chart.
+     *
      * @param list<LabResultExtraction> $results
      * @param list<UnextractedRow> $unextracted
      */
@@ -35,12 +53,21 @@ final readonly class LabReportExtraction
         }
     }
 
-    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
+    /**
+     * Builds the report from decoded JSON. The collection date is the one
+     * field that must be present and cited: every lab row written to the
+     * chart is dated by it. Any date that does not parse is refused rather
+     * than guessed, so a misread "2O26" can never become a real date.
+     *
+     * @param array<mixed> $a  decoded JSON; every value is narrowed here
+     */
     public static function fromArray(array $a): self
     {
         if (($a['doc_type'] ?? null) !== 'lab_pdf' || !is_string($a['collection_date'] ?? null) || !is_array($a['collection_date_citation'] ?? null) || !is_array($a['results'] ?? null)) {
             throw new SidecarException('schema_mismatch');
         }
+        // Parses an ISO date (YYYY-MM-DD). The leading "!" resets the time part to midnight
+        // instead of "now", so two runs on different days produce the same value.
         $date = static function (?string $s): ?\DateTimeImmutable {
             if ($s === null) {
                 return null;
@@ -64,7 +91,11 @@ final readonly class LabReportExtraction
         );
     }
 
-    /** @return list<Citation> */
+    /**
+     * Every citation in the report: the dates first, then one per result.
+     *
+     * @return list<Citation>
+     */
     public function citations(): array
     {
         $out = [$this->collectionDateCitation];

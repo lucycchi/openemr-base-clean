@@ -2,7 +2,17 @@
 whatever a developer attaches to a record, only allowlisted fields are
 written, exception messages become class names, and a run over the intake
 fixture (which carries a name, a date of birth and a phone number) leaves
-none of them in the log output."""
+none of them in the log output.
+
+Why: log lines go to stdout and are read by whoever operates the service;
+nothing a patient could be identified by may reach them. The design chooses an
+allowlist over a blocklist because a blocklist has to predict every future
+mistake, while an allowlist only has to name the handful of safe fields.
+
+Reading the test code: `logging.LogRecord(...)` builds one log entry by
+hand (the positional arguments are logger name, level, file, line,
+message, arguments, exception info). Writing into `record.__dict__` attaches
+extra fields the way a real `log.info(..., extra={...})` call does."""
 
 from __future__ import annotations
 
@@ -16,6 +26,10 @@ from copilot_sidecar.schemas import IntakeFormProposal
 from tools import generate_fixtures
 
 
+# Pins the allowlist itself: allowed fields (correlation id, document id)
+# come through, and a filename, a question and a patient name attached to
+# the same record are dropped, name included. A failure means a future log
+# call could leak an identifier by attaching one field too many.
 def test_formatter_drops_fields_outside_the_allowlist() -> None:
     record = logging.LogRecord("t", logging.INFO, "", 0, "hello", None, None)
     record.__dict__.update({"correlation_id": "abc", "document_id": 3, "filename": "secret.pdf", "question": "is Test Zeta ok?", "patient_name": "Test Zeta"})
@@ -25,6 +39,11 @@ def test_formatter_drops_fields_outside_the_allowlist() -> None:
     assert "Zeta" not in json.dumps(out)
 
 
+# Pins exception handling: only the exception's class name is logged, never
+# its message. Messages from libraries can quote the data being processed
+# (a value, a path, a name), so the message is the likeliest leak.
+# `__import__("sys").exc_info()` fetches the exception currently being
+# handled, which is what the logging library attaches for a real error.
 def test_exception_is_logged_as_its_class_only() -> None:
     try:
         raise ValueError("patient Test Zeta, DOB 1970-01-01")
@@ -35,6 +54,12 @@ def test_exception_is_logged_as_its_class_only() -> None:
     assert "Zeta" not in json.dumps(out) and "1970" not in json.dumps(out)
 
 
+# Pins the whole extraction path, not just the formatter: a real intake
+# extraction (recorded proposal, no model call) is run while pytest's caplog
+# captures every log record, and none of the name, date of birth, phone or
+# chief concern from the form may appear in the formatted lines. Each line
+# must also carry the correlation id. httpx's records are ignored because
+# they are a library's, not the sidecar's, and no request is made anyway.
 def test_intake_extraction_logs_carry_no_identifiers(tmp_path: Path, caplog) -> None:
     generate_fixtures.intake_full(tmp_path)
     truth = json.loads((tmp_path / "intake-full.truth.json").read_text())
@@ -51,6 +76,9 @@ def test_intake_extraction_logs_carry_no_identifiers(tmp_path: Path, caplog) -> 
     assert lines and all(line["correlation_id"] == "phi-test" for line in lines)
 
 
+# Pins that the id is supplied by the request context, not by each log
+# call: a record with no id gets the bound one, and a record that names its
+# own id keeps it. The final bind("") clears the context for later tests.
 def test_bound_correlation_id_reaches_every_line_even_without_extra() -> None:
     """The id is structural: a log call that forgets it still carries it."""
     bind_correlation_id("ctx-0001")

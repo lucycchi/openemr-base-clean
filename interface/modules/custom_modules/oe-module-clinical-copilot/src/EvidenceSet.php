@@ -14,12 +14,28 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * The guideline passages one answer may draw on, looked up by chunk id.
+ * The Verifier asks "does this id exist?" and "what is its text?" exactly
+ * as it does of a FactSet, so a sentence citing a guideline is checked the
+ * same way as one citing the chart: any number or date in it must appear
+ * in the cited quote.
+ *
+ * "readonly" on the class: the map is built once in the constructor and
+ * cannot change, so an answer is always verified against the same evidence
+ * the model was shown.
+ */
 final readonly class EvidenceSet
 {
     /** @var array<string, EvidenceChunk> */
     private array $byId;
 
-    /** @param list<EvidenceChunk> $chunks */
+    /**
+     * Indexes the chunks by id. A later chunk with the same id replaces an
+     * earlier one.
+     *
+     * @param list<EvidenceChunk> $chunks
+     */
     public function __construct(array $chunks = [])
     {
         $byId = [];
@@ -29,27 +45,35 @@ final readonly class EvidenceSet
         $this->byId = $byId;
     }
 
+    /** The empty set, for a briefing or a chart-only answer where no guideline was retrieved. */
     public static function none(): self
     {
         return new self([]);
     }
 
+    /** True when a chunk with this id was retrieved, so a citation to it is legitimate. */
     public function has(string $id): bool
     {
         return isset($this->byId[$id]);
     }
 
+    /** The chunk for an id; callers check has() first, since an unknown id is a programming error. */
     public function get(string $id): EvidenceChunk
     {
         return $this->byId[$id] ?? throw new \OutOfBoundsException('Unknown chunk');
     }
 
-    /** @return list<EvidenceChunk> */
+    /**
+     * Every chunk, in retrieval order.
+     *
+     * @return list<EvidenceChunk>
+     */
     public function all(): array
     {
         return array_values($this->byId);
     }
 
+    /** True when nothing was retrieved for the question. */
     public function isEmpty(): bool
     {
         return $this->byId === [];

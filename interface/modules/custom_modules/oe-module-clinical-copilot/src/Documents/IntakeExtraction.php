@@ -14,6 +14,18 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Documents;
 
+/**
+ * The sidecar's reading of a patient intake form, reshaped for storage.
+ * The wire format (contracts/intake-form.schema.json) is nested: a
+ * chief_concern object, lists of medications, allergies and family history,
+ * a form_date, and a demographics block. This class flattens all of that
+ * into one list of IntakeItem, each carrying its own citation, because the
+ * copilot_intake table stores one row per item.
+ *
+ * Demographics are the exception: the name, date of birth, sex and phone
+ * printed on the form are kept only long enough for DocumentIngestService to
+ * compare them with the chart. They are never written to a table or a log.
+ */
 final readonly class IntakeExtraction
 {
     /**
@@ -24,25 +36,37 @@ final readonly class IntakeExtraction
     {
     }
 
-    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
+    /**
+     * Walks the nested JSON and builds the flat item list. Every clinical
+     * entry must carry a citation; one without is refused outright, because
+     * a value with no provenance could never be shown as verified or
+     * unverified, only as unknown.
+     *
+     * @param array<mixed> $a  decoded JSON; every value is narrowed here
+     */
     public static function fromArray(array $a): self
     {
         if (($a['doc_type'] ?? null) !== 'intake_form' || !is_array($a['demographics'] ?? null)) {
             throw new SidecarException('schema_mismatch');
         }
         $items = [];
+        // A helper for the single-value fields: read {value, citation} and append one item.
+        // `use (&$items)` lets the closure append to the outer list instead of a copy.
         $cited = static function (mixed $node, string $kind, string $path, ?string $detail = null) use (&$items): void {
             if (!is_array($node) || !is_string($node['value'] ?? null) || !is_array($node['citation'] ?? null)) {
                 throw new SidecarException('schema_mismatch');
             }
             $items[] = new IntakeItem($kind, $path, $node['value'], $detail, Citation::fromArray($node['citation']));
         };
+        // form_date is optional context, kept as an item so it is cited like everything else.
         if (is_string($a['form_date'] ?? null) && is_array($a['form_date_citation'] ?? null)) {
             $items[] = new IntakeItem('form_date', '/form_date', $a['form_date'], null, Citation::fromArray($a['form_date_citation']));
         }
         if (($a['chief_concern'] ?? null) !== null) {
             $cited($a['chief_concern'], 'chief_concern', '/chief_concern');
         }
+        // The three list sections. The JSON key names the section; the kind names the item.
+        // An empty list is fine (a patient with no allergies); a missing list is not.
         foreach (['medications' => 'medication', 'allergies' => 'allergy', 'family_history' => 'family_history'] as $key => $kind) {
             $list = $a[$key] ?? null;
             if (!is_array($list)) {
@@ -52,6 +76,8 @@ final readonly class IntakeExtraction
                 if (!is_array($entry) || !is_array($entry['citation'] ?? null)) {
                     throw new SidecarException('schema_mismatch');
                 }
+                // Each section names its main field differently (name / substance / condition)
+                // and its detail differently (dose + frequency / reaction / relative).
                 [$value, $detail, $field] = match ($kind) {
                     'medication' => [$entry['name'] ?? null, trim(sprintf('%s %s', is_string($entry['dose'] ?? null) ? $entry['dose'] : '', is_string($entry['frequency'] ?? null) ? $entry['frequency'] : '')) ?: null, 'name'],
                     'allergy' => [$entry['substance'] ?? null, is_string($entry['reaction'] ?? null) ? $entry['reaction'] : null, 'substance'],
@@ -63,6 +89,8 @@ final readonly class IntakeExtraction
                 $items[] = new IntakeItem($kind, "/$key/$i/$field", $value, $detail, Citation::fromArray($entry['citation']));
             }
         }
+        // Demographics: keep only the printed values, for the chart comparison. Their citations
+        // are not needed, since nothing about them is ever stored or displayed.
         $demo = [];
         foreach (['name', 'dob', 'sex', 'phone'] as $k) {
             $node = $a['demographics'][$k] ?? null;
@@ -73,7 +101,11 @@ final readonly class IntakeExtraction
         return new self($items, $demo);
     }
 
-    /** @return list<Citation> */
+    /**
+     * Every item's citation, in item order.
+     *
+     * @return list<Citation>
+     */
     public function citations(): array
     {
         return array_map(static fn(IntakeItem $i): Citation => $i->citation, $this->items);

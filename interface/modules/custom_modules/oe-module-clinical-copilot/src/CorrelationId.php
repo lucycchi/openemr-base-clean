@@ -26,7 +26,13 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final class CorrelationId
 {
-    /** 16 random bytes, hex-encoded — cryptographically random, no timestamp leak. */
+    /**
+     * 16 random bytes, hex-encoded — cryptographically random, no timestamp leak.
+     *
+     * Random rather than sequential so an id reveals nothing about how many
+     * requests came before it or when; 32 hex characters is what the
+     * copilot_document.correlation_id column and the contracts expect.
+     */
     public static function generate(): string
     {
         return bin2hex(random_bytes(16));

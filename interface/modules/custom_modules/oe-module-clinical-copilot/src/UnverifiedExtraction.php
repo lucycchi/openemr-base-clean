@@ -19,6 +19,14 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
 
+/**
+ * A copilot_document_fact row whose value never became a lab result, read
+ * back for the fact assembler. kind says which: unextracted_row (the model
+ * skipped a table row), collection_date or reported_date (a date it could
+ * not place on the page), or a lab result it could not place. Such a row
+ * becomes a must-surface fact, so the clinician is told "this may be on the
+ * paper but could not be confirmed" rather than nothing.
+ */
 final readonly class UnverifiedExtraction
 {
     public function __construct(
@@ -33,6 +41,12 @@ final readonly class UnverifiedExtraction
     ) {
     }
 
+    /**
+     * The fact sentence for the briefing. Every wording says "uploaded
+     * document" and "could not be verified" so the reader never mistakes
+     * it for a chart value; the raw row text is quoted for a skipped row so
+     * the clinician can read it off the page themselves.
+     */
     public function describe(): string
     {
         return match ($this->kind) {

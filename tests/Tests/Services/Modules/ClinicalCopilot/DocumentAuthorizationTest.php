@@ -34,6 +34,7 @@ class DocumentAuthorizationTest extends TestCase
     private int $pidA;
     private int $pidB;
 
+    /** Picks the two lowest-numbered seed patients as "this chart" and "another chart". */
     protected function setUp(): void
     {
         ModuleAutoload::register();
@@ -45,6 +46,7 @@ class DocumentAuthorizationTest extends TestCase
         $this->pidB = Row::int($rows[1], 'pid');
     }
 
+    /** Removes every document a test stored: the module row, the file on disk, then OpenEMR's row. */
     protected function tearDown(): void
     {
         foreach ($this->documentIds as $id) {
@@ -58,11 +60,17 @@ class DocumentAuthorizationTest extends TestCase
         }
     }
 
+    /** A tiny but real one-page PDF; the marker makes the bytes (and so the hash) unique per test. */
     private function pdf(string $marker): string
     {
         return "%PDF-1.4\n%" . $marker . "\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";
     }
 
+    /**
+     * Pins: find() and list() are scoped to the patient. A failure means a
+     * document id guessed from another chart could be read or extracted
+     * through this patient's session.
+     */
     public function testAnotherPatientsDocumentIsInvisibleThroughTheScopedStore(): void
     {
         $store = new DocumentStore();
@@ -74,6 +82,11 @@ class DocumentAuthorizationTest extends TestCase
         self::assertSame([], array_filter($store->list(new PatientId($this->pidB)), static fn(array $d) => $d['document_id'] === $stored['document_id']));
     }
 
+    /**
+     * Pins: deduplication is per patient. A failure means uploading a file
+     * for patient B could hand back patient A's document, which would file
+     * A's report in B's chart or leak A's document id.
+     */
     public function testSameBytesForTwoPatientsAreTwoDocuments(): void
     {
         $store = new DocumentStore();
@@ -86,6 +99,12 @@ class DocumentAuthorizationTest extends TestCase
         self::assertNotSame($a['document_id'], $b['document_id']);
     }
 
+    /**
+     * Pins: the exact ACL calls the controller makes give the expected
+     * verdicts for the seed roles. A failure means either the seed ACL
+     * changed or the controller's check no longer matches what the docs
+     * promise (physicians yes, receptionists no, unknown users no).
+     */
     public function testDocumentsAclSeparatesFrontDeskFromClinicians(): void
     {
         // The controller's exact checks: view for list, write|addonly for upload and extract.

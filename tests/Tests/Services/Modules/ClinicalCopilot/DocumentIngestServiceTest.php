@@ -55,6 +55,11 @@ class DocumentIngestServiceTest extends TestCase
         }
     }
 
+    /**
+     * Undoes everything a test wrote, in dependency order: results, report,
+     * order code, order (found through the result's document_id), then the
+     * module's rows, the file on disk and OpenEMR's document row.
+     */
     protected function tearDown(): void
     {
         foreach ($this->documentIds as $id) {
@@ -84,12 +89,19 @@ class DocumentIngestServiceTest extends TestCase
         return "%PDF-1.4\n%" . $marker . "\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";
     }
 
+    /** A document citation on page 1; anchored ones get a box, unanchored ones none, as the contract requires. */
     private function citation(int $documentId, string $path, string $value, bool $anchored): Citation
     {
         $box = $anchored ? new BBox(1, 230.0, 100.0, 260.0, 112.0, 612.0, 792.0) : null;
         return new Citation('document', (string) $documentId, '1', $path, $value, $anchored, $box, $box);
     }
 
+    /**
+     * A two-result lab report as the sidecar would return it: an abnormal
+     * glucose (always anchored) and a potassium whose anchoring the test
+     * chooses. The name "Test Zeta" matches no seed patient, so a mismatch
+     * flag is expected as well.
+     */
     private function labExtraction(int $documentId, bool $secondAnchored = true): ExtractionResult
     {
         $lab = new LabReportExtraction(
@@ -108,6 +120,7 @@ class DocumentIngestServiceTest extends TestCase
         return new ExtractionResult($documentId, DocumentStatus::Extracted, null, $lab, $secondAnchored ? 1.0 : 0.667);
     }
 
+    /** Stores a unique PDF for the seed patient and remembers it for tearDown. */
     private function store(string $marker): int
     {
         $stored = (new DocumentStore())->store(new PatientId($this->pid), DocType::LabPdf, "test-$marker.pdf", $this->pdf($marker), 'admin', 1);
@@ -115,6 +128,14 @@ class DocumentIngestServiceTest extends TestCase
         return $stored['document_id'];
     }
 
+    /**
+     * Pins: one anchored report produces the whole order/code/report/result
+     * chain with the right statuses and a uuid, a provenance row per field,
+     * the Week 1 chart source sees the results with their citations, and a
+     * second persist adds nothing. A failure means either the chart would
+     * show an incomplete lab record or a retry would double a patient's
+     * results.
+     */
     public function testPersistWritesTheFullLabStructureAndIsIdempotent(): void
     {
         $documentId = $this->store('idem-' . bin2hex(random_bytes(4)));
@@ -148,6 +169,12 @@ class DocumentIngestServiceTest extends TestCase
         self::assertSame(2, self::sqlCount(QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM procedure_result WHERE document_id = ?", 'n', [$documentId])));
     }
 
+    /**
+     * Pins: a value the sidecar could not place on the page is never written
+     * as a lab result, but is still surfaced as an unverified extraction. A
+     * failure in one direction puts an unconfirmed number in the chart; in
+     * the other, it hides a possible omission from the clinician.
+     */
     public function testUnanchoredValueIsRecordedButNotPersistedAsALabRow(): void
     {
         $documentId = $this->store('unv-' . bin2hex(random_bytes(4)));
@@ -159,6 +186,11 @@ class DocumentIngestServiceTest extends TestCase
         self::assertNotEmpty(array_filter($unverified, static fn($u) => $u->documentId === $documentId && $u->analyte === 'Potassium'));
     }
 
+    /**
+     * Pins: a failed extraction records only its status and reason. A
+     * failure means a document the sidecar could not read would still leave
+     * rows in the lab tables.
+     */
     public function testFailedExtractionLeavesNoLabRows(): void
     {
         $documentId = $this->store('fail-' . bin2hex(random_bytes(4)));
@@ -170,6 +202,11 @@ class DocumentIngestServiceTest extends TestCase
         self::assertSame(['status' => 'failed', 'failure_reason' => 'unreadable'], $row);
     }
 
+    /**
+     * Pins: the same bytes under a different filename are the same document
+     * for one patient. A failure means every re-upload would file another
+     * copy in the patient's Documents tab and could be extracted again.
+     */
     public function testReUploadOfTheSameBytesForTheSamePatientIsDeduplicated(): void
     {
         $marker = 'dup-' . bin2hex(random_bytes(4));
@@ -182,6 +219,12 @@ class DocumentIngestServiceTest extends TestCase
         self::assertSame(1, self::sqlCount(QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM copilot_document WHERE document_id = ?", 'n', [$first['document_id']])));
     }
 
+    /**
+     * Pins: intake items land in copilot_intake with their citations, the
+     * mismatches are flagged with fixed phrases, and the name and date of
+     * birth from the form appear nowhere in the stored values. A failure on
+     * the last point means demographics from a paper form were persisted.
+     */
     public function testIntakePersistsCitedItemsAndFlagsDemographicMismatchesWithoutStoringThem(): void
     {
         $documentId = $this->store('intake-' . bin2hex(random_bytes(4)));
@@ -260,6 +303,10 @@ class DocumentIngestServiceTest extends TestCase
         }
     }
 
+    /**
+     * Pins: the PDF check looks at the bytes, not the name or declared type.
+     * A failure means a renamed image or executable would be filed as a PDF.
+     */
     public function testUploadRejectsNonPdf(): void
     {
         $this->expectException(\OpenEMR\Modules\ClinicalCopilot\Documents\UploadRejected::class);

@@ -34,7 +34,13 @@ final class ReadinessProbesTest extends TestCase
         ModuleAutoload::register();
     }
 
-    /** @param list<Response|ConnectException> $answers */
+    /**
+     * Runs one named probe against a client that replays the given answers
+     * in order (a MockHandler), and returns the probe's reason string, null
+     * meaning healthy.
+     *
+     * @param list<Response|ConnectException> $answers
+     */
     private static function probe(string $name, array $answers, ?Config $config = null): ?string
     {
         $client = new Client(['handler' => HandlerStack::create(new MockHandler($answers)), 'http_errors' => false]);
@@ -42,12 +48,22 @@ final class ReadinessProbesTest extends TestCase
         return ReadinessProbes::probes($config, $client)[$name]();
     }
 
+    /**
+     * Pins: the set and order of probes in the readiness report. A failure
+     * means a dependency was added or dropped without the report (and
+     * whatever monitors it) being updated.
+     */
     public function testTheProbesAreTheFourDependenciesTheReportNames(): void
     {
         $config = new Config('sk-test', 'gpt-4o-mini', 'https://cloud.langfuse.com', 'pk', 'sk');
         self::assertSame(['contracts', 'database', 'openai', 'langfuse', 'sidecar'], array_keys(ReadinessProbes::probes($config, new Client())));
     }
 
+    /**
+     * Pins: the contracts probe passes in a complete install. A failure
+     * means the validator library or a schema file went missing from the
+     * build, which would make every sidecar reply a schema_mismatch.
+     */
     public function testTheContractsProbeIsOkWhenTheValidatorAndTheFilesArePresent(): void
     {
         // In this test process the library is installed and the files are on disk: the probe passes.
@@ -55,6 +71,11 @@ final class ReadinessProbesTest extends TestCase
         self::assertNull(self::probe('contracts', []));
     }
 
+    /**
+     * Pins: each sidecar state maps to a fixed reason, and a 500 body that
+     * names a file path is never echoed. A failure means either a state was
+     * mislabelled or an upstream error message leaked into the report.
+     */
     public function testSidecarReadyIsOkNotReadyIsAReasonAndUnreachableIsAReason(): void
     {
         self::assertNull(self::probe('sidecar', [new Response(200, [], '{"status":"ready"}')]));
@@ -63,6 +84,11 @@ final class ReadinessProbesTest extends TestCase
         self::assertSame('sidecar unreachable', self::probe('sidecar', [new ConnectException('cURL error 7: connection refused to 10.0.0.9', new Request('GET', 'http://copilot-sidecar:8000/ready'))]));
     }
 
+    /**
+     * Pins: a bad key and an exhausted quota both read "openai unavailable".
+     * A failure means the readiness report would reveal whether the key is
+     * valid or the account is out of credit.
+     */
     public function testOpenAiReasonsNeverRevealKeyOrQuotaState(): void
     {
         self::assertNull(self::probe('openai', [new Response(200, [], '{"data":[]}')]));
@@ -71,6 +97,11 @@ final class ReadinessProbesTest extends TestCase
         self::assertSame('openai not configured', self::probe('openai', [], new Config('', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', '')));
     }
 
+    /**
+     * Pins: Langfuse being absent or down is reported with a fixed phrase.
+     * A failure means a tracing problem would surface as something other
+     * than these two reasons, or would be reported as healthy.
+     */
     public function testLangfuseUnconfiguredOrDownIsAFixedReason(): void
     {
         self::assertNull(self::probe('langfuse', [new Response(200, [], 'OK')]));

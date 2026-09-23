@@ -14,13 +14,26 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Documents;
 
+/**
+ * A row of the lab table that looks like a result (a number and a unit)
+ * but that the model never proposed, even after the sidecar's one retry.
+ * It is kept so an omission is visible to the clinician as an unverified
+ * row instead of silently disappearing.
+ *
+ * JSON field -> property: page -> page, text -> text (the row as printed),
+ * row_bbox -> rowBbox (where the row is, for the viewer to outline).
+ */
 final readonly class UnextractedRow
 {
     public function __construct(public int $page, public string $text, public BBox $rowBbox)
     {
     }
 
-    /** @param array<mixed> $a  decoded JSON; every value is narrowed here */
+    /**
+     * Builds a row from decoded JSON; all three fields are required.
+     *
+     * @param array<mixed> $a  decoded JSON; every value is narrowed here
+     */
     public static function fromArray(array $a): self
     {
         if (!is_int($a['page'] ?? null) || !is_string($a['text'] ?? null) || !is_array($a['row_bbox'] ?? null)) {

@@ -26,9 +26,22 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+/**
+ * Static helpers only ("static" means called on the class, no instance):
+ *
+ *   model JSON -> narration(): keep well-formed sentences, recover inline
+ *                 citations -> scrub(): tidy each sentence -> Narration
+ */
 final class ModelOutput
 {
-    /** @param array<string, mixed> $data decoded model output (llm.briefing.output / llm.followup.output) */
+    /**
+     * Turns the model's {sentences: [{text, fact_ids}]} into a Narration.
+     * A sentence without text is skipped; an id that is not a string is
+     * skipped; the sentence itself is kept. Nothing here decides whether a
+     * citation is valid; that is the Verifier's job, one step later.
+     *
+     * @param array<string, mixed> $data decoded model output (llm.briefing.output / llm.followup.output)
+     */
     public static function narration(array $data): Narration
     {
         $sentences = [];
@@ -48,6 +61,8 @@ final class ModelOutput
                 // ("[e0f60b55960c]") and leave fact_ids empty because the field
                 // is named for facts. A bracketed id is a citation; recover it
                 // so the Verifier judges the sentence against what was cited.
+                // The pattern: square brackets holding one or more hex ids of 8
+                // (fact) or 12 (chunk) characters, comma-separated.
                 if (preg_match_all('/\[([0-9a-f]{8,12}(?:\s*,\s*[0-9a-f]{8,12})*)\]/', $item['text'], $m)) {
                     foreach ($m[1] as $group) {
                         foreach (preg_split('/\s*,\s*/', $group) ?: [] as $id) {
