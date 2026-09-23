@@ -1,7 +1,11 @@
 <?php
 
 /**
- * One numeric lab result as the assembler needs it.
+ * One lab result as the chart holds it. `value` is the numeric reading, or
+ * null for a qualitative result ("positive", "<5") whose wording is in
+ * `text`. `printedRange` and `labFlag` are what the reporting laboratory
+ * said about the result (the `range` and `abnormal` columns); the briefing
+ * judges them alongside the standard reference table.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -16,11 +20,6 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
 
-/**
- * One numeric lab result. Only numeric results are loaded (see
- * ChartSource::labs) because the abnormal/delta logic needs a float to
- * compare against ReferenceRanges. $loinc is the standard test code.
- */
 final readonly class LabRecord
 {
     public function __construct(
@@ -28,13 +27,19 @@ final readonly class LabRecord
         public int $encounterId,
         public string $loinc,
         public string $name,
-        public float $value,
+        public ?float $value,
         public string $units,
         public \DateTimeImmutable $date,
-        /** Week 2: set when the result was extracted from an uploaded document. */
         public ?Citation $citation = null,
-        /** Week 2: the printed unit differed from the canonical unit for the LOINC; skip reference-range comparison. */
         public bool $unitMismatch = false,
+        public ?string $printedRange = null,
+        public string $labFlag = '',
+        public ?string $text = null,
     ) {
+    }
+
+    public function isNumeric(): bool
+    {
+        return $this->value !== null;
     }
 }

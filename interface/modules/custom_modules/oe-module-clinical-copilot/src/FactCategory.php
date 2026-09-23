@@ -30,8 +30,10 @@ enum FactCategory: string
     case AllergyNew = 'allergy_new';
     case AllergyActive = 'allergy_active';
     case AllergyMedicationHit = 'allergy_medication_hit';
+    case LabCritical = 'lab_critical';
     case LabAbnormal = 'lab_abnormal';
     case LabDelta = 'lab_delta';
+    case LabNormal = 'lab_normal';
     case ProblemNew = 'problem_new';
     case Truncation = 'truncation';
     /** Week 2: a value or row from an uploaded document that could not be verified against the page. */
@@ -61,6 +63,7 @@ enum FactCategory: string
             self::MedicationChanged,
             self::AllergyNew,
             self::AllergyMedicationHit,
+            self::LabCritical,
             self::LabAbnormal,
             self::ProblemNew,
             self::Truncation,
@@ -74,6 +77,7 @@ enum FactCategory: string
             self::AllergyActive,
             self::IntakeChiefConcern,
             self::IntakeFamilyHistory,
+            self::LabNormal,
             self::LabDelta => false,
         };
     }

@@ -19,6 +19,9 @@ use OpenEMR\Modules\ClinicalCopilot\AccessDeniedException;
 use OpenEMR\Modules\ClinicalCopilot\AllergyRecord;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
 use OpenEMR\Modules\ClinicalCopilot\DateProvenance;
+use OpenEMR\Modules\ClinicalCopilot\Demographics;
+use OpenEMR\Modules\ClinicalCopilot\Documents\BBox;
+use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
 use OpenEMR\Modules\ClinicalCopilot\EncounterRecord;
 use OpenEMR\Modules\ClinicalCopilot\Fact;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
@@ -238,6 +241,21 @@ final class FactAssemblerTest extends TestCase
         ));
     }
 
+    /**
+     * Keyed by record id, so a test never depends on sort order.
+     *
+     * @param list<Fact> $facts
+     * @return array<int, Fact>
+     */
+    private function byRecordId(array $facts): array
+    {
+        $out = [];
+        foreach ($facts as $f) {
+            $out[$f->recordId] = $f;
+        }
+        return $out;
+    }
+
     private function withPriorVisitOn(string $date): void
     {
         $this->chart->encounters = [$this->encounter(99, $date)];
@@ -375,9 +393,181 @@ final class FactAssemblerTest extends TestCase
         self::assertSame(812, $hits[0]->recordId);
     }
 
-    private function lab(int $id, string $loinc, string $name, float $value, string $units, string $date, int $encounterId = 100): LabRecord
+    private function lab(int $id, string $loinc, string $name, ?float $value, string $units, string $date, int $encounterId = 100, ?string $printedRange = null, string $labFlag = '', ?string $text = null, bool $fromDocument = false, bool $unitMismatch = false): LabRecord
     {
-        return new LabRecord($id, $encounterId, $loinc, $name, $value, $units, new DateTimeImmutable($date));
+        $citation = $fromDocument ? new Citation('document', '12', '1', "/results/$id/value", $text ?? (string) $value, true, new BBox(1, 10.0, 10.0, 20.0, 20.0, 612.0, 792.0), null) : null;
+        return new LabRecord($id, $encounterId, $loinc, $name, $value, $units, new DateTimeImmutable($date), $citation, $unitMismatch, $printedRange, $labFlag, $text);
+    }
+
+    // -- Task 2: ranges from the lab, the report and the standard table ------
+
+    public function testAbnormalFromBuiltInRangeWhenReportPrintedNone(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [$this->lab(910, '1742-6', 'ALT', 62.0, 'U/L', '2026-09-10', fromDocument: true)];
+
+        $abnormal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::LabAbnormal);
+
+        self::assertCount(1, $abnormal);
+        self::assertSame('ALT 62 U/L on 2026-09-10 (above the standard range 7-56 U/L; no range printed on the report)', $abnormal[0]->value);
+        self::assertNotNull($abnormal[0]->citation);
+    }
+
+    public function testAbnormalFromLabsPrintedRange(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [$this->lab(911, '2823-3', 'Potassium', 5.4, 'mmol/L', '2026-09-10', printedRange: '3.5-5.1')];
+
+        $abnormal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::LabAbnormal);
+
+        self::assertCount(1, $abnormal);
+        self::assertSame("Potassium 5.4 mmol/L on 2026-09-10 (above the lab's range 3.5-5.1)", $abnormal[0]->value);
+    }
+
+    public function testAbnormalFromLabFlagAlone(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        // No standard range for this analyte and the value sits inside the printed range: only the lab's flag says abnormal.
+        $this->chart->labs = [$this->lab(912, '99999-9', 'Obscure assay', 5.0, 'x', '2026-09-10', printedRange: '0-10', labFlag: 'high')];
+
+        $abnormal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::LabAbnormal);
+
+        self::assertCount(1, $abnormal);
+        self::assertSame("Obscure assay 5 x on 2026-09-10 (flagged high by the lab; lab's range 0-10)", $abnormal[0]->value);
+    }
+
+    public function testLabRangeAndStandardRangeDisagreementIsStatedInTheFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [$this->lab(913, '3016-3', 'TSH', 4.2, 'uIU/mL', '2026-09-10', printedRange: '0.5-5.5')];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $abnormal = $this->factsIn($result, FactCategory::LabAbnormal);
+        self::assertCount(1, $abnormal);
+        self::assertSame("TSH 4.2 uIU/mL on 2026-09-10 (within the lab's range 0.5-5.5; above the standard range 0.4-4 uIU/mL)", $abnormal[0]->value);
+        self::assertSame([], $this->factsIn($result, FactCategory::LabNormal));
+    }
+
+    public function testNormalResultIsALabNormalFactWithItsRange(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [
+            $this->lab(914, '2951-2', 'Sodium', 139.0, 'mmol/L', '2026-09-10'),
+            $this->lab(915, '2075-0', 'Chloride', 101.0, 'mmol/L', '2026-09-10', printedRange: '98-107'),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $normal = $this->byRecordId($this->factsIn($result, FactCategory::LabNormal));
+        self::assertCount(2, $normal);
+        self::assertSame('Sodium 139 mmol/L on 2026-09-10 (reference range 135-145 mmol/L)', $normal[914]->value);
+        self::assertSame("Chloride 101 mmol/L on 2026-09-10 (lab's range 98-107)", $normal[915]->value);
+        self::assertSame('result', $normal[914]->field);
+        self::assertFalse($normal[914]->category->mustSurface());
+        self::assertSame([], $this->factsIn($result, FactCategory::LabAbnormal));
+    }
+
+    public function testQualitativePositiveIsAbnormal(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [
+            $this->lab(916, '', 'Urine culture', null, '', '2026-09-10', labFlag: 'yes', text: 'positive'),
+            $this->lab(917, '', 'Hepatitis C antibody', null, '', '2026-09-10', text: 'Reactive'),
+        ];
+
+        $abnormal = $this->byRecordId($this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::LabAbnormal));
+
+        self::assertCount(2, $abnormal);
+        self::assertSame('Urine culture: positive on 2026-09-10 (flagged abnormal by the lab)', $abnormal[916]->value);
+        self::assertSame('Hepatitis C antibody: Reactive on 2026-09-10 (reported as reactive)', $abnormal[917]->value);
+    }
+
+    public function testQualitativeUnflaggedIsNormal(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [$this->lab(918, '', 'Urine culture', null, '', '2026-09-10', text: 'negative')];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $normal = $this->factsIn($result, FactCategory::LabNormal);
+        self::assertCount(1, $normal);
+        self::assertSame('Urine culture: negative on 2026-09-10', $normal[0]->value);
+        self::assertSame([], $this->factsIn($result, FactCategory::LabAbnormal));
+    }
+
+    public function testCriticalValueIsALabCriticalFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [
+            $this->lab(919, '2823-3', 'Potassium', 6.4, 'mmol/L', '2026-09-10', printedRange: '3.5-5.1'),
+            $this->lab(920, '718-7', 'Hemoglobin', 9.0, 'g/dL', '2026-09-10', labFlag: 'vlow'),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $critical = $this->byRecordId($this->factsIn($result, FactCategory::LabCritical));
+        self::assertCount(2, $critical);
+        self::assertSame("Potassium 6.4 mmol/L on 2026-09-10 (above the panic limit 6 mmol/L; lab's range 3.5-5.1)", $critical[919]->value);
+        self::assertSame('Hemoglobin 9 g/dL on 2026-09-10 (flagged vlow by the lab; below the standard range 12-17.5 g/dL)', $critical[920]->value);
+        self::assertTrue($critical[919]->category->mustSurface());
+        self::assertSame([], $this->factsIn($result, FactCategory::LabAbnormal), 'a critical result is one fact, not two');
+    }
+
+    public function testComparatorResultIsQualitativeNotDropped(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [$this->lab(921, '', 'HCG, quantitative', null, 'mIU/mL', '2026-09-10', text: '<5')];
+
+        $normal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::LabNormal);
+
+        self::assertCount(1, $normal);
+        self::assertSame('HCG, quantitative: <5 mIU/mL on 2026-09-10', $normal[0]->value);
+    }
+
+    public function testUnparseablePrintedRangeFallsBackToBuiltIn(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [$this->lab(922, '2951-2', 'Sodium', 150.0, 'mmol/L', '2026-09-10', printedRange: 'Negative', fromDocument: true)];
+
+        $abnormal = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::LabAbnormal);
+
+        self::assertCount(1, $abnormal);
+        self::assertSame('Sodium 150 mmol/L on 2026-09-10 (above the standard range 135-145 mmol/L)', $abnormal[0]->value);
+    }
+
+    public function testSexSpecificRangeUsesPatientSex(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [$this->lab(923, '718-7', 'Hemoglobin', 13.0, 'g/dL', '2026-09-10')];
+
+        $this->chart->demographics = new Demographics('F', null);
+        $female = $this->assembler()->assemble(new PatientId(7), null);
+        self::assertCount(1, $this->factsIn($female, FactCategory::LabNormal));
+        self::assertSame([], $this->factsIn($female, FactCategory::LabAbnormal));
+
+        $this->chart->demographics = new Demographics('M', null);
+        $male = $this->assembler()->assemble(new PatientId(7), null);
+        $abnormal = $this->factsIn($male, FactCategory::LabAbnormal);
+        self::assertCount(1, $abnormal);
+        self::assertSame('Hemoglobin 13 g/dL on 2026-09-10 (below the standard range 13.5-17.5 g/dL)', $abnormal[0]->value);
+    }
+
+    public function testUnitMismatchStillHonoursTheLabFlag(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [
+            $this->lab(924, '2345-7', 'Glucose', 5.9, 'mmol/L', '2026-09-10', labFlag: 'high', unitMismatch: true),
+            $this->lab(925, '2345-7', 'Glucose', 5.1, 'mmol/L', '2026-09-09', unitMismatch: true),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $abnormal = $this->factsIn($result, FactCategory::LabAbnormal);
+        self::assertCount(1, $abnormal);
+        self::assertSame('Glucose 5.9 mmol/L on 2026-09-10 (flagged high by the lab)', $abnormal[0]->value);
+        // The second reading is in an unexpected unit with no flag: not judged against the standard range, no fact.
+        self::assertSame([], $this->factsIn($result, FactCategory::LabNormal));
     }
 
     public function testLabOutsideReferenceRangeSinceLastVisitIsAnAbnormalFact(): void
@@ -392,7 +582,7 @@ final class FactAssemblerTest extends TestCase
 
         $abnormal = $this->factsIn($result, FactCategory::LabAbnormal);
         self::assertCount(1, $abnormal);
-        self::assertSame('Hemoglobin A1c 7.8 % on 2026-09-10 (above reference range 4-5.6 %)', $abnormal[0]->value);
+        self::assertSame('Hemoglobin A1c 7.8 % on 2026-09-10 (above the standard range 4-5.6 %)', $abnormal[0]->value);
         self::assertSame('ObservationLabService', $abnormal[0]->service);
         self::assertSame(901, $abnormal[0]->recordId);
         self::assertSame('result', $abnormal[0]->field);
@@ -406,6 +596,7 @@ final class FactAssemblerTest extends TestCase
         $result = $this->assembler()->assemble(new PatientId(7), null);
 
         self::assertSame([], $this->factsIn($result, FactCategory::LabAbnormal));
+        self::assertSame([], $this->factsIn($result, FactCategory::LabNormal), 'no range at all: no fact, as before');
     }
 
     public function testLabBeforeThePriorVisitIsNotFlagged(): void
@@ -430,7 +621,7 @@ final class FactAssemblerTest extends TestCase
 
         $delta = $this->factsIn($result, FactCategory::LabDelta);
         self::assertCount(1, $delta);
-        self::assertSame('Hemoglobin A1c changed from 7 % (2026-06-10) to 7.8 % (2026-09-10): up 0.8', $delta[0]->value);
+        self::assertSame('Hemoglobin A1c changed from 7 % (2026-06-10) to 7.8 % (2026-09-10): up 0.8 (reference range 4-5.6 %)', $delta[0]->value);
         self::assertSame(901, $delta[0]->recordId);
         self::assertSame('delta', $delta[0]->field);
     }

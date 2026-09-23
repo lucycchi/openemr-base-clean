@@ -14,9 +14,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
-use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
-
 use DateTimeImmutable;
+use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -37,7 +36,7 @@ final class FactAssembler
         private readonly ChartSource $chart,
         private readonly Authorization $auth,
         private readonly ClockInterface $clock,
-        private readonly ReferenceRanges $ranges = new ReferenceRanges(),
+        private readonly LabJudge $judge = new LabJudge(),
     ) {
     }
 
@@ -121,41 +120,44 @@ final class FactAssembler
             }
         }
 
+        $sex = $this->chart->demographics($pid)->sex;
         $labs = array_values(array_filter(
             $this->chart->labs($pid),
             fn(LabRecord $l) => !isset($hiddenEncounterIds[$l->encounterId])
         ));
         usort($labs, fn(LabRecord $a, LabRecord $b) => [$b->date, $b->id] <=> [$a->date, $a->id]);
-        // Only labs since the prior visit produce facts, but older labs stay
-        // in the sorted list so previousResult() can find the value to diff against.
         foreach ($labs as $i => $l) {
-            // Week 2: a result read from an uploaded document is new information
-            // even for a patient with no prior visit to compare against.
+            // Only what is new since the prior visit; on a first visit, document-cited results still count.
             if (!$this->isNew($l->date, $since) && !($l->citation !== null && $since === null)) {
                 continue;
             }
-            // Abnormal: outside the reference range for a LOINC we know.
-            $range = $l->unitMismatch ? null : $this->ranges->for($l->loinc);
-            if ($range !== null && ($l->value < $range[0] || $l->value > $range[1])) {
-                $direction = $l->value < $range[0] ? 'below' : 'above';
-                $facts[] = $this->fact(
-                    'ObservationLabService',
-                    $l->id,
-                    'result',
-                    sprintf('%s %s %s on %s (%s reference range %s-%s %s)', $l->name, $this->num($l->value), $l->units, $l->date->format('Y-m-d'), $direction, $this->num($range[0]), $this->num($range[1]), $range[2]),
-                    FactCategory::LabAbnormal,
-                    $l->citation,
-                );
+            $judged = $this->judge->judge($l, $sex);
+            $day = $l->date->format('Y-m-d');
+            $reading = $l->value === null
+                ? trim(sprintf('%s: %s %s', $l->name, trim((string) $l->text), $l->units))
+                : trim(sprintf('%s %s %s', $l->name, $this->num($l->value), $l->units));
+            $text = $judged->clause === '' ? "$reading on $day" : "$reading on $day ({$judged->clause})";
+            $category = match ($judged->verdict) {
+                LabVerdict::Critical => FactCategory::LabCritical,
+                LabVerdict::Abnormal => FactCategory::LabAbnormal,
+                LabVerdict::Normal => FactCategory::LabNormal,
+                LabVerdict::Unranged => null,
+            };
+            if ($category !== null) {
+                $facts[] = $this->fact('ObservationLabService', $l->id, 'result', $text, $category, $l->citation);
             }
-            // Delta: same test, earlier result with a different value.
+            if ($l->value === null || $l->loinc === '') {
+                continue;
+            }
             $previous = $this->previousResult($labs, $i);
-            if ($previous !== null && $previous->value !== $l->value) {
+            if ($previous !== null && $previous->value !== null && $previous->value !== $l->value) {
                 $diff = $l->value - $previous->value;
+                $delta = sprintf('%s changed from %s %s (%s) to %s %s (%s): %s %s', $l->name, $this->num($previous->value), $previous->units, $previous->date->format('Y-m-d'), $this->num($l->value), $l->units, $day, $diff > 0 ? 'up' : 'down', $this->num(abs($diff)));
                 $facts[] = $this->fact(
                     'ObservationLabService',
                     $l->id,
                     'delta',
-                    sprintf('%s changed from %s %s (%s) to %s %s (%s): %s %s', $l->name, $this->num($previous->value), $previous->units, $previous->date->format('Y-m-d'), $this->num($l->value), $l->units, $l->date->format('Y-m-d'), $diff > 0 ? 'up' : 'down', $this->num(abs($diff))),
+                    $judged->rangeClause === '' ? $delta : "$delta ({$judged->rangeClause})",
                     FactCategory::LabDelta,
                     $l->citation,
                 );
@@ -214,7 +216,9 @@ final class FactAssembler
             $label = match (FactCategory::from($key)) {
                 FactCategory::MedicationActive => 'active medications',
                 FactCategory::MedicationNew => 'new medications',
+                FactCategory::LabCritical => 'critical lab values',
                 FactCategory::LabAbnormal => 'abnormal lab results',
+                FactCategory::LabNormal => 'normal lab results',
                 FactCategory::LabDelta => 'changed lab results',
                 FactCategory::Encounter => 'encounters',
                 FactCategory::PriorVisit => 'prior visits',
@@ -245,7 +249,7 @@ final class FactAssembler
     {
         $current = $labs[$index];
         for ($j = $index + 1, $n = count($labs); $j < $n; $j++) {
-            if ($labs[$j]->loinc === $current->loinc) {
+            if ($labs[$j]->loinc === $current->loinc && $labs[$j]->value !== null) {
                 return $labs[$j];
             }
         }

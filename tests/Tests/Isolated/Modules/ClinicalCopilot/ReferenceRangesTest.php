@@ -16,7 +16,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot;
 
-use OpenEMR\Modules\ClinicalCopilot\Range;
 use OpenEMR\Modules\ClinicalCopilot\ReferenceRanges;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
@@ -35,8 +34,9 @@ final class ReferenceRangesTest extends TestCase
     {
         $map = json_decode((string) file_get_contents(self::MODULE . '/contracts/loinc_map.json'), true, 8, JSON_THROW_ON_ERROR);
         self::assertIsArray($map);
+        self::assertIsArray($map['analytes']);
         $codes = [];
-        foreach ($map['analytes'] ?? [] as $entry) {
+        foreach ($map['analytes'] as $entry) {
             self::assertIsArray($entry);
             self::assertIsString($entry['loinc']);
             $codes[$entry['loinc']] = true;
@@ -55,7 +55,6 @@ final class ReferenceRangesTest extends TestCase
     {
         foreach ((new ReferenceRanges())->all() as $loinc => $rows) {
             foreach ($rows as $row) {
-                self::assertInstanceOf(Range::class, $row);
                 self::assertNotSame('', $row->source, "$loinc has a range without a source");
                 self::assertNotSame('', $row->unit, "$loinc has a range without a unit");
                 self::assertTrue($row->low !== null || $row->high !== null, "$loinc has a range with no bound at all");
@@ -102,11 +101,14 @@ final class ReferenceRangesTest extends TestCase
 
     public function testPanicBoundsAreOptional(): void
     {
-        $ranges = new ReferenceRanges();
-        self::assertSame(6.0, $ranges->range('2823-3')?->panicHigh);
-        self::assertSame(2.8, $ranges->range('2823-3')?->panicLow);
-        self::assertNull($ranges->range('3016-3')?->panicHigh);
-        self::assertNull($ranges->range('3016-3')?->panicLow);
+        $potassium = (new ReferenceRanges())->range('2823-3');
+        $tsh = (new ReferenceRanges())->range('3016-3');
+        self::assertNotNull($potassium);
+        self::assertNotNull($tsh);
+        self::assertSame(6.0, $potassium->panicHigh);
+        self::assertSame(2.8, $potassium->panicLow);
+        self::assertNull($tsh->panicHigh);
+        self::assertNull($tsh->panicLow);
     }
 
     public function testVersionComesFromTheFile(): void

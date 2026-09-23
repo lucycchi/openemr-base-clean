@@ -31,8 +31,8 @@ use OpenEMR\Modules\ClinicalCopilot\ProblemRecord;
  */
 final class FakeChartSource implements ChartSource
 {
-    /** @var list<\OpenEMR\Modules\ClinicalCopilot\UnverifiedExtraction> */
     public ?Demographics $demographics = null;
+    /** @var list<\OpenEMR\Modules\ClinicalCopilot\UnverifiedExtraction> */
     public array $unverified = [];
     /** @var list<\OpenEMR\Modules\ClinicalCopilot\IntakeRecord> */
     public array $intake = [];

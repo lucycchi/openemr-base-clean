@@ -82,6 +82,7 @@
     // The left side of each line is the machine name the server sends; the
     // right side is what the clinician reads as a section heading.
     const CATEGORY_LABELS = {
+        lab_critical: 'Critical lab values',
         allergy_medication_hit: 'Allergy / medication matches',
         document_mismatch: 'Document does not match the chart',
         intake_chief_concern: 'Reason for visit (intake form)',
@@ -98,6 +99,7 @@
         lab_delta: 'Lab changes vs prior result',
         medication_active: 'Active medications',
         allergy_active: 'Allergies on file',
+        lab_normal: 'Normal labs since last visit',
         intake_family_history: 'Family history (intake form)',
         truncation: 'Not shown',
     };

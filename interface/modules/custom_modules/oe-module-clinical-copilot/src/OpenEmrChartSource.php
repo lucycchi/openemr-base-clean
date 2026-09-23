@@ -106,36 +106,38 @@ final class OpenEmrChartSource implements ChartSource
             "SELECT pr.procedure_result_id, po.encounter_id, pr.result_code, pr.result_text, pr.result, pr.units,
                     COALESCE(NULLIF(pr.date, '0000-00-00 00:00:00'), NULLIF(prp.date_report, '0000-00-00 00:00:00'),
                              NULLIF(po.date_collected, '0000-00-00 00:00:00'), po.date_ordered) AS date,
-                    cdf.document_id AS doc_id, cdf.field_path, cdf.page, cdf.bbox_json, cdf.row_bbox_json, cdf.unit_mismatch
+                    pr.`range` AS printed_range, pr.abnormal, cdf.document_id AS doc_id, cdf.field_path, cdf.page, cdf.bbox_json, cdf.row_bbox_json, cdf.unit_mismatch
              FROM procedure_result pr
              JOIN procedure_report prp ON prp.procedure_report_id = pr.procedure_report_id
              JOIN procedure_order po ON po.procedure_order_id = prp.procedure_order_id
              LEFT JOIN copilot_document_fact cdf ON cdf.procedure_result_id = pr.procedure_result_id
-             WHERE po.patient_id = ? AND pr.result REGEXP '^-?[0-9]+(\\\\.[0-9]+)?$' AND pr.result_code <> ''",
+             WHERE po.patient_id = ? AND TRIM(pr.result) <> ''",
             [$pid->value]
         );
         return array_map(
-            fn(array $r) => new LabRecord(
-                Row::int($r, 'procedure_result_id'),
-                Row::int($r, 'encounter_id'),
-                Row::str($r, 'result_code'),
-                $this->shortLabName(Row::str($r, 'result_text')),
-                Row::float($r, 'result'),
-                Row::str($r, 'units'),
-                $this->date(Row::str($r, 'date')),
-                $this->documentCitation($r),
-                Row::int($r, 'unit_mismatch') === 1,
-            ),
+            function (array $r): LabRecord {
+                $raw = trim(Row::str($r, 'result'));
+                $numeric = preg_match('/^-?\d+(?:\.\d+)?$/', $raw) === 1;
+                $printed = trim(Row::str($r, 'printed_range'));
+                return new LabRecord(
+                    Row::int($r, 'procedure_result_id'),
+                    Row::int($r, 'encounter_id'),
+                    Row::str($r, 'result_code'),
+                    $this->shortLabName(Row::str($r, 'result_text')),
+                    $numeric ? (float) $raw : null,
+                    Row::str($r, 'units'),
+                    $this->date(Row::str($r, 'date')),
+                    $this->documentCitation($r),
+                    Row::int($r, 'unit_mismatch') === 1,
+                    $printed === '' ? null : $printed,
+                    Row::str($r, 'abnormal'),
+                    $numeric ? null : $raw,
+                );
+            },
             $rows
         );
     }
 
-    /**
-     * A document citation for a lab row that came from an uploaded PDF
-     * (copilot_document_fact joined on procedure_result_id), else null.
-     *
-     * @param array<mixed> $r  a lab row as the query layer returns it
-     */
     public function demographics(PatientId $pid): Demographics
     {
         $row = QueryUtils::querySingleRow("SELECT sex, DOB FROM patient_data WHERE pid = ?", [$pid->value]);
@@ -149,6 +151,12 @@ final class OpenEmrChartSource implements ChartSource
         );
     }
 
+    /**
+     * A document citation for a lab row that came from an uploaded PDF
+     * (copilot_document_fact joined on procedure_result_id), else null.
+     *
+     * @param array<mixed> $r  a lab row as the query layer returns it
+     */
     private function documentCitation(array $r): ?Citation
     {
         $docId = $r['doc_id'] ?? null;

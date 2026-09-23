@@ -62,19 +62,28 @@ final class ReferenceRanges
             return $default;
         }
         // Unknown sex with only sex-specific rows: the union interval.
-        $lows = array_map(static fn(Range $r): ?float => $r->low, $sexed);
-        $highs = array_map(static fn(Range $r): ?float => $r->high, $sexed);
-        $first = reset($sexed);
-        $definedLows = array_filter($lows, static fn(?float $v): bool => $v !== null);
-        $definedHighs = array_filter($highs, static fn(?float $v): bool => $v !== null);
-        return new Range(
-            count($definedLows) === count($lows) ? min($definedLows) : null,
-            count($definedHighs) === count($highs) ? max($definedHighs) : null,
-            $first->unit,
-            $first->panicLow,
-            $first->panicHigh,
-            $first->source,
-        );
+        $low = null;
+        $high = null;
+        $lowOpen = false;
+        $highOpen = false;
+        $first = null;
+        foreach ($sexed as $row) {
+            $first ??= $row;
+            if ($row->low === null) {
+                $lowOpen = true;
+            } else {
+                $low = $low === null ? $row->low : min($low, $row->low);
+            }
+            if ($row->high === null) {
+                $highOpen = true;
+            } else {
+                $high = $high === null ? $row->high : max($high, $row->high);
+            }
+        }
+        if ($first === null) {
+            return null;
+        }
+        return new Range($lowOpen ? null : $low, $highOpen ? null : $high, $first->unit, $first->panicLow, $first->panicHigh, $first->source);
     }
 
     /** @return array{float, float, string}|null [low, high, unit] for two-sided intervals; the pre-2026-09-23 shape */

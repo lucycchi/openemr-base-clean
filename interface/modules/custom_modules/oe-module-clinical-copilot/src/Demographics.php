@@ -44,7 +44,11 @@ final readonly class Demographics
         return $this->dob->diff($day)->y;
     }
 
-    /** Maps OpenEMR's free-text sex field ("Male", "F", "female") to 'M', 'F' or null. */
+    /**
+     * Maps OpenEMR's free-text sex field ("Male", "F", "female") to 'M', 'F' or null.
+     *
+     * @return 'M'|'F'|null
+     */
     public static function normaliseSex(string $raw): ?string
     {
         return match (strtolower(trim($raw))) {
