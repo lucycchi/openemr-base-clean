@@ -122,7 +122,7 @@ forbids. Tracked in [`TODOS.md`](TODOS.md).
 
 Nothing else was built. Tool chaining beyond one `get_fact_set`, server-side
 conversation memory, and interaction checking each lacked a use case above
-and were deferred (see [`clinical_copilot/DESIGN.md`](clinical_copilot/DESIGN.md)).
+and were deferred (see [`clinical_copilot_week1/DESIGN.md`](clinical_copilot_week1/DESIGN.md)).
 
 Three extensions to UC1 are designed but not built, and are tracked in
 [`TODOS.md`](TODOS.md): today's nurse intake (reason for visit and new

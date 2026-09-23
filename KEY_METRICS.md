@@ -198,7 +198,7 @@ fact table and the chat is not earning its place.
 
 The three alerts that page — p95 latency, error rate, tool failure rate —
 are defined with metric, window, threshold, meaning and on-call runbook in
-[ALERTS.md](clinical_copilot/ALERTS.md), together with the webhook receiver they fire into.
+[ALERTS.md](clinical_copilot_week1/ALERTS.md), together with the webhook receiver they fire into.
 The per-metric alerts above are the product-quality signals behind them.
 
 ## Cost, tracked alongside

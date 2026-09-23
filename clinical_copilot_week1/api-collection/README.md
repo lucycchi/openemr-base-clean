@@ -12,7 +12,7 @@ environment, run the collection (requests execute in order).
 CLI:
 
 ```bash
-cd clinical_copilot/api-collection
+cd clinical_copilot_week1/api-collection
 npx --yes @usebruno/cli@2 run --disable-cookies --env vps
 # or against the local dev stack from the host:
 npx --yes @usebruno/cli@2 run --disable-cookies --env local

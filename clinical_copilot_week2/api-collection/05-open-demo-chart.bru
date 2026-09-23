@@ -1,0 +1,39 @@
+meta {
+  name: 05 Open demo chart (captures csrf)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/interface/patient_file/summary/demographics.php?set_pid={{docPid}}
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const html = typeof res.body === 'string' ? res.body : JSON.stringify(res.body);
+  const m = html.match(/data-csrf="([^"]+)"/);
+  if (m) {
+    bru.setVar('csrf_token', m[1]);
+  } else {
+    throw new Error('Co-Pilot panel not found on the dashboard: is the module registered and the user authorized?');
+  }
+  const d = html.match(/data-documents-endpoint="([^"]+)"/);
+  if (d) {
+    bru.setVar('documents_endpoint', d[1].replace(/&amp;/g, '&'));
+  }
+}
+
+docs {
+  Sets the session patient the way the UI does and reads the CSRF token and the
+  documents endpoint the panel embeds. docPid is a quiet demo patient on purpose:
+  the live eval cases measure the busiest charts, and a document attached here
+  must not change what they see. The documents endpoint takes the patient from
+  the session only; a pid in the body is refused as an unexpected field.
+}

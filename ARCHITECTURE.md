@@ -349,7 +349,7 @@ from these numbers and the cache-hit ratio.
 Three alerts page — p95 `duration_ms`, error rate (`http_status` ≥ 500 or
 a non-null `status`), and tool-failure rate (spans at level ERROR) — each
 defined with metric, window, threshold, meaning and on-call runbook in
-[`ALERTS.md`](clinical_copilot/ALERTS.md). Langfuse fires them at the module's own
+[`ALERTS.md`](clinical_copilot_week1/ALERTS.md). Langfuse fires them at the module's own
 `public/alerts.php` (shared-secret webhook), which writes a WARNING to the
 app log and a `clinical-copilot-alert` row to the audit log so a firing sits
 next to the requests that caused it. `verification_pass` false on a
@@ -367,7 +367,7 @@ to it.
 
 ### How to see it yourself
 
-Run the [API collection](clinical_copilot/api-collection/README.md): request 06 returns a
+Run the [API collection](clinical_copilot_week1/api-collection/README.md): request 06 returns a
 `correlation_id`; search it in Langfuse (deployed) or
 `SELECT FROM_BASE64(comments) FROM log WHERE event='clinical-copilot'` on
 the database. Request 16 produces the access-denied line above.
@@ -416,7 +416,7 @@ charts through the real model and require every briefing to complete.
 | Eval, recorded | [`tests/evals/cases/01–08`](tests/evals/cases/) | 8 cases | A fixed fact set and a hand-written model reply replayed through `Verifier` + `OmissionGuard` | Every commit; seconds; free |
 | Eval, live | [`tests/evals/cases/09–15`](tests/evals/cases/) | 7 cases, 22 model calls | Real seed charts, real OpenAI | Before every submission and whenever `Prompt::VERSION` changes (~1 min, ~22k tokens) |
 | UI smoke | [`tests/evals/smoke.php`](tests/evals/smoke.php) | 10 patients + 1 refusal | Selenium through the real dashboard | Before every deploy |
-| API collection | [`api-collection/`](clinical_copilot/api-collection/README.md) | 16 requests, 35 assertions | The running HTTP endpoints, local or deployed | Any time; graders can run it |
+| API collection | [`api-collection/`](clinical_copilot_week1/api-collection/README.md) | 16 requests, 35 assertions | The running HTTP endpoints, local or deployed | Any time; graders can run it |
 | Deferred | Panther dashboard-regression E2E for all 30 patients, DB-backed adapter tests, load tests | — | — | Final submission |
 
 ### How pass/fail is defined

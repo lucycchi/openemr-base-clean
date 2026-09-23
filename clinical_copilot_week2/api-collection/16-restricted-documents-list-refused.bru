@@ -1,0 +1,31 @@
+meta {
+  name: 16 Restricted user: documents list refused
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/documents.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: list
+}
+
+assert {
+  res.status: eq 403
+  res.body.error: eq You are not authorized to manage documents for this chart
+  res.body.correlation_id: isString
+}
+
+docs {
+  Listing needs patients/docs view; upload and extract need write or addonly.
+  The receptionist has neither, so every documents action is refused at the
+  data layer with an audit row (eval cases with theme "authorization").
+}

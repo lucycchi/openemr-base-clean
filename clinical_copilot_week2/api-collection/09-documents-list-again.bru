@@ -1,0 +1,38 @@
+meta {
+  name: 09 Documents: list again
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/documents.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: list
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the uploaded document now reads extracted with a confidence", function () {
+    const id = Number(bru.getVar('document_id'));
+    const doc = res.getBody().documents.find(d => d.document_id === id);
+    expect(doc, 'uploaded document in the list').to.exist;
+    expect(doc.status).to.equal('extracted');
+    expect(doc.confidence).to.be.within(0, 1);
+  });
+}
+
+docs {
+  Same request as 06; the document uploaded in 07 and extracted in 08 is now
+  listed as extracted with its confidence.
+}

@@ -62,7 +62,7 @@ are scheduled as tasks 9.1 and 9.2 in
 
 **Why:** The PRD names interaction flags as a domain constraint. v1 ships allergy-vs-medication only, because this install has no interaction data and letting the LLM decide interactions from general knowledge is an ungrounded clinical claim.
 
-**Context:** Design doc premise #4 (`clinical_copilot/DESIGN.md`). Prescriptions in OpenEMR carry a drug name and optionally an RxNorm code (`prescriptions.rxnorm_drugcode`); most seed rows will need name-to-RxCUI mapping. Emit interactions as a new fact category so the verifier and omission guard cover them with no other changes.
+**Context:** Design doc premise #4 (`clinical_copilot_week1/DESIGN.md`). Prescriptions in OpenEMR carry a drug name and optionally an RxNorm code (`prescriptions.rxnorm_drugcode`); most seed rows will need name-to-RxCUI mapping. Emit interactions as a new fact category so the verifier and omission guard cover them with no other changes.
 
 **Effort:** L
 **Priority:** P3

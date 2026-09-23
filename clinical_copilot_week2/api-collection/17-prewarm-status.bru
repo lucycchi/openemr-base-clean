@@ -1,0 +1,23 @@
+meta {
+  name: 17 Pre-warm status
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/prewarm.php
+}
+
+assert {
+  res.status: eq 200
+  res.body.enabled: isBoolean
+  res.body.time: isString
+}
+
+docs {
+  The morning pre-warm sweep's status: whether it is enabled on this site and
+  the last run's counts (scheduled, warmed, already cached, skipped, errored),
+  or last_run null when it never ran. No auth; counts only, never patient
+  data. The sweep is the module's queue; its per-run trace is described in
+  ../DASHBOARD.md. Contract: prewarm.response.
+}

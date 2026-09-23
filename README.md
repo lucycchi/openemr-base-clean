@@ -28,19 +28,20 @@ model never generates clinical facts; deterministic PHP assembles cited
 facts, the model narrates by fact id, and every sentence is verified before
 it renders.
 
-All Clinical Co-Pilot documentation lives in [clinical_copilot/](clinical_copilot/)
-— start with [clinical_copilot/README.md](clinical_copilot/README.md).
+All Clinical Co-Pilot documentation lives in [clinical_copilot_week1/](clinical_copilot_week1/)
+— start with [clinical_copilot_week1/README.md](clinical_copilot_week1/README.md).
 
 | Document | Purpose |
 |---|---|
-| [clinical_copilot/USING_CLINICAL_COPILOT.md](clinical_copilot/USING_CLINICAL_COPILOT.md) | How to use the feature: setup, reading the panel, follow-ups, every status message, demo patients |
+| [clinical_copilot_week1/USING_CLINICAL_COPILOT.md](clinical_copilot_week1/USING_CLINICAL_COPILOT.md) | How to use the feature: setup, reading the panel, follow-ups, every status message, demo patients |
 | [USERS.md](USERS.md) | The physician, their workflow, three use cases and why an agent |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Summary, data flow, verification, trust boundaries, failure modes |
 | [KEY_METRICS.md](KEY_METRICS.md) | Five metrics with baselines and alert thresholds |
 | [AUDIT.md](AUDIT.md) | Security, performance, architecture, data-quality and HIPAA audit |
-| [clinical_copilot/DESIGN.md](clinical_copilot/DESIGN.md) | Design record with the reviewed decisions |
-| [clinical_copilot/api-collection/](clinical_copilot/api-collection/README.md) | Runnable Bruno API collection: every endpoint and workflow, with assertions |
-| [clinical_copilot/EVALS.md](clinical_copilot/EVALS.md) | Test suite with results: structure, scope, design decisions |
+| [clinical_copilot_week1/DESIGN.md](clinical_copilot_week1/DESIGN.md) | Design record with the reviewed decisions |
+| [clinical_copilot_week2/api-collection/](clinical_copilot_week2/api-collection/README.md) | Week 2 Bruno collection: attach a lab PDF, extract it, read the cited facts, ask a guideline question, prove the refusals |
+| [clinical_copilot_week1/api-collection/](clinical_copilot_week1/api-collection/README.md) | Runnable Bruno API collection: every endpoint and workflow, with assertions |
+| [clinical_copilot_week1/EVALS.md](clinical_copilot_week1/EVALS.md) | Test suite with results: structure, scope, design decisions |
 | [tests/evals/README.md](tests/evals/README.md) | Eval suite: cases, failure modes, how to run |
 | [docker/vps/README.md](docker/vps/README.md) | Deployment |
 | [TODOS.md](TODOS.md) | Known debt and deferred work, including the two open items from the Week 1 grader feedback |

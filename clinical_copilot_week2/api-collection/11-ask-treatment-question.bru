@@ -1,0 +1,54 @@
+meta {
+  name: 11 Ask a treatment question (guideline evidence)
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/chat.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: ask
+  facts_hash: {{facts_hash}}
+  question: Should this patient be on a statin given the LDL on the uploaded report?
+  transcript: []
+}
+
+assert {
+  res.status: eq 200
+  res.body.chart_changed: eq false
+  res.body.answer.type: isString
+  res.body.answer.guidelines: isArray
+  res.body.correlation_id: isString
+}
+
+tests {
+  test("a cited answer separates guideline passages (12-char ids) from patient facts (8-char ids)", function () {
+    const a = res.getBody().answer;
+    if (a.type !== 'cited') {
+      return; // not_in_facts / not_in_corpus is a legitimate refusal shape; see the eval cases
+    }
+    expect(a.sentences).to.not.be.empty;
+    const ids = a.sentences.flatMap(s => s.fact_ids);
+    expect(ids.every(id => /^[0-9a-f]{8}$|^[0-9a-f]{12}$/.test(id)), 'every citation is a fact id or a passage id').to.equal(true);
+    a.guidelines.forEach(g => expect(g).to.include.keys('chunk_id', 'source_id', 'section', 'quote'));
+  });
+}
+
+docs {
+  The supervisor routes the question to the evidence_retriever (hybrid BM25 +
+  embedding retrieval over the guideline corpus, reranked when a Cohere key
+  is configured); the answer model then writes sentences about the patient
+  (cited to fact ids) and sentences about what the guideline says (cited to
+  12-character passage ids), and the verifier strips anything uncited. The
+  response carries answer.guidelines (the passages, for the "From guidelines"
+  block) and the handoff log. At most six sentences (decision of 2026-09-22).
+  Contract: chat.answer.response.
+}

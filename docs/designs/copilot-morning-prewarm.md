@@ -240,7 +240,7 @@ the same command.
 worst case (all cold), ~$0 on quiet days (all `already_cached`). Sequential
 is far below the load-test saturation point (3 req/s).
 
-### Alerting (extends `clinical_copilot/ALERTS.md`)
+### Alerting (extends `clinical_copilot_week1/ALERTS.md`)
 
 - `prewarm_errored > 0`, or no `copilot_prewarm` row with today's
   `target_date` by 06:30 on a weekday (a cheap SQL check the existing

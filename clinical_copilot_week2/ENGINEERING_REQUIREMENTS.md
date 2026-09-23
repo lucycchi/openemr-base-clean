@@ -16,7 +16,8 @@ Paths are relative to the repository root; `<module>/` is
 | 2 | [Correlation id across every service boundary](#2-correlation-id-across-every-service-boundary) | Done, enforced by the push gate (sidecar gap found and fixed during the audit) | 2026-09-22 |
 | 3 | [Canonical contracts as the source of truth](#3-canonical-contracts-as-the-source-of-truth) | Done, enforced by the push gate (documents endpoint and PHP-side gaps found and fixed during the audit) | 2026-09-22 |
 | 4 | [Dashboards](#4-dashboards-request-count-error-count-latency-queue-depth-event-retries-decision-outcomes) | Done for the Week 2 agent (worker spans, per-call generations, retries, five scores, the pre-warm queue); widgets defined, screenshots pending; OTLP migration deferred to Phase 9 | 2026-09-22 |
-| 5–9 | API collection, health/ready, alerts, baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
+| 5 | [Runnable API collection](#5-runnable-api-collection) | Done: a Week 2 Bruno collection (17 requests, verified 17/17, repeatable) beside the Week 1 one; stale links repointed | 2026-09-22 |
+| 6–9 | Health/ready, alerts, baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
 
 ---
 
@@ -536,6 +537,90 @@ are on the observation detail and in the UI.
   numbers and a `prewarm_ok` score.
 - Documented as DASHBOARD.md with every widget's definition. Not yet on
   the droplet; ships with the Phase 8 deploy.
+
+---
+
+## 5. Runnable API collection
+
+> Commonly used API calls in Postman, Bruno, or equivalent runnable API
+> collection. Export a runnable API collection covering the core agent
+> endpoints. Graders must be able to run any workflow from this collection
+> without reading source code.
+
+### How it is met
+
+Two Bruno collections, one per week, each runnable in the desktop app or
+with `npx @usebruno/cli@2` against the dev stack (`local`) or the droplet
+(`vps`), with no manual edits between requests: each collection logs in
+through OpenEMR's real login, captures the session cookie and the panel's
+CSRF token itself, and carries the values later requests need (`document_id`,
+`facts_hash`) in variables.
+
+| Collection | Covers | Verified |
+|---|---|---|
+| [Week 1](../clinical_copilot_week1/api-collection/README.md), 19 requests | health, ready, login, chart open, brief, follow-ups (cited, arithmetic withheld, out-of-window, stale hash), cache hit, CSRF refusal, restricted-user refusal, alert webhook (valid, wrong token, token in query) | 18/18 requests, 42/42 assertions (Week 1) |
+| [Week 2](api-collection/README.md), 17 requests | attach a lab PDF → extract through the sidecar graph → list → brief with document-cited facts → guideline-evidence question; upload without CSRF; restricted user on documents; pre-warm status | 17/17 requests, 39/39 assertions, 5/5 tests; repeatable (second run 200 `existing` / `already`) |
+
+Every request has a `docs` block (what it does, what to expect) and
+assertions that are the pass/fail criteria; the README of each collection
+maps requests to the workflows in plain words and names the contract each
+response conforms to.
+
+### Decisions and trade-offs
+
+1. **Two collections, not one.** Week 1's is a graded deliverable already
+   verified against the droplet; adding Week 2 to it would have changed its
+   numbering and its verified line. Week 2's collection stands alone, with
+   its own login requests, so either runs without the other. *Trade-off:*
+   login and session capture are duplicated (four requests); each collection
+   is complete on its own, which is what a grader needs.
+2. **A quiet demo patient for the document workflow.** The live eval cases
+   measure the busiest charts (case 09: zero stripped sentences on the ten
+   busiest patients). A document attached by the collection changes a
+   chart's facts, so `docPid` defaults to a patient outside that set.
+   *Trade-off:* the graded demo patient and the eval patients differ; the
+   README says why.
+3. **Idempotent by construction.** The upload is deduplicated per patient on
+   the file's hash and the extraction answers `already` on a repeat, so the
+   collection can be run any number of times without a cleanup step and
+   without ever deleting. Assertions accept both the first-run shape (201,
+   fresh handoffs) and the repeat shape (200 `existing`, `already`).
+   *Trade-off:* the fixture stays attached to the demo chart; deliberate,
+   so the highlight can be inspected in the UI afterwards.
+4. **The fixture travels with the collection.** `fixtures/lab-layout1.pdf`
+   (synthetic, generated, fictitious patient) is copied into the collection
+   folder rather than referenced from `tests/evals/fixtures/`, so the
+   folder can be exported on its own. *Trade-off:* a 20 KB duplicate that
+   must be refreshed if the generator changes the fixture.
+5. **The sidecar is exercised through PHP, not directly.** It has no host
+   port and PHP is its only client; a direct request would need a
+   port-forward that does not exist on the droplet. Requests 08 and 11 are
+   the end-to-end proof of `/run`. The test-only `/eval/*` endpoints are
+   documented as out of scope.
+6. **Loose assertions where the model decides.** Request 11 accepts a
+   refusal shape as well as a cited answer, because the question's outcome
+   depends on the model and the corpus; the eval harness, not the
+   collection, pins those behaviours case by case.
+
+### Verify it
+
+```bash
+cd clinical_copilot_week2/api-collection && npx --yes @usebruno/cli@2 run --disable-cookies --env local
+cd clinical_copilot_week1/api-collection && npx --yes @usebruno/cli@2 run --disable-cookies --env local
+```
+
+### What the audit found and fixed (2026-09-22)
+
+- No Week 2 endpoint was in any collection: `documents.php` (list, upload,
+  extract), the guideline-evidence answer, the documents refusals and
+  `prewarm.php` had no runnable request. Added as the Week 2 collection.
+- Every link to `clinical_copilot/api-collection` (and the other Week 1
+  documents) pointed at the pre-rename folder; repointed to
+  `clinical_copilot_week1/` across the root README, ARCHITECTURE.md,
+  USERS.md, KEY_METRICS.md, TODOS.md, project-tasks.md, the load-test
+  README and the Week 1 collection's own run instructions.
+- Found for requirement 6: `/ready` does not probe the sidecar although the
+  design says it should; noted in request 02's docs and left for that audit.
 
 ---
 

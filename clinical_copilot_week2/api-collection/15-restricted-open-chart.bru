@@ -1,0 +1,36 @@
+meta {
+  name: 15 Restricted user: open chart
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/interface/patient_file/summary/demographics.php?set_pid={{docPid}}
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const html = typeof res.body === 'string' ? res.body : JSON.stringify(res.body);
+  const m = html.match(/data-csrf="([^"]+)"/);
+  if (m) {
+    bru.setVar('csrf_token', m[1]);
+  } else {
+    throw new Error('Co-Pilot panel not found on the dashboard: is the module registered and the user authorized?');
+  }
+  const d = html.match(/data-documents-endpoint="([^"]+)"/);
+  if (d) {
+    bru.setVar('documents_endpoint', d[1].replace(/&amp;/g, '&'));
+  }
+}
+
+docs {
+  The dashboard and the panel shell still render; the refusal happens where
+  the data is read, in the next request.
+}

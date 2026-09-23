@@ -43,7 +43,7 @@ require every briefing to complete.
 | Eval, recorded | `tests/evals/cases/01–08` | 8 cases | A fixed fact set and a hand-written model reply replayed through `Verifier` + `OmissionGuard` | Every commit | seconds, free |
 | Eval, live | `tests/evals/cases/09–15` | 7 cases, 22 model calls | Real seed charts, real OpenAI | Before every submission; whenever `Prompt::VERSION` changes | ~1 min, ~22k tokens (~$0.006) |
 | UI smoke | `tests/evals/smoke.php` | 10 patients + 1 refusal | Selenium through the real dashboard | Before every deploy | ~2 min |
-| API collection | `clinical_copilot/api-collection/` (Bruno) | 18 requests, 35 assertions | The running HTTP endpoints, local or deployed | Any time; graders can run it against the VPS | seconds |
+| API collection | `clinical_copilot_week1/api-collection/` (Bruno) | 18 requests, 35 assertions | The running HTTP endpoints, local or deployed | Any time; graders can run it against the VPS | seconds |
 
 Deferred to a later iteration: a Panther dashboard-regression E2E across
 all 30 seed patients, DB-backed adapter tests for `OpenEmrChartSource`.
@@ -284,5 +284,5 @@ openemr-cmd e "su -s /bin/sh apache -c 'php tests/evals/run.php'"          # rec
 openemr-cmd e "su -s /bin/sh apache -c 'php tests/evals/run.php --live'"   # + OpenAI, ~1 min, needs OPENAI_API_KEY
 openemr-cmd e "su -s /bin/sh apache -c 'php tests/evals/smoke.php http://openemr 10'"
 openemr-cmd pit                                                              # unit
-cd clinical_copilot/api-collection && npx --yes @usebruno/cli@2 run --disable-cookies --env vps
+cd clinical_copilot_week1/api-collection && npx --yes @usebruno/cli@2 run --disable-cookies --env vps
 ```

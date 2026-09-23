@@ -4,7 +4,7 @@ k6 scenarios that drive the deployed agent the way physicians do — log in,
 open a chart, get the briefing, ask a follow-up — at 10 and 50 concurrent
 users, while sampling CPU and memory on the target host. Results are
 committed under `results/` and summarised in
-[`clinical_copilot/BASELINES.md`](../../clinical_copilot/BASELINES.md).
+[`clinical_copilot_week1/BASELINES.md`](../../clinical_copilot_week1/BASELINES.md).
 
 Nothing is mocked. Requests go through OpenEMR's login and session, the
 module's CSRF and ACL checks, fact assembly against the real database, the

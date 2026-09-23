@@ -1,0 +1,31 @@
+meta {
+  name: 06 Documents: list
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/interface/modules/custom_modules/oe-module-clinical-copilot/public/documents.php
+  body: formUrlEncoded
+}
+
+headers {
+  Cookie: {{cookie}}
+}
+
+body:form-urlencoded {
+  csrf_token_form: {{csrf_token}}
+  action: list
+}
+
+assert {
+  res.status: eq 200
+  res.body.documents: isArray
+  res.body.correlation_id: isString
+}
+
+docs {
+  The Co-Pilot documents attached to the chart in the session: id, type,
+  status (stored / extracted / failed), failure_reason, confidence, filename,
+  uploaded_at. Empty on a fresh chart. Contract: documents.list.response.
+}

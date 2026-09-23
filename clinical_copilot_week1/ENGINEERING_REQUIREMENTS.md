@@ -263,7 +263,7 @@ core agent endpoints; graders can run any workflow without reading source.
 
 **How it is done.**
 
-- Bruno collection at [`clinical_copilot/api-collection/`](api-collection/):
+- Bruno collection at [`clinical_copilot_week1/api-collection/`](api-collection/):
   16 ordered requests (`01-health` … `16-restricted-brief-refused`), 35
   assertions, `collection.bru`, `bruno.json`, and two environments
   (`environments/local.bru` for the dev stack at `localhost:8300`,
