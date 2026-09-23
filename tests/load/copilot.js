@@ -52,14 +52,22 @@ const FIXTURE = SCENARIO === 'extract' ? open(__ENV.FIXTURE || '../evals/fixture
 
 const MODULE = `${BASE}/interface/modules/custom_modules/oe-module-clinical-copilot/public`;
 
-// Follow-up questions are picked at random from this list; each is
-// answerable from a typical seed chart's facts.
+// Follow-up questions are picked at random from this list. The first five
+// are Week 1 chart questions (answerable from facts; the retriever correctly
+// finds no guideline passage for them). The rest are Week 2 treatment and
+// target questions, for which the retriever should return passages, so
+// guideline_hit_pct in the summary measures the retrieval leg.
 const QUESTIONS = [
     'Which lab result was out of range and what is its reference range?',
     'What medications were started since the last visit?',
     'Is there any allergy that matches a current medication?',
     'What new problems were recorded?',
     'When was the prior visit and what was it for?',
+    'Should this patient be on a statin given their LDL?',
+    'Is the A1c at target and what does the guideline recommend?',
+    'What blood pressure target applies to this patient?',
+    'Does the kidney function warrant a change in management?',
+    'Is this anemia pattern one the guideline says to work up?',
 ];
 
 export const options = {

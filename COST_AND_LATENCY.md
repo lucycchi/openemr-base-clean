@@ -77,7 +77,8 @@ follow asynchronously in the panel.
 | OpenAI, product calls on the dev stack (briefings, follow-ups) | the local audit log's `cost_usd` per request, 130 requests since 2026-09-21, 132k tokens | **$0.04** |
 | OpenAI, extraction and live eval runs | ~4.7k tokens per five-page document, ~1k per intake form; ~15 full live eval runs this week at ~33k chat tokens each plus three extraction cases (~10k) per run; the answer-cap experiment (20 + 5 calls, ~60k tokens) | **≈ $0.15** (list price; the OpenAI dashboard is the bill) |
 | OpenAI, `text-embedding-3-small` | the committed index (30 chunks, built once) and one query embedding per question/eval case | **< $0.01** |
-| Cohere rerank | trial key, local only | **$0** |
+| OpenAI, load baselines (requirements 8 and 9) | two matrices on 2026-09-23: ~370 extractions (~1.7 M tokens) and ~330 follow-ups | **≈ $0.40** |
+| Cohere rerank | trial key; on the droplet since 2026-09-23 (one rerank per follow-up, trial quota) | **$0** |
 | Langfuse | Hobby plan | **$0** |
 | Infrastructure | the same DigitalOcean droplet as Week 1 (≈ $24/month, one week's share) | **≈ $6** |
 | Claude Code | development assistant, subscription | not metered per project; the Week 1 file estimates a list-price equivalent |

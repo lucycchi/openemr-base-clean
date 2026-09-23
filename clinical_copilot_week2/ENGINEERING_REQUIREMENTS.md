@@ -19,7 +19,8 @@ Paths are relative to the repository root; `<module>/` is
 | 5 | [Runnable API collection](#5-runnable-api-collection) | Done: a Week 2 Bruno collection (17 requests, verified 17/17, repeatable) beside the Week 1 one; stale links repointed | 2026-09-22 |
 | 6 | [Separate /health and /ready](#6-separate-health-and-ready-endpoints) | Done: the sidecar has its own /ready with five real checks; PHP's /ready probes it (degraded-only); proven by stopping the container | 2026-09-22 |
 | 7 | [Dashboard and alert definitions](#7-dashboard-and-alert-definitions) | Done: the three alerts now cover the sidecar (`tool_ok`, `request_ok` semantics), an extraction-latency rule, four watched rules, a Week 2 runbook | 2026-09-22 |
-| 8–9 | Baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
+| 8 | [Baseline profiles](#8-baseline-cpu-memory-latency-and-throughput-profiles) | Done on the Week 2 build: two recorded runs on the droplet, sidecar bucketed, extract scenario; the first run found and the second measured a sidecar concurrency defect | 2026-09-23 |
+| 9 | [Load and stress tests](#9-load-and-stress-tests-at-10-and-50-concurrent-users) | Done: 10 and 50 users × four scenarios with p50/p95/p99 and error rates | 2026-09-23 |
 
 ---
 
@@ -823,6 +824,130 @@ cd clinical_copilot_week2/api-collection && npx --yes @usebruno/cli@2 run 02-rea
   Week 2 is decided and written down (tool failure rate + error rate),
   with the UI steps to make the change; the change itself is pending in
   the Langfuse UI.
+
+---
+
+## 8. Baseline CPU, memory, latency, and throughput profiles
+
+> Capture baseline infrastructure metrics (CPU, memory, request latency,
+> throughput) under the load test scenarios. Include these baselines in
+> your submission so future performance changes can be measured against
+> them.
+
+### How it is met
+
+[BASELINES.md](BASELINES.md) records the Week 2 build's profiles on the
+deployed droplet, captured with the Week 1 tooling in
+[../tests/load/](../tests/load/README.md) extended for the Week 2 agent:
+a resource sampler that now buckets the sidecar container separately
+(CPU %, memory used/limit every 2 s, host load, streamed over ssh), an
+`extract` scenario for the document path, and a summariser that prints the
+latency/error table, a document-extraction table and a CPU/memory table
+with app, sidecar and database columns. Raw results are committed under
+`tests/load/results/` (two stamps, `20260923T1522Z` and
+`20260923T1558Z`), so any later run compares against them with the same
+script.
+
+The file records two runs on purpose. Run 1, on the Phase 8 deploy, found
+that the sidecar serialised every request (an `async` handler calling the
+synchronous graph on the event loop): at 10 users 95 % of extractions hit
+the 60 s budget and the follow-up p50 was 19 s with the sidecar at 2 % CPU.
+Run 2, 33 minutes later on the fix (the graph on the thread pool), is the
+baseline going forward: 100 % of extractions succeed at 10 and 50 users
+(p95 19.6 s and 29.7 s), follow-up p50 5.2 s / 8.0 s, sidecar under 330
+MiB and 60 % CPU peak. The pair is what "measure future changes against a
+baseline" means here, and the finding could not have come from the eval
+suite or the API collections, which run one request at a time.
+
+### Decisions and trade-offs
+
+1. **Same tooling, one more scenario, one more bucket.** Extending Week 1's
+   scripts rather than adopting a new tool keeps the Week 1 and Week 2
+   numbers comparable row for row. *Trade-off:* k6 over the public internet
+   from a laptop adds network variance to every latency; the sidecar-side
+   `run` log lines give the server-side view when it matters.
+2. **A real extraction every iteration.** The `extract` scenario appends a
+   unique PDF comment so the per-patient dedup never short-circuits it;
+   otherwise the load test would measure a cache. *Trade-off:* a few hundred
+   real documents and lab rows on the load patient per matrix, removed by
+   `cleanup-documents.php` afterwards (156 after run 2, 0 left).
+3. **Record the bad run.** Run 1 stays in the file with its explanation
+   instead of being replaced, because the value of a baseline is the
+   before/after. *Trade-off:* a reader has to read two tables.
+4. **`guideline_hit_pct` measures citations, not retrieval.** Reported as
+   what it is, with the sidecar log's retrieval hit rate beside it, rather
+   than redefined to look better.
+5. **Sidecar memory is measured against its limit.** The 768 MiB cap was set
+   by the spike; run 2 shows 330 MiB peak at 50 users with tesseract idle
+   (text-layer fixture), so the cap has room but has not been tested with
+   fifty concurrent scans; that is noted, not assumed.
+
+### Verify it
+
+```bash
+python3 tests/load/summarise.py 20260923T1558Z       # the run-2 tables from the committed results
+BASE_URL=https://146-190-139-37.sslip.io LOGIN_PASS=<admin password> STATS=ssh SSH_HOST=do-openemr tests/load/run-baselines.sh
+```
+
+### What the audit found and fixed (2026-09-23)
+
+- The baselines described the Week 1 build; re-captured on the Week 2 build.
+- No scenario exercised the document path and the sidecar was not a bucket
+  in the resource tables; both added.
+- The first capture found the sidecar serialising all work; fixed
+  (`96a0947`), redeployed, re-measured, both runs recorded.
+
+---
+
+## 9. Load and stress tests at 10 and 50 concurrent users
+
+> Load tests simulating at least 10 and 50 concurrent users against the
+> deployed agent; record p50/p95/p99 latency and error rate at each level.
+
+### How it is met
+
+The same k6 matrix as requirement 8, against the deployed droplet: {10, 50}
+virtual users × {brief, mixed, ask, extract}, two minutes each, each VU a
+real physician session (OpenEMR login, chart open with the panel's CSRF
+token, brief, ask, and in Week 2 upload + extract). p50/p95/p99/max per
+endpoint, HTTP error rate, Co-Pilot error rate (a response that is not a
+200 with the contract's body), summary-unavailable rate and verification
+failure rate at each level are in [BASELINES.md](BASELINES.md); the raw
+per-run JSON and text summaries are under `tests/load/results/`.
+
+Headline numbers on the fixed build (run 2, `20260923T1558Z`):
+
+| Level | Scenario | p50 / p95 / p99 (ms) | Errors |
+|---|---|---|---|
+| 10 users | ask (retrieval + model) | 5 163 / 7 342 / 8 997 | 0 % HTTP, 0 % Co-Pilot |
+| 10 users | extract (five-page document) | 16 730 / 19 576 / 20 924 | 0 % / 0 %; 100 % extracted and fully verified |
+| 50 users | ask | 8 027 / 9 971 / 11 611 | 29 % HTTP / 44 % Co-Pilot, all from the login burst (Week 1's known MariaDB connection ceiling); 0 % once a session exists |
+| 50 users | extract | 22 775 / 29 705 / 35 024 | 1.3 % / 2.9 %, same cause; 100 % extracted and fully verified |
+
+And on the Phase 8 build before the fix (run 1): extract at 10 users
+60 383 / 60 652 / 60 701 ms with 5 % extracted; ask 19 096 / 38 960 /
+39 591 ms.
+
+### Decisions and trade-offs
+
+1. **The 50-user error mode is reported, not tuned away.** It is a
+   deployment setting (Apache workers vs MariaDB connections) recorded in
+   Week 1 and outside the module; changing it for the run would make the
+   two weeks incomparable. *Trade-off:* the 50-user rows measure the
+   droplet's login ceiling as much as the agent.
+2. **Provider limits are part of the baseline.** `extract` at 50 users makes
+   ~35 documents × 5 calls per minute; no 429s appeared on this account at
+   that rate, and `summary_unavailable` stayed 0 %, so the numbers are the
+   sidecar's, not the provider's. A higher level would meet the token limit
+   first.
+3. **Cost.** Run 1 and run 2 together: ~370 extractions (~1.7 M tokens) and
+   ~330 follow-ups, about $0.40 at list price; recorded in
+   COST_AND_LATENCY.md's spend table.
+
+### What the audit found and fixed (2026-09-23)
+
+- No Week 2 level had been measured; measured, and the first measurement
+  found the concurrency defect described under requirement 8.
 
 ---
 
