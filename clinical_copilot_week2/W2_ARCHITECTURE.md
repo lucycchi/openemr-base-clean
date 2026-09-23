@@ -209,6 +209,17 @@ fail the gate if any sidecar line lacks the request's id.
 
 ## Findings and open issues (running log)
 
+- **2026-09-22, the sidecar in readiness.** Design task 2.3 said `/ready`
+  probes the sidecar; it did not. Now the sidecar has its own `GET /ready`
+  (contracts mounted and parsing, LOINC map, retrieval index consistent
+  with its chunk list, tesseract on PATH, OpenAI key configured; 503 when
+  any is missing; Cohere reported as optional) and PHP's `ready.php` probes
+  it as a fourth dependency, degraded-only like Langfuse: briefings do not
+  need the sidecar, extraction and guideline evidence do. Proven by
+  stopping the container: `ready.php` answered 200 `degraded` with
+  `sidecar unreachable`, then `ready` again after restart.
+  [ENGINEERING_REQUIREMENTS.md § 6](ENGINEERING_REQUIREMENTS.md#6-separate-health-and-ready-endpoints).
+
 - **2026-09-22, the Week 2 agent in the dashboard.** The sidecar's workers
   were invisible to Langfuse's tool-call widgets (handoffs travelled as a
   metadata blob), its per-page model calls, embedding and rerank were

@@ -79,6 +79,47 @@ def test_rejected_request_logs_under_the_header_id(client: TestClient, lines: li
     assert lines and all(line["correlation_id"] == "abcdefgh-hdr" for line in lines)
 
 
+def test_health_is_liveness_only(client: TestClient) -> None:
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert set(r.json()) == {"status", "prompt_version", "model", "parser"}
+
+
+def test_ready_checks_every_local_dependency(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    r = client.get("/ready")
+    body = r.json()
+    assert r.status_code == 200, body
+    assert body["status"] == "ready"
+    assert body["dependencies"] == {"contracts": "ok", "loinc_map": "ok", "corpus_index": "ok", "tesseract": "ok", "openai_key": "ok"}
+    assert body["optional"]["cohere_rerank"] in ("configured", "not configured")
+
+
+def test_ready_is_503_when_a_required_dependency_is_missing(client: TestClient, monkeypatch, tmp_path: Path) -> None:
+    """An empty contracts directory: the proposal contract cannot load, so the
+    sidecar must not report ready (a run would fail at the model call)."""
+    from copilot_sidecar import contracts as contracts_module
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setattr(contracts_module, "CONTRACTS_DIR", tmp_path)
+    contracts_module.load.cache_clear()
+    try:
+        r = client.get("/ready")
+        assert r.status_code == 503
+        assert r.json()["status"] == "not_ready"
+        assert r.json()["dependencies"]["contracts"] == "contracts unavailable"
+        assert "Traceback" not in r.text and str(tmp_path) not in r.text
+    finally:
+        contracts_module.load.cache_clear()
+
+
+def test_ready_reports_a_missing_openai_key(client: TestClient, monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    r = client.get("/ready")
+    assert r.status_code == 503
+    assert r.json()["dependencies"]["openai_key"] == "openai key not configured"
+
+
 def test_bad_request_is_a_run_error(client: TestClient) -> None:
     r = client.post("/run", json=request(mode="route"))
     assert r.status_code == 422

@@ -12,11 +12,12 @@ assert {
   res.status: eq 200
   res.body.dependencies.database: eq ok
   res.body.dependencies.openai: eq ok
+  res.body.dependencies.sidecar: eq ok
 }
 
 docs {
-  Probes the database, OpenAI and Langfuse (each bounded to 2 s). 503 if the
-  database or OpenAI is down; 200 "degraded" if only Langfuse is. Cached 60 s.
-  The sidecar has no probe here yet (tracked under engineering requirement 6);
-  requests 8 and 11 are the proof it is up.
+  Probes the database, OpenAI, Langfuse and (Week 2) the sidecar's own /ready,
+  each bounded to 2 s. 503 if the database or OpenAI is down; 200 "degraded"
+  if only Langfuse or the sidecar is (briefings still work; extraction and
+  guideline evidence do not). Cached 60 s. Contract: ready.response.
 }

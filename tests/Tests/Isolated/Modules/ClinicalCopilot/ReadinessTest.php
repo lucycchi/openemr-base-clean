@@ -56,13 +56,25 @@ final class ReadinessTest extends TestCase
      * $this->calls and returns null (ok) or "<name> unreachable".
      * @return array<string, callable(): ?string>
      */
-    private function probes(bool $db = true, bool $openai = true, bool $langfuse = true): array
+    private function probes(bool $db = true, bool $openai = true, bool $langfuse = true, bool $sidecar = true): array
     {
         $probe = fn(string $name, bool $ok) => function () use ($name, $ok): ?string {
             $this->calls[$name] = ($this->calls[$name] ?? 0) + 1;
             return $ok ? null : "$name unreachable";
         };
-        return ['database' => $probe('database', $db), 'openai' => $probe('openai', $openai), 'langfuse' => $probe('langfuse', $langfuse)];
+        return ['database' => $probe('database', $db), 'openai' => $probe('openai', $openai), 'langfuse' => $probe('langfuse', $langfuse), 'sidecar' => $probe('sidecar', $sidecar)];
+    }
+
+    public function testSidecarDownIsDegradedButReady(): void
+    {
+        // Week 2: no sidecar means no extraction and facts-only answers, but briefings still work.
+        $readiness = new Readiness($this->probes(sidecar: false), new ReadinessCache(), new FixedClock(new DateTimeImmutable('2026-09-15 10:00:00')));
+        $report = $readiness->check();
+        self::assertTrue($report->ready);
+        self::assertSame(200, $report->httpStatus());
+        self::assertSame(['sidecar'], $report->degraded);
+        self::assertSame('degraded', $report->toArray()['status']);
+        self::assertSame('sidecar unreachable', $report->dependencies['sidecar']);
     }
 
     public function testAllDependenciesUpIsReady(): void
@@ -73,7 +85,7 @@ final class ReadinessTest extends TestCase
 
         self::assertTrue($report->ready);
         self::assertSame(200, $report->httpStatus());
-        self::assertSame(['database' => 'ok', 'openai' => 'ok', 'langfuse' => 'ok'], $report->dependencies);
+        self::assertSame(['database' => 'ok', 'openai' => 'ok', 'langfuse' => 'ok', 'sidecar' => 'ok'], $report->dependencies);
         self::assertSame([], $report->degraded);
     }
 

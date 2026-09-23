@@ -41,7 +41,9 @@ code outside an enum, a missing required field, a value out of range).
 | `chat.chart-changed.response.schema.json` | `chat.php` → browser, stale `facts_hash` | `PanelPayload::chartChanged()` output validated in `ContractsTest`. |
 | `chat.error.response.schema.json` | `chat.php` → browser, any error | Validated in `ContractsTest`; every error path in `ChatController` uses this shape. |
 | `health.response.schema.json` | `public/health.php` → caller | Validated in `ContractsTest`. |
-| `ready.response.schema.json` | `public/ready.php` → caller | `ReadinessReport::toArray()` validated in `ContractsTest` for ready, degraded and not-ready. |
+| `ready.response.schema.json` | `public/ready.php` → caller | `ReadinessReport::toArray()` validated in `ContractsTest` for ready, degraded and not-ready. Week 2 adds the `sidecar` dependency (its own `/ready`, degraded-only) and its three reason codes to the enums. |
+| `sidecar.health.response.schema.json` | sidecar `GET /health` → PHP / operators on the docker network | Liveness only: prompt and parser versions. `SidecarHealth` model; shared examples. |
+| `sidecar.ready.response.schema.json` | sidecar `GET /ready` → PHP's `sidecar` readiness probe | Every local dependency a run needs (contracts, LOINC map, retrieval index, tesseract, OpenAI key), 503 when one is missing; optional integrations reported (Cohere). `SidecarReady` model; shared examples; `test_app` proves the 503. |
 | `prewarm.response.schema.json` | `public/prewarm.php` → caller | `PrewarmStatusPayload::build()` validated in `ContractsTest` with and without a last run. Counts only; the alert signal for the morning pre-warm (ALERTS.md § 6). |
 | `alerts.response.schema.json` | `public/alerts.php` → webhook sender | Validated in `ContractsTest`. |
 | `documents.request.schema.json` | browser → `public/documents.php` (Week 2) | `DocumentRequest::fromBag()` parses the fields at the boundary; `DocumentRequestTest` runs the shared examples through the schema and the parser and requires identical verdicts. The multipart `file` part is described, not schematised. |

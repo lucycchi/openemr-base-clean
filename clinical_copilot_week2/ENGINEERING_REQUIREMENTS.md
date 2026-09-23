@@ -17,7 +17,8 @@ Paths are relative to the repository root; `<module>/` is
 | 3 | [Canonical contracts as the source of truth](#3-canonical-contracts-as-the-source-of-truth) | Done, enforced by the push gate (documents endpoint and PHP-side gaps found and fixed during the audit) | 2026-09-22 |
 | 4 | [Dashboards](#4-dashboards-request-count-error-count-latency-queue-depth-event-retries-decision-outcomes) | Done for the Week 2 agent (worker spans, per-call generations, retries, five scores, the pre-warm queue); widgets defined, screenshots pending; OTLP migration deferred to Phase 9 | 2026-09-22 |
 | 5 | [Runnable API collection](#5-runnable-api-collection) | Done: a Week 2 Bruno collection (17 requests, verified 17/17, repeatable) beside the Week 1 one; stale links repointed | 2026-09-22 |
-| 6–9 | Health/ready, alerts, baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
+| 6 | [Separate /health and /ready](#6-separate-health-and-ready-endpoints) | Done: the sidecar has its own /ready with five real checks; PHP's /ready probes it (degraded-only); proven by stopping the container | 2026-09-22 |
+| 7–9 | Alerts, baselines, load tests | Week 1 status stands; re-audited here as each is reviewed | — |
 
 ---
 
@@ -621,6 +622,102 @@ cd clinical_copilot_week1/api-collection && npx --yes @usebruno/cli@2 run --disa
   README and the Week 1 collection's own run instructions.
 - Found for requirement 6: `/ready` does not probe the sidecar although the
   design says it should; noted in request 02's docs and left for that audit.
+
+---
+
+## 6. Separate /health and /ready endpoints
+
+> Expose /health (is the process alive) and /ready (are dependencies
+> reachable) as separate endpoints. /ready must actually check that
+> OpenEMR, the LLM provider, and the observability backend are reachable,
+> not just return 200 unconditionally.
+
+### How it is met
+
+Two services, each with the pair:
+
+| Endpoint | Answers | Checks |
+|---|---|---|
+| PHP [`public/health.php`](../interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php) | the module is served | nothing; does not even load OpenEMR's globals |
+| PHP [`public/ready.php`](../interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php) → [`ReadinessProbes`](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Ops/ReadinessProbes.php) | 200 `ready` / 200 `degraded` / 503 `not_ready` | **database** (`SELECT 1` through OpenEMR's query layer), **openai** (authenticated `GET /v1/models`), **langfuse** (`GET /api/public/health`), and since this audit **sidecar** (`GET /ready` on the sidecar). Each bounded to 2 s; result cached 60 s so the endpoint cannot be used to spend provider quota |
+| sidecar `GET /health` | the process answers, with prompt and parser versions | nothing |
+| sidecar `GET /ready` ([app.py](../interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/app.py)) | 200 `ready` / 503 `not_ready` | **contracts** (the proposal contract loads from the mounted directory), **loinc_map** (parses), **corpus_index** (the committed embeddings load and match the chunk list), **tesseract** (binary on PATH), **openai_key** (configured); Cohere reported under `optional`, never blocking |
+
+Database and OpenAI down → 503; Langfuse or the sidecar down → 200
+`degraded` with the reason named. Contracts: `health.response`,
+`ready.response` (now with `sidecar` and its reason codes),
+`sidecar.health.response`, `sidecar.ready.response`, all with shared
+examples.
+
+Proof that it is not unconditional, from the dev stack on 2026-09-22:
+
+```
+$ curl ready.php   (sidecar running)
+{"status":"ready","dependencies":{"database":"ok","openai":"ok","langfuse":"ok","sidecar":"ok"},"degraded":[],...}   HTTP 200
+$ docker compose stop copilot-sidecar; sleep 62; curl ready.php
+{"status":"degraded","dependencies":{...,"sidecar":"sidecar unreachable"},"degraded":["sidecar"],"from_cache":false}   HTTP 200
+$ (sidecar) curl /ready with an empty contracts directory
+{"status":"not_ready","dependencies":{"contracts":"contracts unavailable",...}}   HTTP 503   (test_app)
+```
+
+### Decisions and trade-offs
+
+1. **The sidecar is degraded-only, like Langfuse.** Without it, briefings
+   and follow-ups from chart facts still work; uploads are stored and can be
+   retried; questions are answered from facts only. A load balancer must not
+   pull the whole module for a dependency that only the Week 2 features
+   need. *Trade-off:* a site that relies on document extraction sees
+   "degraded" rather than "down"; the reason string says which dependency
+   and the `degraded` list is what an alert should watch.
+2. **The sidecar's readiness is local and fast; the provider is probed
+   once.** `sidecar /ready` checks the things that would make a run fail
+   at startup or on the first request (a missing contract mount, a stale
+   index, no tesseract, no key) without network calls, so PHP's 2 s probe
+   of it never waits on OpenAI. PHP's own `openai` probe covers the
+   provider for the whole service. *Trade-off:* the sidecar does not prove
+   it can reach OpenAI itself; if PHP can and the sidecar cannot (a
+   network policy), the first extraction fails with `model_error`, not
+   readiness.
+3. **Exercise the dependency the way a run does, not a proxy for it.** The
+   index probe loads the embeddings and compares their count with the
+   chunk list (the same `RuntimeError` a run would hit); the contract probe
+   loads the file the model call sends. *Trade-off:* the first `/ready`
+   after start pays the index load once; it is cached in-process after.
+4. **Reasons are fixed strings, never messages.** `contracts unavailable`,
+   `sidecar unreachable`, `openai unavailable`: an anonymous caller learns
+   which dependency, never a path, a key's validity or a quota state
+   (`ReadinessProbesTest` asserts a 401 and a 429 from OpenAI both read
+   `openai unavailable`). *Trade-off:* the operator opens the log for the
+   detail.
+5. **Probes are testable against a mocked client.** `ReadinessProbes::probes()`
+   became public and takes the HTTP client, so the real closures are tested
+   for 200, 503, 500 and a transport failure without a network.
+6. **Container health stays liveness.** Both compose files' `healthcheck`
+   for the sidecar hits `/health`, so docker restarts a hung process but
+   does not restart a healthy process whose contracts mount is missing;
+   that condition is visible on `/ready` and, through it, on `ready.php`.
+
+### Verify it
+
+```bash
+openemr-cmd e 'php vendor/bin/phpunit -c phpunit-isolated.xml --filter "ReadinessTest|ReadinessProbesTest|ContractsTest"'
+cd docker/development-easy && docker compose exec -T copilot-sidecar python -m pytest -q tests/test_app.py
+curl -s https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php   # on the droplet, after the Phase 8 deploy
+```
+
+### What the audit found and fixed (2026-09-22)
+
+- `/ready` did not probe the sidecar although the design said so: sidecar
+  probe added (degraded-only), with the contract's dependency list, reason
+  enums and `degraded` enum extended, which `ContractsTest` caught the first
+  time round.
+- The sidecar had a liveness endpoint only: `GET /ready` added with five
+  real local checks and a 503 path, two contracts with examples, four
+  tests.
+- `ReadinessProbes` was not unit-testable: refactored to take the client;
+  `ReadinessProbesTest` added.
+- The Week 2 API collection's request 02 now asserts `sidecar: ok`. Not yet
+  on the droplet; ships with the Phase 8 deploy.
 
 ---
 

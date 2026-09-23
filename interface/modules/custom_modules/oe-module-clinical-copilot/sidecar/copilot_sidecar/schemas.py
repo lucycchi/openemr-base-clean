@@ -221,6 +221,35 @@ class RunError(Strict):
     code: Literal["bad_request", "parse_failed", "encrypted", "unreadable", "model_error", "timeout", "internal"]
 
 
+# ---- Operator endpoints (contracts sidecar.health.response, sidecar.ready.response) ----
+
+
+class SidecarHealth(Strict):
+    status: Literal["ok"] = "ok"
+    prompt_version: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    parser: str = Field(min_length=1)
+
+
+class SidecarReadyDependencies(Strict):
+    contracts: str = Field(min_length=1)
+    loinc_map: str = Field(min_length=1)
+    corpus_index: str = Field(min_length=1)
+    tesseract: str = Field(min_length=1)
+    openai_key: str = Field(min_length=1)
+
+
+class SidecarReadyOptional(Strict):
+    cohere_rerank: Literal["configured", "not configured"]
+
+
+class SidecarReady(Strict):
+    status: Literal["ready", "not_ready"]
+    dependencies: SidecarReadyDependencies
+    optional: SidecarReadyOptional
+    time: str
+
+
 # ---- Proposal models: what the model returns -------------------------------
 # Every field is required (OpenAI strict mode); "unknown" is null. No
 # citations, no coordinates: the model only ever proposes values it read.

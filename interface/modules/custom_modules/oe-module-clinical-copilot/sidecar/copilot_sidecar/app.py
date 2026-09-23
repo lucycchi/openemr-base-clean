@@ -1,7 +1,9 @@
 """FastAPI surface of the sidecar.
 
 POST /run       the graph (contracts run.request / run.response / run.error)
-GET  /health    liveness, model and parser versions
+GET  /health    liveness, model and parser versions (contract sidecar.health.response)
+GET  /ready     readiness: every local dependency a run needs, checked for real
+                (contract sidecar.ready.response); 503 when one is missing
 POST /eval/anchor   test-only (COPILOT_EVAL_ENDPOINTS=1): a fixture path
                     and a recorded proposal through anchor.py, no model call
 
@@ -17,6 +19,7 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import time
 from pathlib import Path
 
@@ -24,10 +27,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
-from . import extractor, graph
+from . import anchor, contracts, extractor, graph
+from . import retrieve as retrieve_module
 from .llm import PROMPT_VERSION
 from .logging_setup import bind_correlation_id, setup_logging
-from .schemas import IntakeFormProposal, LabReportProposal, RunError, RunRequest, RunResponse
+from .schemas import IntakeFormProposal, LabReportProposal, RunError, RunRequest, RunResponse, SidecarHealth, SidecarReady
 
 setup_logging()
 log = logging.getLogger("copilot.app")
@@ -62,7 +66,45 @@ def _error(correlation_id: str, code: str, status: int) -> JSONResponse:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "prompt_version": PROMPT_VERSION, "model": os.environ.get("OPENAI_MODEL", "gpt-4o-mini"), "parser": "pymupdf+tesseract"}
+    """Liveness: the process answers. Nothing is checked."""
+    return SidecarHealth(prompt_version=PROMPT_VERSION, model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"), parser="pymupdf+tesseract").model_dump()
+
+
+def _readiness() -> tuple[bool, dict[str, str]]:
+    """Each required dependency is exercised the way a run exercises it: the
+    contract file is loaded, the LOINC map parsed, the retrieval index read
+    and checked against its chunk list, the tesseract binary looked up, the
+    OpenAI key looked up. No network: the provider is probed by PHP's
+    ready.php once for the whole service. Reasons are fixed strings; an
+    exception's message never leaves the process."""
+    checks = {
+        "contracts": lambda: contracts.load(contracts.PROPOSAL_CONTRACT["lab_pdf"]),
+        "loinc_map": anchor.load_loinc_map,
+        "corpus_index": retrieve_module.index,
+        "tesseract": lambda: shutil.which("tesseract") or (_ for _ in ()).throw(RuntimeError("tesseract missing")),
+    }
+    deps: dict[str, str] = {}
+    for name, check in checks.items():
+        try:
+            check()
+            deps[name] = "ok"
+        except Exception:
+            deps[name] = f"{name} unavailable"
+    deps["openai_key"] = "ok" if os.environ.get("OPENAI_API_KEY") else "openai key not configured"
+    return all(v == "ok" for v in deps.values()), deps
+
+
+@app.get("/ready")
+def ready() -> JSONResponse:
+    """Readiness: 200 when every required dependency is usable, 503 otherwise."""
+    ok, deps = _readiness()
+    body = SidecarReady(
+        status="ready" if ok else "not_ready",
+        dependencies=deps,  # type: ignore[arg-type]
+        optional={"cohere_rerank": "configured" if os.environ.get("COHERE_API_KEY") else "not configured"},  # type: ignore[arg-type]
+        time=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    )
+    return JSONResponse(status_code=200 if ok else 503, content=body.model_dump())
 
 
 @app.post("/run")

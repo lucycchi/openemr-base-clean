@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Database\QueryUtils;
@@ -22,21 +23,33 @@ use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 
 /**
- * Builds the production Readiness checker with its three probes. Each probe
+ * Builds the production Readiness checker with its four probes. Each probe
  * is a closure returning null when healthy or a short reason string when
  * not. Kept out of Readiness itself so that class stays pure and testable
- * with fake probes.
+ * with fake probes; probes() is public so the real closures can be tested
+ * against a mocked HTTP client (ReadinessProbesTest).
  */
 final class ReadinessProbes
 {
-    public static function readiness(?Config $config = null): Readiness
+    public static function readiness(?Config $config = null, ?ClientInterface $http = null): Readiness
     {
         // Short timeouts: a readiness endpoint must answer quickly even when a
         // dependency is hanging. http_errors=false so a 4xx/5xx is a status
         // code to inspect rather than an exception.
         $config ??= Config::fromEnvironment();
-        $http = new Client(['timeout' => 2.0, 'connect_timeout' => 1.0, 'http_errors' => false]);
-        return new Readiness([
+        $http ??= new Client(['timeout' => 2.0, 'connect_timeout' => 1.0, 'http_errors' => false]);
+        return new Readiness(self::probes($config, $http), FileReadinessStore::inSiteDirectory(OEGlobalsBag::getInstance()->getString('OE_SITE_DIR')), ServiceContainer::getClock());
+    }
+
+    /**
+     * The four probes: OpenEMR's database, the model provider, the
+     * observability backend, and (Week 2) the sidecar's own readiness.
+     *
+     * @return array<string, callable(): ?string>
+     */
+    public static function probes(Config $config, ClientInterface $http): array
+    {
+        return [
             'database' => static function (): ?string {
                 try {
                     $row = QueryUtils::querySingleRow('SELECT 1', [], false);
@@ -68,6 +81,23 @@ final class ReadinessProbes
                 }
                 return $code === 200 ? null : 'langfuse unavailable';
             },
-        ], FileReadinessStore::inSiteDirectory(OEGlobalsBag::getInstance()->getString('OE_SITE_DIR')), ServiceContainer::getClock());
+            // Week 2: the sidecar checks its own local dependencies (contracts
+            // mounted, LOINC map, retrieval index, tesseract, OpenAI key) on
+            // GET /ready and answers 503 when one is missing. Optional here,
+            // like Langfuse: without it briefings still work, uploads are stored
+            // for a later retry and questions are answered from facts only.
+            'sidecar' => static function () use ($http, $config): ?string {
+                try {
+                    $code = $http->request('GET', rtrim($config->sidecarUrl, '/') . '/ready')->getStatusCode();
+                } catch (GuzzleException) {
+                    return 'sidecar unreachable';
+                }
+                return match (true) {
+                    $code === 200 => null,
+                    $code === 503 => 'sidecar not ready',
+                    default => 'sidecar unavailable',
+                };
+            },
+        ];
     }
 }

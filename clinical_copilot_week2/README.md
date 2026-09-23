@@ -13,7 +13,7 @@ eval gate). Week 1 documents stay in [../clinical_copilot_week1/](../clinical_co
 | [api-collection/](api-collection/README.md) | Runnable Bruno collection for the Week 2 endpoints: attach → extract → cited facts, a guideline-evidence question, the CSRF and permission refusals, pre-warm status; bundled fixture; `local` and `vps` environments; verified 17/17. |
 | [DASHBOARD.md](DASHBOARD.md) | The Week 2 dashboard: what the module now sends for the sidecar workers, per-call model usage, extraction outcomes, retrieval and the pre-warm queue; the five Week 2 scores; every widget field-by-field; decisions and trade-offs; how to verify. |
 | [experiments/](experiments/answer-length-cap.md) | Measured decisions with their data and scripts. So far: the follow-up answer-length cap (uncapped vs 3, 6, 10 sentences; five timed calls each; six chosen). |
-| [ENGINEERING_REQUIREMENTS.md](ENGINEERING_REQUIREMENTS.md) | The graded engineering requirements re-audited against the Week 2 code, one by one: how each is met, the decisions and trade-offs, how to verify it, what is open. Test design (1), correlation id (2), contracts (3), dashboards (4) and the API collection (5) so far. |
+| [ENGINEERING_REQUIREMENTS.md](ENGINEERING_REQUIREMENTS.md) | The graded engineering requirements re-audited against the Week 2 code, one by one: how each is met, the decisions and trade-offs, how to verify it, what is open. Test design (1), correlation id (2), contracts (3), dashboards (4), the API collection (5) and health/ready (6) so far. |
 
 ## Documents kept next to what they describe
 

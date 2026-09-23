@@ -1,0 +1,76 @@
+{
+  "accept": [
+    {
+      "status": "ready",
+      "dependencies": {
+        "contracts": "ok",
+        "loinc_map": "ok",
+        "corpus_index": "ok",
+        "tesseract": "ok",
+        "openai_key": "ok"
+      },
+      "optional": {
+        "cohere_rerank": "not configured"
+      },
+      "time": "2026-09-22T20:00:00Z"
+    },
+    {
+      "status": "not_ready",
+      "dependencies": {
+        "contracts": "contracts unavailable",
+        "loinc_map": "ok",
+        "corpus_index": "ok",
+        "tesseract": "ok",
+        "openai_key": "ok"
+      },
+      "optional": {
+        "cohere_rerank": "configured"
+      },
+      "time": "2026-09-22T20:00:00Z"
+    }
+  ],
+  "reject": [
+    {
+      "status": "ready",
+      "dependencies": {
+        "contracts": "ok",
+        "loinc_map": "ok",
+        "corpus_index": "ok",
+        "tesseract": "ok"
+      },
+      "optional": {
+        "cohere_rerank": "configured"
+      },
+      "time": "2026-09-22T20:00:00Z"
+    },
+    {
+      "status": "degraded",
+      "dependencies": {
+        "contracts": "ok",
+        "loinc_map": "ok",
+        "corpus_index": "ok",
+        "tesseract": "ok",
+        "openai_key": "ok"
+      },
+      "optional": {
+        "cohere_rerank": "configured"
+      },
+      "time": "2026-09-22T20:00:00Z"
+    },
+    {
+      "status": "ready",
+      "dependencies": {
+        "contracts": "ok",
+        "loinc_map": "ok",
+        "corpus_index": "ok",
+        "tesseract": "ok",
+        "openai_key": "ok"
+      },
+      "optional": {
+        "cohere_rerank": "configured"
+      },
+      "time": "2026-09-22T20:00:00Z",
+      "traceback": "..."
+    }
+  ]
+}

@@ -46,6 +46,7 @@ MODELS = {
     "citation": schemas.Citation, "lab-report": schemas.LabReport, "intake-form": schemas.IntakeForm, "handoff": schemas.Handoff,
     "run.request": schemas.RunRequest, "run.response": schemas.RunResponse, "run.error": schemas.RunError,
     "llm.lab-proposal.output": schemas.LabReportProposal, "llm.intake-proposal.output": schemas.IntakeFormProposal,
+    "sidecar.health.response": schemas.SidecarHealth, "sidecar.ready.response": schemas.SidecarReady,
 }
 
 

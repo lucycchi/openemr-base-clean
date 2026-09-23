@@ -25,7 +25,8 @@ use Psr\Clock\ClockInterface;
 final class Readiness
 {
     public const TTL_SECONDS = 60;
-    private const OPTIONAL = ['langfuse'];
+    // Observability and the Week 2 sidecar degrade the service; they never take it down.
+    private const OPTIONAL = ['langfuse', 'sidecar'];
 
     /** @param array<string, callable(): ?string> $probes name => returns null when ok, else a reason */
     public function __construct(

@@ -269,12 +269,13 @@ final class ContractsTest extends TestCase
 
     public function testReadinessReportConformsToContract(): void
     {
-        $ready = new ReadinessReport(true, ['database' => 'ok', 'openai' => 'ok', 'langfuse' => 'ok'], [], false, 0, '2026-09-16T12:00:00Z');
+        $ready = new ReadinessReport(true, ['database' => 'ok', 'openai' => 'ok', 'langfuse' => 'ok', 'sidecar' => 'ok'], [], false, 0, '2026-09-16T12:00:00Z');
         self::assertConforms('ready.response', $ready->toArray());
-        $degraded = new ReadinessReport(true, ['database' => 'ok', 'openai' => 'ok', 'langfuse' => 'langfuse unreachable'], ['langfuse'], true, 30, '2026-09-16T12:00:00Z');
+        $degraded = new ReadinessReport(true, ['database' => 'ok', 'openai' => 'ok', 'langfuse' => 'langfuse unreachable', 'sidecar' => 'sidecar not ready'], ['langfuse', 'sidecar'], true, 30, '2026-09-16T12:00:00Z');
         self::assertConforms('ready.response', $degraded->toArray());
-        $down = new ReadinessReport(false, ['database' => 'database query failed', 'openai' => 'ok', 'langfuse' => 'ok'], [], false, 0, '2026-09-16T12:00:00Z');
+        $down = new ReadinessReport(false, ['database' => 'database query failed', 'openai' => 'ok', 'langfuse' => 'ok', 'sidecar' => 'ok'], [], false, 0, '2026-09-16T12:00:00Z');
         self::assertConforms('ready.response', $down->toArray());
+        self::assertViolates('ready.response', (new ReadinessReport(true, ['database' => 'ok', 'openai' => 'ok', 'langfuse' => 'ok'], [], false, 0, '2026-09-16T12:00:00Z'))->toArray());
     }
 
     public function testAlertsResponseContract(): void

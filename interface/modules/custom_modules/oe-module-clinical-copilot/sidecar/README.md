@@ -9,7 +9,7 @@ architecture: [W2_ARCHITECTURE.md](../../../../../clinical_copilot_week2/W2_ARCH
 
 | File | Does |
 |---|---|
-| `copilot_sidecar/app.py` | HTTP surface: `POST /run`, `GET /health`, and the test-only `/eval/*` endpoints (`COPILOT_EVAL_ENDPOINTS=1`) |
+| `copilot_sidecar/app.py` | HTTP surface: `POST /run`, `GET /health` (liveness), `GET /ready` (every local dependency checked, 503 when one is missing; PHP's `ready.php` probes it), and the test-only `/eval/*` endpoints (`COPILOT_EVAL_ENDPOINTS=1`) |
 | `copilot_sidecar/graph.py` | The supervisor + two workers as a LangGraph `StateGraph`; deterministic routing; one `Handoff` per hop |
 | `copilot_sidecar/extractor.py` | One document: parse → propose (one model call per page, one targeted retry) → anchor |
 | `copilot_sidecar/parse.py` | PyMuPDF text layer with word boxes; tesseract for scanned pages |

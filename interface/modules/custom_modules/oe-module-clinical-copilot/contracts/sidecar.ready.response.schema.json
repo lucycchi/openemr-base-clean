@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/sidecar.ready.response.schema.json",
+  "title": "sidecar GET /ready response",
+  "description": "Readiness of the sidecar: every local dependency a run needs, checked for real and without network calls (the model provider is probed by PHP's ready.php, once, so the two endpoints together cover everything). 200 when all required dependencies are ok, 503 otherwise. Optional integrations are reported, never fail readiness.",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "not_ready"
+      ]
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "Required: the contract files are mounted and parse; the LOINC map loads; the committed retrieval index loads and matches its chunk list; the tesseract binary is on PATH; an OpenAI key is configured.",
+      "properties": {
+        "contracts": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'ok' or a short fixed reason; never an exception message."
+        },
+        "loinc_map": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'ok' or a short fixed reason; never an exception message."
+        },
+        "corpus_index": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'ok' or a short fixed reason; never an exception message."
+        },
+        "tesseract": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'ok' or a short fixed reason; never an exception message."
+        },
+        "openai_key": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'ok' or a short fixed reason; never an exception message."
+        }
+      },
+      "required": [
+        "contracts",
+        "loinc_map",
+        "corpus_index",
+        "tesseract",
+        "openai_key"
+      ],
+      "additionalProperties": false
+    },
+    "optional": {
+      "type": "object",
+      "description": "Integrations that change behaviour but never block: the Cohere reranker (RRF order without it).",
+      "properties": {
+        "cohere_rerank": {
+          "type": "string",
+          "enum": [
+            "configured",
+            "not configured"
+          ]
+        }
+      },
+      "required": [
+        "cohere_rerank"
+      ],
+      "additionalProperties": false
+    },
+    "time": {
+      "type": "string",
+      "description": "UTC timestamp of the check."
+    }
+  },
+  "required": [
+    "status",
+    "dependencies",
+    "optional",
+    "time"
+  ],
+  "additionalProperties": false
+}
