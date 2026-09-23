@@ -1,7 +1,9 @@
 # W2_ARCHITECTURE.md — Clinical Co-Pilot, Week 2 (multimodal evidence agent)
 
-Status: in progress. Plan and phased TODO list:
-[DESIGN.md](DESIGN.md).
+Status: Phases 0–8 built and deployed (2026-09-23); Phase 9 (Thursday) adds the
+per-tier cost section, USERS.md and the remaining fixtures. Plan and phased
+TODO list: [DESIGN.md](DESIGN.md). Engineering requirements re-audited
+against this code, one by one: [ENGINEERING_REQUIREMENTS.md](ENGINEERING_REQUIREMENTS.md).
 Week 1 architecture (unchanged, extended here): [../ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ## Stack decision: PyMuPDF + tesseract, not Docling (spike, 2026-09-21)
@@ -116,6 +118,80 @@ physician asks a question ─▶ supervisor ─▶ evidence_retriever ─▶ don
 
 The sidecar never touches the database and never sees the patient's name;
 it receives bytes, a facts hash and the question, and returns JSON.
+
+## Ingestion: from an upload to a cited fact
+
+The document path is the Week 2 addition to the Week 1 pipeline; nothing in
+Week 1's fact assembly, narration or verification was rewritten, it was
+extended with a new fact source.
+
+| Step | Where | What happens | Why this way |
+|---|---|---|---|
+| 1. Upload | `public/documents.php` → `DocumentController::upload` | CSRF, session patient, ACL `patients/docs` write or addonly; PDF magic bytes and a 20 MB cap; sha3-512 dedup per patient; stored through OpenEMR's own `Document` class in the "Lab Report" / "Patient Information" category; a `copilot_document` row `stored` | The file is a normal OpenEMR document (visible in the chart's Documents tab, subject to its retention and access rules), not a private blob. Dedup makes re-uploads and the API collection idempotent |
+| 2. Extract | `DocumentController::extract` → `ExtractionRunner` → `SidecarClient::extract` | one `run.request` with the bytes (base64), the facts hash and the correlation id; 60 s budget; the reply validated against `run.response` before parsing | The sidecar sees bytes and ids, never the patient's name or chart. The contract is the gate (requirement 3) |
+| 3. Parse | sidecar `parse.py` | PyMuPDF words with boxes on text pages; tesseract at 200 dpi with `--psm 6` on pages with no text layer; at most 5 pages; rows grouped by line | The spike's decision; rows are the anchoring unit |
+| 4. Propose | sidecar `llm.py`, one call per page | gpt-4o-mini, Structured Outputs against the proposal contract; values only, as printed | One call per page cut omissions from 7 of 20 rows to 0 of 20; the model never emits coordinates or codes |
+| 5. Anchor | sidecar `anchor.py` | each proposed value must be found in a row that also carries its analyte and unit, on its page; header-aware result/prior columns; OCR folds (`Aic`→`A1c`) and guarded fuzzy units; LOINC from `loinc_map.json`; a value that cannot be proven is marked `anchored: false`; printed rows the model skipped are listed as `unextracted` and re-asked once | "Model proposes, code anchors": the only thing that reaches the chart is what the code found on the page |
+| 6. Persist | `DocumentIngestService::persist`, one transaction | anchored results → `procedure_order` / `procedure_order_code` / `procedure_report` / `procedure_result` (`document_id`, uuids), so they are real OpenEMR labs; citations and unanchored values → `copilot_document_fact`; intake items → `copilot_intake`; demographics on the form are compared with the chart and **never stored**, only fixed mismatch phrases | Real lab rows mean Week 1's `labs()` query, reference ranges and deltas apply unchanged; idempotent on repeat |
+| 7. Surface | `OpenEmrChartSource` + `FactAssembler` | labs read from documents carry a `Citation` (page, bounding box); unanchored values become `extraction_unverified` must-surface facts; intake items and mismatches become facts; document facts surface even for a patient with no prior visit | What the extractor could not verify is shown, not hidden (eval cases 43, 44, 51) |
+| 8. Show | `panel.js`, `source-viewer.js` | "source p.N" opens pdf.js on the page and draws the row and the cell | The whoa moment: click a value, see where it came from |
+
+## Retrieval and guideline evidence
+
+There is no guideline API. The corpus is six summaries written for this
+project in our own words (`sidecar/corpus/`, manifest with publisher, year
+and URL per document), chunked by `##` section into 30 chunks. The index is
+built once by `tools/build_index.py` and committed (`corpus/index/`:
+chunk list plus `text-embedding-3-small` vectors), so a container start and
+the offline eval cases never call the embeddings API.
+
+A question goes supervisor → `evidence_retriever`: BM25 over tokens with
+stop words removed (keyword leg) and cosine over the committed vectors
+(dense leg; the query is embedded live, or supplied by the harness),
+fused by reciprocal rank fusion (k = 60); a relevance floor (cosine ≥ 0.25,
+or a keyword hit with cosine ≥ 0.15, or a strong keyword score) drops
+chunks neither leg found relevant, so an off-corpus question returns
+nothing rather than the least-bad passage (eval cases 32, 34). The top
+candidates are reranked by Cohere `rerank-v3.5` when `COHERE_API_KEY` is
+set (recorded in usage and on the trace as `reranked`), else RRF order
+stands; the top 5 go to PHP as `Chunk {chunk_id, source_id, section, quote,
+score}`.
+
+PHP's follow-up prompt then carries the passages with their 12-character
+ids after the facts. A sentence about the patient must cite 8-character
+fact ids; a sentence about what a guideline says must cite the passage id
+and quote its numbers exactly; the Verifier checks a passage-cited sentence
+against the passage's heading and text the same way it checks a fact-cited
+sentence against the fact, and strips anything else (cases 33, 35, 45, 46).
+The panel renders "From the record" and "From guidelines" apart. Answers
+are capped at six sentences ([experiments/answer-length-cap.md](experiments/answer-length-cap.md)).
+
+## The gate
+
+Every push runs `tests/evals/gate.sh` from the pre-push hook
+(`tests/evals/install-hooks.sh`): the sidecar's pytest, the module's
+isolated PHPUnit suite, `case-index.php --check`, then the 39 deterministic
+golden cases through `gate.php`, which compares each case's rubric verdicts
+with the committed baseline and refuses the push on a threshold breach or a
+per-case regression of more than five points. `COPILOT_GATE_LIVE=1` adds
+the 13 live cases. There is no server-side CI (GitLab pipelines are not
+available to students), so the hook is the gate and `--no-verify` is the
+only way round it; the recorded refusal transcript is in
+[../tests/evals/README.md](../tests/evals/README.md#how-graders-test-the-gate).
+
+## Risks and trade-offs
+
+| Risk | Where it bites | What limits it | What is accepted |
+|---|---|---|---|
+| The model omits printed rows | extraction | one call per page; omission detection lists unextracted rows and re-asks once; `unextracted` is a must-surface fact and a watched rate | a row can still be missed twice; it is then visible as "unextracted", never silently absent |
+| A layout the anchor step does not read | extraction on real-world reports | row-level rule is layout-agnostic (analyte + value + unit in one row); OCR folds; the `extraction_verified` rate watches it | the fixtures are synthetic and two layouts; real reports (DOCUMENT_SOURCES.md) are Thursday's work |
+| OCR memory on scans | sidecar, 768 MB cap on the droplet | 5-page cap, 200 dpi, tesseract instead of Docling | a longer scan is refused (`too_many_pages`) rather than split |
+| Corpus coverage and currency | guideline answers | six summaries with publisher/year; the relevance floor refuses off-corpus questions; `retrieval_hit` is watched | a question the corpus does not cover gets a facts-only answer; the summaries are ours, not the guidelines themselves |
+| Reranker absent | answer quality | RRF order is the fallback; `reranked` on the trace says which ran | quality difference not yet measured (no key on the droplet as of the deploy) |
+| Latency budgets | extraction 60 s, follow-up 28 s | per-page calls, the six-sentence cap, timeouts inside budgets | a slow provider day still times out one call in the eval set (case 12 history); the gate flakes rather than the product failing |
+| PHI in the sidecar | trust boundary | bytes in memory only, no disk, no database, no patient name in the request, log allowlist, correlation id on every line | the model provider sees document text (as it does chart facts in Week 1); covered by the provider agreement, not by code |
+| Observability transport | Langfuse v3 ingestion | delayed 10–30 min for non-score events, shut down 2026-11-16; scores are immediate | OTLP migration in Phase 9 |
+| Single droplet, no CI | deploy | `deploy.sh` is the CI job by hand; the hook is the gate | a bad deploy is rolled back by checkout + redeploy; the sidecar is stateless |
 
 ## Review console and rating calibration (Phase 4b, planned)
 

@@ -20,46 +20,70 @@
 
 [OpenEMR](https://open-emr.org) is a Free and Open Source electronic health records and medical practice management application. It features fully integrated electronic health records, practice management, scheduling, electronic billing, internationalization, free support, a vibrant community, and a whole lot more. It runs on Windows, Linux, Mac OS X, and many other platforms.
 
-## Clinical Co-Pilot (AgentForge Week 1)
+## Clinical Co-Pilot (AgentForge Weeks 1 and 2)
 
-This fork adds a Clinical Co-Pilot: a verified pre-room briefing and chart
-Q&A panel on the patient dashboard for primary care physicians. The language
-model never generates clinical facts; deterministic PHP assembles cited
-facts, the model narrates by fact id, and every sentence is verified before
-it renders.
+This fork adds a Clinical Co-Pilot to the patient dashboard for primary
+care physicians.
 
-All Clinical Co-Pilot documentation lives in [clinical_copilot_week1/](clinical_copilot_week1/)
-— start with [clinical_copilot_week1/README.md](clinical_copilot_week1/README.md).
-
-| Document | Purpose |
-|---|---|
-| [clinical_copilot_week1/USING_CLINICAL_COPILOT.md](clinical_copilot_week1/USING_CLINICAL_COPILOT.md) | How to use the feature: setup, reading the panel, follow-ups, every status message, demo patients |
-| [USERS.md](USERS.md) | The physician, their workflow, three use cases and why an agent |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Summary, data flow, verification, trust boundaries, failure modes |
-| [KEY_METRICS.md](KEY_METRICS.md) | Five metrics with baselines and alert thresholds |
-| [AUDIT.md](AUDIT.md) | Security, performance, architecture, data-quality and HIPAA audit |
-| [clinical_copilot_week1/DESIGN.md](clinical_copilot_week1/DESIGN.md) | Design record with the reviewed decisions |
-| [clinical_copilot_week2/api-collection/](clinical_copilot_week2/api-collection/README.md) | Week 2 Bruno collection: attach a lab PDF, extract it, read the cited facts, ask a guideline question, prove the refusals |
-| [clinical_copilot_week1/api-collection/](clinical_copilot_week1/api-collection/README.md) | Runnable Bruno API collection: every endpoint and workflow, with assertions |
-| [clinical_copilot_week1/EVALS.md](clinical_copilot_week1/EVALS.md) | Test suite with results: structure, scope, design decisions |
-| [tests/evals/README.md](tests/evals/README.md) | Eval suite: cases, failure modes, how to run |
-| [docker/vps/README.md](docker/vps/README.md) | Deployment |
-| [TODOS.md](TODOS.md) | Known debt and deferred work, including the two open items from the Week 1 grader feedback |
-| [clinical_copilot_week2/](clinical_copilot_week2/README.md) | **Week 2** (multimodal evidence agent): architecture, design record with the TODO list, document sources |
+| | Week 1: verified briefing | Week 2: multimodal evidence agent |
+|---|---|---|
+| What it does | A pre-room briefing and chart Q&A: deterministic PHP assembles cited facts from the chart, the model narrates by fact id, every sentence is verified before it renders | Lab PDFs and intake forms attached to the chart become cited facts (every value anchored to its row on the page, click-to-source highlight); follow-up questions cite guideline evidence from a hybrid-retrieval corpus; a supervisor routes work to two workers with a logged handoff per hop |
+| Where | PHP module `interface/modules/custom_modules/oe-module-clinical-copilot/` | the same module plus a Python sidecar (`sidecar/`, FastAPI + LangGraph) beside it; PHP keeps auth, storage, verification and the UI |
+| Docs | [clinical_copilot_week1/](clinical_copilot_week1/README.md) | [clinical_copilot_week2/](clinical_copilot_week2/README.md), starting with [W2_ARCHITECTURE.md](clinical_copilot_week2/W2_ARCHITECTURE.md) |
+| Evals | 15 cases | 52 cases behind a push-blocking gate ([tests/evals/](tests/evals/README.md)) |
 
 **Deployed:** https://146-190-139-37.sslip.io (login `admin`; demo data). Health: [/health](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php) · [/ready](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php)
 
-**Try it locally:** bring up the dev stack (below), then register the module:
+| Document | Purpose |
+|---|---|
+| [clinical_copilot_week2/W2_ARCHITECTURE.md](clinical_copilot_week2/W2_ARCHITECTURE.md) | Week 2 architecture: the extraction-stack spike, ingestion, agents, retrieval, the gate, risks (also linked from the root `W2_ARCHITECTURE.md`) |
+| [clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md](clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md) | The graded engineering requirements audited one by one: how each is met, decisions, trade-offs |
+| [KEY_METRICS.md](KEY_METRICS.md) | Eleven metrics with baselines and alerts (8–11 are Week 2) |
+| [COST_AND_LATENCY.md](COST_AND_LATENCY.md) | Latency per step, bottlenecks, actual development spend |
+| [clinical_copilot_week2/api-collection/](clinical_copilot_week2/api-collection/README.md) | Week 2 Bruno collection: attach a lab PDF, extract it, read the cited facts, ask a guideline question, prove the refusals |
+| [clinical_copilot_week2/DASHBOARD.md](clinical_copilot_week2/DASHBOARD.md), [ALERTS.md](clinical_copilot_week2/ALERTS.md) | Observability and alerting for the multi-agent design |
+| [tests/evals/README.md](tests/evals/README.md) | The eval gate: rubrics, cases and the failure mode each guards, how graders test it |
+| [clinical_copilot_week1/USING_CLINICAL_COPILOT.md](clinical_copilot_week1/USING_CLINICAL_COPILOT.md) | How to use the panel: setup, reading it, follow-ups, status messages, demo patients |
+| [USERS.md](USERS.md) | The physician, their workflow, the use cases |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Week 1 architecture: data flow, verification, trust boundaries, failure modes |
+| [clinical_copilot_week1/api-collection/](clinical_copilot_week1/api-collection/README.md) | Week 1 Bruno collection: the chat path in depth |
+| [AUDIT.md](AUDIT.md) | Security, performance, architecture, data-quality and HIPAA audit |
+| [docker/vps/README.md](docker/vps/README.md) | Deployment |
+| [TODOS.md](TODOS.md) | Known debt and deferred work |
+
+### Environment variables
+
+Put them in a root `.env` (git-ignored; `.env.example` lists them). Both the
+`openemr` and `copilot-sidecar` containers read it.
+
+| Variable | Used by | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` | PHP, sidecar | briefing and follow-up narration (PHP); page extraction and the query embedding (sidecar). Required for anything beyond the fact table |
+| `OPENAI_MODEL` | PHP, sidecar | chat model, default `gpt-4o-mini`; part of the briefing cache key |
+| `COHERE_API_KEY` | sidecar | optional; enables `rerank-v3.5` on guideline retrieval, RRF order without it |
+| `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST` | PHP | traces, generations and scores per request; `/ready` reports `degraded` without them |
+| `ALERT_WEBHOOK_SECRET`, `LANGFUSE_WEBHOOK_SECRET` | PHP | the alert receiver's shared token and Langfuse's webhook signing secret |
+| `COPILOT_SIDECAR_URL` | PHP | where the sidecar answers; default `http://copilot-sidecar:8000` on the compose network |
+| `COPILOT_PREWARM_ENABLED` | PHP | the morning pre-warm sweep's kill switch; off unless truthy |
+| `COPILOT_EVAL_ENDPOINTS` | sidecar | `1` enables the test-only `/eval/*` endpoints the harness uses; set on the dev stack, never on a deployment |
+| `OPENAI_INPUT_USD_PER_M`, `OPENAI_OUTPUT_USD_PER_M` | PHP | optional price overrides for `cost_usd` |
+
+### The core flow in five commands
 
 ```bash
-M=interface/modules/custom_modules/oe-module-clinical-copilot/sql
-openemr-cmd e "cd /var/www/localhost/htdocs/openemr/$M && grep -v '^#' install.sql | mariadb -h mysql -uopenemr -popenemr openemr && mariadb -h mysql -uopenemr -popenemr openemr < register.sql"
+cd docker/development-easy && openemr-cmd up                                  # 1. the stack, including the sidecar
+M=interface/modules/custom_modules/oe-module-clinical-copilot/sql             # 2. register the module and its tables
+openemr-cmd e "cd /var/www/localhost/htdocs/openemr/$M && (grep -hv '^#' install.sql *_upgrade.sql; cat register.sql) | mariadb -h mysql -uopenemr -popenemr openemr"
+openemr-cmd e "su -s /bin/sh apache -c 'cd /var/www/localhost/htdocs/openemr && bin/console copilot:attach 1 tests/evals/fixtures/docs/lab-layout1.pdf lab_pdf --site=default'"   # 3. attach and extract a lab report for patient 1
+openemr-cmd e "su -s /bin/sh apache -c 'cd /var/www/localhost/htdocs/openemr && php tests/evals/run.php'"   # 4. the deterministic eval cases
+tests/evals/install-hooks.sh --self-test                                      # 5. install the push gate and prove it refuses a regression
 ```
 
-Put `OPENAI_API_KEY=...` in a root `.env` (git-ignored). Log in as `admin`/`pass`,
-open a patient, open their latest encounter, then Dashboard: the panel is at
-the top. Health: `/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php`
-and `.../ready.php`.
+Then log in as `admin`/`pass`, open patient 1, open the Dashboard: the panel
+shows the report's values as cited facts; "source p.N" opens the page with
+the row highlighted. Ask "Should this patient be on a statin?" for a cited
+guideline answer. The same flow over HTTP, request by request, is the
+[Week 2 API collection](clinical_copilot_week2/api-collection/README.md).
 
 ### Running the App Locally
 

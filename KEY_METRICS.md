@@ -194,11 +194,96 @@ adoption with rising thumbs-down means the summary is the problem; falling
 adoption with flat ratings means the physician gets what they need from the
 fact table and the chat is not earning its place.
 
+## 8. Anchored-field rate (Week 2)
+
+**Definition.** Per extracted document: fields the anchor step proved on
+the page divided by fields the model proposed (`confidence` on the
+extraction trace), and, as a boolean, whether the document had nothing
+unverified and nothing unextracted (`extraction_verified` score). Per day:
+the share of documents fully verified, and the mean `unverified` and
+`unextracted` per document.
+
+**Why.** It is the product promise of Week 2: every value the physician
+sees from a document is one the code found on the page in its own row. A
+falling rate means a report layout the anchor step does not read (rising
+`unverified`) or the model omitting rows again (rising `unextracted`, the
+7-of-20 regression the eval suite pins).
+
+**Source.** `confidence`, `unverified`, `unextracted` on the
+`copilot.documents.extract` trace and log line; `extraction_verified` in
+Langfuse; `anchored` / `results` per case in `tests/evals/results.json`.
+
+**Baseline.** Eval fixtures: 20/20 anchored on the five-page text-layer
+report and on its scan, 9/9 on the intake form; every deliberately absent
+value unanchored (cases 43, 44). Deployed smoke: "20 values, 100% verified".
+
+**Alert.** Watched, not paged: fully-verified share under 0.80 over a day
+(Week 2 ALERTS.md rule 8).
+
+## 9. Retrieval hit rate (Week 2)
+
+**Definition.** Share of follow-up questions for which the evidence
+retriever returned at least one guideline passage (`retrieval_hit`), and,
+in the eval set, whether the expected source is on top.
+
+**Why.** Off-corpus questions must score a miss (that is the relevance
+floor working: cases 32, 34); ordinary clinical questions should hit. A
+low rate on ordinary questions means the corpus or the floor needs work,
+not the model.
+
+**Source.** `guideline_chunks` and `reranked` on the `copilot.ask` trace;
+`retrieval_hit` in Langfuse; cases 29–32.
+
+**Baseline.** Cases 29–31: 5 chunks each with the expected source on top;
+case 32 (off-corpus): 0 chunks. Reranked: false on every run until a
+Cohere key is configured on the target.
+
+**Alert.** Watched: under 0.60 over a day (rule 9).
+
+## 10. Routing accuracy (Week 2)
+
+**Definition.** Share of sidecar runs whose supervisor handoffs match the
+expected sequence for the state (eval `routing_correct`), and in
+production the share of runs with no `worker_failed` hop (`routing_ok`).
+
+**Why.** The supervisor is deterministic, so a wrong route is a code
+defect and a failed worker is the only runtime outcome; keeping it a
+metric is what proves the design claim.
+
+**Source.** `handoffs` on every trace; the worker spans; cases 23–28.
+
+**Baseline.** 6/6 routing cases; every live run `worker_finished`.
+
+**Alert.** A failed worker fails `tool_ok`, so the tool-failure alert
+pages (Week 2 ALERTS.md, alert 3).
+
+## 11. Gate pass rate (Week 2)
+
+**Definition.** Per push: whether `gate.php` passed; per rubric, the pass
+rate over the case set against the committed baseline. Over time: how
+often the gate refused a push and why.
+
+**Why.** The brief's standard is that a working demo which cannot block a
+regression has not met Week 2; the rate is the evidence that the gate is
+exercised, not decorative.
+
+**Source.** `tests/evals/baseline.json`, `baseline-live.json`, the hook's
+output on each push; `results.json` for the last full run.
+
+**Baseline.** 52 cases, 7 rubrics, 100% on every rubric at the last full
+live run; three refusals recorded this week (a fact contract change, a
+case-12 timeout, a log-field allowlist miss), each with the fix that
+followed.
+
+**Alert.** None: a refused push is the alert.
+
 ## Paging alerts
 
 The three alerts that page — p95 latency, error rate, tool failure rate —
 are defined with metric, window, threshold, meaning and on-call runbook in
-[ALERTS.md](clinical_copilot_week1/ALERTS.md), together with the webhook receiver they fire into.
+[ALERTS.md](clinical_copilot_week1/ALERTS.md), together with the webhook receiver they fire into;
+what Week 2 changed in each, the extraction-latency rule and the Week 2
+runbook are in [clinical_copilot_week2/ALERTS.md](clinical_copilot_week2/ALERTS.md).
 The per-metric alerts above are the product-quality signals behind them.
 
 ## Cost, tracked alongside
