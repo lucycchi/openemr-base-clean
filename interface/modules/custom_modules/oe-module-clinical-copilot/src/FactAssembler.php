@@ -86,17 +86,44 @@ final class FactAssembler
 
         $since = $prior?->date;
 
-        $activeMeds = array_values(array_filter(
-            $this->chart->medications($pid),
-            fn(MedicationRecord $m) => $m->active
-        ));
+        $medications = $this->chart->medications($pid);
+        $activeMeds = array_values(array_filter($medications, static fn(MedicationRecord $m) => $m->active && $m->stoppedOn() === null));
+        // Stopped since the prior visit: an end date after it, or an inactive row changed after it.
+        $stoppedMeds = array_values(array_filter($medications, fn(MedicationRecord $m) => !$m->active && $m->stoppedOn() !== null && $this->isNew($m->stoppedOn(), $since)));
+        // A stop and a start of the same drug across the boundary is one change, not two facts.
+        $changedPairs = [];
+        foreach ($stoppedMeds as $old) {
+            foreach ($activeMeds as $new) {
+                if ($new->nameKey() === $old->nameKey() && $this->isNew($new->startDate, $since) && !isset($changedPairs[$new->id])) {
+                    $changedPairs[$new->id] = $old;
+                    break;
+                }
+            }
+        }
+        $replaced = array_map(static fn(MedicationRecord $old): int => $old->id, $changedPairs);
         foreach ($activeMeds as $m) {
+            if (isset($changedPairs[$m->id])) {
+                $old = $changedPairs[$m->id];
+                $facts[] = $this->fact('PrescriptionService', $m->id, 'changed', sprintf('%s changed from %s to %s on %s', ucfirst(strtok(trim($m->drug), ' ') ?: $m->drug), $old->describeDose(), $m->describeDose(), $m->startDate->format('Y-m-d')), FactCategory::MedicationChanged, null, ['drug' => $m->drug]);
+                continue;
+            }
             $facts[] = $this->fact('PrescriptionService', $m->id, 'drug', $this->dated($m->drug, 'started', $m->startDate, $m->startDateProvenance), $this->isNew($m->startDate, $since)
                 ? FactCategory::MedicationNew
                 : FactCategory::MedicationActive, null, ['drug' => $m->drug]);
         }
+        foreach ($stoppedMeds as $m) {
+            if (in_array($m->id, $replaced, true)) {
+                continue;
+            }
+            $stoppedOn = $m->stoppedOn();
+            $started = match ($m->startDateProvenance) {
+                DateProvenance::Recorded => ' (started ' . $m->startDate->format('Y-m-d') . ')',
+                DateProvenance::FirstNoted => ' (first noted ' . $m->startDate->format('Y-m-d') . ')',
+                DateProvenance::Unknown => '',
+            };
+            $facts[] = $this->fact('PrescriptionService', $m->id, 'stopped', sprintf('%s stopped %s%s', $m->drug, $stoppedOn?->format('Y-m-d') ?? '', $started), FactCategory::MedicationStopped, null, ['drug' => $m->drug]);
+        }
 
-        // Every allergy becomes a fact; new ones since the prior visit are flagged.
         $allergies = $this->chart->allergies($pid);
         foreach ($allergies as $a) {
             $facts[] = $this->fact('AllergyIntoleranceService', $a->id, 'title', $this->dated($a->title, 'onset', $a->beginDate, $a->beginDateProvenance), $this->isNew($a->beginDate, $since)
@@ -170,9 +197,23 @@ final class FactAssembler
 
         $activeProblemTitles = [];
         foreach ($this->chart->problems($pid) as $p) {
-            $activeProblemTitles[] = $p->title;
-            if ($this->isNew($p->beginDate, $since)) {
-                $facts[] = $this->fact('ConditionService', $p->id, 'title', $p->title, FactCategory::ProblemNew, null, ['title' => $p->title]);
+            if ($p->isActive()) {
+                $activeProblemTitles[] = $p->title;
+                if ($this->isNew($p->beginDate, $since)) {
+                    $facts[] = $this->fact('ConditionService', $p->id, 'title', $p->title, FactCategory::ProblemNew, null, ['title' => $p->title]);
+                }
+                continue;
+            }
+            $resolvedOn = $p->resolvedOn();
+            if ($resolvedOn !== null && $this->isNew($resolvedOn, $since)) {
+                $facts[] = $this->fact('ConditionService', $p->id, 'resolved', sprintf('%s resolved %s', $p->title, $resolvedOn->format('Y-m-d')), FactCategory::ProblemResolved, null, ['title' => $p->title]);
+            }
+        }
+
+        // Orders placed since the prior visit that still have no report.
+        foreach ($this->chart->pendingOrders($pid) as $o) {
+            if ($this->isNew($o->orderedOn, $since)) {
+                $facts[] = $this->fact('ProcedureOrderService', $o->id, 'pending', sprintf('%s ordered %s, no result on file', $o->name, $o->orderedOn->format('Y-m-d')), FactCategory::LabPending);
             }
         }
 
@@ -233,6 +274,9 @@ final class FactAssembler
                 FactCategory::ProblemNew => 'new problems',
                 FactCategory::AllergyMedicationHit => 'allergy/medication matches',
                 FactCategory::MedicationChanged => 'changed medications',
+                FactCategory::MedicationStopped => 'stopped medications',
+                FactCategory::ProblemResolved => 'resolved problems',
+                FactCategory::LabPending => 'labs ordered without a result',
                 FactCategory::Truncation => $label,
                 FactCategory::ExtractionUnverified => 'unverified document values',
                 FactCategory::IntakeChiefConcern => 'intake reasons for visit',

@@ -27,6 +27,7 @@ enum FactCategory: string
     case MedicationNew = 'medication_new';
     case MedicationChanged = 'medication_changed';
     case MedicationActive = 'medication_active';
+    case MedicationStopped = 'medication_stopped';
     case AllergyNew = 'allergy_new';
     case AllergyActive = 'allergy_active';
     case AllergyMedicationHit = 'allergy_medication_hit';
@@ -35,6 +36,8 @@ enum FactCategory: string
     case LabDelta = 'lab_delta';
     case LabNormal = 'lab_normal';
     case ProblemNew = 'problem_new';
+    case ProblemResolved = 'problem_resolved';
+    case LabPending = 'lab_pending';
     case Truncation = 'truncation';
     /** Week 2: a value or row from an uploaded document that could not be verified against the page. */
     case ExtractionUnverified = 'extraction_unverified';
@@ -61,6 +64,8 @@ enum FactCategory: string
         return match ($this) {
             self::MedicationNew,
             self::MedicationChanged,
+            self::MedicationStopped,
+            self::LabPending,
             self::AllergyNew,
             self::AllergyMedicationHit,
             self::LabCritical,
@@ -78,6 +83,7 @@ enum FactCategory: string
             self::IntakeChiefConcern,
             self::IntakeFamilyHistory,
             self::LabNormal,
+            self::ProblemResolved,
             self::LabDelta => false,
         };
     }

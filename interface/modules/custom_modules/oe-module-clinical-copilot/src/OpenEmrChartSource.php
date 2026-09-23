@@ -55,25 +55,33 @@ final class OpenEmrChartSource implements ChartSource
 
     public function medications(PatientId $pid): array
     {
-        // NULLIF turns the '0000-00-00' placeholder into NULL so the
-        // provenance logic sees "no start date recorded".
+        // Every prescription row, active or not: a stopped medication is a fact
+        // too. The interval code is read as its list label ("daily"), the
+        // dose as recorded; both are shown on a changed-medication fact.
         $rows = QueryUtils::fetchRecords(
-            "SELECT id, drug, NULLIF(start_date, '0000-00-00') AS start_date, date_added, active, end_date
-             FROM prescriptions WHERE patient_id = ? AND drug <> ''",
+            "SELECT p.id, p.drug, NULLIF(p.start_date, '0000-00-00') AS start_date, p.date_added, p.active, p.end_date, p.dosage, p.date_modified,
+                    COALESCE(lo.title, '') AS interval_label
+             FROM prescriptions p
+             LEFT JOIN list_options lo ON lo.list_id = 'drug_interval' AND lo.option_id = CAST(p.`interval` AS CHAR) AND p.`interval` <> 0
+             WHERE p.patient_id = ? AND p.drug <> ''",
             [$pid->value]
         );
         $out = [];
         foreach ($rows as $r) {
-            // "Active" means the active flag is set AND there is no real end date.
             $end = Row::str($r, 'end_date');
-            $ended = $end !== '' && $end !== '0000-00-00';
+            $ended = $this->hasDate($end);
             [$started, $provenance] = $this->datedWithProvenance(Row::str($r, 'start_date'), Row::str($r, 'date_added'));
+            $modified = Row::str($r, 'date_modified');
             $out[] = new MedicationRecord(
                 Row::int($r, 'id'),
                 Row::str($r, 'drug'),
                 $started,
                 Row::int($r, 'active') === 1 && !$ended,
                 $provenance,
+                $ended ? $this->date($end) : null,
+                trim(Row::str($r, 'dosage')),
+                trim(Row::str($r, 'interval_label')),
+                $this->hasDate($modified) ? $this->date($modified) : null,
             );
         }
         return $out;
@@ -263,14 +271,54 @@ final class OpenEmrChartSource implements ChartSource
 
     public function problems(PatientId $pid): array
     {
+        // Active and resolved problems alike: the assembler reports a problem
+        // resolved since the prior visit and keeps only active titles for the
+        // guideline rules.
         $rows = QueryUtils::fetchRecords(
-            "SELECT id, title, begdate, date FROM lists
-             WHERE pid = ? AND type = 'medical_problem' AND title <> '' AND activity = 1
-               AND (enddate IS NULL OR enddate = '0000-00-00')",
+            "SELECT id, title, begdate, date, enddate, activity, modifydate FROM lists
+             WHERE pid = ? AND type = 'medical_problem' AND title <> ''",
             [$pid->value]
         );
         return array_map(
-            fn(array $r) => new ProblemRecord(Row::int($r, 'id'), Row::str($r, 'title'), $this->date(Row::str($r, 'begdate') ?: Row::str($r, 'date'))),
+            function (array $r): ProblemRecord {
+                $end = Row::str($r, 'enddate');
+                $modified = Row::str($r, 'modifydate');
+                return new ProblemRecord(
+                    Row::int($r, 'id'),
+                    Row::str($r, 'title'),
+                    $this->date(Row::str($r, 'begdate') ?: Row::str($r, 'date')),
+                    $this->hasDate($end) ? $this->date($end) : null,
+                    Row::int($r, 'activity') === 1,
+                    $this->hasDate($modified) ? $this->date($modified) : null,
+                );
+            },
+            $rows
+        );
+    }
+
+    public function pendingOrders(PatientId $pid): array
+    {
+        // Orders with no report at all, still open, and not the module's own
+        // upload orders (those always carry a report). The demo database has
+        // thousands of reportless seed orders, so the assembler's date boundary
+        // does the rest.
+        $rows = QueryUtils::fetchRecords(
+            "SELECT po.procedure_order_id, po.date_ordered, po.order_status, COALESCE(poc.procedure_name, '') AS procedure_name
+             FROM procedure_order po
+             LEFT JOIN procedure_order_code poc ON poc.procedure_order_id = po.procedure_order_id AND poc.procedure_order_seq = 1
+             LEFT JOIN procedure_report prp ON prp.procedure_order_id = po.procedure_order_id
+             WHERE po.patient_id = ? AND prp.procedure_report_id IS NULL
+               AND po.order_status NOT IN ('complete', 'canceled', 'cancelled')
+               AND COALESCE(poc.procedure_code, '') <> ?",
+            [$pid->value, \OpenEMR\Modules\ClinicalCopilot\Documents\DocumentIngestService::PANEL_CODE]
+        );
+        return array_map(
+            fn(array $r) => new PendingOrderRecord(
+                Row::int($r, 'procedure_order_id'),
+                trim(Row::str($r, 'procedure_name')) !== '' ? trim(Row::str($r, 'procedure_name')) : 'Lab order',
+                $this->date(Row::str($r, 'date_ordered')),
+                Row::str($r, 'order_status'),
+            ),
             $rows
         );
     }

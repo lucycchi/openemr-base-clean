@@ -37,6 +37,9 @@ interface ChartSource
     /** @return list<ProblemRecord> active problems only */
     public function problems(PatientId $pid): array;
 
+    /** @return list<PendingOrderRecord> lab orders with no report, not complete or canceled */
+    public function pendingOrders(PatientId $pid): array;
+
     /**
      * Week 2: unanchored extracted fields and unextracted rows from this patient's uploaded documents.
      *

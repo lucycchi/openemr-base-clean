@@ -24,6 +24,23 @@ final readonly class ProblemRecord
         public int $id,
         public string $title,
         public \DateTimeImmutable $beginDate,
+        public ?\DateTimeImmutable $endDate = null,
+        public bool $active = true,
+        public ?\DateTimeImmutable $modifiedDate = null,
     ) {
+    }
+
+    /** When the problem was resolved: the end date, else (for an inactive row) when it was last changed; null when still active or unknown. */
+    public function resolvedOn(): ?\DateTimeImmutable
+    {
+        if ($this->endDate !== null) {
+            return $this->endDate;
+        }
+        return $this->active ? null : $this->modifiedDate;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->active && $this->endDate === null;
     }
 }

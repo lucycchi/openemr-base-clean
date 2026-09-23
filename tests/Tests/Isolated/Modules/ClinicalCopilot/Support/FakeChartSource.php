@@ -21,6 +21,7 @@ use OpenEMR\Modules\ClinicalCopilot\EncounterRecord;
 use OpenEMR\Modules\ClinicalCopilot\LabRecord;
 use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
+use OpenEMR\Modules\ClinicalCopilot\PendingOrderRecord;
 use OpenEMR\Modules\ClinicalCopilot\ProblemRecord;
 
 /**
@@ -48,6 +49,8 @@ final class FakeChartSource implements ChartSource
     public array $labs = [];
     /** @var list<ProblemRecord> */
     public array $problems = [];
+    /** @var list<PendingOrderRecord> */
+    public array $pendingOrders = [];
 
     public function encounters(PatientId $pid): array
     {
@@ -80,6 +83,12 @@ final class FakeChartSource implements ChartSource
     }
 
     /** @return list<\OpenEMR\Modules\ClinicalCopilot\UnverifiedExtraction> */
+    /** @return list<PendingOrderRecord> */
+    public function pendingOrders(PatientId $pid): array
+    {
+        return $this->pendingOrders;
+    }
+
     public function unverifiedExtractions(PatientId $pid): array
     {
         return $this->unverified;

@@ -26,6 +26,33 @@ final readonly class MedicationRecord
         public \DateTimeImmutable $startDate,
         public bool $active,
         public DateProvenance $startDateProvenance = DateProvenance::Recorded,
+        public ?\DateTimeImmutable $endDate = null,
+        public string $dosage = '',
+        public string $interval = '',
+        public ?\DateTimeImmutable $modifiedDate = null,
     ) {
+    }
+
+    /** When the medication was stopped: the recorded end date, else (for an inactive row) when it was last changed; null when unknown or still active. */
+    public function stoppedOn(): ?\DateTimeImmutable
+    {
+        if ($this->endDate !== null) {
+            return $this->endDate;
+        }
+        return $this->active ? null : $this->modifiedDate;
+    }
+
+    /** The drug's first word, lowercased: the coarse key that pairs a stopped row with its replacement. */
+    public function nameKey(): string
+    {
+        return strtolower(strtok(trim($this->drug), ' ') ?: $this->drug);
+    }
+
+    /** "10 MG Oral Tablet daily": the drug string after its name, plus dose and interval when recorded. */
+    public function describeDose(): string
+    {
+        $rest = trim((string) preg_replace('/^\S+\s*/', '', trim($this->drug)));
+        $parts = array_filter([$rest, $this->dosage, $this->interval], static fn(string $p): bool => $p !== '');
+        return $parts === [] ? $this->drug : implode(' ', $parts);
     }
 }

@@ -29,6 +29,7 @@ use OpenEMR\Modules\ClinicalCopilot\FactCategory;
 use OpenEMR\Modules\ClinicalCopilot\LabRecord;
 use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
+use OpenEMR\Modules\ClinicalCopilot\PendingOrderRecord;
 use OpenEMR\Modules\ClinicalCopilot\ProblemRecord;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeAuthorization;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeChartSource;
@@ -416,6 +417,109 @@ final class FactAssemblerTest extends TestCase
         self::assertSame(['title' => 'Essential hypertension'], $problem->attributes);
         // Every active problem, new or old, is available to the trigger rules without being a fact.
         self::assertSame(['Essential hypertension', 'Type 2 diabetes mellitus'], $result->activeProblemTitles());
+    }
+
+    // -- Task 9: chart-state changes ------------------------------------------
+
+    public function testMedicationStoppedAfterPriorVisitIsAStoppedFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->medications = [new MedicationRecord(21, 'Metformin 500 MG Oral Tablet', new DateTimeImmutable('2024-03-02'), false, endDate: new DateTimeImmutable('2026-09-05'))];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $stopped = $this->factsIn($result, FactCategory::MedicationStopped);
+        self::assertCount(1, $stopped);
+        self::assertSame('Metformin 500 MG Oral Tablet stopped 2026-09-05 (started 2024-03-02)', $stopped[0]->value);
+        self::assertSame('stopped', $stopped[0]->field);
+        self::assertTrue($stopped[0]->category->mustSurface());
+        self::assertSame(['drug' => 'Metformin 500 MG Oral Tablet'], $stopped[0]->attributes);
+        self::assertSame([], $this->factsIn($result, FactCategory::MedicationActive));
+        self::assertSame([], $this->factsIn($result, FactCategory::MedicationNew));
+    }
+
+    public function testMedicationStoppedBeforePriorVisitIsNotAFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->medications = [new MedicationRecord(22, 'Amoxicillin 500 MG', new DateTimeImmutable('2026-07-01'), false, endDate: new DateTimeImmutable('2026-07-10'))];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        self::assertSame([FactCategory::PriorVisit], array_map(fn(Fact $f) => $f->category, $result->facts()->all()));
+    }
+
+    public function testInactiveMedicationWithNoStopDateAfterPriorVisitUsesItsModifiedDate(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->medications = [new MedicationRecord(23, 'Atenolol 50 MG', new DateTimeImmutable('2025-01-01'), false, modifiedDate: new DateTimeImmutable('2026-09-03'))];
+
+        $stopped = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::MedicationStopped);
+
+        self::assertCount(1, $stopped);
+        self::assertSame('Atenolol 50 MG stopped 2026-09-03 (started 2025-01-01)', $stopped[0]->value);
+    }
+
+    public function testSameDrugStoppedAndRestartedCollapsesToChanged(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->medications = [
+            new MedicationRecord(24, 'Lisinopril 10 MG Oral Tablet', new DateTimeImmutable('2025-02-01'), false, endDate: new DateTimeImmutable('2026-09-04'), interval: 'daily'),
+            new MedicationRecord(25, 'Lisinopril 20 MG Oral Tablet', new DateTimeImmutable('2026-09-04'), true, interval: 'daily'),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $changed = $this->factsIn($result, FactCategory::MedicationChanged);
+        self::assertCount(1, $changed);
+        self::assertSame('Lisinopril changed from 10 MG Oral Tablet daily to 20 MG Oral Tablet daily on 2026-09-04', $changed[0]->value);
+        self::assertSame(25, $changed[0]->recordId);
+        self::assertSame(['drug' => 'Lisinopril 20 MG Oral Tablet'], $changed[0]->attributes);
+        self::assertSame([], $this->factsIn($result, FactCategory::MedicationStopped), 'the pair is one change, not a stop and a start');
+        self::assertSame([], $this->factsIn($result, FactCategory::MedicationNew));
+    }
+
+    public function testResolvedProblemAfterPriorVisitIsAResolvedFactAndLeavesTheActiveList(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->problems = [
+            new ProblemRecord(41, 'Acute bronchitis', new DateTimeImmutable('2026-07-20'), endDate: new DateTimeImmutable('2026-09-06'), active: false),
+            new ProblemRecord(42, 'Essential hypertension', new DateTimeImmutable('2020-01-01')),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $resolved = $this->factsIn($result, FactCategory::ProblemResolved);
+        self::assertCount(1, $resolved);
+        self::assertSame('Acute bronchitis resolved 2026-09-06', $resolved[0]->value);
+        self::assertFalse($resolved[0]->category->mustSurface());
+        self::assertSame(['Essential hypertension'], $result->activeProblemTitles());
+        self::assertSame([], $this->factsIn($result, FactCategory::ProblemNew));
+    }
+
+    public function testProblemResolvedBeforePriorVisitIsNotAFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->problems = [new ProblemRecord(43, 'Otitis media', new DateTimeImmutable('2026-05-01'), endDate: new DateTimeImmutable('2026-05-20'), active: false)];
+
+        self::assertSame([], $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::ProblemResolved));
+    }
+
+    public function testPendingOrderAfterPriorVisitIsAPendingLabFact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->pendingOrders = [
+            new PendingOrderRecord(501, 'Lipid panel', new DateTimeImmutable('2026-09-02'), 'pending'),
+            new PendingOrderRecord(502, 'CBC', new DateTimeImmutable('2026-08-02'), 'pending'),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        $pending = $this->factsIn($result, FactCategory::LabPending);
+        self::assertCount(1, $pending);
+        self::assertSame('Lipid panel ordered 2026-09-02, no result on file', $pending[0]->value);
+        self::assertSame(501, $pending[0]->recordId);
+        self::assertSame('ProcedureOrderService', $pending[0]->service);
+        self::assertTrue($pending[0]->category->mustSurface());
     }
 
     // -- Task 2: ranges from the lab, the report and the standard table ------
