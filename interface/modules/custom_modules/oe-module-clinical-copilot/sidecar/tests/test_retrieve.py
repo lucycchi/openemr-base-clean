@@ -142,3 +142,29 @@ def test_committed_trigger_vectors_match_the_rules_file() -> None:
     for rid, query in rules.items():
         assert rid in committed["queries"], f"rebuild the index: no vector for trigger {rid}"
         assert committed["queries"][rid]["query"] == query, f"rebuild the index: trigger {rid} query text changed"
+
+
+# -- a failing reranker degrades to fused order, never to no evidence ----------
+
+def test_rerank_failure_falls_back_to_rrf_order(index, monkeypatch) -> None:
+    """A rate-limited or unreachable Cohere must not blank the evidence: the
+    fused (RRF) order stands and no rerank usage is recorded."""
+    import sys
+    import types
+
+    monkeypatch.setenv("COHERE_API_KEY", "test-key")
+
+    class Broken:
+        def __init__(self, **kwargs):
+            pass
+
+        def rerank(self, **kwargs):
+            raise RuntimeError("429 Too Many Requests")
+
+    monkeypatch.setitem(sys.modules, "cohere", types.SimpleNamespace(ClientV2=Broken))
+    question, vec = load("statin-ldl-190") if QUERIES.exists() else ("statin for high LDL cholesterol", None)
+    cands = index.candidates(question, vec)
+    assert cands, "the fixture question must have candidates"
+    ranked, usage = retrieve.rerank(question, cands)
+    assert usage == []
+    assert [c.chunk_id for c, _ in ranked] == [c.chunk_id for c, _, _, _ in cands][: retrieve.TOP]

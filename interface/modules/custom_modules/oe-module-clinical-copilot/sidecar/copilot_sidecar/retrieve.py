@@ -250,7 +250,14 @@ def rerank(query: str, cands: list[tuple[IndexedChunk, float, float, float]]) ->
     # The correlation id travels as a request header, as with the OpenAI calls.
     cid = correlation_id()
     options = {"additional_headers": {"X-Correlation-Id": cid}} if cid else None
-    resp = client.rerank(model=RERANK_MODEL, query=query, documents=docs, top_n=TOP, request_options=options)
+    try:
+        resp = client.rerank(model=RERANK_MODEL, query=query, documents=docs, top_n=TOP, request_options=options)
+    except Exception as exc:
+        # A rate limit or outage at the reranker must not blank the evidence:
+        # the fused order stands, no rerank usage is recorded, and the log
+        # says why (the exception class, never the provider's message).
+        log.info("model_call failed", extra={"model": RERANK_MODEL, "kind": "rerank", "ms": int((time.monotonic() - started) * 1000), "exception_class": type(exc).__name__})
+        return [(c, rrf) for c, rrf, _, _ in cands][:TOP], []
     # r.index points back into `cands`; relevance_score is Cohere's 0..1 fit.
     ranked = [(cands[r.index][0], float(r.relevance_score)) for r in resp.results]
     log.info("model_call", extra={"model": RERANK_MODEL, "kind": "rerank", "count": len(docs), "ms": int((time.monotonic() - started) * 1000)})
