@@ -253,6 +253,9 @@ final class FactAssembler
 
         // Orders placed since the prior visit that still have no report.
         foreach ($this->chart->pendingOrders($pid) as $o) {
+            if (isset($hiddenEncounterIds[$o->encounterId])) {
+                continue;
+            }
             if ($this->isNew($o->orderedOn, $since)) {
                 $facts[] = $this->fact('ProcedureOrderService', $o->id, 'pending', sprintf('%s ordered %s, no result on file', $o->name, $o->orderedOn->format('Y-m-d')), FactCategory::LabPending);
             }
@@ -438,12 +441,20 @@ final class FactAssembler
     /** Cuts a note at the last sentence end before the cap and marks the cut; short notes pass through. */
     private static function capNote(string $text): string
     {
-        if (strlen($text) <= self::NOTE_CAP) {
+        if (mb_strlen($text) <= self::NOTE_CAP) {
             return $text;
         }
-        $head = substr($text, 0, self::NOTE_CAP);
-        $cut = max((int) strrpos($head, '. '), (int) strrpos($head, '.'), (int) strrpos($head, '! '), (int) strrpos($head, '? '));
-        $kept = $cut > 0 ? substr($head, 0, $cut + 1) : rtrim($head);
+        // Characters, not bytes, so a multibyte character is never split; the cut is
+        // the last sentence end (. ! ?) followed by whitespace and not part of a
+        // number such as "1.5", else the whole window.
+        $head = mb_substr($text, 0, self::NOTE_CAP);
+        $kept = $head;
+        if (preg_match_all('/(?<!\d)[.!?](?=\s)/u', $head, $m, PREG_OFFSET_CAPTURE) > 0) {
+            $last = end($m[0]);
+            if (is_array($last)) {
+                $kept = substr($head, 0, (int) $last[1] + 1);
+            }
+        }
         return rtrim($kept) . ' [truncated]';
     }
 

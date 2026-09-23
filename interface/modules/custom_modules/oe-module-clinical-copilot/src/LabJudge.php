@@ -30,7 +30,10 @@ final class LabJudge
 {
     private const ABNORMAL_FLAGS = ['high', 'low', 'yes', 'h', 'l', 'a', 'abnormal', 'hh', 'll'];
     private const CRITICAL_FLAGS = ['vhigh', 'vlow'];
-    private const POSITIVE_WORDS = ['positive', 'reactive', 'detected', 'abnormal', 'present'];
+    /** Whole words that report a positive finding; matched only when no negation is present. */
+    private const POSITIVE_PATTERN = '/\b(positive|reactive|detected|abnormal|present)\b/iu';
+    /** "Nonreactive", "Non-reactive", "not detected", "no growth", "negative", "absent", "none": the finding is negative. */
+    private const NEGATION_PATTERN = '/\b(non-?\s?\w+|not\b|no\b|negative\b|absent\b|none\b|without\b)/iu';
 
     public function __construct(private readonly ReferenceRanges $ranges = new ReferenceRanges())
     {
@@ -117,10 +120,14 @@ final class LabJudge
             $verdict = in_array($flag, self::CRITICAL_FLAGS, true) ? LabVerdict::Critical : LabVerdict::Abnormal;
             return new LabJudgement($verdict, $verdict === LabVerdict::Critical ? "flagged $flag by the lab" : 'flagged abnormal by the lab', '');
         }
-        foreach (self::POSITIVE_WORDS as $word) {
-            if (str_contains($text, $word)) {
-                return new LabJudgement(LabVerdict::Abnormal, "reported as $word", '');
-            }
+        // A negated finding ("Nonreactive", "Not detected", "No growth") is a normal
+        // result even though it contains a positive word; only an unnegated whole
+        // word is a positive finding.
+        if (preg_match(self::NEGATION_PATTERN, $text) === 1) {
+            return new LabJudgement(LabVerdict::Normal, '', '');
+        }
+        if (preg_match(self::POSITIVE_PATTERN, $text, $m) === 1) {
+            return new LabJudgement(LabVerdict::Abnormal, 'reported as ' . strtolower($m[1]), '');
         }
         return new LabJudgement(LabVerdict::Normal, '', '');
     }

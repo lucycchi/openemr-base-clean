@@ -381,7 +381,7 @@ final class OpenEmrChartSource implements ChartSource
         // thousands of reportless seed orders, so the assembler's date boundary
         // does the rest.
         $rows = QueryUtils::fetchRecords(
-            "SELECT po.procedure_order_id, po.date_ordered, po.order_status, COALESCE(poc.procedure_name, '') AS procedure_name
+            "SELECT po.procedure_order_id, po.date_ordered, po.order_status, po.encounter_id, COALESCE(poc.procedure_name, '') AS procedure_name
              FROM procedure_order po
              LEFT JOIN procedure_order_code poc ON poc.procedure_order_id = po.procedure_order_id AND poc.procedure_order_seq = 1
              LEFT JOIN procedure_report prp ON prp.procedure_order_id = po.procedure_order_id
@@ -396,6 +396,7 @@ final class OpenEmrChartSource implements ChartSource
                 trim(Row::str($r, 'procedure_name')) !== '' ? trim(Row::str($r, 'procedure_name')) : 'Lab order',
                 $this->date(Row::str($r, 'date_ordered')),
                 Row::str($r, 'order_status'),
+                Row::int($r, 'encounter_id'),
             ),
             $rows
         );

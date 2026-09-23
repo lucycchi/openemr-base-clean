@@ -23,6 +23,7 @@ final readonly class PendingOrderRecord
         public string $name,
         public \DateTimeImmutable $orderedOn,
         public string $status,
+        public int $encounterId = 0,
     ) {
     }
 }

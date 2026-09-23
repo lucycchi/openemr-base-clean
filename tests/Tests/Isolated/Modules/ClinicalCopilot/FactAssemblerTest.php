@@ -422,6 +422,84 @@ final class FactAssemblerTest extends TestCase
         self::assertSame(['Essential hypertension', 'Type 2 diabetes mellitus'], $result->activeProblemTitles());
     }
 
+    // -- Review fix pass ---------------------------------------------------------
+
+    public function testNegatedQualitativeResultsAreNormalNotAbnormal(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [
+            $this->lab(940, '', 'HIV-1/2 Ab', null, '', '2026-09-10', text: 'Nonreactive'),
+            $this->lab(941, '', 'HCV RNA', null, '', '2026-09-10', text: 'Not detected'),
+            $this->lab(942, '', 'Urine culture', null, '', '2026-09-10', text: 'No growth, none present'),
+            $this->lab(943, '', 'Pap smear', null, '', '2026-09-10', text: 'Negative for abnormal cells'),
+            $this->lab(944, '', 'RPR', null, '', '2026-09-10', text: 'Non-reactive'),
+        ];
+
+        $result = $this->assembler()->assemble(new PatientId(7), null);
+
+        self::assertSame([], $this->factsIn($result, FactCategory::LabAbnormal), 'a negated finding is not a positive one');
+        self::assertCount(5, $this->factsIn($result, FactCategory::LabNormal));
+    }
+
+    public function testPositiveWordsMatchWholeWordsOnly(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        $this->chart->labs = [
+            $this->lab(945, '', 'HBsAg', null, '', '2026-09-10', text: 'Reactive'),
+            $this->lab(946, '', 'Culture', null, '', '2026-09-10', text: 'Detected: E. coli'),
+        ];
+
+        $abnormal = $this->byRecordId($this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::LabAbnormal));
+
+        self::assertCount(2, $abnormal);
+        self::assertSame('HBsAg: Reactive on 2026-09-10 (reported as reactive)', $abnormal[945]->value);
+    }
+
+    public function testPlanCapNeverCutsInsideANumber(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        // The 600-character window ends inside "1.5 g daily ...", after the decimal point and
+        // before the sentence's own full stop: the only '.' near the cap is the decimal.
+        $tail = 'Increase metformin to 1.5 g daily and recheck the glucose log at the next visit and continue everything else unchanged until then.';
+        $sentence = 'Continue the current regimen. ';
+        $filler = str_repeat($sentence, intdiv(600 - 24 - strlen('Increase metformin to 1.'), strlen($sentence)));
+        $plan = $filler . $tail;
+        self::assertGreaterThan(600, strlen($plan));
+        self::assertLessThan(600, strlen($filler) + strlen('Increase metformin to 1.'));
+        self::assertGreaterThan(600, strlen($filler) + strlen($tail) - 10, 'the sentence end is past the cap');
+        $this->chart->notes = [$this->note(820, 99, '2026-09-01 10:30:00', NoteKind::Plan, $plan)];
+
+        $value = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::PriorVisitPlan)[0]->value;
+
+        self::assertStringNotContainsString('1. [truncated]', $value, 'never cut inside a number');
+        self::assertStringEndsWith('Continue the current regimen. [truncated]', $value);
+    }
+
+    public function testPlanCapKeepsMultibyteTextIntact(): void
+    {
+        $this->withPriorVisitOn('2026-09-01 10:00:00');
+        // One ASCII byte then 700 two-byte characters and no sentence end: the cap falls
+        // inside a character on a byte count, so a byte-based cut would corrupt the text.
+        $plan = 'a' . str_repeat('é', 700);
+        $this->chart->notes = [$this->note(821, 99, '2026-09-01 10:30:00', NoteKind::Plan, $plan)];
+
+        $value = $this->factsIn($this->assembler()->assemble(new PatientId(7), null), FactCategory::PriorVisitPlan)[0]->value;
+
+        self::assertTrue(mb_check_encoding($value, 'UTF-8'), 'the cap must not split a multibyte character');
+        self::assertNotFalse(json_encode($value));
+        self::assertStringEndsWith('é [truncated]', $value);
+        self::assertLessThanOrEqual(600 + mb_strlen(' [truncated]'), mb_strlen($value));
+    }
+
+    public function testPendingOrderFromASensitiveEncounterIsExcluded(): void
+    {
+        $this->auth->deny('sensitivities', 'high');
+        $this->chart->encounters = [$this->encounter(99, '2026-09-01 10:00:00'), $this->encounter(120, '2026-09-10 09:00:00', 'high')];
+        $this->chart->pendingOrders = [new PendingOrderRecord(511, 'HIV-1 RNA', new DateTimeImmutable('2026-09-10'), 'pending', 120)];
+
+        self::assertSame([], $this->factsIn($this->assembler()->assemble(new PatientId(7), 130), FactCategory::LabPending));
+    }
+
     // -- Task 11: the prior visit's assessment and plan ------------------------
 
     private function note(int $id, int $encounterId, string $date, NoteKind $kind, string $text): NoteRecord
