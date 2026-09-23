@@ -25,6 +25,11 @@ esac
 # Inside the openemr container (prek routes pre-commit hooks there): run php directly.
 if [ -d /var/www/localhost/htdocs/openemr ] && ! command -v docker >/dev/null 2>&1; then
     cd /var/www/localhost/htdocs/openemr
+    # OpenEMR's CLI guard refuses root (a manual `openemr-cmd prek run` arrives as
+    # root); the harness then runs as the web user, as the commit hooks do.
+    if [ "$(id -u)" = "0" ] && id apache >/dev/null 2>&1; then
+        exec su -s /bin/sh apache -c "php tests/evals/gate.php $(printf '%q ' "${extra[@]}")"
+    fi
     exec php tests/evals/gate.php "${extra[@]}"
 fi
 

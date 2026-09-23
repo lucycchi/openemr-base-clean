@@ -320,6 +320,21 @@ Tasks 9.1 and 9.2 are the two items from last week's submission feedback.
 - [ ] 10.5 Grow the corpus to 10-20 documents; re-baseline retrieval cases.
 - [ ] 10.6 Submission wrap-up: social post, AI interview notes, re-run both baselines, tag.
 
+### Phase 11: Expanded briefing (2026-09-23, ~one working day) — done locally; see BRIEFING_SCOPE_PROPOSAL.md and docs/superpowers/plans/2026-09-23-briefing-scope-expansion.md
+
+- [x] 11.1 Reference ranges for all 38 mapped analytes (`contracts/reference_ranges.json`, sex-specific rows, panic bounds), patient sex and date of birth read for range selection and age gates only.
+- [x] 11.2 Lab facts judged by three signals (lab flag, printed range, standard range) with the range named in the fact; `lab_normal` (with range), qualitative results, `lab_critical`; delta facts carry the range clause.
+- [x] 11.3 Guideline triggers (`contracts/guideline_triggers.json`): chart facts, the problem list and age fire six corpus topics with fixed queries and exclusions; deterministic, in PHP.
+- [x] 11.4 Sidecar brief mode: one retrieval batch per briefing using committed query vectors (`corpus/index/trigger_queries.json`), two passages per trigger, no duplicate passages; a rate-limited reranker falls back to fused order.
+- [x] 11.5 Critic worker: one strict boolean per trigger ("does the passage's population include this patient?"), route `applicability_check`; a failed call leaves the verdict unknown.
+- [x] 11.6 Panel section "What the guidelines say about this chart": cards with the facts that raised the topic, quoted passages with click-to-source, the critic's label and reason; rejected cards dropped and counted; cached with the facts hash and rules version; unavailable sidecar degrades, never fails.
+- [x] 11.7 Narrated guideline sentences in the briefing under the answer contract (cite the 12-character id, numbers verified); 12-sentence cap; prompt version bumped.
+- [x] 11.8 Stopped and changed medications, resolved problems, pending lab orders.
+- [x] 11.9 Vital signs: abnormal against `contracts/vital_thresholds.json`, deltas past noise thresholds; adults only; hypertension and screening triggers fire on them.
+- [x] 11.10 The prior visit's assessment and plan (SOAP and clinical notes), capped at 600 characters at a sentence boundary; PHI-in-logs live case 68 and injection case 67.
+- [x] 11.11 Evals: 17 new cases (53-68: triggers, brief evidence, brief routing, critic recorded and live, briefing guideline sentence, plan injection, plan PHI); rubric `applicability_correct` at 100; deterministic gate 52/52; live baseline keeps the prior verdicts plus the new cases.
+- [x] 11.12 Load baselines re-run on the dev stack and recorded as run 3 in BASELINES.md (the droplet is re-measured after the next deploy); the smoke seeds a current visit, an abnormal vitals reading, a pending order and a prior-visit plan for the demo patient and asserts the new sections render; `gate.sh` runs as the web user when invoked as root inside the container.
+
 ### Deferred to TODOS.md
 
 Third document type; image uploads; vision-model extraction for low-OCR-confidence pages; contextual retrieval tweaks; the second extraction stack and second reranker; GitLab pipeline job if CI is ever unblocked.

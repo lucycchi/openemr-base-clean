@@ -10,16 +10,16 @@ architecture: [W2_ARCHITECTURE.md](../../../../../clinical_copilot_week2/W2_ARCH
 | File | Does |
 |---|---|
 | `copilot_sidecar/app.py` | HTTP surface: `POST /run`, `GET /health` (liveness), `GET /ready` (every local dependency checked, 503 when one is missing; PHP's `ready.php` probes it), and the test-only `/eval/*` endpoints (`COPILOT_EVAL_ENDPOINTS=1`) |
-| `copilot_sidecar/graph.py` | The supervisor + two workers as a LangGraph `StateGraph`; deterministic routing; one `Handoff` per hop |
+| `copilot_sidecar/graph.py` | The supervisor + three workers (intake extractor, evidence retriever, critic) as a LangGraph `StateGraph`; deterministic routing; one `Handoff` per hop. Modes: `extract`, `answer`, `brief` (the chart's fired guideline triggers as fixed queries; retrieval once, then the critic once) |
 | `copilot_sidecar/extractor.py` | One document: parse → propose (one model call per page, one targeted retry) → anchor |
 | `copilot_sidecar/parse.py` | PyMuPDF text layer with word boxes; tesseract for scanned pages |
 | `copilot_sidecar/anchor.py` | Row-level anchoring: a value counts only if it is found in the same row as its analyte and unit |
-| `copilot_sidecar/llm.py` | The model call (Structured Outputs), prompts, `PROMPT_VERSION` |
-| `copilot_sidecar/retrieve.py` | Hybrid retrieval: BM25 + committed embeddings, RRF, relevance floor, Cohere rerank when a key is set |
+| `copilot_sidecar/llm.py` | The model calls (Structured Outputs): the extraction proposal and the critic's applicability verdict (`llm.critic.output`), prompts, `PROMPT_VERSION` |
+| `copilot_sidecar/retrieve.py` | Hybrid retrieval: BM25 + committed embeddings, RRF, relevance floor, Cohere rerank when a key is set (a reranker error falls back to fused order); `retrieve_many()` for brief mode using the committed trigger-query vectors |
 | `copilot_sidecar/schemas.py` | Pydantic models conforming to `../contracts/*.schema.json`, held to them by the shared examples |
 | `copilot_sidecar/contracts.py` | Loads a contract file at runtime; the proposal contracts are what OpenAI is asked to fill (`response_format`, strict) |
 | `copilot_sidecar/logging_setup.py` | JSON log lines restricted to an allowlist; the correlation id bound per request |
-| `corpus/` | Six guideline summaries (own words), `manifest.json`, the committed index |
+| `corpus/` | Six guideline summaries (own words), `manifest.json`, the committed index (`chunks.json`, `embeddings.npy`, and `trigger_queries.json`: the embedded fixed queries of `contracts/guideline_triggers.json`, rebuilt with `build_index.py` when a rule's query changes) |
 | `tools/` | `generate_fixtures.py` (synthetic PDFs), `build_index.py` |
 | `tests/` | pytest; run inside the gate |
 

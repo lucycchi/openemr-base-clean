@@ -23,6 +23,7 @@ practice.
 | **Models** | OpenAI `gpt-4o-mini` (narration, extraction), `text-embedding-3-small` (query embedding), Cohere `rerank-v3.5` (retrieval rerank; the key was added to the droplet the same day, so every follow-up reranked) |
 | **Data** | the 30 seed patients rotated per iteration for `brief` / `mixed` / `ask`; patient 30 for `extract`, cleaned with `tests/load/cleanup-documents.php` after each matrix |
 | **Load generator** | k6 v2.2.0 on a WSL2 laptop over the public internet; 1 s think time; each VU = one logged-in physician session |
+| **Run 3 target** | the development stack on the author's laptop (WSL2, 12 cores, 15.8 GiB, Docker 12 CPUs): `openemr/openemr:flex` + MariaDB 11.8 + the sidecar built from the branch; not comparable host-to-host with runs 1 and 2 (the droplet has 2 vCPU). Compare per-request work (model calls, cache hits, extraction success), not throughput. Code: `4451b9c` (expanded briefing, tasks 1-11), `Prompt::VERSION 2026-09-23.1`, Cohere rerank active |
 | **Runs** | run 1 `20260923T1522Z`: 8 × 2 minutes, 30 s gap, {10, 50} VUs × {brief, mixed, ask, extract}; run 2 `20260923T1558Z`: {10, 50} × {ask, extract}, the two scenarios the fix touches |
 | **Resource sampling** | `docker stats` + `/proc/loadavg` every 2 s on the droplet over ssh, now with the sidecar as its own bucket |
 
@@ -203,3 +204,87 @@ ssh do-openemr 'cd ~/openemr && docker compose exec -T openemr sh -c "cd /var/ww
 Compare against run 2's tables. The numbers to watch first: extract p95
 at 10 users, extract success at 10 users, ask p50 at 10 users, and the
 sidecar's memory peak at 50 users (its 768 MiB limit).
+
+## Run 3 (`4451b9c`, dev stack): the expanded briefing
+
+What changed in the code under load since run 2: the briefing now carries
+reference ranges on every lab, normal and critical results, vitals,
+stopped and changed medications, resolved problems, pending orders and the
+prior visit's plan (more facts, longer prompt, 12-sentence cap); a cold
+brief also runs the guideline section: the trigger rules in PHP, one
+retrieval batch in the sidecar on committed query vectors, and one critic
+model call per card. The target is the laptop stack, not the droplet, so
+the absolute numbers are a new baseline for this host; the per-request
+observations are what carry over.
+
+### Latency and errors
+
+| VUs | Scenario | Requests | req/s | Briefs (cache hit %) | Asks (guideline hit %) | Model calls | Brief p50/p95/p99 (ms) | Cache-hit brief p50/p95 | Cold brief p50/p95 | Ask p50/p95/p99 (ms) | Chart open p50/p95 | HTTP errors | Co-Pilot errors | Summary unavailable | Verification fail |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10 | ask | 491 | 3.84 | 157 (100) | 157 (5.1) | 157 | 464 / 670 / 1075 | 464 / 670 | – / – | 4971 / 5860 / 6830 | 1603 / 2011 | 0 % | 0 % | 0 % | 0 % |
+| 10 | brief | 530 | 4.21 | 255 (69.8) | 0 (–) | 77 | 536 / 7962 / 11948 | 499 / 807 | 4173 / 10146 | – / – / – | 1796 / 2395 | 0 % | 0 % | 0 % | 0 % |
+| 10 | mixed | 633 | 5.03 | 271 (100) | 71 (16.9) | 71 | 495 / 637 / 1148 | 495 / 637 | – / – | 4923 / 6430 / 6785 | 1780 / 2400 | 0 % | 0 % | 0 % | 0 % |
+| 50 | ask | 1144 | 8.54 | 348 (100) | 348 (13.22) | 348 | 1682 / 2766 / 3055 | 1682 / 2766 | – / – | 6606 / 8380 / 9010 | 8015 / 11424 | 0 % | 0 % | 0 % | 0 % |
+| 50 | brief | 954 | 7.49 | 427 (99.53) | 0 (–) | 2 | 2286 / 3464 / 3909 | 2284 / 3452 | 13771 / 16182 | – / – / – | 10530 / 14111 | 0 % | 0 % | 0 % | 0 % |
+| 50 | mixed | 1069 | 8.04 | 424 (100) | 121 (12.4) | 121 | 2010 / 3014 / 3415 | 2010 / 3014 | – / – | 6838 / 9230 / 11029 | 9138 / 12337 | 0 % | 0 % | 0 % | 0 % |
+
+### Document extraction (Week 2)
+
+| VUs | Requests | req/s | Extractions | Extracted | Fully verified | Confidence p50 | Upload p50/p95 (ms) | Extract p50/p95/p99/max (ms) | Chart open p50/p95 | HTTP errors | Co-Pilot errors |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10 | 260 | 1.96 | 80 | 100 % | 100 % | 1 | 221 / 341 | 13115 / 15706 / 16864 / 17438 | 1194 / 1829 | 0 % | 0 % |
+| 50 | 1066 | 8.01 | 322 | 12.73 % | 12.73 % | 0 | 1526 / 3033 | 6038 / 15650 / 18012 / 20418 | 9808 / 13824 | 0 % | 0 % |
+
+### CPU and memory on the target host
+
+| VUs | Scenario | App CPU avg / peak (% of one core) | App memory avg / peak (MiB) | Sidecar CPU avg / peak | Sidecar memory avg / peak (MiB) | DB CPU avg / peak | DB memory avg / peak (MiB) | Host load1 peak |
+|---|---|---|---|---|---|---|---|---|
+| 10 | ask | 163.2 / 651.4 | 1703 / 1753 | 6.8 / 31.7 | 597 / 616 | 63.8 / 330.3 | 228 / 234 | 3.39 |
+| 10 | brief | 287.5 / 768.2 | 1740 / 1779 | 1.8 / 14.4 | 550 / 562 | 126.8 / 279.3 | 184 / 194 | 5.55 |
+| 10 | extract | 92.2 / 666.1 | 1715 / 1754 | 8.7 / 21.4 | 622 / 628 | 36.8 / 335.9 | 240 / 244 | 1.84 |
+| 10 | mixed | 331.0 / 653.3 | 1723 / 1752 | 3.6 / 15.2 | 568 / 572 | 145.4 / 334.2 | 210 / 219 | 4.72 |
+| 50 | ask | 803.0 / 1129.0 | 2966 / 3108 | 23.3 / 68.9 | 690 / 723 | 251.3 / 336.9 | 428 / 445 | 36.95 |
+| 50 | brief | 803.3 / 1037.9 | 3047 / 3190 | 1.2 / 20.2 | 627 / 637 | 285.7 / 364.4 | 326 / 352 | 45.8 |
+| 50 | extract | 743.6 / 1104.8 | 2981 / 3279 | 33.6 / 157.2 | 798 / 824 | 197.5 / 362.1 | 464 / 478 | 38.68 |
+| 50 | mixed | 801.2 / 1072.9 | 3037 / 3150 | 7.2 / 28.3 | 628 / 629 | 268.8 / 360.4 | 385 / 405 | 42.81 |
+
+### Reading run 3
+
+- **A cold brief costs one more model round trip per guideline card.** At
+  10 users the cold brief is p50 4.2 s / p95 10.1 s (run 1 on the droplet:
+  3.6 s / 5.6 s): the narration prompt is longer (up to 45 facts on the
+  busiest seed chart, previously 28) and the critic judges each card in
+  its own call before the narration starts. The cache-hit brief is p50
+  0.5 s at 10 users and 2.3 s at 50 (CPU-bound on the app container, 8
+  cores busy). Retrieval for the section itself is local: `retrieved
+  kind=brief` lines report 0.5-0.6 s for six triggers with no embedding
+  call.
+- **Asks are unchanged in shape.** p50 5.0 s / p95 5.9 s at 10 users
+  (run 2: 5.2 s / 7.3 s on the droplet) and 6.6 s / 8.4 s at 50; the
+  guideline-hit rate on the seed charts is 5-17 %, the same order as run 2.
+- **No HTTP or Co-Pilot errors at 50 users on this host**, where the
+  droplet's 2 vCPU produced 25-30 % errors; chart open p95 at 50 users is
+  11-14 s here against 54-60 s there. Same code, eight times the cores.
+- **Extraction at 10 users: 80 documents, 100 % extracted, 100 % fully
+  verified, p50 13.1 s / p95 15.7 s** (run 2: 16.7 s / 19.6 s). At 50 users
+  the sidecar attempted 322 runs and only 12.7 % completed: the sidecar log
+  for the window holds 281 `model_error` outcomes, the provider rejecting
+  calls at roughly 40 model calls per second (5 pages per document at 8
+  documents per second), with the client's single retry exhausted. This is
+  a rate limit, not a code path: the same window shows 0 % Co-Pilot errors
+  because a failed extraction is reported as a failed document, as
+  designed. It is the concrete case for a concurrency cap or backoff on
+  extraction under burst (COST_AND_LATENCY.md, bottleneck 1).
+- **The reranker fallback fired for real.** Four `TooManyRequestsError`
+  lines from Cohere during the window; each fell back to fused order and
+  the request completed (commit `6b080aa`).
+- **Resources.** Sidecar memory 550-800 MiB avg across scenarios (the
+  committed index plus the trigger vectors is a fixed cost), CPU 1-34 %
+  average, 157 % peak during extraction; the app container is the
+  bottleneck at 50 users (800 % of one core average, 3 GiB), the database
+  250-290 %.
+
+Not measured here: provider-side latency drift (two narrations timed out at
+27.5 s during the day's smoke runs, once before this work started), and the
+droplet itself; re-run `tests/load/run-baselines.sh` with `STATS=ssh`
+against it after the next deploy and add a run 4 to this file.

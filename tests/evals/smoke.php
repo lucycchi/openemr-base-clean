@@ -20,6 +20,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Evals;
 
+use DateTimeImmutable;
 use Document;
 use Facebook\WebDriver\Remote\LocalFileDetector;
 use Facebook\WebDriver\Remote\RemoteWebElement;
@@ -138,7 +139,47 @@ $demoRow = QueryUtils::querySingleRow("SELECT pid FROM patient_data WHERE pid NO
 $demoPid = is_array($demoRow) ? Row::int($demoRow, 'pid') : 0;
 if ($demoPid > 0) {
     $admin = login($base, 'admin', 'pass');
+    // Expanded briefing (2026-09-23): seed one abnormal vitals reading and one pending
+    // lab order dated yesterday, and a plan on the prior visit, so the new sections
+    // render for the demo patient. Removed again in the cleanup below.
+    $seedIds = ['prior' => null, 'prior_form' => null];
+    $yesterday = (new DateTimeImmutable('yesterday'))->format('Y-m-d 09:30:00');
+    // Opening a chart selects the patient's latest encounter as the current visit, and
+    // the briefing is history before that visit. So the demo patient gets a current
+    // encounter dated yesterday; the visit before it (existing, or seeded three days
+    // ago when the patient has none) is the prior visit that carries the plan; the
+    // reading and the order are dated yesterday, after that prior visit.
+    $seedIds['prior'] = null;
+    $seedIds['prior_form'] = null;
+    $priorRow = QueryUtils::querySingleRow("SELECT encounter, date FROM form_encounter WHERE pid = ? AND date < CURDATE() ORDER BY date DESC, encounter DESC LIMIT 1", [$demoPid]);
+    if (is_array($priorRow)) {
+        $priorEncounter = Row::int($priorRow, 'encounter');
+        $priorDate = Row::str($priorRow, 'date');
+    } else {
+        $priorDate = (new DateTimeImmutable('-3 days'))->format('Y-m-d 10:00:00');
+        $priorEncounter = 800000 + $demoPid;
+        $seedIds['prior'] = (int) QueryUtils::sqlInsert("INSERT INTO form_encounter (date, reason, pid, encounter, provider_id, facility_id, sensitivity) VALUES (?, 'Follow-up', ?, ?, 1, 3, '')", [$priorDate, $demoPid, $priorEncounter]);
+        $seedIds['prior_form'] = (int) QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES (?, ?, 'New Patient Encounter', ?, ?, 'admin', 'Default', 1, 0, 'newpatient')", [$priorDate, $priorEncounter, $seedIds['prior'], $demoPid]);
+    }
+    $currentDate = (new DateTimeImmutable('yesterday'))->format('Y-m-d 11:00:00');
+    $currentEncounter = 810000 + $demoPid;
+    $seedIds['current'] = (int) QueryUtils::sqlInsert("INSERT INTO form_encounter (date, reason, pid, encounter, provider_id, facility_id, sensitivity) VALUES (?, 'Follow-up', ?, ?, 1, 3, '')", [$currentDate, $demoPid, $currentEncounter]);
+    $seedIds['current_form'] = (int) QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES (?, ?, 'New Patient Encounter', ?, ?, 'admin', 'Default', 1, 0, 'newpatient')", [$currentDate, $currentEncounter, $seedIds['current'], $demoPid]);
+    $seedIds['vitals'] = (int) QueryUtils::sqlInsert("INSERT INTO form_vitals (date, pid, user, groupname, authorized, activity, bps, bpd, pulse, weight, BMI) VALUES (?, ?, 'admin', 'Default', 1, 1, '152', '94', 76, 171, 27.5)", [$yesterday, $demoPid]);
+    $seedIds['vitals_form'] = (int) QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES (?, ?, 'Vitals', ?, ?, 'admin', 'Default', 1, 0, 'vitals')", [$yesterday, $currentEncounter, $seedIds['vitals'], $demoPid]);
+    // The order is attached to the current encounter: an order with no encounter makes
+    // OpenEMR's own chart page ask whether to assign it, which would block the browser.
+    $seedIds['order'] = (int) QueryUtils::sqlInsert("INSERT INTO procedure_order (patient_id, encounter_id, date_ordered, order_status, provider_id) VALUES (?, ?, ?, 'pending', 1)", [$demoPid, $currentEncounter, substr($yesterday, 0, 10)]);
+    QueryUtils::sqlInsert("INSERT INTO procedure_order_code (procedure_order_id, procedure_order_seq, procedure_code, procedure_name) VALUES (?, 1, 'SMOKE-LIPID', 'Lipid panel')", [$seedIds['order']]);
+    $seedIds['soap'] = (int) QueryUtils::sqlInsert("INSERT INTO form_soap (date, pid, user, groupname, authorized, activity, subjective, objective, assessment, plan) VALUES (?, ?, 'admin', 'Default', 1, 1, '', '', '', 'Recheck the lipid panel and review the home blood pressure log at the next visit.')", [$priorDate, $demoPid]);
+    $seedIds['soap_form'] = (int) QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES (?, ?, 'SOAP', ?, ?, 'admin', 'Default', 1, 0, 'soap')", [$priorDate, $priorEncounter, $seedIds['soap'], $demoPid]);
+    QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$demoPid]);
     $before = openPanel($admin, $base, $demoPid)['status'];
+    $sections = strOf($admin->executeScript("return Array.from(document.querySelectorAll('#copilot-facts h6')).map(n => n.textContent).join(' | ')"));
+    // The briefing as the page requested it: which visit the facts are relative to and
+    // how many facts per category, so a missing section explains itself.
+    $shape = strOf($admin->executeScript("const p=document.getElementById('copilot-panel'); const fd=new FormData(); fd.append('csrf_token_form', p.dataset.csrf); fd.append('action','brief'); return fetch(p.dataset.endpoint,{method:'POST',body:fd,credentials:'same-origin'}).then(r=>r.json()).then(j=>{const c={}; (j.facts||[]).forEach(f=>{c[f.category]=(c[f.category]||0)+1;}); return 'prior_visit='+j.prior_visit+' '+JSON.stringify(c);});"));
+    check($failures, 'expanded briefing sections rendered', str_contains($sections, 'Abnormal vital signs') && str_contains($sections, 'Labs ordered, no result on file') && str_contains($sections, 'Plan from the prior visit'), substr($sections, 0, 120) . ' :: ' . substr($shape, 0, 200));
     $fixture = realpath(__DIR__ . '/fixtures/docs/lab-layout1.pdf');
     $fileInput = $admin->getWebDriver()->findElement(WebDriverBy::id('copilot-file'));
     if ($fileInput instanceof RemoteWebElement) {
@@ -186,6 +227,22 @@ if ($demoPid > 0) {
     $guidelineCards = intOf($admin->executeScript("return document.querySelectorAll('#copilot-guidelines .copilot-card').length"));
     check($failures, 'guideline section rendered without falling back', $guidelineSection !== '' && !str_contains($guidelineSection, 'unavailable'), "cards=$guidelineCards " . substr(str_replace("\n", ' ', $guidelineSection), 0, 80));
     $admin->quit();
+    // Remove the seeded rows: plan, order, reading, the current encounter and, when
+    // one was seeded, the prior encounter.
+    QueryUtils::sqlStatementThrowException("DELETE FROM forms WHERE id = ?", [$seedIds['soap_form']]);
+    QueryUtils::sqlStatementThrowException("DELETE FROM form_soap WHERE id = ?", [$seedIds['soap']]);
+    QueryUtils::sqlStatementThrowException("DELETE FROM procedure_order_code WHERE procedure_order_id = ?", [$seedIds['order']]);
+    QueryUtils::sqlStatementThrowException("DELETE FROM procedure_order WHERE procedure_order_id = ?", [$seedIds['order']]);
+    QueryUtils::sqlStatementThrowException("DELETE FROM forms WHERE id = ?", [$seedIds['vitals_form']]);
+    QueryUtils::sqlStatementThrowException("DELETE FROM form_vitals WHERE id = ?", [$seedIds['vitals']]);
+    QueryUtils::sqlStatementThrowException("DELETE FROM forms WHERE id = ?", [$seedIds['current_form']]);
+    QueryUtils::sqlStatementThrowException("DELETE FROM form_encounter WHERE id = ?", [$seedIds['current']]);
+    if ($seedIds['prior_form'] !== null) {
+        QueryUtils::sqlStatementThrowException("DELETE FROM forms WHERE id = ?", [$seedIds['prior_form']]);
+    }
+    if ($seedIds['prior'] !== null) {
+        QueryUtils::sqlStatementThrowException("DELETE FROM form_encounter WHERE id = ?", [$seedIds['prior']]);
+    }
     // Remove the upload and its derived rows so the seed data stays as seeded.
     foreach (QueryUtils::fetchRecords("SELECT document_id FROM copilot_document WHERE pid = ?", [$demoPid]) as $d) {
         $id = Row::int($d, 'document_id');

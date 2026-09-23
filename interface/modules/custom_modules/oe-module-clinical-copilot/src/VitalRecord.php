@@ -3,7 +3,7 @@
 /**
  * One set of vital signs as the chart holds it (form_vitals). OpenEMR stores
  * weight in pounds and temperature in Fahrenheit; blood pressure is two
- * strings, parsed to integers here or null when unparseable. Any field can
+ * strings, parsed to integers here or null when unparsable. Any field can
  * be null: a reading records only what was measured.
  *
  * @package   OpenEMR

@@ -166,6 +166,50 @@ sentence against the fact, and strips anything else (cases 33, 35, 45, 46).
 The panel renders "From the record" and "From guidelines" apart. Answers
 are capped at six sentences ([experiments/answer-length-cap.md](experiments/answer-length-cap.md)).
 
+## What the guidelines say about this chart (brief mode and the critic, 2026-09-23)
+
+The briefing carries a section of guideline cards the chart itself raised. No model
+decides which topics apply: `contracts/guideline_triggers.json` maps facts (an LDL above
+range, a low hemoglobin, an abnormal blood pressure), the active problem list (an
+established diabetes or hypertension diagnosis) and the patient's age to six fixed
+retrieval queries, one per corpus document, with exclusions (statin guidance only for
+ages 40-75; anemia and glycemic-target topics suppressed by pregnancy; type 1 diabetes
+excluded from the type 2 targets). `GuidelineTriggers::fire()` runs in PHP and records
+which fact ids and problem titles fired each rule, so every card can say why it appeared.
+
+The fired triggers go to the sidecar as a `brief` run. The supervisor routes once to the
+evidence retriever (reason `chart_triggers`, or `done` with `no_triggers`), which runs
+every query in one pass using the vectors `tools/build_index.py` committed in
+`corpus/index/trigger_queries.json`: a brief costs no embedding call. Two passages per
+trigger, and a passage appears under the first trigger that retrieved it only. A
+reranker error (Cohere returned 429 under load during development) falls back to the
+fused order rather than blanking the evidence.
+
+The critic is the third worker. When any trigger has passages and a model key is
+configured, the supervisor routes once to `critic` (reason `applicability_check`), which
+asks one strict-schema question per trigger: does the passage's stated population
+include this patient, given the cited fact lines and the patient's age and sex? The
+verdict is a strict boolean plus a one-sentence reason drawn from the passage; it never
+writes patient-facing text. A `false` drops the card (and is counted); a model failure
+leaves the verdict unknown and the card labelled "applicability not assessed". The
+recorded eval cases 60-62 and the live twins 63-64 pin the 40-75 statin passage for an
+82-year-old (not applicable) and a 55-year-old (applicable).
+
+On the PHP side `GuidelineSection::fromRun()` builds the cards, `PanelPayload` carries
+them as `guidelines` in the briefing contract, and the panel renders them between the
+narration and the fact table. The section is built before the narration and also when no
+chat model is configured; an unreachable sidecar yields status `unavailable` with the
+briefing otherwise complete (DB-backed test `ChatControllerBriefTest`). The surviving
+cards' passages are also offered to the briefing model under the answer contract: one
+sentence per passage at most, cited to its 12-character id, numbers verified against the
+quote (eval case 66). The section is cached in `copilot_briefing_cache` under its own key
+(facts hash, rules version, model).
+
+Observed during the smoke: on the demo chart the model files the AHA/ACC statin numbers
+under the ADA passage's id in an answer, and the verifier strips that sentence every
+time. That is the citation contract working; the smoke now judges the ask by verified
+sentences only.
+
 ## The gate
 
 Every push runs `tests/evals/gate.sh` from the pre-push hook

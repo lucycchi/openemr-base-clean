@@ -1,0 +1,17 @@
+# 20260923T2105Z-10vu-mixed  2026-09-23T21:10:31.214Z  http://localhost:8300
+scenario=mixed vus=10 duration=2m0s
+requests=633 throughput=5.03 req/s  http_failed=0%  copilot_errors=0%
+briefs=271 (cache hit 100%)  asks=71 (guideline hit 16.9%)  model_calls=71  summary_unavailable=0%  verification_fail=0%
+extractions=0  extracted=null%  fully_verified=null%  confidence_p50=null
+sentences kept=1113 stripped=12
+
+endpoint          n      p50     p95     p99     max  (ms)
+all_http          633    1485    4978    5843    7066
+login              10     931     967     970     971
+chart_open        271    1780    2400    2608    2722
+brief             271     495     637    1148    1315
+brief_cache_hit   271     495     637    1148    1315
+brief_cold       null    null    null    null    null
+ask                71    4923    6430    6785    7066
+upload              0    null    null    null    null
+extract             0    null    null    null    null
