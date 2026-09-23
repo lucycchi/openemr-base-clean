@@ -192,6 +192,7 @@ only way round it; the recorded refusal transcript is in
 | PHI in the sidecar | trust boundary | bytes in memory only, no disk, no database, no patient name in the request, log allowlist, correlation id on every line | the model provider sees document text (as it does chart facts in Week 1); covered by the provider agreement, not by code |
 | Observability transport | Langfuse v3 ingestion | delayed 10–30 min for non-score events, shut down 2026-11-16; scores are immediate | OTLP migration in Phase 9 |
 | Single droplet, no CI | deploy | `deploy.sh` is the CI job by hand; the hook is the gate | a bad deploy is rolled back by checkout + redeploy; the sidecar is stateless |
+| Dev stack ≠ production image | anything that works locally but not on the droplet | the production image installs without dev packages; `/ready`'s `contracts` probe checks the module's runtime pieces; the API collections run against the droplet after every deploy | the first Phase 8 deploy shipped the contract validator as a dev-only dependency and 500'd on every sidecar reply until the redeploy; the dev stack cannot catch this class of defect |
 
 ## Review console and rating calibration (Phase 4b, planned)
 
@@ -284,6 +285,15 @@ and the per-hop / per-call lines above closed that, and the PHI cases now
 fail the gate if any sidecar line lacks the request's id.
 
 ## Findings and open issues (running log)
+
+- **2026-09-23, first Phase 8 deploy: a dev-only dependency in production.**
+  `justinrainbow/json-schema`, used since requirement 3 to validate every
+  sidecar reply at runtime, was in `require-dev`; the droplet's image
+  installs `--no-dev`, so every extraction and question answered 500 with
+  `Class "JsonSchema\Validator" not found` while `/ready` said `ready`.
+  Fixed by promoting the package to `require` and adding a required
+  `contracts` readiness probe; redeployed the same hour. Caught by the
+  post-deploy collection run, not by any local check.
 
 - **2026-09-22, the sidecar in readiness.** Design task 2.3 said `/ready`
   probes the sidecar; it did not. Now the sidecar has its own `GET /ready`

@@ -422,8 +422,18 @@ and watch PHP refuse the reply as `schema_mismatch`.
   forbid (fixed at the source with `Field` constraints), and the PHP
   validator did not enforce the citation contract's `if`/`then` (rewritten
   as `anyOf`).
-
-Not yet on the droplet; ships with the Phase 8 deploy.
+- **Found by the Phase 8 deploy (2026-09-23):** the validator library
+  (`justinrainbow/json-schema`) was a dev-only dependency, and the
+  production image installs without dev packages, so the runtime gate
+  threw `Class "JsonSchema\Validator" not found` on every sidecar reply:
+  every extraction and every question answered 500 while `/ready` said
+  `ready`. Two fixes, both at the source: the package is a runtime
+  dependency (`composer.json` `require`, lock updated), and `/ready` now
+  has a required `contracts` probe (validator class present, contract
+  files load) so a build missing either reports `not_ready`. The deploy's
+  own health check and the Week 2 API collection against the droplet are
+  what caught it; the dev stack could not, because it installs dev
+  packages. Lesson recorded in the risks table of W2_ARCHITECTURE.md.
 
 ---
 
@@ -717,8 +727,14 @@ curl -s https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-modu
   tests.
 - `ReadinessProbes` was not unit-testable: refactored to take the client;
   `ReadinessProbesTest` added.
-- The Week 2 API collection's request 02 now asserts `sidecar: ok`. Not yet
-  on the droplet; ships with the Phase 8 deploy.
+- The Week 2 API collection's request 02 now asserts `sidecar: ok`.
+- **Added after the first Phase 8 deploy (2026-09-23):** a required
+  `contracts` probe (the JSON Schema validator library is installed and
+  the contract files load). The first deploy shipped a build whose
+  validator was a dev-only package; `/ready` said `ready` while every
+  sidecar reply failed with a 500. With this probe the same build reports
+  `not_ready` with `contract validator missing`. Requirement 3's audit
+  notes carry the full account.
 
 ---
 
