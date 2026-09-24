@@ -1,7 +1,7 @@
 <?php
 
 /**
- * The two things chat.php can be asked to do (contracts/chat.request.schema.json).
+ * The three things chat.php can be asked to do (contracts/chat.request.schema.json).
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -15,12 +15,15 @@ declare(strict_types=1);
 namespace OpenEMR\Modules\ClinicalCopilot;
 
 /**
- * The two things chat.php can be asked to do. A string-backed enum: the
- * value is what arrives in the JSON request body ("action": "brief"), and
- * ChatAction::from() rejects anything else at the boundary.
+ * The three things chat.php can be asked to do: brief, answer a follow-up
+ * question, or record the physician's rating of the summary shown. A
+ * string-backed enum: the value is what arrives in the request body
+ * ("action": "brief"), and ChatAction::from() rejects anything else at the
+ * boundary.
  */
 enum ChatAction: string
 {
     case Brief = 'brief';
     case Ask = 'ask';
+    case Rate = 'rate';
 }

@@ -39,6 +39,7 @@ code outside an enum, a missing required field, a value out of range).
 | `chat.briefing.response.schema.json` | `chat.php` → browser, `action=brief` | `PanelPayload::briefing()` output validated in `ContractsTest`. |
 | `chat.answer.response.schema.json` | `chat.php` → browser, `action=ask` | `PanelPayload::answer()` output validated in `ContractsTest`. |
 | `chat.chart-changed.response.schema.json` | `chat.php` → browser, stale `facts_hash` | `PanelPayload::chartChanged()` output validated in `ContractsTest`. |
+| `chat.rate.response.schema.json` | `chat.php` → browser, `action=rate` | `PanelPayload::rated()` output validated in `ContractsTest`. |
 | `chat.error.response.schema.json` | `chat.php` → browser, any error | Validated in `ContractsTest`; every error path in `ChatController` uses this shape. |
 | `health.response.schema.json` | `public/health.php` → caller | Validated in `ContractsTest`. |
 | `ready.response.schema.json` | `public/ready.php` → caller | `ReadinessReport::toArray()` validated in `ContractsTest` for ready, degraded and not-ready. Week 2 adds the `sidecar` dependency (its own `/ready`, degraded-only) and its three reason codes to the enums. |

@@ -18,8 +18,9 @@
 //   0.1.1  0_1_0-to-0_1_1_upgrade.sql (copilot_prewarm for sites installed at 0.1.0)
 //   0.1.2  0_1_1-to-0_1_2_upgrade.sql (copilot_document, copilot_document_fact, copilot_intake: week 2 ingestion)
 //   0.1.3  0_1_2-to-0_1_3_upgrade.sql (mismatch kinds on copilot_intake and copilot_document_fact)
+//   0.1.4  0_1_3-to-0_1_4_upgrade.sql (copilot_briefing_rating: physician rating of the AI summary)
 $v_major = '0';
 $v_minor = '1';
-$v_patch = '3';
+$v_patch = '4';
 $v_tag   = '';
 $v_database = 0;

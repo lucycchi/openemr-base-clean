@@ -36,6 +36,12 @@ final readonly class BriefingResult
         public int $completionTokens,
         /** ISO 8601 generation time of a cached narration; null when generated in this request */
         public ?string $generatedAt = null,
+        /**
+         * Cache key of the narration shown, so the physician's rating is tied to
+         * this exact text (action=rate). Null when the narration is not in the
+         * cache (model failure, total failure, not configured): nothing to rate.
+         */
+        public ?string $cacheKey = null,
     ) {
     }
 }

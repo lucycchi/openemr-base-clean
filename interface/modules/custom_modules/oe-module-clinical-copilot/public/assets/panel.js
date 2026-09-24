@@ -119,7 +119,9 @@
     // server is stateless about (it is re-sent on each turn).
     // factsById and guidelinesById let a fact id (or guideline chunk id) be
     // turned back into its text when a sentence cites it.
-    const state = { factsHash: null, factsById: {}, guidelinesById: {}, transcript: [] };
+    // briefingCorrelationId is the brief request that showed the summary: a rating
+    // is sent with it so the physician_rating score lands on that trace.
+    const state = { factsHash: null, factsById: {}, guidelinesById: {}, transcript: [], briefingCorrelationId: null };
 
     // Tiny DOM builder. All text goes through textContent / createTextNode,
     // never innerHTML with data, so chart text cannot inject markup.
@@ -536,6 +538,10 @@
             if (n.stripped > 0) {
                 els.narration.appendChild(el('div', { class: 'copilot-alert', text: n.stripped + ' unverified sentence' + (n.stripped > 1 ? 's were' : ' was') + ' removed.' }));
             }
+            // Only a summary that was shown and is cached can be rated (cache_key is null otherwise).
+            if (n.sentences.length > 0 && n.cache_key && state.briefingCorrelationId) {
+                els.narration.appendChild(ratingNode(n.cache_key, state.briefingCorrelationId));
+            }
         }
         // Facts the omission guard found missing from the summary, listed by their recorded value.
         if (n.omitted_fact_ids.length > 0) {
@@ -546,6 +552,69 @@
             });
             els.narration.appendChild(wrap);
         }
+    }
+
+    // "Was this summary useful?" with thumbs up / down (KEY_METRICS.md metric 6).
+    // One click records the rating and opens an optional comment box; saving the
+    // comment re-sends the same rating with it. Rating again replaces the earlier
+    // rating (the server keeps one per physician per summary), and the saved
+    // comment is re-sent so a change of mind does not erase it. Fire-and-forget:
+    // nothing here waits on or changes the summary, and a failure is reported
+    // beside the buttons only. The comment is stored in the EHR and never sent to
+    // the AI or the trace.
+    function ratingNode(cacheKey, correlationId) {
+        let rating = null;
+        let savedComment = '';
+        const status = el('span', { class: 'copilot-rate-status', role: 'status' });
+        const up = el('button', { type: 'button', class: 'btn btn-sm btn-outline-secondary', 'aria-pressed': 'false', text: '\u{1F44D} Useful' });
+        const down = el('button', { type: 'button', class: 'btn btn-sm btn-outline-secondary', 'aria-pressed': 'false', text: '\u{1F44E} Not useful' });
+        const comment = el('textarea', { class: 'form-control form-control-sm', rows: '2', maxlength: '2000', 'aria-label': 'Comment on this summary', placeholder: 'What was missing or wrong? Optional; kept in the chart system, not sent to the AI.' });
+        const save = el('button', { type: 'button', class: 'btn btn-sm btn-secondary', text: 'Save comment' });
+        const box = el('div', { class: 'copilot-rate-comment' }, [comment, save]);
+        box.hidden = true;
+
+        function send(text) {
+            status.className = 'copilot-rate-status';
+            status.textContent = 'saving…';
+            return post({ action: 'rate', rating, comment: text, cache_key: cacheKey, briefing_correlation_id: correlationId })
+                .then(({ ok, json }) => {
+                    if (!ok) {
+                        status.className = 'copilot-rate-status text-danger';
+                        status.textContent = json.error || 'Could not save the rating.';
+                        return false;
+                    }
+                    status.textContent = json.comment_saved ? 'Thanks, rating and comment saved.' : 'Thanks, rating saved.';
+                    return true;
+                })
+                .catch(() => {
+                    status.className = 'copilot-rate-status text-danger';
+                    status.textContent = 'Could not save the rating.';
+                    return false;
+                });
+        }
+        function choose(value) {
+            rating = value;
+            up.setAttribute('aria-pressed', String(value === 'up'));
+            down.setAttribute('aria-pressed', String(value === 'down'));
+            up.classList.toggle('active', value === 'up');
+            down.classList.toggle('active', value === 'down');
+            box.hidden = false;
+            send(savedComment);
+        }
+        up.addEventListener('click', () => choose('up'));
+        down.addEventListener('click', () => choose('down'));
+        save.addEventListener('click', () => {
+            const text = comment.value.trim();
+            save.disabled = true;
+            send(text).then(ok => {
+                if (ok) savedComment = text;
+                save.disabled = false;
+            });
+        });
+        return el('div', { class: 'copilot-rate' }, [
+            el('div', { class: 'copilot-rate-row' }, [el('span', { class: 'copilot-rate-q', text: 'Was this summary useful?' }), up, down, status]),
+            box,
+        ]);
     }
 
     // POST form-encoded fields to chat.php with the CSRF token and a 30s
@@ -593,6 +662,7 @@
                 return;
             }
             renderFacts(json);
+            state.briefingCorrelationId = json.correlation_id;
             renderNarration(json.narration);
             renderGuidelines(json.guidelines);
             // The route this briefing took, in the "Why this result" drawer.

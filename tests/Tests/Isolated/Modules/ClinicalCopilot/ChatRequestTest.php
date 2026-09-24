@@ -16,6 +16,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot;
 
 use JsonSchema\Validator;
+use OpenEMR\Modules\ClinicalCopilot\BriefingRating;
 use OpenEMR\Modules\ClinicalCopilot\ChatAction;
 use OpenEMR\Modules\ClinicalCopilot\ChatRequest;
 use OpenEMR\Modules\ClinicalCopilot\Contracts;
@@ -44,6 +45,7 @@ final class ChatRequestTest extends TestCase
     }
 
     private const HASH = 'a3f1c2d4e5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2';
+    private const CID = '0123456789abcdef0123456789abcdef';
 
     /**
      * Every body here is judged by the contract file first; the parser must agree.
@@ -66,6 +68,15 @@ final class ChatRequestTest extends TestCase
             'ask with malformed facts_hash' => [['csrf_token_form' => 't', 'action' => 'ask', 'question' => 'Why?', 'facts_hash' => 'nope'], false],
             'missing csrf' => [['action' => 'brief'], false],
             'pid in body' => [['csrf_token_form' => 't', 'action' => 'brief', 'pid' => 3], false],
+            'rate up' => [['csrf_token_form' => 't', 'action' => 'rate', 'rating' => 'up', 'cache_key' => self::HASH, 'briefing_correlation_id' => self::CID], true],
+            'rate down with comment' => [['csrf_token_form' => 't', 'action' => 'rate', 'rating' => 'down', 'comment' => 'Missed the new statin.', 'cache_key' => self::HASH, 'briefing_correlation_id' => self::CID], true],
+            'rate with empty comment' => [['csrf_token_form' => 't', 'action' => 'rate', 'rating' => 'up', 'comment' => '', 'cache_key' => self::HASH, 'briefing_correlation_id' => self::CID], true],
+            'rate sideways' => [['csrf_token_form' => 't', 'action' => 'rate', 'rating' => 'meh', 'cache_key' => self::HASH, 'briefing_correlation_id' => self::CID], false],
+            'rate without rating' => [['csrf_token_form' => 't', 'action' => 'rate', 'cache_key' => self::HASH, 'briefing_correlation_id' => self::CID], false],
+            'rate without cache_key' => [['csrf_token_form' => 't', 'action' => 'rate', 'rating' => 'up', 'briefing_correlation_id' => self::CID], false],
+            'rate with malformed cache_key' => [['csrf_token_form' => 't', 'action' => 'rate', 'rating' => 'up', 'cache_key' => 'abc', 'briefing_correlation_id' => self::CID], false],
+            'rate without briefing_correlation_id' => [['csrf_token_form' => 't', 'action' => 'rate', 'rating' => 'up', 'cache_key' => self::HASH], false],
+            'rate with a 2001-character comment' => [['csrf_token_form' => 't', 'action' => 'rate', 'rating' => 'up', 'comment' => str_repeat('x', 2001), 'cache_key' => self::HASH, 'briefing_correlation_id' => self::CID], false],
         ];
     }
 
@@ -97,6 +108,24 @@ final class ChatRequestTest extends TestCase
         self::assertNull($r->question);
         self::assertNull($r->factsHash);
         self::assertSame([], $r->transcript);
+    }
+
+    public function testRateRequestCarriesTheRatingAndATrimmedComment(): void
+    {
+        $r = ChatRequest::fromBag(new InputBag(['csrf_token_form' => 't', 'action' => 'rate', 'rating' => 'down', 'comment' => "  Missed the new statin.\n ", 'cache_key' => self::HASH, 'briefing_correlation_id' => self::CID]));
+        self::assertSame(ChatAction::Rate, $r->action);
+        self::assertNotNull($r->rating);
+        self::assertSame(BriefingRating::Down, $r->rating->rating);
+        self::assertSame('Missed the new statin.', $r->rating->comment);
+        self::assertSame(22, $r->rating->commentChars());
+        self::assertSame(self::HASH, $r->rating->cacheKey);
+        self::assertSame(self::CID, $r->rating->briefingCorrelationId);
+
+        $blank = ChatRequest::fromBag(new InputBag(['csrf_token_form' => 't', 'action' => 'rate', 'rating' => 'up', 'comment' => '   ', 'cache_key' => self::HASH, 'briefing_correlation_id' => self::CID]));
+        self::assertNotNull($blank->rating);
+        self::assertNull($blank->rating->comment, 'a blank comment is no comment');
+        self::assertSame(0, $blank->rating->commentChars());
+        self::assertNull(ChatRequest::fromBag(new InputBag(['csrf_token_form' => 't', 'action' => 'brief']))->rating);
     }
 
     public function testQuestionIsTrimmedAndCappedAt500Characters(): void

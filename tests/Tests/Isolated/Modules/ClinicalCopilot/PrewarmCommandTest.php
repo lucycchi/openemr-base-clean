@@ -26,6 +26,7 @@ use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
 use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
+use OpenEMR\Modules\ClinicalCopilot\Ops\Score;
 use OpenEMR\Modules\ClinicalCopilot\RunLock;
 use OpenEMR\Modules\ClinicalCopilot\ScheduledAppointment;
 use OpenEMR\Modules\ClinicalCopilot\ScheduleSource;
@@ -131,6 +132,10 @@ final class PrewarmCommandTest extends TestCase
             public function record(RequestTrace $trace): void
             {
                 $this->test->traces[] = $trace;
+            }
+
+            public function score(Score $score): void
+            {
             }
         };
     }

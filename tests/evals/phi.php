@@ -48,6 +48,7 @@ use OpenEMR\Modules\ClinicalCopilot\Controller\ChatController;
 use OpenEMR\Modules\ClinicalCopilot\Controller\DocumentController;
 use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarClient;
 use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
+use OpenEMR\Modules\ClinicalCopilot\Ops\Score;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
 use OpenEMR\Modules\ClinicalCopilot\Row;
 use Psr\Http\Message\RequestInterface;
@@ -57,7 +58,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 require_once __DIR__ . '/lib.php';
 
-/** Keeps every trace payload the controllers record, as JSON, for the PHI scan. */
+/** Keeps every trace and score payload the controllers record, as JSON, for the PHI scan. */
 final class CapturingTracer implements Tracer
 {
     /** @var list<string> */
@@ -66,6 +67,11 @@ final class CapturingTracer implements Tracer
     public function record(RequestTrace $trace): void
     {
         $this->payloads[] = json_encode($trace, JSON_THROW_ON_ERROR);
+    }
+
+    public function score(Score $score): void
+    {
+        $this->payloads[] = json_encode($score, JSON_THROW_ON_ERROR);
     }
 }
 

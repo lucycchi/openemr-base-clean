@@ -21,6 +21,7 @@ use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
 use OpenEMR\Modules\ClinicalCopilot\AnswerResult;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
+use OpenEMR\Modules\ClinicalCopilot\BriefingRating;
 use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
 use OpenEMR\Modules\ClinicalCopilot\Contracts;
 use OpenEMR\Modules\ClinicalCopilot\EncounterRecord;
@@ -33,6 +34,7 @@ use OpenEMR\Modules\ClinicalCopilot\PanelPayload;
 use OpenEMR\Modules\ClinicalCopilot\PrewarmRunStatus;
 use OpenEMR\Modules\ClinicalCopilot\PrewarmStatusPayload;
 use OpenEMR\Modules\ClinicalCopilot\Prompt;
+use OpenEMR\Modules\ClinicalCopilot\RatingSubmission;
 use OpenEMR\Modules\ClinicalCopilot\Sentence;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -129,6 +131,7 @@ final class ContractsTest extends TestCase
             'briefing response' => ['chat.briefing.response'],
             'answer response' => ['chat.answer.response'],
             'chart-changed response' => ['chat.chart-changed.response'],
+            'rate response' => ['chat.rate.response'],
             'error response' => ['chat.error.response'],
             'health response' => ['health.response'],
             'ready response' => ['ready.response'],
@@ -216,6 +219,24 @@ final class ContractsTest extends TestCase
         $routed = PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID);
         $routed['handoffs'] = \OpenEMR\Modules\ClinicalCopilot\AnswerRoute::forBriefing($briefing, 900);
         self::assertConforms('chat.briefing.response', $routed);
+        self::assertNull(self::path($routed, 'narration', 'cache_key'), 'a narration that is not cached cannot be rated');
+
+        // A cached narration carries its key so the panel can rate it.
+        $key = str_repeat('ab', 32);
+        $cached = new BriefingResult([new Sentence('A new medication was started.', [Fact::idFor('PrescriptionService', 17, 'drug')])], 0, [], null, true, false, 0, 0, '2026-09-24T08:00:00-05:00', $key);
+        $payload = PanelPayload::briefing($this->assembled(), $cached, self::CORRELATION_ID);
+        self::assertConforms('chat.briefing.response', $payload);
+        self::assertSame($key, self::path($payload, 'narration', 'cache_key'));
+    }
+
+    public function testRatePayloadConformsToContractAndNeverCarriesTheComment(): void
+    {
+        $rating = new RatingSubmission(BriefingRating::Down, 'Mr Example also saw cardiology.', str_repeat('ab', 32), self::CORRELATION_ID);
+        $payload = PanelPayload::rated($rating, self::CORRELATION_ID);
+        self::assertConforms('chat.rate.response', $payload);
+        self::assertSame(['correlation_id' => self::CORRELATION_ID, 'rating' => 'down', 'comment_saved' => true], $payload);
+        self::assertConforms('chat.rate.response', PanelPayload::rated(new RatingSubmission(BriefingRating::Up, null, str_repeat('ab', 32), self::CORRELATION_ID), self::CORRELATION_ID));
+        self::assertViolates('chat.rate.response', ['correlation_id' => self::CORRELATION_ID, 'rating' => 'up', 'comment_saved' => false, 'comment' => 'x']);
     }
 
     public function testBriefingPayloadWithGuidelineCardsConformsToContract(): void

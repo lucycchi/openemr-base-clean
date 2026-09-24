@@ -20,4 +20,8 @@ final class NullTracer implements Tracer
     public function record(RequestTrace $trace): void
     {
     }
+
+    public function score(Score $score): void
+    {
+    }
 }

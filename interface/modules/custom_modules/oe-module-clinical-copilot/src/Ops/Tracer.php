@@ -22,4 +22,7 @@ namespace OpenEMR\Modules\ClinicalCopilot\Ops;
 interface Tracer
 {
     public function record(RequestTrace $trace): void;
+
+    /** Attaches a score to a trace recorded earlier (the physician's rating of a briefing). */
+    public function score(Score $score): void;
 }

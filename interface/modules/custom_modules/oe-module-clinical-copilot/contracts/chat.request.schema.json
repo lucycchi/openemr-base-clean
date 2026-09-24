@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-emr.org/clinical-copilot/contracts/chat.request.schema.json",
   "title": "chat.php request body",
-  "description": "Form-encoded POST body accepted by public/chat.php. The patient id and current encounter are taken from the OpenEMR session only; a pid in the body is not part of the contract and is ignored. The session cookie must belong to an authenticated user with patients/med and encounters/notes ACL.",
+  "description": "Form-encoded POST body accepted by public/chat.php. The patient id and current encounter are taken from the OpenEMR session only; a pid in the body is not part of the contract and is ignored. The session cookie must belong to an authenticated user with patients/med and encounters/notes ACL (rate included: only a user who could see the briefing can rate it).",
   "type": "object",
   "properties": {
     "csrf_token_form": {
@@ -12,10 +12,11 @@
     },
     "action": {
       "type": "string",
-      "description": "brief: assemble facts and return the verified briefing (cached by facts hash, prompt version and model). ask: answer a follow-up question about the same fact set.",
+      "description": "brief: assemble facts and return the verified briefing (cached by facts hash, prompt version and model). ask: answer a follow-up question about the same fact set. rate: record the physician's thumbs up or down (and optional comment) on the AI summary a briefing showed.",
       "enum": [
         "brief",
-        "ask"
+        "ask",
+        "rate"
       ]
     },
     "question": {
@@ -34,6 +35,29 @@
       "type": "string",
       "description": "ask only. JSON-encoded array of {role: user|assistant, text} turns held by the browser; the server keeps the last 10, truncates each text to 1000 characters, and ignores malformed input.",
       "contentMediaType": "application/json"
+    },
+    "rating": {
+      "type": "string",
+      "description": "rate only. The physician's rating of the AI summary.",
+      "enum": [
+        "up",
+        "down"
+      ]
+    },
+    "comment": {
+      "type": "string",
+      "description": "rate only, optional. Free text, trimmed server-side; empty means no comment. Stored in copilot_briefing_rating only: it may name the patient, so it never reaches a log line, the audit comment or the trace.",
+      "maxLength": 2000
+    },
+    "cache_key": {
+      "type": "string",
+      "description": "rate only. narration.cache_key from the briefing whose summary is rated: the cached narration shown. It must belong to the session patient's cached briefings, or the rating is refused (409).",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "briefing_correlation_id": {
+      "type": "string",
+      "description": "rate only. correlation_id of the briefing response that showed the summary; the physician_rating score attaches to that trace.",
+      "pattern": "^[0-9a-f]{32}$"
     }
   },
   "required": [
@@ -60,6 +84,19 @@
       "required": [
         "question",
         "facts_hash"
+      ]
+    },
+    {
+      "description": "rate needs the rating and the briefing it is about.",
+      "properties": {
+        "action": {
+          "const": "rate"
+        }
+      },
+      "required": [
+        "rating",
+        "cache_key",
+        "briefing_correlation_id"
       ]
     }
   ]

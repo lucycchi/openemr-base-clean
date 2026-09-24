@@ -41,15 +41,27 @@ final class FactAssembler
     ) {
     }
 
+    /**
+     * The chart-level gate: medical-record and encounter-note permission, or
+     * nothing at all. assemble() runs it first; action=rate runs it alone,
+     * so only a user who could see a briefing can rate it.
+     *
+     * @throws AccessDeniedException
+     */
+    public static function authorizeChart(Authorization $auth): void
+    {
+        foreach ([['patients', 'med'], ['encounters', 'notes']] as [$section, $value]) {
+            if (!$auth->canView($section, $value)) {
+                throw new AccessDeniedException("Not authorized: $section/$value");
+            }
+        }
+    }
+
     /** @param ?int $currentEncounterId  The encounter the clinician has selected, if any; shifts the history boundary to that day. */
     public function assemble(PatientId $pid, ?int $currentEncounterId): AssembledFacts
     {
         // Coarse gate first: no medical-record or encounter-note permission -> nothing at all.
-        foreach ([['patients', 'med'], ['encounters', 'notes']] as [$section, $value]) {
-            if (!$this->auth->canView($section, $value)) {
-                throw new AccessDeniedException("Not authorized: $section/$value");
-            }
-        }
+        self::authorizeChart($this->auth);
 
         // Fine-grained gate: encounters tagged with a sensitivity level the
         // user is not cleared for are dropped, and remembered so their labs

@@ -85,6 +85,14 @@
       "null"
      ],
      "description": "ISO 8601 time (with offset, site zone) the cached narration was generated, e.g. by the morning pre-warm; null when it was generated in this request. A served narration is always verified against the chart as of now, so this dates the wording, not the facts."
+    },
+    "cache_key": {
+     "type": [
+      "string",
+      "null"
+     ],
+     "description": "The cache key of the narration shown: sha256 over the facts hash, prompt version, model and cited guideline chunks. The panel sends it back with action=rate so a rating is tied to this exact text. null when the narration is not cached (the model failed or every sentence was stripped), and then the summary cannot be rated.",
+     "pattern": "^[0-9a-f]{64}$"
     }
    },
    "required": [
@@ -95,7 +103,8 @@
     "from_cache",
     "total_failure",
     "tokens",
-    "generated_at"
+    "generated_at",
+    "cache_key"
    ],
    "additionalProperties": false
   },

@@ -65,3 +65,13 @@
 #copilot-panel .copilot-card .copilot-quote { margin: 0 0 .2rem 0; padding-left: .5rem; border-left: 2px solid #ced4da; font-size: .9rem; }
 #copilot-panel .copilot-card .copilot-source { font-size: .8rem; color: #6c757d; margin-bottom: .35rem; }
 #copilot-panel .copilot-card .copilot-checked { font-size: .75rem; color: #6c757d; }
+
+/* "Was this summary useful?": thumbs up / down under the AI summary (metric 6).
+   Small and grey so it does not compete with the summary it rates. */
+#copilot-panel .copilot-rate { margin: .35rem 0 .5rem 0; font-size: .8rem; }
+#copilot-panel .copilot-rate-row { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+#copilot-panel .copilot-rate-q { color: #6c757d; }
+#copilot-panel .copilot-rate-row .btn { padding: .05rem .4rem; font-size: .8rem; }
+#copilot-panel .copilot-rate-status { color: #6c757d; }
+#copilot-panel .copilot-rate-comment { display: flex; gap: .4rem; align-items: flex-start; margin-top: .35rem; }
+#copilot-panel .copilot-rate-comment[hidden] { display: none; }

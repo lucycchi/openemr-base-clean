@@ -30,7 +30,7 @@ use Symfony\Component\HttpFoundation\InputBag;
  */
 final readonly class ChatRequest
 {
-    private const KNOWN_KEYS = ['csrf_token_form', 'action', 'question', 'facts_hash', 'transcript'];
+    private const KNOWN_KEYS = ['csrf_token_form', 'action', 'question', 'facts_hash', 'transcript', 'rating', 'comment', 'cache_key', 'briefing_correlation_id'];
     private const QUESTION_MAX = 500;   // chars; longer questions are truncated, not rejected
     private const TURN_TEXT_MAX = 1000; // chars per prior chat turn
     private const TURNS_KEPT = 10;      // only the most recent N turns are sent to the model
@@ -44,6 +44,8 @@ final readonly class ChatRequest
         public ?string $question,
         public ?string $factsHash,
         public array $transcript,
+        /** Set for action=rate only. */
+        public ?RatingSubmission $rating = null,
     ) {
     }
 
@@ -69,9 +71,12 @@ final readonly class ChatRequest
         if ($action === null) {
             throw new InvalidRequest('Unknown action');
         }
-        // 'brief' needs nothing else; the remaining checks are for 'ask'.
+        // 'brief' needs nothing else; 'rate' has its own fields; the remaining checks are for 'ask'.
         if ($action === ChatAction::Brief) {
             return new self($csrf, $action, null, null, []);
+        }
+        if ($action === ChatAction::Rate) {
+            return new self($csrf, $action, null, null, [], self::parseRating($bag));
         }
         $question = mb_substr(trim($bag->getString('question')), 0, self::QUESTION_MAX);
         if ($question === '') {
@@ -84,6 +89,29 @@ final readonly class ChatRequest
             throw new InvalidRequest('facts_hash is required');
         }
         return new self($csrf, $action, $question, $hash, self::parseTranscript($bag->getString('transcript', '[]')));
+    }
+
+    /**
+     * The fields of action=rate. The rating must be up or down; the cache key
+     * and briefing correlation id must have their exact shapes; the comment is
+     * trimmed, an empty one counts as none, and one over 2000 characters is
+     * refused rather than cut (a cut comment would change what was said).
+     *
+     * @param InputBag<string|int|float|bool|null> $bag
+     * @throws InvalidRequest
+     */
+    private static function parseRating(InputBag $bag): RatingSubmission
+    {
+        $rating = BriefingRating::tryFrom($bag->getString('rating'));
+        if ($rating === null) {
+            throw new InvalidRequest('rating must be up or down');
+        }
+        $comment = trim($bag->getString('comment'));
+        try {
+            return new RatingSubmission($rating, $comment === '' ? null : $comment, $bag->getString('cache_key'), $bag->getString('briefing_correlation_id'));
+        } catch (\DomainException) {
+            throw new InvalidRequest('Invalid rating request');
+        }
     }
 
     /**

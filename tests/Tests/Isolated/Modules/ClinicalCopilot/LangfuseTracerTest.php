@@ -23,6 +23,7 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use OpenEMR\Modules\ClinicalCopilot\Ops\LangfuseTracer;
 use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
+use OpenEMR\Modules\ClinicalCopilot\Ops\Score;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Step;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
@@ -152,6 +153,41 @@ final class LangfuseTracerTest extends TestCase
             $out[$event['body']['name']] = $event['body']['value'] === 1;
         }
         return $out;
+    }
+
+    public function testAScoreIsOneScoreCreateOnTheNamedTraceWithAnIdempotentId(): void
+    {
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->score(new Score('corr-abc-score-physician_rating-u7', 'corr-abc', 'physician_rating', false, 'Physician comment stored in the EHR (31 characters).'));
+
+        $batch = $this->sentBody()['batch'] ?? null;
+        self::assertIsArray($batch);
+        self::assertCount(1, $batch);
+        self::assertIsArray($batch[0]);
+        self::assertSame('score-create', $batch[0]['type'] ?? null);
+        self::assertSame([
+            'id' => 'corr-abc-score-physician_rating-u7',
+            'traceId' => 'corr-abc',
+            'name' => 'physician_rating',
+            'value' => 0,
+            'dataType' => 'BOOLEAN',
+            'source' => 'API',
+            'comment' => 'Physician comment stored in the EHR (31 characters).',
+        ], $batch[0]['body'] ?? null);
+
+        // No note, no comment key at all.
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->score(new Score('s1', 'corr-abc', 'physician_rating', true));
+        $plain = $this->sentBody()['batch'] ?? null;
+        self::assertIsArray($plain);
+        self::assertIsArray($plain[0]);
+        self::assertIsArray($plain[0]['body'] ?? null);
+        self::assertArrayNotHasKey('comment', $plain[0]['body']);
+        self::assertSame(1, $plain[0]['body']['value'] ?? null);
+    }
+
+    public function testAScoreThatCannotBeSentDoesNotThrow(): void
+    {
+        $this->tracer(new MockHandler([new ConnectException('down', new Request('POST', 'x'))]))->score(new Score('s1', 'corr-abc', 'physician_rating', true));
+        $this->addToAssertionCount(1);
     }
 
     public function testAHealthyRequestScoresAllThreeBooleansTrue(): void

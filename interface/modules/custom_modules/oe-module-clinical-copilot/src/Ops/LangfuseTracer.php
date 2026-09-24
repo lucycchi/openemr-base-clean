@@ -153,6 +153,33 @@ final readonly class LangfuseTracer implements Tracer
                 ],
             ];
         }
+        $this->send($batch);
+    }
+
+    public function score(Score $score): void
+    {
+        $this->send([[
+            'id' => $score->id . '-event',
+            'type' => 'score-create',
+            'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
+            'body' => [
+                'id' => $score->id,
+                'traceId' => $score->traceId,
+                'name' => $score->name,
+                'value' => $score->value ? 1 : 0,
+                'dataType' => 'BOOLEAN',
+                'source' => 'API',
+            ] + ($score->note === null ? [] : ['comment' => $score->note]),
+        ]]);
+    }
+
+    /**
+     * One POST to the batch ingestion API, fire-and-forget.
+     *
+     * @param list<array<string, mixed>> $batch
+     */
+    private function send(array $batch): void
+    {
         try {
             $this->http->request('POST', rtrim($this->host, '/') . '/api/public/ingestion', [
                 'headers' => ['Authorization' => 'Basic ' . base64_encode($this->publicKey . ':' . $this->secretKey)],

@@ -31,12 +31,15 @@ use OpenEMR\Modules\ClinicalCopilot\AclAuthorization;
 use OpenEMR\Modules\ClinicalCopilot\AnswerRoute;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
 use OpenEMR\Modules\ClinicalCopilot\BriefingPipelineFactory;
+use OpenEMR\Modules\ClinicalCopilot\BriefingRating;
+use OpenEMR\Modules\ClinicalCopilot\BriefingRatings;
 use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
 use OpenEMR\Modules\ClinicalCopilot\ChatAction;
 use OpenEMR\Modules\ClinicalCopilot\ChatRequest;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\CorrelationId;
 use OpenEMR\Modules\ClinicalCopilot\DbBriefingCache;
+use OpenEMR\Modules\ClinicalCopilot\DbBriefingRatings;
 use OpenEMR\Modules\ClinicalCopilot\DbPrewarmReceipts;
 use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarClient;
 use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarException;
@@ -53,11 +56,14 @@ use OpenEMR\Modules\ClinicalCopilot\Ops\CorrelatedLogger;
 use OpenEMR\Modules\ClinicalCopilot\Ops\LangfuseTracer;
 use OpenEMR\Modules\ClinicalCopilot\Ops\NullTracer;
 use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
+use OpenEMR\Modules\ClinicalCopilot\Ops\Score;
 use OpenEMR\Modules\ClinicalCopilot\Ops\StepRecorder;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
 use OpenEMR\Modules\ClinicalCopilot\PanelPayload;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\PrewarmReceipts;
+use OpenEMR\Modules\ClinicalCopilot\RatedBriefing;
+use OpenEMR\Modules\ClinicalCopilot\RatingSubmission;
 use OpenEMR\Modules\ClinicalCopilot\Pricing;
 use OpenEMR\Modules\ClinicalCopilot\Prompt;
 use OpenEMR\Modules\ClinicalCopilot\VerificationResult;
@@ -107,6 +113,7 @@ final class ChatController
      */
     private array $sidecarUsage = [];
     private readonly PrewarmReceipts $receipts;
+    private readonly BriefingRatings $ratings;
     private ?WarmOutcome $warm = null;
 
     public function __construct(
@@ -117,12 +124,14 @@ final class ChatController
         ?PrewarmReceipts $receipts = null,
         private readonly ?BriefingPipelineFactory $pipelines = null,
         private readonly ?SidecarClient $sidecar = null,
+        ?BriefingRatings $ratings = null,
     ) {
         $this->correlationId = CorrelationId::generate();
         $this->logger = new CorrelatedLogger($logger ?? ServiceContainer::getLogger(), $this->correlationId);
         $this->request = $request ?? HttpRestRequest::createFromGlobals();
         $this->config = $config ?? Config::fromEnvironment();
         $this->receipts = $receipts ?? new DbPrewarmReceipts($this->config->openAiModel);
+        $this->ratings = $ratings ?? new DbBriefingRatings();
         $this->steps = new StepRecorder();
         $this->tracer = $tracer ?? ($this->config->hasLangfuse()
             ? new LangfuseTracer(new Client(), $this->config->langfuseHost, $this->config->langfusePublicKey, $this->config->langfuseSecretKey)
@@ -205,6 +214,14 @@ final class ChatController
             'encounter' => $encounter,
             'user' => $user,
         ]);
+        $authProvider = is_string($session->get('authProvider')) ? $session->get('authProvider') : '';
+
+        // A rating needs the chart ACL but no facts and no model: its own short path.
+        if ($chat->action === ChatAction::Rate) {
+            $userId = $session->get('authUserID');
+            $this->rate($chat->rating, $pid, $encounter > 0 ? $encounter : null, $user, is_numeric($userId) ? (int) $userId : 0, $authProvider, $started, $startedAtMs);
+            return;
+        }
 
         try {
             $assembled = $this->steps->measure(
@@ -213,15 +230,12 @@ final class ChatController
                 static fn(AssembledFacts $a) => ['facts' => count($a->facts()->all()), 'has_prior_visit' => $a->priorEncounter() !== null],
             );
         } catch (AccessDeniedException) {
-            $this->logger->warning('copilot access denied', ['user' => $user, 'steps' => $this->stepSummary()]);
-            EventAuditLogger::getInstance()->newEvent('clinical-copilot', $user, is_string($session->get('authProvider')) ? $session->get('authProvider') : '', 0, 'action=' . $action . ' correlation_id=' . $this->correlationId . ' denied=acl', $pid->value);
-            $this->tracer->record(new RequestTrace($this->correlationId, "copilot.$action", $user, $startedAtMs, (int) round((hrtime(true) - $started) / 1e6), ['http_status' => 403, 'denied' => true], null, 0, 0, 0, 'access denied', $this->steps->all()));
-            $this->respond(['error' => 'You are not authorized to view this chart', 'correlation_id' => $this->correlationId], 403);
+            $this->refuseAccess($action, $pid, $user, $authProvider, $started, $startedAtMs);
             return;
         }
 
         // Dispatch on the enum; `match` with no default means PHPStan flags a
-        // new ChatAction case that is not handled here.
+        // new ChatAction case that is not handled here. Rate returned above.
         $config = $this->config;
         $payload = match ($chat->action) {
             ChatAction::Brief => $this->brief($assembled, $config, $pid, $user),
@@ -281,7 +295,7 @@ final class ChatController
         EventAuditLogger::getInstance()->newEvent(
             'clinical-copilot',
             $user,
-            is_string($session->get('authProvider')) ? $session->get('authProvider') : '',
+            $authProvider,
             $httpStatus === 200 ? 1 : 0,
             sprintf('action=%s correlation_id=%s facts=%d stripped=%s from_cache=%s tokens=%d cost_usd=%s llm_attempts=%d status=%s', $action, $this->correlationId, $metadata['facts'], var_export($metadata['stripped'], true), var_export($metadata['from_cache'], true), $promptTokens + $completionTokens, $costUsd === null ? 'unknown' : number_format($costUsd, 6, '.', ''), $this->llmAttempts, $status ?? 'ok'),
             $pid->value
@@ -303,6 +317,81 @@ final class ChatController
             $this->sidecarUsage,
         ));
         $this->respond($payload, $httpStatus);
+    }
+
+    /**
+     * The same refusal for every action when the chart ACL says no: a warning,
+     * an audit row marked denied, a trace, and a 403.
+     */
+    private function refuseAccess(string $action, PatientId $pid, string $user, string $authProvider, int|float $started, int $startedAtMs): void
+    {
+        $this->logger->warning('copilot access denied', ['user' => $user, 'steps' => $this->stepSummary()]);
+        EventAuditLogger::getInstance()->newEvent('clinical-copilot', $user, $authProvider, 0, 'action=' . $action . ' correlation_id=' . $this->correlationId . ' denied=acl', $pid->value);
+        $this->tracer->record(new RequestTrace($this->correlationId, "copilot.$action", $user, $startedAtMs, (int) round((hrtime(true) - $started) / 1e6), ['http_status' => 403, 'denied' => true], null, 0, 0, 0, 'access denied', $this->steps->all()));
+        $this->respond(['error' => 'You are not authorized to view this chart', 'correlation_id' => $this->correlationId], 403);
+    }
+
+    /**
+     * action=rate: the physician's thumbs up or down (and optional comment)
+     * on the AI summary a briefing showed (KEY_METRICS.md metric 6). Same
+     * CSRF, session patient and chart ACL as a briefing; no facts are
+     * assembled and no model runs. The rating is stored against the cached
+     * narration of this patient that the panel names, then logged and
+     * audited with the comment's length only, and sent to the briefing's
+     * trace as the physician_rating score. The comment itself stays in
+     * copilot_briefing_rating: it is free text and may name the patient.
+     */
+    private function rate(?RatingSubmission $rating, PatientId $pid, ?int $encounterId, string $user, int $userId, string $authProvider, int|float $started, int $startedAtMs): void
+    {
+        if ($rating === null) {
+            throw new \LogicException('action=rate parsed without a rating');
+        }
+        try {
+            FactAssembler::authorizeChart(new AclAuthorization($user));
+        } catch (AccessDeniedException) {
+            $this->refuseAccess('rate', $pid, $user, $authProvider, $started, $startedAtMs);
+            return;
+        }
+        $context = [
+            'action' => 'rate',
+            'rating' => $rating->rating->value,
+            'comment_chars' => $rating->commentChars(),
+            'cache_key' => $rating->cacheKey,
+            'briefing_correlation_id' => $rating->briefingCorrelationId,
+        ];
+        $briefing = $this->steps->measure('find_briefing', fn() => $this->ratings->briefing($pid, $rating->cacheKey), static fn(?RatedBriefing $b) => ['hit' => $b !== null]);
+        if ($briefing === null) {
+            // Not one of this patient's cached summaries: a stale panel, or a key
+            // from another chart. Nothing is stored.
+            $context += ['http_status' => 409, 'reason' => 'unknown_briefing'];
+            $this->logger->warning('copilot rating refused', $context);
+            $this->tracer->record(new RequestTrace($this->correlationId, 'copilot.rate', $user, $startedAtMs, (int) round((hrtime(true) - $started) / 1e6), $context, null, 0, 0, 0, null, $this->steps->all()));
+            $this->respond(['error' => 'This summary can no longer be rated. Reload the panel and rate the current one.', 'correlation_id' => $this->correlationId], 409);
+            return;
+        }
+        $this->steps->measure('store_rating', fn() => $this->ratings->record($pid, $encounterId, $userId, $rating, $briefing));
+        // The score's id carries the user, so rating again replaces it, as the row is replaced.
+        $this->tracer->score(new Score(
+            $rating->briefingCorrelationId . '-score-physician_rating-u' . $userId,
+            $rating->briefingCorrelationId,
+            'physician_rating',
+            $rating->rating === BriefingRating::Up,
+            $rating->comment === null ? null : sprintf('Physician comment stored in the EHR (%d characters).', $rating->commentChars()),
+        ));
+        $context += ['http_status' => 200, 'prompt_version' => $briefing->promptVersion, 'model' => $briefing->model];
+        $totalMs = (int) round((hrtime(true) - $started) / 1e6);
+        $this->logger->notice('copilot rating', $context + ['ms' => $totalMs, 'steps' => $this->stepSummary()]);
+        // Ids, the rating and a length only: the comment never goes in the audit log.
+        EventAuditLogger::getInstance()->newEvent(
+            'clinical-copilot',
+            $user,
+            $authProvider,
+            1,
+            sprintf('action=rate correlation_id=%s briefing_correlation_id=%s cache_key=%s rating=%s comment_chars=%d prompt_version=%s', $this->correlationId, $rating->briefingCorrelationId, $rating->cacheKey, $rating->rating->value, $rating->commentChars(), $briefing->promptVersion),
+            $pid->value
+        );
+        $this->tracer->record(new RequestTrace($this->correlationId, 'copilot.rate', $user, $startedAtMs, $totalMs, $context, null, 0, 0, 0, null, $this->steps->all()));
+        $this->respond(PanelPayload::rated($rating, $this->correlationId), 200);
     }
 
     /**

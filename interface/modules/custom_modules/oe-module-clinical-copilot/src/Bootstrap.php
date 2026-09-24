@@ -23,6 +23,7 @@ use OpenEMR\Events\Command\CommandRunnerFilterEvent;
 use OpenEMR\Events\PatientDemographics\RenderEvent;
 use OpenEMR\Modules\ClinicalCopilot\Command\AttachCommand;
 use OpenEMR\Modules\ClinicalCopilot\Command\PrewarmCommand;
+use OpenEMR\Modules\ClinicalCopilot\Command\RatingsCommand;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentIngestService;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentStore;
 use OpenEMR\Modules\ClinicalCopilot\Documents\ExtractionRunner;
@@ -86,6 +87,13 @@ final class Bootstrap
         // Week 2: attach_and_extract(pid, file, doc_type) from the CLI, on the same path as the panel.
         $store = new DocumentStore();
         $event->setCommand(AttachCommand::class, new AttachCommand($store, new ExtractionRunner($store, SidecarClient::fromConfig($config), new DocumentIngestService())));
+        // KEY_METRICS.md metric 6: physician rating of the summary, per day and per prompt version.
+        $crypto = ServiceContainer::getCrypto();
+        $event->setCommand(RatingsCommand::class, new RatingsCommand(
+            new RatingReport(new DbRatingCounts(static fn(string $c): string => $crypto->decryptFromDatabase($c))),
+            ServiceContainer::getClock(),
+            $tz,
+        ));
     }
 
     /**

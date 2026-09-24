@@ -99,8 +99,8 @@ final class NarrationPipeline
             // was written, the stale sentences get stripped rather than shown.
             $verified = $this->verify($this->narrationFrom($cached->data), $facts, $evidence);
             // Positional args: kept sentences, stripped count, omitted facts, error label,
-            // cacheHit=true, totalFailure=false, promptTokens=0, completionTokens=0, generatedAt.
-            return new BriefingResult($verified->kept(), $verified->strippedCount(), $this->omitted($verified, $facts), null, true, false, 0, 0, $cached->generatedAt);
+            // cacheHit=true, totalFailure=false, promptTokens=0, completionTokens=0, generatedAt, cacheKey.
+            return new BriefingResult($verified->kept(), $verified->strippedCount(), $this->omitted($verified, $facts), null, true, false, 0, 0, $cached->generatedAt, $key);
         }
 
         // 2. Cache miss — call the model. The prompt object supplies the system
@@ -128,7 +128,8 @@ final class NarrationPipeline
         // 4. Cache the *raw* model output (not the verified form) — but only if
         //    the verifier kept something. A total failure is never cached, so a
         //    bad generation cannot get pinned for the rest of the day.
-        if (!$verified->isTotalFailure()) {
+        $stored = !$verified->isTotalFailure();
+        if ($stored) {
             $this->steps->measure('cache_store', fn() => $this->cache->put($key, $completion->data));
         }
         return new BriefingResult(
@@ -140,6 +141,8 @@ final class NarrationPipeline
             $verified->isTotalFailure(),
             $completion->promptTokens,
             $completion->completionTokens,
+            null,                          // generated in this request
+            $stored ? $key : null,         // only a stored narration can be rated
         );
     }
 

@@ -45,6 +45,8 @@ final class PanelPayload
                 'total_failure' => $briefing->totalFailure,
                 'tokens' => ['prompt' => $briefing->promptTokens, 'completion' => $briefing->completionTokens],
                 'generated_at' => $briefing->generatedAt,
+                // Sent back with action=rate; null when the summary cannot be rated.
+                'cache_key' => $briefing->cacheKey,
             ],
         ];
     }
@@ -69,6 +71,18 @@ final class PanelPayload
                 'guidelines' => array_map(static fn(EvidenceChunk $c): array => $c->toArray(), $answer->evidence),
             ],
         ];
+    }
+
+    /**
+     * Response to action=rate once the rating is stored
+     * (contracts/chat.rate.response.schema.json). Echoes the rating so the
+     * panel can show what was recorded; never the comment.
+     *
+     * @return array{correlation_id: string, rating: string, comment_saved: bool}
+     */
+    public static function rated(RatingSubmission $rating, string $correlationId): array
+    {
+        return ['correlation_id' => $correlationId, 'rating' => $rating->rating->value, 'comment_saved' => $rating->comment !== null];
     }
 
     /**

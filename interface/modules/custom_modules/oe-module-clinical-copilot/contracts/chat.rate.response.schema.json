@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/chat.rate.response.schema.json",
+  "title": "chat.php rate response",
+  "description": "HTTP 200 body for action=rate: the rating is stored (a second rating by the same user on the same summary replaces the first). Built by PanelPayload::rated(). A cache_key that is not one of the session patient's cached briefings is 409 with chat.error.response.",
+  "type": "object",
+  "properties": {
+    "correlation_id": {
+      "type": "string",
+      "description": "This rate request's own correlation id.",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "rating": {
+      "type": "string",
+      "enum": [
+        "up",
+        "down"
+      ]
+    },
+    "comment_saved": {
+      "type": "boolean",
+      "description": "True when a non-empty comment was stored with the rating."
+    }
+  },
+  "required": [
+    "correlation_id",
+    "rating",
+    "comment_saved"
+  ],
+  "additionalProperties": false
+}
