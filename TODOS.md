@@ -6,9 +6,11 @@ Two items from the Week 1 submission review. Both are documentation, both
 are scheduled as tasks 9.1 and 9.2 in
 [clinical_copilot_week2/DESIGN.md](clinical_copilot_week2/DESIGN.md).
 
-### Cost analysis: per-tier architectural changes
+### ~~Cost analysis: per-tier architectural changes~~ (done 2026-09-23)
 
-**What:** The cost analysis has two sections (development spend, projected production). It needs the per-tier view the rubric asks for: 1 clinic (1-5 physicians), group practice (about 50), network (about 500), with monthly model, embedding and rerank spend from measured tokens, pre-warm on and off, cache-hit assumptions, and the architectural change each tier forces (shared cache, a queue for the pre-warm, sidecar replicas, provider rate-limit budget, per-tenant keys).
+**Done:** `COST_AND_LATENCY.md` §4 has the three tiers, the usage model, pre-warm on and off, and the architectural change each tier forces. New follow-up it found: precompute brief-mode Cohere reranks at index build (they are 75 % of the per-encounter cost as built).
+
+**What (original):** The cost analysis has two sections (development spend, projected production). It needs the per-tier view the rubric asks for: 1 clinic (1-5 physicians), group practice (about 50), network (about 500), with monthly model, embedding and rerank spend from measured tokens, pre-warm on and off, cache-hit assumptions, and the architectural change each tier forces (shared cache, a queue for the pre-warm, sidecar replicas, provider rate-limit budget, per-tenant keys).
 
 **Where:** `COST_AND_LATENCY.md` (new in Week 2; also the Week 2 cost and latency report). Inputs: `tests/load/results/`, the scaling plan from commit 99d926a.
 

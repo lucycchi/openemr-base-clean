@@ -33,7 +33,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | 5 | Eval dataset | Done | none | Early |
 | 6 | CI evidence | Done | S10 (re-run proof at final) | Early |
 | 7 | Demo video | User | S2 | Early and final |
-| 8 | Cost and latency report | Partly done | S6 | Final |
+| 8 | Cost and latency report | Done | none | Final |
 | 9 | Deployed application | Partly done | S1 | Early |
 | 10 | Technical interview | User | S8 | Thu/Fri |
 | 11 | Social post | User | S9 | Final |
@@ -139,8 +139,8 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | Part | Status | Evidence |
 |---|---|---|
 | Actual dev spend | Done | [COST_AND_LATENCY.md](../COST_AND_LATENCY.md) §3. |
-| Projected production cost | Not done | The file says the per-tier projection is "Thursday's addition" (DESIGN.md 9.2). This is also the open Week 1 grader note (TODOS.md). → **S6** |
-| p50/p95 latency | Partly done | Briefing and follow-up have p50/p95 per step. Extraction has single timings only; the load runs in [BASELINES.md](BASELINES.md) have extraction p50/p95 that are not carried over. The expanded briefing (guideline section, critic) is not measured in it. → **S6** |
+| Projected production cost | Done (S6) | §4: usage model, three tiers (1 clinic, 50, 500 physicians), the architectural change each tier forces. Finding: Cohere reranks are 86 % of the per-encounter cost as built; precomputing brief-mode reranks cuts the model line by three quarters. |
+| p50/p95 latency | Done (S6) | Per step for briefing and follow-up; extraction p50/p95 under load from [BASELINES.md](BASELINES.md); the expanded briefing's cold and cache-hit p50/p95 (dev stack; droplet after the deploy). |
 | Bottleneck analysis | Done | §2, five bottlenecks. |
 
 ## 9. Deployed application
@@ -206,7 +206,7 @@ submission too. The S8 brief doubles as preparation.
 | Part | Status | Evidence |
 |---|---|---|
 | Documented | Done | [TODOS.md](../TODOS.md) "Week 1 grader feedback". |
-| Cost analysis per tier | Not done | → **S6** |
+| Cost analysis per tier | Done (S6) | [COST_AND_LATENCY.md](../COST_AND_LATENCY.md) §4. |
 | USERS.md personas and use cases | Not done | Week 2 added a front-desk uploader and two new use cases (lab PDF before the visit, intake contradicts the chart) that USERS.md does not describe. → **S7** |
 
 ### H3. HIPAA-minded development
@@ -245,7 +245,7 @@ it is verified.
 
 **Before the final (Sun 12:00)**
 
-- [ ] **S6 Cost and latency report**: projected production cost per tier for the Week 2 agent (extraction, embeddings, rerank, critic), extraction p50/p95 from the load runs, the expanded briefing's cost and latency.
+- [x] **S6 Cost and latency report**, done 2026-09-23: projected production cost per tier for the Week 2 agent (extraction, embeddings, rerank, critic), extraction p50/p95 from the load runs, the expanded briefing's cost and latency.
 - [ ] **S7 USERS.md**: full PCP persona, front-desk uploader persona, UC4 and UC5 with click paths.
 - [ ] **S9 Social post draft.**
 - [ ] **S10 Final pass**: final deploy, both collections and the gate self-test again, refresh numbers in KEY_METRICS and README, check every link in the submission docs resolves.
