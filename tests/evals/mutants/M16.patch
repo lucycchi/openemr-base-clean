@@ -1,0 +1,18 @@
+id: M16
+layer: eval gate
+mutation: the harness stops after 30 cases without writing results
+expected: harness: no results
+
+diff --git a/tests/evals/run.php b/tests/evals/run.php
+--- a/tests/evals/run.php
++++ b/tests/evals/run.php
+@@ -926,6 +926,9 @@
+ $fail = 0;
+ 
+ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
++    if (count($results) >= 30) {
++        exit(1);
++    }
+     $case = loadCase($path);
+     $id = str($case, 'id');
+     $isLive = ($case['live'] ?? false) === true;

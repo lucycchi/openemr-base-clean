@@ -1,0 +1,17 @@
+id: C1
+layer: canary
+mutation: a comment-only change (no behaviour change)
+expected: SURVIVED
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php
+@@ -36,7 +36,7 @@
+         $kept = [];
+         $stripped = [];
+         foreach ($narration->sentences as $sentence) {
+-            // Order matters: allKnown() must pass before literalsGrounded()
++            // Order matters: allKnown() must pass before literalsGrounded() (canary C1)
+             // calls $facts->get() on the cited ids.
+             if (
+                 $sentence->factIds === []

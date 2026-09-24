@@ -1,0 +1,17 @@
+id: M1
+layer: Verifier
+mutation: keep a sentence whose fact-id list is empty
+expected: golden: citation_present (01, 06)
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php
+@@ -39,7 +39,7 @@
+             // Order matters: allKnown() must pass before literalsGrounded()
+             // calls $facts->get() on the cited ids.
+             if (
+-                $sentence->factIds === []
++                false
+                 || !$this->allKnown($sentence, $facts, $evidence)
+                 || $this->mixesRecordAndGuideline($sentence, $facts, $evidence)
+                 || !$this->literalsGrounded($sentence, $facts, $evidence)

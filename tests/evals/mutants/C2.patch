@@ -1,0 +1,17 @@
+id: C2
+layer: canary
+mutation: a PHP syntax error
+expected: ERROR
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php
+@@ -33,7 +33,7 @@
+     public function verify(Narration $narration, FactSet $facts, ?EvidenceSet $evidence = null): VerificationResult
+     {
+         $evidence ??= EvidenceSet::none();
+-        $kept = [];
++        $kept = [;
+         $stripped = [];
+         foreach ($narration->sentences as $sentence) {
+             // Order matters: allKnown() must pass before literalsGrounded()

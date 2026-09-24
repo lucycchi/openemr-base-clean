@@ -1,0 +1,17 @@
+id: M12
+layer: PHI logging
+mutation: the extract log message carries the whole extraction (patient name, values)
+expected: golden: no_phi_in_logs (69, 70)
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/DocumentController.php b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/DocumentController.php
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/DocumentController.php
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/DocumentController.php
+@@ -315,7 +315,7 @@
+         $cost = Pricing::totalCost($priced);
+         // The log line and the trace carry counts, codes and costs only; the eval harness's
+         // phi_logs cases scan both for anything read from the document and refuse it.
+-        $this->logger->notice('copilot document extracted', [
++        $this->logger->notice('copilot document extracted: ' . json_encode($extraction), [
+             'document_id' => $doc['document_id'],
+             'doc_type' => $doc['doc_type']->value,
+             'status' => $persisted['status']->value,

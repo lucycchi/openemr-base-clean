@@ -1,0 +1,17 @@
+id: M5
+layer: retrieval
+mutation: the relevance floor keeps every fused candidate
+expected: golden: safe_refusal (32)
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/retrieve.py b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/retrieve.py
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/retrieve.py
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/retrieve.py
+@@ -208,8 +208,6 @@
+             if rrf[idx] <= 0:
+                 continue
+             relevant = cos[idx] >= FLOOR or (bm[idx] > 0 and cos[idx] >= WEAK) or bm[idx] >= STRONG_BM25
+-            if not relevant:
+-                continue  # neither leg thinks this chunk is relevant
+             out.append((self.chunks[idx], float(rrf[idx]), float(bm[idx]), float(cos[idx])))
+         return out
+ 

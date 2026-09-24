@@ -20,12 +20,14 @@ All of these are committed.
 | What | Where |
 |---|---|
 | Briefing and follow-up prompts, plus the model's output schemas (`Prompt::VERSION`) | [interface/modules/custom_modules/oe-module-clinical-copilot/src/Prompt.php](interface/modules/custom_modules/oe-module-clinical-copilot/src/Prompt.php) |
-| Document extraction and guideline-critic prompts (`PROMPT_VERSION`) | [interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/llm.py](interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/llm.py) (`SYSTEM`, `CRITIC_SYSTEM`) |
+| Document extraction and guideline-critic prompts (`PROMPT_VERSION`) | [interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/llm.py](interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/llm.py) (`SYSTEM`, `LAB_TASK`, `RETRY_TASK`, `INTAKE_TASK`, `CRITIC_SYSTEM`) |
+| Prompt locks (a hash of every prompt; any edit fails the push until the lock is rewritten) | [PromptLockTest.php](tests/Tests/Isolated/Modules/ClinicalCopilot/PromptLockTest.php) + `prompts.lock.json` beside it; [test_prompt_lock.py](interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/tests/test_prompt_lock.py) + `prompts.lock.json` beside it |
 | Schemas (the contracts every output is validated against) | [interface/modules/custom_modules/oe-module-clinical-copilot/contracts/](interface/modules/custom_modules/oe-module-clinical-copilot/contracts/) (30 `*.schema.json`, with examples) |
-| Golden set: cases | [tests/evals/cases/](tests/evals/cases/): 70 cases, 54 deterministic and 16 live. Each case declares what it guards and the failure it catches; the table is in [tests/evals/README.md](tests/evals/README.md#cases-and-the-failure-mode-each-guards) |
+| Golden set: cases | [tests/evals/cases/](tests/evals/cases/): 72 cases, 56 deterministic and 16 live. Each case declares what it guards and the failure it catches; the table is in [tests/evals/README.md](tests/evals/README.md#cases-and-the-failure-mode-each-guards) |
 | Golden set: fixtures | [tests/evals/fixtures/](tests/evals/fixtures/): documents with `truth.json` answer keys, and committed query vectors |
 | Baselines the gate compares against | [tests/evals/baseline.json](tests/evals/baseline.json) (deterministic) and [tests/evals/baseline-live.json](tests/evals/baseline-live.json) (live) |
 | Gate logic, rubrics and thresholds | [tests/evals/gate.php](tests/evals/gate.php), harness [tests/evals/run.php](tests/evals/run.php), wrapper [tests/evals/gate.sh](tests/evals/gate.sh) |
+| Kill matrix (planted regressions and whether the push refused them) | [tests/evals/mutants/](tests/evals/mutants/) (`run.sh`, one `.patch` per regression, `results.json`); table in section 7 |
 
 ## 2. Install and trigger
 
@@ -60,11 +62,22 @@ command to start it. Bypassing it takes an explicit `git push --no-verify`.
 
 In order, stopping at the first failure:
 
+0. **Sidecar sync.** The sidecar's code is built into its image, so a Python
+   edit is invisible to the running sidecar until it is copied in. The hook
+   compares a hash of the checkout's `copilot_sidecar/`, `tests/`, `tools/`
+   and `corpus/` with the running container's; on a difference it copies them
+   in, restarts the sidecar and checks again. It refuses the push, naming the
+   rebuild command, when `pyproject.toml` changed (dependencies need an image
+   rebuild) or when a file was deleted or renamed (`docker cp` only adds).
+   Proven by [tests/evals/gate-sync-test.sh](tests/evals/gate-sync-test.sh).
 1. **Sidecar unit tests** (`pytest` in the `copilot-sidecar` container): schemas
    against the contracts, row anchoring, supervisor routing, the HTTP surface.
 2. **Case index check:** every case must declare a `guards` category and a
    `failure_mode`, and the case table in the README must be current.
 3. **Module unit tests:** the Clinical Co-Pilot isolated PHPUnit suite.
+   Steps 1 and 3 include the prompt locks: an edit to any prompt fails with
+   `PROMPT CHANGED` until the lock is rewritten (the recorded replies the
+   deterministic cases use cannot see a prompt change).
 4. **Golden cases:** `gate.php` runs every non-pending case, scores its rubrics,
    and compares the pass rates with the baseline.
 
@@ -88,10 +101,15 @@ judge configuration and per-rubric checks are in
 
 - any rubric's pass rate is below its minimum; or
 - **any** case that passed a rubric in the baseline now fails it. This applies
-  to the 54 deterministic cases the hook runs. They replay recorded model
+  to the 56 deterministic cases the hook runs. They replay recorded model
   output, so a flip is always a real regression, and a single broken case in
   a 90% rubric (a drop of about 3 points) is still refused. This is stricter
-  than the PRD's 5% rule.
+  than the PRD's 5% rule; or
+- any deterministic case **fails**, even when every rubric it declares passed
+  (an expectation no declared rubric scores); or
+- a deterministic case in the baseline is **missing** from the run (its file
+  deleted or renamed). Retiring a case takes `--update-baseline`. A harness
+  that dies before writing results is refused too.
 
 For the live cases (`COPILOT_GATE_LIVE=1`), which call the model and can vary
 from run to run, a flip fails the gate only when that rubric's pass rate (over
@@ -101,11 +119,15 @@ The safety rubrics sit at 100% because one wrong citation, one leaked
 identifier or one mis-anchored value is one too many.
 
 Not counted: a verdict of `na` (the rubric doesn't apply to that case) and
-pending cases. `no_phi_in_logs` is scored in the default run by two cases
-(69 and 70). They upload and extract a lab report and an intake form through
-the real controllers, with the sidecar replaying a recorded model reply, and
-scan every PHP log line, trace and sidecar log line for the document's
-identifiers and values. The live cases add the briefing and question paths.
+pending cases. `no_phi_in_logs` is scored in the default run by four cases.
+69 and 70 upload and extract a lab report and an intake form through the real
+controllers, with the sidecar replaying a recorded model reply, and scan every
+PHP log line, trace and sidecar log line for the document's identifiers and
+values. 71 and 72 run the real brief and ask on a throwaway patient, with the
+model and sidecar replies replayed from `tests/evals/fixtures/chat/`, and scan
+every PHP log line and trace for the plan note's and the question's
+identifiers; each must consume every recorded reply, so it cannot pass
+without reaching the model call and the sidecar.
 A baseline changes only through
 `gate.sh pre-push --update-baseline`, committed together with the change that
 justifies it.
@@ -114,7 +136,7 @@ justifies it.
 
 | Run | Needs |
 |---|---|
-| Default gate (what `git push` runs) | **Nothing.** The 54 deterministic cases replay recorded model output and make no external API calls. |
+| Default gate (what `git push` runs) | **Nothing.** The 56 deterministic cases replay recorded model output. One caveat: the sidecar reads the root `.env`, and if it holds a `COHERE_API_KEY` the retrieve cases rerank through Cohere live (open item in [TODOS.md](TODOS.md)). With no `.env`, as on a fresh clone, nothing external is called. |
 | Live cases (`COPILOT_GATE_LIVE=1`) | `OPENAI_API_KEY` in a `.env` file at the repo root (read by both containers). Optional: `OPENAI_MODEL`, and `COHERE_API_KEY` for reranking. Without a key the live cases are skipped with a note, never failed. |
 
 Set by the stack itself; nothing to configure: `COPILOT_SIDECAR_URL`, and
@@ -175,3 +197,39 @@ above the threshold, so only the any-flip rule catches it. The manual version
 is the one above: delete the `$sentence->factIds === []` line in
 [Verifier.php](interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php),
 commit, and `git push`.
+
+## 6. Known limits
+
+Stated so a reader does not assume more than the gate checks. Each was an
+explicit decision (ledger in
+[docs/designs/golden-set-kill-matrix.md](docs/designs/golden-set-kill-matrix.md)).
+
+- **The hook tests the working tree, not the commit being pushed** (D11).
+  Commit a regression, fix it on disk without committing, push: the gate
+  tests the fixed files and the regression ships. Commit before pushing.
+- **A deleted or renamed sidecar file refuses the push until the sidecar
+  image is rebuilt** (D9): the sync copies files in and never removes any.
+  The refusal names the rebuild command.
+- **Inline prompt text in the sidecar is not locked** (D10). The Python lock
+  hashes the prompt constants; the `<<<DOCUMENT_TEXT` markers in `propose()`
+  and the critic's user message in `applicable()` are built at call time and
+  can change without failing the push.
+- **The sidecar's own log lines for brief and ask are scanned only by the
+  live cases** (38, 68; D1). The default run scans the sidecar's lines for
+  upload and extract (69, 70) and PHP's lines for all four paths.
+- **A prompt lock is a pin, not an eval.** It forces a deliberate step when a
+  prompt changes; the live cases are what judge the new prompt.
+
+## 7. Kill matrix
+
+Small regressions of the kind a grader would plant, one patch each in
+[tests/evals/mutants/](tests/evals/mutants/), each run through the real hook
+chain with no API key in an isolated worktree stack. Two canaries run first to
+prove the classifier: C1 (a comment) must survive and C2 (a syntax error) must
+be reported as an error, never as a catch. How to run it:
+`tests/evals/mutants/run.sh` inside an `openemr-cmd worktree` (see the
+script's header).
+
+<!-- mutants:start -->
+Not run yet.
+<!-- mutants:end -->

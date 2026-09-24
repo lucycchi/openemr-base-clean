@@ -1,0 +1,31 @@
+id: M15
+layer: eval gate
+mutation: a deterministic case file is deleted (05-empty-fact-set)
+expected: golden: baseline case MISSING
+
+diff --git a/tests/evals/cases/05-empty-fact-set.json b/tests/evals/cases/05-empty-fact-set.json
+deleted file mode 100644
+--- a/tests/evals/cases/05-empty-fact-set.json
++++ /dev/null
+@@ -1,21 +0,0 @@
+-{
+-  "id": "05-empty-fact-set",
+-  "guards": "boundary",
+-  "failure_mode": "Patient with nothing since last visit (or an empty chart). The pipeline must not fail or invent content; an empty narration is correct.",
+-  "rubrics": {
+-    "schema_valid": true,
+-    "citation_present": true,
+-    "factually_consistent": true
+-  },
+-  "mode": "briefing",
+-  "facts": [],
+-  "narration": {
+-    "sentences": []
+-  },
+-  "expect": {
+-    "kept": 0,
+-    "stripped": 0,
+-    "omitted_ids": [],
+-    "total_failure": false
+-  }
+-}

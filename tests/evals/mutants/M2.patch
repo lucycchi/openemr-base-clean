@@ -1,0 +1,17 @@
+id: M2
+layer: OmissionGuard
+mutation: never report an omitted must-surface fact
+expected: golden: case 04; OmissionGuardTest
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/src/OmissionGuard.php b/interface/modules/custom_modules/oe-module-clinical-copilot/src/OmissionGuard.php
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/src/OmissionGuard.php
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/src/OmissionGuard.php
+@@ -37,7 +37,7 @@
+         // Walk the full fact set in order; keep the must-surface ones nobody cited.
+         $omitted = [];
+         foreach ($facts->all() as $fact) {
+-            if ($fact->category->mustSurface() && !isset($cited[$fact->id])) {
++            if (false && $fact->category->mustSurface() && !isset($cited[$fact->id])) {
+                 $omitted[] = $fact;
+             }
+         }

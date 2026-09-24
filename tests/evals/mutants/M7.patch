@@ -1,0 +1,17 @@
+id: M7
+layer: supervisor
+mutation: a question no longer routes to evidence_retriever (inverted check)
+expected: golden: routing_correct (25, 28); pytest
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/graph.py b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/graph.py
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/graph.py
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/graph.py
+@@ -145,7 +145,7 @@
+         _hop(state, "supervisor", "critic", "applicability_check", [])
+         state["next"] = "critic"
+         return state
+-    if state.get("mode") == "answer" and state.get("question") and not state.get("retrieved_once"):
++    if state.get("mode") == "answer" and not state.get("question") and not state.get("retrieved_once"):
+         _hop(state, "supervisor", "evidence_retriever", "question_present", [])
+         state["next"] = "evidence_retriever"
+         return state

@@ -1,0 +1,17 @@
+id: M8
+layer: supervisor
+mutation: an already extracted document is sent to intake_extractor again
+expected: golden: routing_correct (26); pytest
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/graph.py b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/graph.py
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/graph.py
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/graph.py
+@@ -114,7 +114,7 @@
+     state.setdefault("_t", time.monotonic())
+     # Which documents could be extracted: uploaded and not yet processed
+     # ("stored"), and of a type the extractor supports.
+-    stored = [d for d in state.get("documents", []) if d.status == "stored"]
++    stored = [d for d in state.get("documents", []) if d.status in ("stored", "extracted")]
+     supported = [d for d in stored if d.doc_type in SUPPORTED_DOC_TYPES]
+     # Extract mode, first visit: send the extractor if there is work, else end
+     # the run with a reason that says why (PHP shows it, the harness scores it).

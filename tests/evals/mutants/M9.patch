@@ -1,0 +1,17 @@
+id: M9
+layer: lab judgement
+mutation: h and l no longer count as abnormal flags
+expected: unknown
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/src/LabJudge.php b/interface/modules/custom_modules/oe-module-clinical-copilot/src/LabJudge.php
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/src/LabJudge.php
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/src/LabJudge.php
+@@ -28,7 +28,7 @@
+ 
+ final class LabJudge
+ {
+-    private const ABNORMAL_FLAGS = ['high', 'low', 'yes', 'h', 'l', 'a', 'abnormal', 'hh', 'll'];
++    private const ABNORMAL_FLAGS = ['high', 'low', 'yes', 'a', 'abnormal', 'hh', 'll'];
+     private const CRITICAL_FLAGS = ['vhigh', 'vlow'];
+     /** Whole words that report a positive finding; matched only when no negation is present. */
+     private const POSITIVE_PATTERN = '/\b(positive|reactive|detected|abnormal|present)\b/iu';

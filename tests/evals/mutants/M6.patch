@@ -1,0 +1,17 @@
+id: M6
+layer: retrieval
+mutation: a rerank failure returns no evidence instead of the fused order
+expected: pytest: test_rerank_failure_falls_back_to_rrf_order
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/retrieve.py b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/retrieve.py
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/retrieve.py
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/retrieve.py
+@@ -257,7 +257,7 @@
+         # the fused order stands, no rerank usage is recorded, and the log
+         # says why (the exception class, never the provider's message).
+         log.info("model_call failed", extra={"model": RERANK_MODEL, "kind": "rerank", "ms": int((time.monotonic() - started) * 1000), "exception_class": type(exc).__name__})
+-        return [(c, rrf) for c, rrf, _, _ in cands][:TOP], []
++        return [], []
+     # r.index points back into `cands`; relevance_score is Cohere's 0..1 fit.
+     ranked = [(cands[r.index][0], float(r.relevance_score)) for r in resp.results]
+     log.info("model_call", extra={"model": RERANK_MODEL, "kind": "rerank", "count": len(docs), "ms": int((time.monotonic() - started) * 1000)})

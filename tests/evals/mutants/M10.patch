@@ -1,0 +1,17 @@
+id: M10
+layer: citations
+mutation: every citation is serialised with an empty quote_or_value
+expected: schema_valid or PHPUnit
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Documents/Citation.php b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Documents/Citation.php
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Documents/Citation.php
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Documents/Citation.php
+@@ -106,7 +106,7 @@
+             'source_id' => $this->sourceId,
+             'page_or_section' => $this->pageOrSection,
+             'field_or_chunk_id' => $this->fieldOrChunkId,
+-            'quote_or_value' => $this->quoteOrValue,
++            'quote_or_value' => '',
+             'anchored' => $this->anchored,
+         ];
+         if ($this->bbox !== null) {

@@ -1,0 +1,16 @@
+id: M4
+layer: anchoring
+mutation: the analyte need not be in the value's row
+expected: golden: anchor_correct (18); pytest
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/anchor.py b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/anchor.py
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/anchor.py
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/anchor.py
+@@ -279,6 +279,7 @@
+ 
+ def _row_has_analyte(row: Row, analyte: str) -> bool:
+     """Every word of the analyte name appears in the row (fuzzy), in order."""
++    return True
+     # Walk the row's words left to right, consuming one for each analyte
+     # word in turn; other words may sit in between ("Glucose, fasting" still
+     # matches "glucose fasting"). Running out of row words means no match.

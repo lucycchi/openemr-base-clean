@@ -1,0 +1,16 @@
+id: M13a
+layer: PHI logging
+mutation: the ask log message text carries the question
+expected: golden: no_phi_in_logs (72)
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/ChatController.php b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/ChatController.php
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/ChatController.php
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/src/Controller/ChatController.php
+@@ -431,6 +431,7 @@
+      */
+     private function ask(ChatRequest $chat, AssembledFacts $assembled, Config $config, PatientId $pid): array
+     {
++        $this->logger->info('copilot ask: ' . (string) $chat->question);
+         // Stale-conversation guard: the panel sends the facts_hash it was
+         // briefed with. If the chart changed since (new lab filed, etc.), the
+         // answer would be based on facts the clinician has not seen — refuse

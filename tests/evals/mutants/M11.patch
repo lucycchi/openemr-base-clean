@@ -1,0 +1,17 @@
+id: M11
+layer: schema
+mutation: a lab row without a unit gets "" instead of null
+expected: golden: case 48; pytest
+
+diff --git a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/anchor.py b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/anchor.py
+--- a/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/anchor.py
++++ b/interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/anchor.py
+@@ -534,7 +534,7 @@
+                 analyte=r.analyte.strip(),
+                 loinc=mapped["loinc"] if mapped else None,
+                 value=r.value.strip(),
+-                unit=unit,
++                unit=unit or "",
+                 reference_range=r.reference_range.strip() if r.reference_range else None,
+                 abnormal_flag=r.abnormal_flag,
+                 unit_mismatch=mismatch,
