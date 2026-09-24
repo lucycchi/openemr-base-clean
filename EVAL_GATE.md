@@ -232,7 +232,7 @@ script's header).
 
 <!-- mutants:start -->
 
-Latest run: 2026-09-24T06:06:53Z on `223882f833`, 19 of 19 planted regressions refused by the plain push (18 by the evals and unit tests, 1 by the prompt lock). First run: 2026-09-24T04:56:01Z on `404437af7a`, 15 of 18 refused. Controls passed before and after; canaries C1 (comment only) SURVIVED and C2 (syntax error) was ERROR, as required.
+Latest run: 2026-09-24T17:08:57Z on `9db3e093e2`, 19 of 19 planted regressions refused by the plain push (18 by the evals and unit tests, 1 by the prompt lock). First run: 2026-09-24T04:56:01Z on `404437af7a`, 15 of 18 refused. Controls passed before and after; canaries C1 (comment only) SURVIVED and C2 (syntax error) was ERROR, as required.
 
 | Mutant | Layer | Regression planted | Expected killer | First run | Latest | Caught by | Detail |
 |---|---|---|---|---|---|---|---|
