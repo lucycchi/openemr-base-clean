@@ -13,8 +13,11 @@ Every script here is namespaced `OpenEMR\Tests\Evals` and reads decoded JSON thr
 | Path | What |
 |---|---|
 | `cases/*.json` | One case per file: `guards` (boundary / invariant / regression), a plain-English `failure_mode`, inputs, and `expect`. |
-| `run.php` | The harness. The 54 deterministic cases replay recorded model output: narration fixtures through `Verifier` + `OmissionGuard`, recorded proposals through the sidecar's anchoring, retrieval and routing endpoints, and (facts and phi_logs modes) the real ingest and controllers on a throwaway patient. None calls a model provider. `--live` adds the 16 live cases, which call OpenAI on seed and fixture data. Every rubric is a code check (`evaluateRubrics()`); there is no LLM judge. Writes `results.json`. |
+| `run.php` | The harness. The 56 deterministic cases replay recorded model output: narration fixtures through `Verifier` + `OmissionGuard`, recorded proposals through the sidecar's anchoring, retrieval and routing endpoints, and (facts and phi_logs modes) the real ingest and controllers on a throwaway patient. None calls a model provider. `--live` adds the 16 live cases, which call OpenAI on seed and fixture data. Every rubric is a code check (`evaluateRubrics()`); there is no LLM judge. Writes `results.json`. |
 | `gate.php`, `gate.sh`, `install-hooks.sh` | The push gate, its container-aware wrapper, and the hook installer (see "The gate"). |
+| `gate-sync-test.sh` | Proves `gate.sh`'s sidecar sync (nothing to copy, an edit copied in, a dependency change refused); runs only in an `openemr-cmd` worktree. |
+| `phi.php`, `fixtures/chat/` | The real controllers under a capturing logger for `phi_logs` cases; `ChatReplay` answers the brief/ask model and sidecar calls from the recorded bodies in `fixtures/chat/` (cases 71, 72). |
+| `mutants/` | The kill matrix: one `.patch` per planted regression, `run.sh` to run them through the real hook in a worktree, `results.json` (a list of runs), `table.py` for the table in `EVAL_GATE.md` § 7. |
 | `baseline.json`, `baseline-live.json` | Per-case rubric verdicts the gate compares against; change only via `--update-baseline`. |
 | `results.json` | Latest local run (2026-09-17: 15/15, 0 of 60 stripped, 0 omissions): per-case pass/fail, per-patient strips/omissions/latency/tokens, and aggregate metrics (strip rate, p50/p95, tokens). |
 | `results-deployed.json` | Same suite run on the deployed droplet (2026-09-16): 11/11, 1 of 58 sentences stripped, 0 omissions, p50 2.3 s, p95 14.4 s. Set `EVAL_RESULTS=<path>` to write elsewhere (the deployed tree is read-only). |
@@ -40,8 +43,11 @@ push gate. `install-hooks.sh` installs it as `.git/hooks/pre-push`.
 | `routing_correct` | Handoff sequence equals `expect.handoffs` | ≥ 90% |
 | `applicability_correct` | Critic verdict equals `expect.applicable` (critic mode) | 100% |
 
-Rule: fail if any rubric is below its threshold, or if a case that passed a
-rubric in the baseline now fails it. For deterministic cases any such flip
+Rule: fail if any rubric is below its threshold, if a case that passed a
+rubric in the baseline now fails it, if any deterministic case's result is
+`fail` (even with every declared rubric passing), or if a deterministic case
+in the baseline is missing from the run (its file deleted or renamed; retire
+a case with `--update-baseline`). For deterministic cases any such flip
 fails (they replay recorded output, so a flip is a real regression, and one
 broken case in a 90% rubric must not slip through). For live cases, which
 vary with the model, the rubric's rate over the common case ids must also
@@ -54,9 +60,14 @@ an `OPENAI_API_KEY` (skipped with a note otherwise, never failed). The only
 way a baseline changes is `--update-baseline`; commit the file with the
 change that justified it.
 
-Before the golden cases, the wrapper runs the sidecar's pytest (when its
-container is up) and the module's isolated PHPUnit suite; either failing
-refuses the push.
+Before the golden cases, the wrapper copies the checkout's sidecar code into
+the running `copilot-sidecar` when it differs (the code is baked into the
+image; `gate.sh sync` runs only this step, and a `pyproject.toml` change or a
+deleted file refuses the push until the image is rebuilt), then runs the
+sidecar's pytest and the module's isolated PHPUnit suite; either failing
+refuses the push. Both suites include a prompt lock (`test_prompt_lock.py`,
+`PromptLockTest.php`): any prompt edit fails with `PROMPT CHANGED` until the
+lock is rewritten with `UPDATE_PROMPT_LOCK=1`.
 
 ```bash
 tests/evals/install-hooks.sh --self-test     # install the pre-push hook and prove it refuses a regression
