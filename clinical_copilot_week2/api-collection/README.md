@@ -102,13 +102,19 @@ Local dev stack, 2026-09-22, Bruno CLI 2.15.1: first run 17/17 requests,
 ~10 s); second run 17/17 in ~6 s with 07 → 200 `existing: true` and 08 →
 `already: true`, proving the collection is repeatable.
 
-Deployed droplet (`vps` environment), 2026-09-23 21:05 CT, build `b6f4c60`
+Deployed droplet (`vps` environment), 2026-09-23 22:15 CT, build `3f9cc74`
+(all core agent tasks, including the PHP runtime log allowlist): 17/17
+requests, 41/41 assertions in 20 s; brief 0.65 s (a cache hit: the prompt
+version is unchanged, so the earlier cold brief was reused), guideline
+question 7.9 s. This is the run saved below.
+
+Earlier that evening, build `b6f4c60`
 (the expanded briefing, five-field citations, answer-stage handoffs): 17/17
 requests, 41/41 assertions in 26 s; brief with document facts 11.5 s (a cold
 brief now includes the guideline section and its critic calls), guideline
 question 3.8 s; 07 and 08 answered `existing` / `already` because the demo
 chart already holds this report. Earlier the same day, build `fc7aa13`:
-17/17, 41/41; extraction 14.2 s, brief 4.4 s, question 2.5 s. The latest run
+17/17, 41/41; extraction 14.2 s, brief 4.4 s, question 2.5 s. The latest run (`3f9cc74`)
 is saved as [`results-deployed.json`](results-deployed.json) (Bruno's JSON
 report; no patient data, the demo chart only; the login passwords in the
 request bodies are replaced with `[redacted]`). The first deploy that day
