@@ -156,7 +156,9 @@ are scheduled as tasks 9.1 and 9.2 in
 **Priority:** P2
 **Depends on:** None
 
-### Push gate runs its deterministic cases with the model keys off
+## Completed
+
+### ~~Push gate runs its deterministic cases with the model keys off~~ (done 2026-09-24)
 
 **What:** `tests/evals/gate.sh` runs the sidecar pytest and the deterministic golden cases with `OPENAI_API_KEY` and `COHERE_API_KEY` forced empty for the sidecar, whatever the developer's `.env` holds.
 
@@ -168,7 +170,7 @@ are scheduled as tasks 9.1 and 9.2 in
 **Priority:** P2
 **Depends on:** None
 
-## Completed
+**Done:** the harness sends `X-Eval-Keyless: 1` on every deterministic request and the sidecar's `model_key()` answers "" for that request (`copilot_sidecar/keys.py`, honoured only with `COPILOT_EVAL_ENDPOINTS=1`); a deterministic case that reports any model call fails; the hook's pytest runs with the keys blanked. Measured on a dev stack with both keys set: 9 live model calls per deterministic run before, 0 after.
 
 ### Noted during the 8.5 comment pass (2026-09-23), not changed
 

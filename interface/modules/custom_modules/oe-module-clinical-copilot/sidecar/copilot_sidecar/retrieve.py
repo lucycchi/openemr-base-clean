@@ -57,6 +57,7 @@ from pathlib import Path
 import numpy as np
 from rank_bm25 import BM25Okapi
 
+from .keys import model_key
 from .llm import correlation_options
 from .logging_setup import correlation_id
 from .schemas import Chunk, TriggerEvidence, TriggerQuery, Usage
@@ -237,7 +238,7 @@ def rerank(query: str, cands: list[tuple[IndexedChunk, float, float, float]]) ->
     first, at most TOP of them."""
     if not cands:
         return [], []
-    key = os.environ.get("COHERE_API_KEY", "")
+    key = model_key("COHERE_API_KEY")
     if not key:
         return [(c, rrf) for c, rrf, _, _ in cands][:TOP], []
     # Imported here so the Cohere library is loaded only when a key exists.
@@ -275,7 +276,7 @@ def retrieve(question: str, query_vec: np.ndarray | None = None, embed_query: bo
     only chunks with a strong keyword score pass the floor."""
     usage: list[Usage] = []
     started = time.monotonic()
-    if query_vec is None and embed_query and os.environ.get("OPENAI_API_KEY"):
+    if query_vec is None and embed_query and model_key("OPENAI_API_KEY"):
         vecs, u = embed([question])
         query_vec, usage = vecs[0], [u]
     cands = index().candidates(question, query_vec)
@@ -326,7 +327,7 @@ def retrieve_many(queries: list[TriggerQuery]) -> tuple[list[TriggerEvidence], l
         entry = committed.get(q.trigger_id)
         if entry is not None and entry[0] == q.query:
             vec = entry[1]
-        elif os.environ.get("OPENAI_API_KEY"):
+        elif model_key("OPENAI_API_KEY"):
             vecs, u = embed([q.query])
             vec = vecs[0]
             usage.append(u)

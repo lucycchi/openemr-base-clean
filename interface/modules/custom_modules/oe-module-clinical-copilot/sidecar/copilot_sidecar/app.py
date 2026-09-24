@@ -50,6 +50,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import anchor, contracts, extractor, graph
 from . import retrieve as retrieve_module
+from .keys import bind_keyless
 from .llm import PROMPT_VERSION
 from .logging_setup import bind_correlation_id, setup_logging
 from .schemas import CriticVerdict, Extraction, IntakeFormProposal, LabReportProposal, RunDocument, RunError, RunRequest, RunResponse, SidecarHealth, SidecarReady, TriggerQuery, Usage
@@ -73,8 +74,14 @@ async def correlate(request: Request, call_next):
     hands the request to the matching endpoint and returns its response.
     bind_correlation_id stores the id in a context variable, a value that
     follows this one request through the code without being passed as an
-    argument, so every log line it produces carries the id."""
+    argument, so every log line it produces carries the id.
+
+    With the test-only eval endpoints enabled, X-Eval-Keyless: 1 marks a
+    request from a deterministic eval case: model_key() then answers "" for
+    it, so it never calls Cohere or OpenAI (keys.py). A deployed sidecar has
+    no eval endpoints and ignores the header."""
     bind_correlation_id(request.headers.get("x-correlation-id", ""))
+    bind_keyless(os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1" and request.headers.get("x-eval-keyless") == "1")
     return await call_next(request)
 
 # ---- Idempotency cache ----------------------------------------------------

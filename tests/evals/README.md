@@ -67,7 +67,10 @@ deleted file refuses the push until the image is rebuilt), then runs the
 sidecar's pytest and the module's isolated PHPUnit suite; either failing
 refuses the push. Both suites include a prompt lock (`test_prompt_lock.py`,
 `PromptLockTest.php`): any prompt edit fails with `PROMPT CHANGED` until the
-lock is rewritten with `UPDATE_PROMPT_LOCK=1`.
+lock is rewritten with `UPDATE_PROMPT_LOCK=1`. The pytest stage runs with the
+model keys blanked, and `run.php` sends `X-Eval-Keyless: 1` on every
+deterministic request so the sidecar makes no model call for it even when
+its `.env` holds keys; a deterministic case that reports one fails.
 
 ```bash
 tests/evals/install-hooks.sh --self-test     # install the pre-push hook and prove it refuses a regression

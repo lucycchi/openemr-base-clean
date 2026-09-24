@@ -136,7 +136,7 @@ justifies it.
 
 | Run | Needs |
 |---|---|
-| Default gate (what `git push` runs) | **Nothing.** The 56 deterministic cases replay recorded model output. One caveat: the sidecar reads the root `.env`, and if it holds a `COHERE_API_KEY` the retrieve cases rerank through Cohere live (open item in [TODOS.md](TODOS.md)). With no `.env`, as on a fresh clone, nothing external is called. |
+| Default gate (what `git push` runs) | **Nothing.** The 56 deterministic cases replay recorded model output and make no model call, even when your `.env` holds keys: the harness marks each of their requests to the sidecar `X-Eval-Keyless: 1`, the sidecar then acts as if it had no keys for that request, and any deterministic case that still reports a model call fails. The hook's pytest stage runs with the keys blanked. |
 | Live cases (`COPILOT_GATE_LIVE=1`) | `OPENAI_API_KEY` in a `.env` file at the repo root (read by both containers). Optional: `OPENAI_MODEL`, and `COHERE_API_KEY` for reranking. Without a key the live cases are skipped with a note, never failed. |
 
 Set by the stack itself; nothing to configure: `COPILOT_SIDECAR_URL`, and

@@ -38,7 +38,6 @@ use Composer\Autoload\ClassLoader;
 use DateTimeImmutable;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Database\QueryUtils;
-use OpenEMR\Modules\ClinicalCopilot\Ops\LogFields;
 use OpenEMR\Modules\ClinicalCopilot\AclAuthorization;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
 use OpenEMR\Modules\ClinicalCopilot\BriefingCache;
@@ -64,6 +63,7 @@ use OpenEMR\Modules\ClinicalCopilot\Narration;
 use OpenEMR\Modules\ClinicalCopilot\NarrationPipeline;
 use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
 use OpenEMR\Modules\ClinicalCopilot\OpenEmrChartSource;
+use OpenEMR\Modules\ClinicalCopilot\Ops\LogFields;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\Row;
 use OpenEMR\Modules\ClinicalCopilot\Sentence;
@@ -237,7 +237,7 @@ function runDocumentCase(array $case, string $mode): array
     // The two endpoints answer in different shapes: /eval/anchor returns the extraction
     // result itself, /eval/extract wraps it with the usage list.
     $t = hrtime(true);
-    $response = sidecarPost('/eval/' . $mode, $body);
+    $response = sidecarPost('/eval/' . $mode, $body, deterministic($case));
     $ms = (int) round((hrtime(true) - $t) / 1e6);
     $extraction = $mode === 'anchor' ? $response : map($response, 'extraction');
     if ($extraction === []) {
@@ -326,7 +326,7 @@ function runDocumentCase(array $case, string $mode): array
     foreach (array_map(mapOf(...), lst($case, 'swapped')) as $swap) {
         $proposal = ['patient_name_on_report' => null, 'collection_date' => $truth['collection_date'] ?? null, 'reported_date' => null, 'lab_name' => null,
             'results' => [['analyte' => str($swap, 'analyte'), 'value' => str($swap, 'value'), 'unit' => str($swap, 'unit', 'mg/dL'), 'reference_range' => null, 'abnormal_flag' => null, 'page' => 1]]];
-        $sw = sidecarPost('/eval/anchor', ['fixture' => str($case, 'fixture'), 'doc_type' => 'lab_pdf', 'document_id' => 1, 'proposal' => $proposal]);
+        $sw = sidecarPost('/eval/anchor', ['fixture' => str($case, 'fixture'), 'doc_type' => 'lab_pdf', 'document_id' => 1, 'proposal' => $proposal], deterministic($case));
         $first = mapOf(lst(map($sw, 'extraction'), 'results')[0] ?? null);
         if ((map($first, 'citation')['anchored'] ?? null) !== false) {
             $run['anchor_errors'][] = sprintf('swapped %s=%s was anchored (must be unverified)', str($swap, 'analyte'), str($swap, 'value'));
@@ -429,7 +429,7 @@ function scoreIntake(array $run, array $doc, array $truth): array
 function runMalformedCase(array $case): array
 {
     $t = hrtime(true);
-    $response = sidecarPost('/eval/extract', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => new stdClass()]);
+    $response = sidecarPost('/eval/extract', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => new stdClass()], deterministic($case));
     $extraction = map($response, 'extraction');
     return [
         'ms' => (int) round((hrtime(true) - $t) / 1e6),
@@ -454,7 +454,7 @@ function runMalformedCase(array $case): array
 function runAbsentCase(array $case): array
 {
     $t = hrtime(true);
-    $response = sidecarPost('/eval/anchor-absent', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => arr($case, 'proposal')]);
+    $response = sidecarPost('/eval/anchor-absent', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => arr($case, 'proposal')], deterministic($case));
     $anchored = strings($response['anchored'] ?? null);
     return [
         'ms' => (int) round((hrtime(true) - $t) / 1e6),
@@ -479,7 +479,7 @@ function runRouteCase(array $case): array
 {
     $state = map($case, 'state');
     $t = hrtime(true);
-    $response = sidecarPost('/eval/route', ['mode' => str($state, 'mode', 'extract'), 'question' => $state['question'] ?? null, 'documents' => lst($state, 'documents'), 'queries' => lst($state, 'queries')]);
+    $response = sidecarPost('/eval/route', ['mode' => str($state, 'mode', 'extract'), 'question' => $state['question'] ?? null, 'documents' => lst($state, 'documents'), 'queries' => lst($state, 'queries')], deterministic($case));
     $handoffs = array_map(mapOf(...), lst($response, 'handoffs'));
     $schemaErrors = [];
     foreach ($handoffs as $h) {
@@ -510,7 +510,7 @@ function runRetrieveCase(array $case): array
     // retriever runs without an embedding API call and gives the same answer every time.
     $q = jsonFile(__DIR__ . '/fixtures/queries/' . str($case, 'query_fixture') . '.json');
     $t = hrtime(true);
-    $response = sidecarPost('/eval/retrieve', ['query' => str($q, 'query'), 'embedding' => $q['embedding'] ?? null]);
+    $response = sidecarPost('/eval/retrieve', ['query' => str($q, 'query'), 'embedding' => $q['embedding'] ?? null], deterministic($case));
     $chunks = array_map(mapOf(...), lst($response, 'chunks'));
     // Every chunk must conform to run.response's chunk shape: validate a
     // one-chunk run.response so the contract file, not a copy, is the judge.
@@ -526,6 +526,7 @@ function runRetrieveCase(array $case): array
         'chunks' => count($chunks),
         'top_source_id' => $chunks[0]['source_id'] ?? null,
         'reranked' => ($response['reranked'] ?? false) === true,
+        'model_calls' => count(lst($response, 'usage')),
         'schema_errors' => $schemaErrors,
         'uncited_kept' => count(array_filter($chunks, static fn(array $c): bool => str($c, 'source_id') === '' || str($c, 'quote') === '' || str($c, 'chunk_id') === '')),
         'ungrounded_tokens' => [],
@@ -598,7 +599,7 @@ function runBriefEvidenceCase(array $case): array
         $queries[] = ['trigger_id' => $id, 'query' => $rule->query];
     }
     $t = hrtime(true);
-    $response = sidecarPost('/eval/brief-evidence', ['queries' => $queries]);
+    $response = sidecarPost('/eval/brief-evidence', ['queries' => $queries], deterministic($case));
     $evidence = array_map(mapOf(...), lst($response, 'evidence'));
     $usage = array_map(mapOf(...), lst($response, 'usage'));
     $schemaErrors = [];
@@ -639,6 +640,7 @@ function runBriefEvidenceCase(array $case): array
         'top_sources_match' => $match,
         'embedding_calls' => count(array_filter($usage, static fn(array $u): bool => str($u, 'kind') === 'embedding')),
         'reranked' => ($response['reranked'] ?? false) === true,
+        'model_calls' => count($usage),
         'schema_errors' => $schemaErrors,
         'uncited_kept' => $uncited,
         'ungrounded_tokens' => $ungrounded,
@@ -663,7 +665,7 @@ function runCriticCase(array $case): array
         'age' => is_int($case['age'] ?? null) ? $case['age'] : null,
         'sex' => is_string($case['sex'] ?? null) ? $case['sex'] : null,
         'recorded' => $recorded,
-    ]);
+    ], deterministic($case));
     $applicable = $response['applicable'] ?? null;
     $reason = $response['reason'] ?? null;
     return [
@@ -696,7 +698,7 @@ function runFactsCase(array $case): array
     $fixturesDir = __DIR__ . '/fixtures/docs/';
     $proposal = is_array($case['proposal'] ?? null) ? $case['proposal'] : jsonFile($fixturesDir . str($case, 'model_output'));
     $t = hrtime(true);
-    $extraction = sidecarPost('/eval/anchor', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => $proposal]);
+    $extraction = sidecarPost('/eval/anchor', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => $proposal], deterministic($case));
 
     // 2. A throwaway patient with no encounters, one above the highest existing pid, so the
     //    seed patients are never touched and "no prior visit" is guaranteed.
@@ -783,9 +785,14 @@ function runFactsCase(array $case): array
  *
  * @return array<string, mixed>
  */
-function sidecarPost(string $path, array $body): array
+function sidecarPost(string $path, array $body, bool $keyless): array
 {
-    $ctx = stream_context_create(['http' => ['method' => 'POST', 'header' => "Content-Type: application/json\r\n", 'content' => json_encode($body, JSON_THROW_ON_ERROR), 'timeout' => 120, 'ignore_errors' => true]]);
+    // X-Eval-Keyless: 1 tells the sidecar to act as if it had no model keys for
+    // this request (copilot_sidecar/keys.py), so a deterministic case never
+    // reranks through Cohere or embeds through OpenAI, even on a dev stack
+    // whose .env holds real keys. Live cases leave it off.
+    $headers = "Content-Type: application/json\r\n" . ($keyless ? "X-Eval-Keyless: 1\r\n" : '');
+    $ctx = stream_context_create(['http' => ['method' => 'POST', 'header' => $headers, 'content' => json_encode($body, JSON_THROW_ON_ERROR), 'timeout' => 120, 'ignore_errors' => true]]);
     $raw = file_get_contents(sidecarUrl() . $path, false, $ctx);
     if ($raw === false) {
         throw new RuntimeException('sidecar unreachable at ' . sidecarUrl() . ' (is the copilot-sidecar container running with COPILOT_EVAL_ENDPOINTS=1?)');
@@ -795,6 +802,16 @@ function sidecarPost(string $path, array $body): array
         throw new RuntimeException('sidecar returned a non-object');
     }
     return mapOf($decoded);
+}
+
+/**
+ * True for a case that replays recorded output; such a case must never call a model provider.
+ *
+ * @param array<string, mixed> $case
+ */
+function deterministic(array $case): bool
+{
+    return ($case['live'] ?? false) !== true;
 }
 
 /**
@@ -1006,7 +1023,7 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
             $sidecarBody['question'] = $case['question'];
         }
         // The sidecar's own log scan needs a document; a note-only case has none to send.
-        $sidecar = is_string($case['fixture'] ?? null) && $case['fixture'] !== '' ? sidecarPost('/eval/phi', $sidecarBody) : ['lines' => [], 'correlation_id' => '', 'extra_keys_seen' => [], 'allowlist' => []];
+        $sidecar = is_string($case['fixture'] ?? null) && $case['fixture'] !== '' ? sidecarPost('/eval/phi', $sidecarBody, deterministic($case)) : ['lines' => [], 'correlation_id' => '', 'extra_keys_seen' => [], 'allowlist' => []];
         $sidecarLines = strings($sidecar['lines'] ?? null);
         $cid = str($sidecar, 'correlation_id');
         $uncorrelated = 0;
@@ -1120,6 +1137,11 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     $rubrics = [];
     foreach ($runs as $i => $run) {
         $runMismatches = compare($expect, $run);
+        // A deterministic case replays recorded output: a model call the sidecar reports
+        // (a Cohere rerank, an embedding) means it depended on the network, which it must not.
+        if (deterministic($case) && int($run, 'model_calls', 0) > 0) {
+            $runMismatches[] = sprintf('model_calls: a deterministic case made %d live model call(s)', int($run, 'model_calls', 0));
+        }
         foreach ($runMismatches as $m) {
             $mismatches[] = (count($runs) > 1 ? "[run $i] " : '') . $m;
         }
