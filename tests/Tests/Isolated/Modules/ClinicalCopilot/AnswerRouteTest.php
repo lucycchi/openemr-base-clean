@@ -41,6 +41,7 @@ final class AnswerRouteTest extends TestCase
         return array_map(static fn(array $h): string => $h['from'] . '>' . $h['to'] . ':' . $h['reason'], $hops);
     }
 
+    /** @param list<Sentence> $sentences */
     private static function briefing(array $sentences, int $stripped, ?string $status, bool $fromCache = false): BriefingResult
     {
         return new BriefingResult($sentences, $stripped, [], $status, $fromCache, false, 0, 0);

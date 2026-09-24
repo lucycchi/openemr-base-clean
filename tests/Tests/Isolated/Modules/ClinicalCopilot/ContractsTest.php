@@ -232,8 +232,8 @@ final class ContractsTest extends TestCase
         $section = \OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection::fromRun($triggers, $run, new \OpenEMR\Modules\ClinicalCopilot\GuidelineManifest());
         $payload = PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID, $section);
         self::assertConforms('chat.briefing.response', $payload);
-        $sentence = self::path($payload, 'narration', 'sentences', 0);
-        $citations = self::path($sentence, 'citations');
+        $sentence = self::pathArray($payload, 'narration', 'sentences', 0);
+        $citations = self::pathArray($sentence, 'citations');
         self::assertSame(['source_type' => 'guideline', 'source_id' => 'acc-aha-2018-cholesterol', 'page_or_section' => 'T > S', 'field_or_chunk_id' => 'aaaaaaaaaaaa', 'quote_or_value' => 'A passage.', 'anchored' => true], $citations[0]);
         self::assertSame($citations[0], self::path($payload, 'guidelines', 'cards', 0, 'chunks', 0, 'citation'));
         self::assertConforms('chat.briefing.response', PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID, \OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection::none('unavailable')));
@@ -279,12 +279,12 @@ final class ContractsTest extends TestCase
         $payload = PanelPayload::answer($this->assembled(), $answer, self::CORRELATION_ID);
         self::assertConforms('chat.answer.response', $payload);
 
-        $chart = self::path($payload, 'answer', 'sentences', 0, 'citations');
+        $chart = self::pathArray($payload, 'answer', 'sentences', 0, 'citations');
         self::assertCount(1, $chart);
         self::assertSame('chart', self::path($chart, 0, 'source_type'));
         self::assertSame($drug, self::path($chart, 0, 'field_or_chunk_id'));
 
-        $guideline = self::path($payload, 'answer', 'sentences', 1, 'citations');
+        $guideline = self::pathArray($payload, 'answer', 'sentences', 1, 'citations');
         self::assertSame(['source_type' => 'guideline', 'source_id' => 'ada-2025-standards', 'page_or_section' => 'Pharmacologic therapy > Metformin', 'field_or_chunk_id' => 'cccccccccccc', 'quote_or_value' => 'Metformin is the preferred initial agent.', 'anchored' => true], $guideline[0]);
         self::assertSame($guideline[0], self::path($payload, 'answer', 'guidelines', 0, 'citation'));
     }
@@ -302,6 +302,19 @@ final class ContractsTest extends TestCase
             self::assertArrayHasKey($k, $node);
             $node = $node[$k];
         }
+        return $node;
+    }
+
+    /**
+     * path() for a node the test goes on to index or count: asserts it is an array.
+     *
+     * @param array<mixed> $a
+     * @return array<mixed>
+     */
+    private static function pathArray(array $a, int|string ...$keys): array
+    {
+        $node = self::path($a, ...$keys);
+        self::assertIsArray($node);
         return $node;
     }
 

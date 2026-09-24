@@ -43,7 +43,7 @@ final class SidecarClientTest extends TestCase
      * request it was sent, so a test can inspect both directions. Nothing
      * touches the network.
      *
-     * @param array<string, mixed> $reply
+     * @param array<mixed> $reply the reply body; it is only JSON-encoded
      */
     private function client(array $reply): SidecarClient
     {
@@ -99,12 +99,18 @@ final class SidecarClientTest extends TestCase
     {
         $examples = json_decode((string) file_get_contents(dirname(__DIR__, 5) . '/interface/modules/custom_modules/oe-module-clinical-copilot/contracts/examples/run.response.examples.json'), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($examples);
-        $reply = $examples['accept'][0];
+        $accept = $examples['accept'] ?? null;
+        self::assertIsArray($accept);
+        $reply = $accept[0] ?? null;
         self::assertIsArray($reply);
         $reply['correlation_id'] = self::CORRELATION_ID;
         $result = $this->client($reply)->answer(self::CORRELATION_ID, str_repeat('0', 64), 'q');
         self::assertCount(1, $result->extractions);
-        self::assertSame($reply['extractions'][0]['extraction'], $result->extractions[0]->extractionJson);
+        $sent = $reply['extractions'] ?? null;
+        self::assertIsArray($sent);
+        $first = $sent[0] ?? null;
+        self::assertIsArray($first);
+        self::assertSame($first['extraction'] ?? null, $result->extractions[0]->extractionJson);
         self::assertSame('lab_pdf', $result->extractions[0]->extractionJson['doc_type'] ?? null);
     }
 
