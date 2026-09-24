@@ -14,7 +14,7 @@ table is in [tests/evals/README.md](../tests/evals/README.md).
 | Data | Synthetic only: the 30-patient demo seed, generated lab PDFs and intake forms in [tests/evals/fixtures/docs/](../tests/evals/fixtures/docs/) with their `truth.json`, and throwaway patients the harness creates and deletes. No real patient appears anywhere. |
 | Rubrics | 8, each pass / fail / not applicable. No 1-10 scores. |
 | Judge | **Code, not a model.** Every verdict is computed by `evaluateRubrics()` in [run.php](../tests/evals/run.php) from what the run produced. |
-| Latest results | Deterministic 54/54 pass (2026-09-24 01:25 UTC); live 16/16 pass (2026-09-23 20:57 UTC). |
+| Latest results | Deterministic 54/54 pass (2026-09-24 02:23 UTC); live 16/16 pass (2026-09-23 20:57 UTC). |
 
 ## 1. What the cases cover
 
@@ -123,7 +123,7 @@ refreshed with the live `/eval/extract` endpoint when a prompt changes.
 
 | Run | When | Cases | Pass | Fail | File |
 |---|---|---|---|---|---|
-| Deterministic (the push gate) | 2026-09-24 01:25 UTC | 54 | 54 | 0 | [results.json](../tests/evals/results.json), baseline [baseline.json](../tests/evals/baseline.json) |
+| Deterministic (the push gate) | 2026-09-24 02:23 UTC | 54 | 54 | 0 | [results.json](../tests/evals/results.json), baseline [baseline.json](../tests/evals/baseline.json) |
 | Live (real model calls) | 2026-09-23 20:57 UTC | 16 | 16 | 0 | [baseline-live.json](../tests/evals/baseline-live.json) |
 
 Per rubric, pass / scored:
