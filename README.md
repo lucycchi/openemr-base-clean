@@ -30,7 +30,9 @@ care physicians.
 | What it does | A pre-room briefing and chart Q&A: deterministic PHP assembles cited facts from the chart, the model narrates by fact id, every sentence is verified before it renders | Lab PDFs and intake forms attached to the chart become cited facts (every value anchored to its row on the page, click-to-source highlight); follow-up questions cite guideline evidence from a hybrid-retrieval corpus; a supervisor routes work to two workers with a logged handoff per hop |
 | Where | PHP module `interface/modules/custom_modules/oe-module-clinical-copilot/` | the same module plus a Python sidecar (`sidecar/`, FastAPI + LangGraph) beside it; PHP keeps auth, storage, verification and the UI |
 | Docs | [clinical_copilot_week1/](clinical_copilot_week1/README.md) | [clinical_copilot_week2/](clinical_copilot_week2/README.md), starting with [W2_ARCHITECTURE.md](clinical_copilot_week2/W2_ARCHITECTURE.md) |
-| Evals | 15 cases | 68 cases (16 live) behind a push-blocking gate ([tests/evals/](tests/evals/README.md)) |
+| Evals | 15 cases | 70 cases (16 live) behind a push-blocking gate ([tests/evals/](tests/evals/README.md), summary in [EVAL_DATASET.md](clinical_copilot_week2/EVAL_DATASET.md)) |
+
+**Branch:** `pdf_reader` (GitLab's default branch) holds Week 1 and Week 2; everything below assumes it.
 
 **Deployed:** https://146-190-139-37.sslip.io (login `admin`; demo data). Health: [/health](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php) · [/ready](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php). Patients with an uploaded lab PDF to try the click-to-source highlight on: [clinical_copilot_week2/README.md](clinical_copilot_week2/README.md#seeing-click-to-source-on-the-deployed-instance)
 
@@ -53,15 +55,16 @@ care physicians.
 
 ### Environment variables
 
-Put them in a root `.env` (git-ignored; `.env.example` lists them). Both the
-`openemr` and `copilot-sidecar` containers read it.
+Put them in a root `.env` (git-ignored; [.env.example](.env.example) lists every one with a comment). Both the
+`openemr` and `copilot-sidecar` containers read it. Only `OPENAI_API_KEY` is needed for the core flow; the
+eval gate needs no key at all.
 
 | Variable | Used by | Purpose |
 |---|---|---|
 | `OPENAI_API_KEY` | PHP, sidecar | briefing and follow-up narration (PHP); page extraction and the query embedding (sidecar). Required for anything beyond the fact table |
 | `OPENAI_MODEL` | PHP, sidecar | chat model, default `gpt-4o-mini`; part of the briefing cache key |
 | `COHERE_API_KEY` | sidecar | optional; enables `rerank-v3.5` on guideline retrieval, RRF order without it |
-| `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST` | PHP | traces, generations and scores per request; `/ready` reports `degraded` without them |
+| `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST` | PHP | traces, generations and scores per request; `/ready` reports `degraded` without them. `LANGFUSE_BASE_URL` is read if `LANGFUSE_HOST` is unset |
 | `ALERT_WEBHOOK_SECRET`, `LANGFUSE_WEBHOOK_SECRET` | PHP | the alert receiver's shared token and Langfuse's webhook signing secret |
 | `COPILOT_SIDECAR_URL` | PHP | where the sidecar answers; default `http://copilot-sidecar:8000` on the compose network |
 | `COPILOT_PREWARM_ENABLED` | PHP | the morning pre-warm sweep's kill switch; off unless truthy |
