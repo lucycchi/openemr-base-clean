@@ -192,13 +192,18 @@ function runPhiCase(array $case): array
     // context keys for the allowlist check in run.php.
     $logs = [];
     $keys = [];
+    $dropped = [];
     foreach ($handler->getRecords() as $r) {
         $logs[] = $r->message . ' ' . json_encode($r->context, JSON_THROW_ON_ERROR);
         foreach (array_keys($r->context) as $k) {
             $keys[(string) $k] = true;
         }
+        // Keys the runtime allowlist dropped from this line (CorrelatedLogger / LogFields).
+        foreach (is_array($r->context['dropped_fields'] ?? null) ? $r->context['dropped_fields'] : [] as $k) {
+            $dropped[(string) $k] = true;
+        }
     }
-    return ['logs' => $logs, 'traces' => $tracer->payloads, 'log_keys' => array_keys($keys), 'status' => $status, 'answer_type' => $answerType, 'document_id' => $documentId, 'bodies' => $bodies];
+    return ['logs' => $logs, 'traces' => $tracer->payloads, 'log_keys' => array_keys($keys), 'dropped_fields' => array_keys($dropped), 'status' => $status, 'answer_type' => $answerType, 'document_id' => $documentId, 'bodies' => $bodies];
 }
 
 /**

@@ -31,6 +31,7 @@ final class CorrelatedLogger extends AbstractLogger
 
     public function log($level, string|\Stringable $message, array $context = []): void
     {
-        $this->inner->log($level, $message, $context + ['correlation_id' => $this->correlationId]);
+        // Only allowlisted keys reach the log line (LogFields); anything else is dropped and named.
+        $this->inner->log($level, $message, LogFields::filter($context + ['correlation_id' => $this->correlationId]));
     }
 }

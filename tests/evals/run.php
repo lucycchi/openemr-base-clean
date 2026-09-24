@@ -38,6 +38,7 @@ use Composer\Autoload\ClassLoader;
 use DateTimeImmutable;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Database\QueryUtils;
+use OpenEMR\Modules\ClinicalCopilot\Ops\LogFields;
 use OpenEMR\Modules\ClinicalCopilot\AclAuthorization;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
 use OpenEMR\Modules\ClinicalCopilot\BriefingCache;
@@ -989,8 +990,13 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
         // allowlist is the second line of defence: a new key that carries a value from
         // the document fails here even if that value is not one the case searches for.
         $leaked = array_values(array_filter($phi, fn(string $p) => stripos($rendered, $p) !== false));
-        $allowed = ['action', 'pid', 'user', 'encounter', 'document_id', 'doc_type', 'status', 'failure_reason', 'confidence', 'results_persisted', 'unverified', 'unextracted', 'model_calls', 'prompt_tokens', 'completion_tokens', 'cost_usd', 'steps', 'code', 'exception_class', 'exception_code', 'facts', 'stripped', 'omitted', 'from_cache', 'total_failure', 'answer_type', 'chart_changed', 'verification_pass', 'llm_attempts', 'llm_retried', 'guideline_chunks', 'retrieved_chunks', 'handoffs', 'eval_outcome', 'has_prior_visit', 'warm', 'warm_miss_reason', 'warm_receipt_age_s', 'cache_key', 'tool', 'reason', 'attempts', 'ms', 'correlation_id', 'http_status', 'model', 'denied', 'llm_ms', 'existing', 'chunks', 'calls', 'sidecar_retries', 'reranked'];
+        // The same allowlist CorrelatedLogger enforces at runtime (LogFields): a key off it is
+        // dropped there and named under dropped_fields, which fails this rubric below.
+        $allowed = LogFields::ALLOWED;
         $disallowed = array_values(array_diff($out['log_keys'], $allowed));
+        foreach ($out['dropped_fields'] as $k) {
+            $disallowed[] = 'dropped:' . $k;
+        }
         // The sidecar's own log lines for the same fixture (recorded proposal,
         // so no model call): same PHI scan, its allowlist, and every line must
         // carry the request's correlation id (the full-trace-from-logs rule).

@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-24T02:23:20+00:00",
+    "ran_at": "2026-09-24T02:32:20+00:00",
     "live": false,
     "pass": 54,
     "fail": 0,
@@ -29,7 +29,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 11
+            "ms": 14
         },
         {
             "id": "02-unknown-fact-id",
@@ -57,7 +57,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 2
+            "ms": 3
         },
         {
             "id": "03-ungrounded-number",
@@ -111,7 +111,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 4
+            "ms": 5
         },
         {
             "id": "05-empty-fact-set",
@@ -165,7 +165,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 2
+            "ms": 3
         },
         {
             "id": "07-inline-citation-group",
@@ -191,7 +191,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 3
+            "ms": 7
         },
         {
             "id": "08-semantic-inversion-known-limitation",
@@ -217,7 +217,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 1
+            "ms": 3
         },
         {
             "id": "09-live-seed-patients-zero-strips",
@@ -278,7 +278,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 71,
+                    "ms": 50,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -292,7 +292,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 121
+            "ms": 88
         },
         {
             "id": "17-anchor-lab-layout1-scan",
@@ -311,7 +311,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 3286,
+                    "ms": 3513,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -325,7 +325,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 3314
+            "ms": 3544
         },
         {
             "id": "18-anchor-hundred-in-three-columns",
@@ -358,7 +358,7 @@
                     "anchored": 7
                 }
             ],
-            "ms": 56
+            "ms": 62
         },
         {
             "id": "19-live-extract-lab-layout1",
@@ -389,7 +389,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 869,
+                    "ms": 941,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -403,7 +403,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 888
+            "ms": 963
         },
         {
             "id": "22-live-extract-intake-form",
@@ -425,7 +425,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 8,
+                    "ms": 9,
                     "handoffs": [
                         [
                             "supervisor",
@@ -438,7 +438,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 8
+            "ms": 9
         },
         {
             "id": "24-route-stored-document",
@@ -454,7 +454,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 9,
+                    "ms": 13,
                     "handoffs": [
                         [
                             "supervisor",
@@ -477,7 +477,7 @@
                     "extractions": 1
                 }
             ],
-            "ms": 9
+            "ms": 14
         },
         {
             "id": "25-route-question",
@@ -493,7 +493,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 9,
+                    "ms": 12,
                     "handoffs": [
                         [
                             "supervisor",
@@ -516,7 +516,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 9
+            "ms": 12
         },
         {
             "id": "26-route-extracted-document-not-re-extracted",
@@ -532,7 +532,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 7,
+                    "ms": 9,
                     "handoffs": [
                         [
                             "supervisor",
@@ -545,7 +545,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 7
+            "ms": 9
         },
         {
             "id": "27-route-unsupported-doc-type",
@@ -561,7 +561,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 8,
+                    "ms": 9,
                     "handoffs": [
                         [
                             "supervisor",
@@ -574,7 +574,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 8
+            "ms": 9
         },
         {
             "id": "28-route-document-and-question",
@@ -590,7 +590,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 9,
+                    "ms": 11,
                     "handoffs": [
                         [
                             "supervisor",
@@ -613,7 +613,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 9
+            "ms": 11
         },
         {
             "id": "29-retrieve-statin-ldl",
@@ -630,7 +630,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 176,
+                    "ms": 192,
                     "chunks": 5,
                     "top_source_id": "acc-aha-2018-cholesterol",
                     "reranked": true,
@@ -640,7 +640,7 @@
                     "answer_type": "cited"
                 }
             ],
-            "ms": 176
+            "ms": 193
         },
         {
             "id": "30-retrieve-a1c-target",
@@ -657,17 +657,17 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 3424,
+                    "ms": 171,
                     "chunks": 5,
                     "top_source_id": "ada-2025-standards",
-                    "reranked": false,
+                    "reranked": true,
                     "schema_errors": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
                     "answer_type": "cited"
                 }
             ],
-            "ms": 3424
+            "ms": 171
         },
         {
             "id": "31-retrieve-anemia-workup",
@@ -684,7 +684,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 3493,
+                    "ms": 3368,
                     "chunks": 5,
                     "top_source_id": "anemia-adults-primary-care",
                     "reranked": false,
@@ -694,7 +694,7 @@
                     "answer_type": "cited"
                 }
             ],
-            "ms": 3493
+            "ms": 3369
         },
         {
             "id": "32-retrieve-off-corpus-refusal",
@@ -711,7 +711,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 3,
+                    "ms": 4,
                     "chunks": 0,
                     "top_source_id": null,
                     "reranked": false,
@@ -859,7 +859,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 27,
+                    "ms": 29,
                     "status": "failed",
                     "reason": "encrypted",
                     "model_calls": 0,
@@ -869,7 +869,7 @@
                     "anchor_errors": []
                 }
             ],
-            "ms": 27
+            "ms": 29
         },
         {
             "id": "41-malformed-too-many-pages",
@@ -885,7 +885,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 4,
+                    "ms": 3,
                     "status": "failed",
                     "reason": "too_many_pages",
                     "model_calls": 0,
@@ -895,7 +895,7 @@
                     "anchor_errors": []
                 }
             ],
-            "ms": 4
+            "ms": 3
         },
         {
             "id": "42-malformed-blank-scan",
@@ -911,7 +911,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 428,
+                    "ms": 499,
                     "status": "failed",
                     "reason": "unreadable",
                     "model_calls": 0,
@@ -921,7 +921,7 @@
                     "anchor_errors": []
                 }
             ],
-            "ms": 428
+            "ms": 499
         },
         {
             "id": "43-absent-lab-values-unverified",
@@ -937,7 +937,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 17,
+                    "ms": 22,
                     "status": "extracted",
                     "anchored_absent": 0,
                     "anchor_errors": [],
@@ -946,7 +946,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 17
+            "ms": 22
         },
         {
             "id": "44-absent-intake-items-unverified",
@@ -962,7 +962,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 12,
+                    "ms": 15,
                     "status": "extracted",
                     "anchored_absent": 0,
                     "anchor_errors": [],
@@ -971,7 +971,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 12
+            "ms": 15
         },
         {
             "id": "45-regression-inline-guideline-citation",
@@ -997,7 +997,7 @@
                     "guideline_cited": 1
                 }
             ],
-            "ms": 0
+            "ms": 1
         },
         {
             "id": "46-regression-year-in-guideline-heading",
@@ -1041,7 +1041,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 7,
+                    "ms": 9,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -1055,7 +1055,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 10
+            "ms": 12
         },
         {
             "id": "48-boundary-lab-result-without-unit",
@@ -1074,7 +1074,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 16,
+                    "ms": 20,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -1088,7 +1088,7 @@
                     "anchored": 1
                 }
             ],
-            "ms": 25
+            "ms": 29
         },
         {
             "id": "49-boundary-lab-report-without-collection-date",
@@ -1105,7 +1105,7 @@
             "runs": [
                 {
                     "status": "failed",
-                    "ms": 7,
+                    "ms": 15,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -1117,7 +1117,7 @@
                     "answer_type": "refused"
                 }
             ],
-            "ms": 7
+            "ms": 15
         },
         {
             "id": "50-facts-document-labs-surface-with-no-prior-visit",
@@ -1134,7 +1134,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 446,
+                    "ms": 476,
                     "ungrounded_tokens": [],
                     "status": "extracted",
                     "results_persisted": 20,
@@ -1151,7 +1151,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 446
+            "ms": 476
         },
         {
             "id": "51-facts-unverified-value-becomes-a-must-surface-fact",
@@ -1168,7 +1168,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 227,
+                    "ms": 182,
                     "ungrounded_tokens": [],
                     "status": "extracted",
                     "results_persisted": 1,
@@ -1185,7 +1185,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 227
+            "ms": 182
         },
         {
             "id": "52-facts-intake-items-become-cited-facts",
@@ -1202,7 +1202,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 155,
+                    "ms": 151,
                     "ungrounded_tokens": [],
                     "status": "extracted",
                     "results_persisted": 11,
@@ -1221,7 +1221,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 155
+            "ms": 151
         },
         {
             "id": "53-trigger-high-ldl-fires-lipids",
@@ -1341,24 +1341,24 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 5021,
+                    "ms": 19995,
                     "top_sources": {
                         "lipids": "acc-aha-2018-cholesterol",
                         "diabetes": "ada-2025-standards",
                         "hypertension": "acc-aha-2017-hypertension",
                         "anemia": "anemia-adults-primary-care",
                         "ckd": "kdigo-2024-ckd",
-                        "screening": "ada-2025-standards"
+                        "screening": "uspstf-screening"
                     },
                     "top_sources_match": true,
                     "embedding_calls": 0,
-                    "reranked": true,
+                    "reranked": false,
                     "schema_errors": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 5021
+            "ms": 19995
         },
         {
             "id": "58-brief-route-chart-triggers-then-critic",
@@ -1374,7 +1374,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 17,
+                    "ms": 14,
                     "handoffs": [
                         [
                             "supervisor",
@@ -1407,7 +1407,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 17
+            "ms": 14
         },
         {
             "id": "59-brief-route-no-triggers",
@@ -1475,7 +1475,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 1,
+                    "ms": 2,
                     "applicable": true,
                     "reason": "The passage applies to adults 40 to 75 years of age; the patient is 55.",
                     "schema_errors": [],
@@ -1626,7 +1626,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 402
+            "ms": 476
         },
         {
             "id": "70-phi-intake-upload-logs-recorded",
@@ -1656,7 +1656,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 188
+            "ms": 202
         }
     ]
 }

@@ -17,7 +17,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 | 4 | Supervisor plus two workers | Met | ~~T4.1~~, ~~T4.2~~, ~~T4.3~~ |
 | 5 | Citation contract | Met | ~~T5.1~~, ~~T5.2~~ |
 | 6 | Eval-driven CI gate | Met | ~~T6.1~~, ~~T6.2~~, ~~T6.3~~ |
-| 7 | Observability and cost tracking | Partly met | ~~T7.1~~, ~~T7.2~~, T7.3 (deferred) |
+| 7 | Observability and cost tracking | Met | ~~T7.1~~, ~~T7.2~~, ~~T7.3~~ |
 
 The tasks are worked in the order in the [task list](#task-list), riskiest to
 grading first.
@@ -164,7 +164,7 @@ recorded as future work rather than attempted before the deadline.
 | Retrieval hits | Met (T7.1 done) | Every briefing and answer where retrieval ran records `retrieved_chunks` (passages retrieval returned) and `guideline_chunks` (passages the response cites) on its log line and trace, and a `retrieval_hit` score (retrieved > 0). Checked on real briefings: patient 30 retrieved 6, cited 0. |
 | Extraction confidence | Met | Share of anchored citations, logged and traced per extraction. |
 | Eval outcome | Met (T7.2 done) | Every briefing and answer records `eval_outcome`, the verifier's final verdict on that encounter: `answer_verified`, `answer_refused`, `all_stripped`, `no_claims` or `model_failed` (from the route's last answer-stage hop, `AnswerRoute::outcomeOf`), beside the `verification_pass`, `stripped` and `routing_ok` scores. Extractions record `extraction_ok` and `extraction_verified`. The golden-set results are the offline eval outcome ([EVAL_GATE.md](../EVAL_GATE.md)). |
-| No raw PHI in logs | Partly met | The sidecar enforces a log-field allowlist at runtime. **PHP does not**: the allowlist exists only in the eval test. No raw text was found in logs. → **T7.3** |
+| No raw PHI in logs | Met (T7.3 done) | Both halves enforce an allowlist at runtime. The sidecar uses `logging_setup.ALLOWED`. PHP uses `CorrelatedLogger`, which every Co-Pilot request log line passes through; it keeps only the keys in `Ops/LogFields::ALLOWED` and drops any other value, recording only the key's name under `dropped_fields`. The PHI eval cases use the same list and fail on any dropped field. A leak planted under a new key was dropped at runtime (nothing leaked) and refused by the gate. |
 
 ---
 
@@ -179,7 +179,7 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [x] **T1.1 Intake items as OpenEMR records.** Decided: they stay patient-reported in `copilot_intake`, with the clinical reasons written up under requirement 1; a clinician-confirmed "add to chart" action is future work.
 - [x] **T5.2 One click from a claim to the PDF overlay.** Done: document citation chips open the source viewer with the boxes (mouse or keyboard); checked in Selenium Chrome.
 - [x] **T7.1 Retrieval hits on every encounter** Done: `retrieved_chunks` and `guideline_chunks` on briefings and answers, `retrieval_hit` from the retrieved count., including briefings; record retrieved as well as cited.
-- [ ] **T7.3 PHP runtime log allowlist**, matching the sidecar's. Deferred on 2026-09-23 (after the early submission). Known gap until then: PHP log fields are checked against the allowlist only at push time, by the PHI eval cases (69 and 70 in the hook, 36-38 and 68 live), not at runtime. No raw text was found in any PHP log line.
+- [x] **T7.3 PHP runtime log allowlist**, matching the sidecar's. Done: `LogFields` enforced in `CorrelatedLogger`; unknown keys dropped and named; the eval fails on any dropped field. The audit added 16 keys production already logged (step failures, step details, pre-warm) that the eval-only list had missed.
 - [x] **T2.1 Pydantic strict typing.** Done: strict everywhere, ISO strings for the three dates; probed in the container before committing.
 - [x] **T1.2 Return the validated extraction JSON** from `copilot:attach`. Done: `--json` prints the contract-validated extraction under `extraction`.
 - [x] **T4.2 Show routing for briefings and questions** in the "Why this result" drawer. Done: `handoffs` on chat responses, drawer rendered after briefings and answers; checked in Selenium Chrome.
