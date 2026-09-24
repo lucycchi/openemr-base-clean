@@ -14,7 +14,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 | 1 | Document ingestion and extraction | Met | ~~T1.1~~, ~~T1.2~~ |
 | 2 | Structured schemas | Met | ~~T2.1~~ |
 | 3 | Basic hybrid RAG plus rerank | Met | ~~T3.1~~, T3.2 |
-| 4 | Supervisor plus two workers | Partly met | ~~T4.1~~, T4.2, T4.3 |
+| 4 | Supervisor plus two workers | Partly met | ~~T4.1~~, ~~T4.2~~, T4.3 |
 | 5 | Citation contract | Met | ~~T5.1~~, ~~T5.2~~ |
 | 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, ~~T6.2~~, T6.3 |
 | 7 | Observability and cost tracking | Partly met | ~~T7.1~~, T7.2, T7.3 |
@@ -111,7 +111,7 @@ recorded as future work rather than attempted before the deadline.
 | Supervisor decides extraction / retrieval | Met | Deterministic rules in `supervisor_node`; PHP chooses the request mode first. |
 | Supervisor decides "final answer is ready" | Met (T4.1 done) | The graph still ends when the evidence is ready; answering stays in PHP, which owns the chart, access checks and the Verifier. PHP now appends the answer stage to the same handoff log (`src/AnswerRoute.php`): `supervisor → answer_writer → verifier → done` with a fixed outcome (`answer_verified`, `answer_refused`, `all_stripped`, `no_claims`), `model_failed`, or `cached_draft` for a cached briefing. It is in the log line and the trace. |
 | Handoffs explicit and logged | Met | `Handoff{from,to,reason,state_keys_changed,ms}` with fixed reasons; one log line per hop; returned in the response; Langfuse worker spans. |
-| Handoffs visible | Partly met | The "Why this result" drawer shows routing only after a document extraction, not for briefings or questions. → **T4.2** |
+| Handoffs visible | Met (T4.2 done) | Briefing and answer responses carry `handoffs`, and the panel's "Why this result" drawer shows the full route after every briefing, question and extraction. Checked in the browser: a briefing showed evidence_retriever → critic → answer_writer → verifier → answer verified, and a question showed evidence_retriever → answer_writer → verifier. |
 | Known bug | Open | The hop back from the extractor is labelled `no_question` (TODOS.md). → **T4.3** |
 
 ## 5. Citation contract
@@ -182,7 +182,7 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [ ] **T7.3 PHP runtime log allowlist**, matching the sidecar's. Deferred on 2026-09-23 (after the early submission). Known gap until then: PHP log fields are checked against the allowlist only at push time, by the PHI eval cases (69 and 70 in the hook, 36-38 and 68 live), not at runtime. No raw text was found in any PHP log line.
 - [x] **T2.1 Pydantic strict typing.** Done: strict everywhere, ISO strings for the three dates; probed in the container before committing.
 - [x] **T1.2 Return the validated extraction JSON** from `copilot:attach`. Done: `--json` prints the contract-validated extraction under `extraction`.
-- [ ] **T4.2 Show routing for briefings and questions** in the "Why this result" drawer.
+- [x] **T4.2 Show routing for briefings and questions** in the "Why this result" drawer. Done: `handoffs` on chat responses, drawer rendered after briefings and answers; checked in Selenium Chrome.
 - [ ] **T7.2 Name the per-encounter eval outcome** in the docs and trace.
 - [ ] **T3.2 Cap briefing evidence**, or document why the cap is per rule.
 - [ ] **T4.3 Fix the `no_question` handoff label.**

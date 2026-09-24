@@ -217,6 +217,11 @@ final class ChatController
             ChatAction::Brief => $this->brief($assembled, $config, $pid, $user),
             ChatAction::Ask => $this->ask($chat, $assembled, $config, $pid),
         };
+        // The route this briefing or answer took (the graph's hops, then the answer stage),
+        // for the panel's "Why this result" drawer. Fixed codes and timings only.
+        if (isset($payload['narration']) || isset($payload['answer'])) {
+            $payload['handoffs'] = $this->handoffs;
+        }
 
         // From here down is bookkeeping: pull the numbers out of the payload
         // (narrowing each with is_*), compute cost, then emit log/audit/trace.

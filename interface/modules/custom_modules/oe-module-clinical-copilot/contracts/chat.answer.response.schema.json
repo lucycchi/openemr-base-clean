@@ -5,6 +5,11 @@
   "description": "HTTP 200 body for action=ask when the facts hash still matches. Every kept sentence passed the same Verifier as a briefing; answers are never cached. Built by PanelPayload::answer().",
   "type": "object",
   "properties": {
+    "handoffs": {
+      "type": "array",
+      "description": "The route this result took: the sidecar graph's hops, then the answer stage PHP appends (src/AnswerRoute.php), for the panel's 'Why this result' drawer. Fixed codes and timings only.",
+      "items": { "$ref": "handoff.schema.json" }
+    },
     "correlation_id": {
       "type": "string",
       "pattern": "^[0-9a-f]{32}$"

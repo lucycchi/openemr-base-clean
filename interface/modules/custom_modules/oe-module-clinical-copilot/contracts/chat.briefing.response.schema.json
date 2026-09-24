@@ -5,6 +5,13 @@
  "description": "HTTP 200 body for action=brief. The fact table is always present and is rendered before any narration; narration.status is non-null when the model could not be used and explains why in physician-facing words. Built by PanelPayload::briefing().",
  "type": "object",
  "properties": {
+  "handoffs": {
+   "type": "array",
+   "description": "The route this result took: the sidecar graph's hops, then the answer stage PHP appends (src/AnswerRoute.php), for the panel's 'Why this result' drawer. Fixed codes and timings only.",
+   "items": {
+    "$ref": "handoff.schema.json"
+   }
+  },
   "correlation_id": {
    "$ref": "#/$defs/correlation_id"
   },

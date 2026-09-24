@@ -212,6 +212,9 @@ final class ContractsTest extends TestCase
             90,
         );
         self::assertConforms('chat.briefing.response', PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID));
+        $routed = PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID);
+        $routed['handoffs'] = \OpenEMR\Modules\ClinicalCopilot\AnswerRoute::forBriefing($briefing, 900);
+        self::assertConforms('chat.briefing.response', $routed);
     }
 
     public function testBriefingPayloadWithGuidelineCardsConformsToContract(): void
@@ -248,6 +251,15 @@ final class ContractsTest extends TestCase
         self::assertConforms('chat.answer.response', PanelPayload::answer($this->assembled(), $answer, self::CORRELATION_ID));
         $declined = new AnswerResult('not_in_facts', [], 0, null, 0, 0);
         self::assertConforms('chat.answer.response', PanelPayload::answer($this->assembled(), $declined, self::CORRELATION_ID));
+        // With the route the controller adds for the "Why this result" drawer.
+        $routed = PanelPayload::answer($this->assembled(), $answer, self::CORRELATION_ID);
+        $routed['handoffs'] = [
+            ['from' => 'supervisor', 'to' => 'evidence_retriever', 'reason' => 'question_present', 'state_keys_changed' => [], 'ms' => 1],
+            ['from' => 'evidence_retriever', 'to' => 'supervisor', 'reason' => 'worker_finished', 'state_keys_changed' => ['chunks'], 'ms' => 300],
+            ['from' => 'supervisor', 'to' => 'done', 'reason' => 'worker_finished', 'state_keys_changed' => [], 'ms' => 0],
+            ...\OpenEMR\Modules\ClinicalCopilot\AnswerRoute::forAnswer($answer, 700, 1),
+        ];
+        self::assertConforms('chat.answer.response', $routed);
     }
 
     /**

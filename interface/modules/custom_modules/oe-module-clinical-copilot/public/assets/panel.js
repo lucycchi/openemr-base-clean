@@ -595,6 +595,8 @@
             renderFacts(json);
             renderNarration(json.narration);
             renderGuidelines(json.guidelines);
+            // The route this briefing took, in the "Why this result" drawer.
+            renderHandoffs(json.handoffs);
             // The first 8 characters of the correlation id, so a clinician reporting a
             // problem can quote a reference that matches the server logs and trace.
             setStatus('ref ' + json.correlation_id.slice(0, 8));
@@ -637,6 +639,8 @@
                     addTurn('assistant', json.error || 'Unavailable.');
                     return;
                 }
+                // The route this answer took (retrieval, writing, verification), refusals included.
+                renderHandoffs(json.handoffs);
                 // Map the answer to a message. "not_in_facts" and "all
                 // sentences stripped" are distinct outcomes with distinct advice.
                 const a = json.answer;
