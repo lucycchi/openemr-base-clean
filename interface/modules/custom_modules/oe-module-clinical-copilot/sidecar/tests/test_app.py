@@ -287,9 +287,12 @@ def test_eval_critic_returns_a_recorded_verdict_without_a_model_call(client: Tes
 
 
 def test_run_brief_passes_patient_and_facts_to_the_critic(client: TestClient, monkeypatch) -> None:
-    from copilot_sidecar import llm as llm_module, retrieve as retrieve_module
+    from copilot_sidecar import graph as graph_module, llm as llm_module, retrieve as retrieve_module
     from copilot_sidecar.schemas import Chunk, TriggerEvidence, Usage
 
+    # The production graph is cached and wires the critic only when a key is
+    # present at first build; an earlier test without a key would leave it off.
+    monkeypatch.setattr(graph_module, "_graph", None)
     seen = {}
 
     def fake_many(queries):

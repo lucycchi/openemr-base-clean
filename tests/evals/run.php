@@ -95,6 +95,41 @@ if ($needsDb) {
     $_GET['site'] = 'default';
     $sessionAllowWrite = true;
     require_once $root . '/interface/globals.php';
+    ensureModuleSchema($root . '/interface/modules/custom_modules/oe-module-clinical-copilot/sql/install.sql');
+}
+
+/**
+ * Creates the module's tables when they are missing. OpenEMR runs a module's
+ * install.sql only when the module is enabled in Module Manager, so on a
+ * fresh clone's database the tables do not exist yet and the facts cases
+ * would crash. install.sql is CREATE TABLE IF NOT EXISTS throughout, so this
+ * never touches a table that already exists.
+ */
+function ensureModuleSchema(string $installSql): void
+{
+    $sql = (string) file_get_contents($installSql);
+    preg_match_all('/^#IfNotTable\s+(\S+)/m', $sql, $m);
+    $missing = array_filter(
+        $m[1],
+        static fn(string $table): bool => QueryUtils::fetchRecords(
+            'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?',
+            [$table],
+        ) === [],
+    );
+    if ($missing === []) {
+        return;
+    }
+    fwrite(STDERR, 'eval: fresh database, creating module tables from sql/install.sql: ' . implode(', ', $missing) . "\n");
+    // Drop OpenEMR's #IfNotTable / #EndIf directives and -- comments, which are not SQL.
+    $lines = array_filter(
+        explode("\n", $sql),
+        static fn(string $line): bool => !str_starts_with(ltrim($line), '#') && !str_starts_with(ltrim($line), '--'),
+    );
+    foreach (preg_split('/;\s*$/m', implode("\n", $lines)) ?: [] as $statement) {
+        if (trim($statement) !== '') {
+            QueryUtils::sqlStatementThrowException($statement);
+        }
+    }
 }
 
 // The module is not in composer.json's autoload map (see Support/ModuleAutoload.php).
