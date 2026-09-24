@@ -35,7 +35,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | 3 | Key metrics doc (`./KEY_METRICS.md`) | Done; metrics 6 and 7 still planned (cost 2 points) | G6, G7, S10 | Early |
 | 4 | Schemas | Done; Gate 3 scored 9/15 | G2, G8 | Early |
 | 5 | Eval dataset | Done | none | Early |
-| 6 | CI evidence | Done (hook); reviewer wants a GitLab CI merge request job for the final | G3, G4, G5, S10 | Early |
+| 6 | CI evidence | Done: hook in the codebase (staff-confirmed 2026-09-24); GitLab CI job built, GitLab refuses pipelines | S10 | Early |
 | 7 | Demo video | Done for early (graded 4/5); re-record for final | G9 | Early and final |
 | 8 | Cost and latency report | Done | none | Final |
 | 9 | Deployed application | Done | none | Early |
@@ -373,13 +373,15 @@ Closed only after it is verified, like the S tasks.
   One short message: "Could you tell me what I lost the six Gate 3 points
   on, strict typing, the date fields, or a claim without the full citation?
   And the one point on the video?" The answer decides whether G8 is needed.
-- [ ] **G3 Ask for GitLab CI to be turned on** for project 1993 (or for a
+- [x] **G3 Ask for GitLab CI to be turned on.** Asked 2026-09-24. Staff's
+  answer (verbal): use a hook inside the codebase, run locally or on a runner
+  on DigitalOcean. Pipelines stay refused. Original plan: for project 1993 (or for a
   project runner to be allowed). (User.) Group Maintainers who can act:
   zacsmith, tomtarpey. Say what you need exactly: pipelines allowed on
   `lucychi/openemr`, and either shared runners or permission to register a
   project runner on the droplet. Quote the reviewer's request so it is clear
   why.
-- [ ] **Interview prep:** add the CI answer to
+- [x] **Interview prep:** done 2026-09-24, INTERVIEW_BRIEF.md weak points. Add the CI answer to
   [INTERVIEW_BRIEF.md](INTERVIEW_BRIEF.md) under weak points: what was tried
   (pipeline API 403 as Owner, no runners, group project blocked by branch
   protection), what the hook does, the kill-matrix result (19/19 planted
@@ -387,8 +389,12 @@ Closed only after it is verified, like the S tasks.
 
 **Before the final (Sun 12:00)**
 
-- [ ] **G4 Add the eval gate to `.gitlab-ci.yml` as a blocking merge request
-  job.** A `eval-gate` job in the `check` stage that runs the same thing the
+- [x] **G4 Add the eval gate to `.gitlab-ci.yml` as a blocking merge request
+  job.** Done 2026-09-24 (`f0a5f4e`, pushed): `eval-gate` runs
+  `tests/evals/ci-gate.sh` on runner 251 on the droplet; `pdf_reader`
+  protected and "Pipelines must succeed" on, via the API. Fresh-clone dry
+  runs: clean PASS, planted M12 FAIL. GitLab still refuses to create the
+  pipeline (403), so the job has never run on GitLab. Original plan: A `eval-gate` job in the `check` stage that runs the same thing the
   hook runs (`tests/evals/gate.sh`: sidecar pytest, isolated PHPUnit, the 54
   deterministic cases, `gate.php` thresholds), on `merge_request_event` and
   on pushes to `pdf_reader`. Check first what `gate.sh` needs from the host
@@ -397,7 +403,8 @@ Closed only after it is verified, like the S tasks.
   and turn on "Pipelines must succeed" in the project's merge request
   settings. If G3 comes through, open a merge request with a planted
   regression and screenshot the blocked merge, like the hook proof.
-- [ ] **G5 Say plainly what runs and what does not.** At the top of
+- [x] **G5 Say plainly what runs and what does not.** Done 2026-09-24 in
+  EVAL_GATE.md's opening and the interview brief. Original plan: At the top of
   [EVAL_GATE.md](../EVAL_GATE.md) and in the root README: the pre-push hook
   is the gate that runs today; the `.gitlab-ci.yml` jobs (including the new
   `eval-gate`) are ready but GitLab refuses pipelines for this project (403,

@@ -14,7 +14,7 @@ a scanned lab PDF and an intake form, read by a Python sidecar and proved
 value by value against the page, and guideline evidence from a small hybrid
 retrieval corpus, kept visibly separate from the patient's own facts. A
 LangGraph supervisor routes work to an intake-extractor and an
-evidence-retriever and logs every hop. A pre-push git hook runs 54
+evidence-retriever and logs every hop. A pre-push git hook runs 56
 deterministic eval cases and refuses any push where one case flips from
 pass to fail.
 
@@ -32,7 +32,7 @@ pass to fail.
 | **Hybrid retrieval: BM25 + embeddings, RRF, Cohere rerank, a relevance floor** | Dense only; no floor | Keyword catches drug and analyte names that embeddings blur; the floor makes an off-corpus question return nothing instead of the least-bad passage (cases 32, 34). |
 | **A critic that checks applicability** | No critic; a critic that rewrites text | One strict boolean per guideline card: does this passage's population include this patient (age, sex)? It hides a statin recommendation for an 82-year-old when the passage covers 40-75. It never writes prose. |
 | **Code judges the evals, not a model** | LLM-as-judge | Every rubric is a counter the harness fills (schema errors, uncited sentences kept, leaked identifiers, anchor errors). Same run, same verdict, and a failure names the field ([EVAL_DATASET.md](EVAL_DATASET.md) §3). |
-| **Pre-push hook as the gate** | GitLab CI | GitLab refuses pipelines on student projects (403 even as Owner, no runners). The instructors accepted a hook plus proof. `install-hooks.sh --self-test` injects a regression and requires a refusal ([EVAL_GATE.md](../EVAL_GATE.md)). |
+| **Pre-push hook as the gate** | GitLab CI | GitLab refuses pipelines on student projects (403 even as Owner). Staff confirmed on 2026-09-24 that a hook in the codebase, run locally or on a DigitalOcean runner, is the expected setup. `install-hooks.sh --self-test` injects a regression and requires a refusal ([EVAL_GATE.md](../EVAL_GATE.md)). |
 | **Any flip on a deterministic case fails the push** | Only the "more than 5 points" rule | One broken case in a 90 % rubric with 30 cases is a 3.3-point drop and passed the old rule. Recorded cases never vary, so any flip is a real regression. Live cases keep the 5-point allowance for model variance. |
 | **Recorded model replies for the PHI cases** | Live-only PHI checks | `no_phi_in_logs` used to be scored only when an API key was present. Now two deterministic cases drive the real controllers with a recorded reply, so the gate scores it on a fresh clone. |
 
@@ -62,6 +62,14 @@ Say these before you are asked.
   reach logs or Langfuse.
 - **Langfuse v3 ingestion** shows spans 10-30 minutes late and shuts down on
   2026-11-16; the OpenTelemetry migration is queued.
+- **The eval gate is not a GitLab merge-request job.** The early reviewer asked
+  for one. It is built and waiting: the `eval-gate` job in `.gitlab-ci.yml`, a
+  runner on the droplet (registered, online), `pdf_reader` protected, "Pipelines
+  must succeed" on. GitLab refuses to create the pipeline (403 for the Owner;
+  no project in the Gauntlet group has one), and staff confirmed the hook is
+  the expected setup. Run from a fresh clone, the CI path passes a clean
+  commit and refuses a planted PHI-logging regression. What you would do with
+  CI allowed: nothing more than push; the job runs as is.
 - **Not built:** a third document type and a lab trend chart. The PRD's
   closing note favours two document types that work over five that do not.
 

@@ -5,10 +5,30 @@ The Clinical Co-Pilot eval gate is a **git pre-push hook**. Before every
 stack, scores each rubric, and **refuses the push** if a rubric falls below its
 threshold or regresses against the committed baseline.
 
-It is a hook and not a CI job because this GitLab instance does not run
-pipelines for student projects (`POST /projects/:id/pipeline` returns 403 and
-no runners are available). Per the instructors' guidance, the proof for item 5
-is therefore a recorded, refused push rather than a blocked merge request.
+The gate lives in the codebase: the pre-push hook comes from
+[tests/evals/install-hooks.sh](tests/evals/install-hooks.sh), and the same gate
+is the `copilot-eval-gate` hook in
+[.pre-commit-config.yaml](.pre-commit-config.yaml). Gauntlet staff confirmed on
+2026-09-24 that a hook kept in the codebase, run locally or on a runner on
+DigitalOcean, is the expected setup, because this GitLab instance does not
+create pipelines for student projects.
+
+**GitLab CI is ready but cannot run here.** After the Week 2 early-submission
+review asked for the gate as a blocking merge-request job, it was built as one:
+the `eval-gate` job in [.gitlab-ci.yml](.gitlab-ci.yml) runs
+[tests/evals/ci-gate.sh](tests/evals/ci-gate.sh) on a project runner on the
+DigitalOcean droplet (shell executor, tag `copilot-eval`, registered and
+online), `pdf_reader` is a protected branch, and "Pipelines must succeed" is on.
+GitLab still refuses to create the pipeline: a push creates none and
+`POST /projects/1993/pipeline` returns 403 for the project Owner (checked
+2026-09-24; none of the 12 projects in the `gauntletai/gauntlet` group has a
+pipeline either). If pipeline creation is ever allowed, the next push runs the
+job with no further change. Run locally from a fresh clone, the CI path passes
+a clean commit (stack healthy after 378 s, 56/56) and refuses kill-matrix
+regression M12 (`no_phi_in_logs` 50 % against a 100 % threshold, exit 1).
+
+The proof for item 5 is therefore a recorded, refused push rather than a
+blocked merge request.
 
 Detailed reference: [tests/evals/README.md](tests/evals/README.md). This
 page is the summary.
@@ -48,6 +68,9 @@ to enable the module in the UI. After that:
 
 - **Trigger:** `git push`. The hook runs the gate and blocks the push on failure.
 - **Run the gate without pushing:** `tests/evals/gate.sh pre-push`.
+- **Run it the way CI does:** `tests/evals/ci-gate.sh` brings up a throwaway
+  stack from this checkout (random ports, no API keys), runs the gate against
+  the committed files rather than your dev stack, and removes the stack.
 - **Include the live cases:** `COPILOT_GATE_LIVE=1 git push` (needs an API key; see section 4).
 - **Uninstall:** `tests/evals/install-hooks.sh --uninstall`.
 
