@@ -255,6 +255,8 @@ final class ChatController
             'retrieved_chunks' => $this->retrievedChunks,
             'guideline_chunks' => is_array($outcome['guidelines'] ?? null) ? count($outcome['guidelines']) : self::citedGuidelineChunks($outcome),
             'handoffs' => $this->handoffs,
+            // The encounter's eval outcome: the verifier's final verdict on this briefing or answer.
+            'eval_outcome' => AnswerRoute::outcomeOf($this->handoffs),
             'reranked' => array_filter($this->sidecarUsage, static fn(array $u): bool => $u['kind'] === 'rerank') !== [],
         ] + ($this->warm?->toLogContext() ?? []);
         // One line per failed tool with the real reason (the user-facing

@@ -95,6 +95,15 @@ final class AnswerRouteTest extends TestCase
         self::assertSame(['supervisor>answer_writer:evidence_ready', 'answer_writer>done:model_failed'], self::route(AnswerRoute::forAnswer(new AnswerResult('error', [], 0, 'timeout', 0, 0), 24000, 2)));
     }
 
+    public function testTheEvalOutcomeIsTheAnswerStagesFinalVerdict(): void
+    {
+        $graph = [['from' => 'supervisor', 'to' => 'evidence_retriever', 'reason' => 'question_present', 'state_keys_changed' => [], 'ms' => 1], ['from' => 'supervisor', 'to' => 'done', 'reason' => 'worker_finished', 'state_keys_changed' => [], 'ms' => 0]];
+        $answer = new AnswerResult('cited', [new Sentence('Kept.', ['rx0001'])], 0, null, 400, 30);
+        self::assertSame('answer_verified', AnswerRoute::outcomeOf([...$graph, ...AnswerRoute::forAnswer($answer, 700, 1)]));
+        self::assertSame('model_failed', AnswerRoute::outcomeOf(AnswerRoute::forAnswer(new AnswerResult('error', [], 0, 'timeout', 0, 0), 1, 1)));
+        self::assertNull(AnswerRoute::outcomeOf($graph), 'the graph alone has no answer verdict');
+    }
+
     public function testAnAnswerWithEverySentenceStrippedSaysSo(): void
     {
         self::assertSame(['supervisor>answer_writer:evidence_ready', 'answer_writer>verifier:draft_written', 'verifier>done:all_stripped'], self::route(AnswerRoute::forAnswer(new AnswerResult('cited', [], 2, null, 400, 30), 700, 1)));

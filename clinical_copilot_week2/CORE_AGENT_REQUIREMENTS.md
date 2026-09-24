@@ -17,7 +17,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 | 4 | Supervisor plus two workers | Partly met | ~~T4.1~~, ~~T4.2~~, T4.3 |
 | 5 | Citation contract | Met | ~~T5.1~~, ~~T5.2~~ |
 | 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, ~~T6.2~~, T6.3 |
-| 7 | Observability and cost tracking | Partly met | ~~T7.1~~, T7.2, T7.3 |
+| 7 | Observability and cost tracking | Partly met | ~~T7.1~~, ~~T7.2~~, T7.3 (deferred) |
 
 The tasks are worked in the order in the [task list](#task-list), riskiest to
 grading first.
@@ -163,7 +163,7 @@ recorded as future work rather than attempted before the deadline.
 | Cost estimate | Met | `Pricing.php` list-price table; `cost_usd` on each trace and audit line. |
 | Retrieval hits | Met (T7.1 done) | Every briefing and answer where retrieval ran records `retrieved_chunks` (passages retrieval returned) and `guideline_chunks` (passages the response cites) on its log line and trace, and a `retrieval_hit` score (retrieved > 0). Checked on real briefings: patient 30 retrieved 6, cited 0. |
 | Extraction confidence | Met | Share of anchored citations, logged and traced per extraction. |
-| Eval outcome | Partly met | Each encounter records the verifier's outcome (`verification_pass`, `stripped`, `routing_ok`, `extraction_ok`), but nothing calls this the per-encounter eval outcome. → **T7.2** |
+| Eval outcome | Met (T7.2 done) | Every briefing and answer records `eval_outcome`, the verifier's final verdict on that encounter: `answer_verified`, `answer_refused`, `all_stripped`, `no_claims` or `model_failed` (from the route's last answer-stage hop, `AnswerRoute::outcomeOf`), beside the `verification_pass`, `stripped` and `routing_ok` scores. Extractions record `extraction_ok` and `extraction_verified`. The golden-set results are the offline eval outcome ([EVAL_GATE.md](../EVAL_GATE.md)). |
 | No raw PHI in logs | Partly met | The sidecar enforces a log-field allowlist at runtime. **PHP does not**: the allowlist exists only in the eval test. No raw text was found in logs. → **T7.3** |
 
 ---
@@ -183,7 +183,7 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [x] **T2.1 Pydantic strict typing.** Done: strict everywhere, ISO strings for the three dates; probed in the container before committing.
 - [x] **T1.2 Return the validated extraction JSON** from `copilot:attach`. Done: `--json` prints the contract-validated extraction under `extraction`.
 - [x] **T4.2 Show routing for briefings and questions** in the "Why this result" drawer. Done: `handoffs` on chat responses, drawer rendered after briefings and answers; checked in Selenium Chrome.
-- [ ] **T7.2 Name the per-encounter eval outcome** in the docs and trace.
+- [x] **T7.2 Name the per-encounter eval outcome** in the docs and trace. Done: `eval_outcome` on every briefing and answer log line and trace.
 - [ ] **T3.2 Cap briefing evidence**, or document why the cap is per rule.
 - [ ] **T4.3 Fix the `no_question` handoff label.**
 - [ ] **T6.3 Judge configuration and fresh results:** state there is no LLM judge, commit current `results.json`, fix README counts.

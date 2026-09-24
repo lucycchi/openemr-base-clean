@@ -41,6 +41,25 @@ use OpenEMR\Modules\ClinicalCopilot\Documents\Handoff;
  */
 final class AnswerRoute
 {
+    /** The verifier's possible final verdicts: the per-encounter eval outcome. */
+    public const OUTCOMES = ['answer_verified', 'answer_refused', 'all_stripped', 'no_claims', 'model_failed'];
+
+    /**
+     * The encounter's eval outcome: the reason on the answer stage's final hop, or null
+     * when no answer stage ran (no model configured, an error before the answer).
+     *
+     * @param list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}> $handoffs
+     */
+    public static function outcomeOf(array $handoffs): ?string
+    {
+        foreach (array_reverse($handoffs) as $hop) {
+            if ($hop['to'] === 'done' && in_array($hop['reason'], self::OUTCOMES, true)) {
+                return $hop['reason'];
+            }
+        }
+        return null;
+    }
+
     /**
      * @return list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}>
      */
