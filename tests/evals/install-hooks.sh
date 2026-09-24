@@ -15,7 +15,9 @@
 set -euo pipefail
 
 root=$(git rev-parse --show-toplevel)
-hook="$root/.git/hooks/pre-push"
+# --git-path resolves the hooks folder in worktrees (where .git is a file)
+# and honours core.hooksPath.
+hook=$(git rev-parse --path-format=absolute --git-path hooks)/pre-push
 marker="# clinical-copilot-eval-gate"
 
 if [ "${1:-}" = "--uninstall" ]; then
