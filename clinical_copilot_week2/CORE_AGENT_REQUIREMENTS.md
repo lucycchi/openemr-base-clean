@@ -13,7 +13,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 |---|---|---|---|
 | 1 | Document ingestion and extraction | Met | ~~T1.1~~, ~~T1.2~~ |
 | 2 | Structured schemas | Met | ~~T2.1~~ |
-| 3 | Basic hybrid RAG plus rerank | Met | ~~T3.1~~, T3.2 |
+| 3 | Basic hybrid RAG plus rerank | Met | ~~T3.1~~, ~~T3.2~~ |
 | 4 | Supervisor plus two workers | Partly met | ~~T4.1~~, ~~T4.2~~, T4.3 |
 | 5 | Citation contract | Met | ~~T5.1~~, ~~T5.2~~ |
 | 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, ~~T6.2~~, T6.3 |
@@ -93,7 +93,7 @@ recorded as future work rather than attempted before the deadline.
 | Small corpus | Met | 6 guideline summaries, 30 chunks (`sidecar/corpus/`). |
 | Sparse + dense | Met | BM25 plus `text-embedding-3-small` with committed vectors, fused by reciprocal rank (`retrieve.py`). |
 | Rerank | Met | Cohere `rerank-v3.5`. `COHERE_API_KEY` is set on the droplet and reranking shows in its sidecar log (checked 2026-09-23). `W2_ARCHITECTURE.md` (now at the repo root) was corrected in `a2520f6`. With no key, or on a Cohere error, it quietly falls back to fused order; only the trace's `reranked` flag shows it. |
-| Only top evidence to the model | Met, one caveat | Follow-up answers get the top 5 chunks. The briefing gets 2 per triggered guideline rule, up to 12 chunks, filtered by the critic. → **T3.2** |
+| Only top evidence to the model | Met (T3.2: decided) | Follow-up answers get the top 5 reranked passages overall (`TOP = 5`, `retrieve.py`). The briefing counts "top" per clinical question the chart raises: each triggered guideline topic (6 rules: lipids, diabetes, hypertension, anemia, CKD, screening) gets its top 2 reranked passages (`PER_TRIGGER = 2`), and the critic drops any whose population does not match the patient, so at most 12. A single overall cap was rejected: it would silently drop a flagged topic's evidence (for example anemia for a patient who also triggers lipids and diabetes). |
 
 ## 4. Supervisor plus two workers
 
@@ -184,7 +184,7 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [x] **T1.2 Return the validated extraction JSON** from `copilot:attach`. Done: `--json` prints the contract-validated extraction under `extraction`.
 - [x] **T4.2 Show routing for briefings and questions** in the "Why this result" drawer. Done: `handoffs` on chat responses, drawer rendered after briefings and answers; checked in Selenium Chrome.
 - [x] **T7.2 Name the per-encounter eval outcome** in the docs and trace. Done: `eval_outcome` on every briefing and answer log line and trace.
-- [ ] **T3.2 Cap briefing evidence**, or document why the cap is per rule.
+- [x] **T3.2 Cap briefing evidence**, or document why the cap is per rule. Decided: the per-topic cap stays (2 per triggered topic, critic-filtered); the reasoning is under requirement 3.
 - [ ] **T4.3 Fix the `no_question` handoff label.**
 - [ ] **T6.3 Judge configuration and fresh results:** state there is no LLM judge, commit current `results.json`, fix README counts.
 - [x] **T3.1 Update `W2_ARCHITECTURE.md`** Done in `a2520f6` (by the submission-docs session; the file moved to the repo root): rerank shown as live, observability covers briefing and follow-up traces.
