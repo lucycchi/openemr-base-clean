@@ -13,9 +13,8 @@ covers. Target length: 4 minutes; the timings add up to 4:10.
   key, the Langfuse settings page, or a real person.
 - **Which instance.** Record against the deployed app,
   https://146-190-139-37.sslip.io, so the video also proves the deploy. If
-  tonight's deploy has not happened, the 2026-09-22 build shows everything
-  here except the "What the guidelines say about this chart" section; skip
-  that sentence in shot 5.
+  The droplet runs build `3f9cc74` (deployed 2026-09-23 22:15 CT), which has
+  everything shown here.
 - **Pick a quiet patient for the upload.** Patient 1 (Phil Belford) and 28
   (Vince741 Collier206) already have `lab-layout1.pdf`; re-uploading the
   same file answers "already uploaded". Use another seed patient, for example
@@ -102,11 +101,14 @@ badge for the LDL value.
 ### 6. Routing drawer (2:45-3:05) — *observability*
 
 **Do:** open **Why this result: routing decisions** under the upload status.
+It shows the route of the last run: right after shot 5's question, the
+question's route (supervisor to evidence-retriever, then the answer writer
+and the verifier); right after an upload, the extraction's route.
 
 **Say:** "A LangGraph supervisor decides what runs: extraction only when a
 document hasn't been extracted, retrieval only when there is a question or a
-guideline trigger. Every hop is logged with its reason, and the physician
-can see it here."
+guideline trigger. Every hop is logged with its reason, including the answer
+being written and verified, and the physician can see it here."
 
 ### 7. Eval gate refusing a regression (3:05-3:45) — *eval results*
 
