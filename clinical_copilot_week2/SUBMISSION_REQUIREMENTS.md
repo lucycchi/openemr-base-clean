@@ -32,7 +32,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 |---|---|---|---|---|
 | 1 | GitLab repository | Done | none | Early |
 | 2 | W2 architecture doc (`./W2_ARCHITECTURE.md`) | Done | none | Early |
-| 3 | Key metrics doc (`./KEY_METRICS.md`) | Done; metrics 6 and 7 still planned (cost 2 points) | G6, G7, S10 | Early |
+| 3 | Key metrics doc (`./KEY_METRICS.md`) | Done; metric 6 built 2026-09-24, metric 7 still planned | G7, S10 | Early |
 | 4 | Schemas | Done; Gate 3 scored 9/15 | G2, G8 | Early |
 | 5 | Eval dataset | Done | none | Early |
 | 6 | CI evidence | Done: hook in the codebase (staff-confirmed 2026-09-24); GitLab CI job built, GitLab refuses pipelines | S10 | Early |
@@ -373,8 +373,8 @@ Closed only after it is verified, like the S tasks.
   One short message: "Could you tell me what I lost the six Gate 3 points
   on, strict typing, the date fields, or a claim without the full citation?
   And the one point on the video?" The answer decides whether G8 is needed.
-- [x] **G3 Ask for GitLab CI to be turned on.** Asked 2026-09-24. Staff's
-  answer (verbal): use a hook inside the codebase, run locally or on a runner
+- [x] **G3 Ask for GitLab CI to be turned on.** Asked 2026-09-24. Tom
+  Tarpey's answer (verbal): use a hook inside the codebase, run locally or on a runner
   on DigitalOcean. Pipelines stay refused. Original plan: for project 1993 (or for a
   project runner to be allowed). (User.) Group Maintainers who can act:
   zacsmith, tomtarpey. Say what you need exactly: pipelines allowed on
@@ -392,7 +392,8 @@ Closed only after it is verified, like the S tasks.
 - [x] **G4 Add the eval gate to `.gitlab-ci.yml` as a blocking merge request
   job.** Done 2026-09-24 (`f0a5f4e`, pushed): `eval-gate` runs
   `tests/evals/ci-gate.sh` on runner 251 on the droplet; `pdf_reader`
-  protected and "Pipelines must succeed" on, via the API. Fresh-clone dry
+  protected via the API ("Pipelines must succeed" was turned on, then off
+  again once pipelines were confirmed unavailable). Fresh-clone dry
   runs: clean PASS, planted M12 FAIL. GitLab still refuses to create the
   pipeline (403), so the job has never run on GitLab. Original plan: A `eval-gate` job in the `check` stage that runs the same thing the
   hook runs (`tests/evals/gate.sh`: sidecar pytest, isolated PHPUnit, the 54
@@ -410,7 +411,11 @@ Closed only after it is verified, like the S tasks.
   `eval-gate`) are ready but GitLab refuses pipelines for this project (403,
   no runners), with the date checked. If G3 lands, replace this with the
   pipeline link.
-- [ ] **G6 Build metric 6, the physician rating.** Thumbs up/down (and an
+- [x] **G6 Build metric 6, the physician rating.** Done 2026-09-24: thumbs
+  up/down and optional comment under the AI summary (`action=rate`, module
+  0.1.4, `copilot_briefing_rating`), `physician_rating` Langfuse score,
+  `copilot:ratings` report; the comment stays in the EHR. Checked in the dev
+  browser; not yet deployed. Original plan: Thumbs up/down (and an
   optional comment) on each briefing, stored in `copilot_briefing_rating`
   keyed by briefing, `Prompt::VERSION` and model; comment text never goes to
   Langfuse or the log (PHI). Add the rating as a Langfuse score so it sits

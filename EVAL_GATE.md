@@ -8,8 +8,8 @@ threshold or regresses against the committed baseline.
 The gate lives in the codebase: the pre-push hook comes from
 [tests/evals/install-hooks.sh](tests/evals/install-hooks.sh), and the same gate
 is the `copilot-eval-gate` hook in
-[.pre-commit-config.yaml](.pre-commit-config.yaml). Gauntlet staff confirmed on
-2026-09-24 that a hook kept in the codebase, run locally or on a runner on
+[.pre-commit-config.yaml](.pre-commit-config.yaml). Tom Tarpey (Gauntlet staff)
+confirmed on 2026-09-24 that a hook kept in the codebase, run locally or on a runner on
 DigitalOcean, is the expected setup, because this GitLab instance does not
 create pipelines for student projects.
 
@@ -18,8 +18,9 @@ review asked for the gate as a blocking merge-request job, it was built as one:
 the `eval-gate` job in [.gitlab-ci.yml](.gitlab-ci.yml) runs
 [tests/evals/ci-gate.sh](tests/evals/ci-gate.sh) on a project runner on the
 DigitalOcean droplet (shell executor, tag `copilot-eval`, registered and
-online), `pdf_reader` is a protected branch, and "Pipelines must succeed" is on.
-GitLab still refuses to create the pipeline: a push creates none and
+online) and `pdf_reader` is a protected branch. "Pipelines must succeed" was
+turned on, then off again once pipelines were confirmed unavailable: with no
+pipeline possible it would block every merge request. GitLab still refuses to create the pipeline: a push creates none and
 `POST /projects/1993/pipeline` returns 403 for the project Owner (checked
 2026-09-24; none of the 12 projects in the `gauntletai/gauntlet` group has a
 pipeline either). If pipeline creation is ever allowed, the next push runs the

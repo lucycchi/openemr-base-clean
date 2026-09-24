@@ -116,6 +116,8 @@ are scheduled as tasks 9.1 and 9.2 in
 
 ### Physician rating of the AI summary: thumbs up / down with a comment
 
+**Status:** Done 2026-09-24 (module 0.1.4; KEY_METRICS.md metric 6). As designed below, with two changes: the comment is not attached to the Langfuse score (free text can name the patient; the score gets its length only), and the rollup is the `copilot:ratings` console command rather than a dashboard panel.
+
 **What:** Two buttons on the AI summary block of the panel (thumbs up, thumbs down). Either one records the rating immediately and opens an optional free-text comment box; the comment is saved when submitted. Ratings and comments are logged, audit-logged, sent to the trace as a score, and rolled up as thumbs-up %, thumbs-down % and no-response % per day in the dashboard.
 
 **Why:** The verifier proves the summary is grounded; nothing today tells us whether the physician found it *useful*. A one-click rating is the cheapest usefulness signal that is attributable to a specific briefing, prompt version and model, which a satisfaction survey is not (see "Why not other metrics" in `KEY_METRICS.md`). The comment is the qualitative channel: "missed that the patient is post-op" is worth more than a score.

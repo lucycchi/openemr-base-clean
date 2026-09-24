@@ -125,7 +125,7 @@ briefings.
 
 **Alert.** None; this is a weekly review metric, not a page.
 
-## 6. Physician rating of the summary (planned, not yet built)
+## 6. Physician rating of the summary
 
 **Definition.** Per day and per `Prompt::VERSION` + model: briefings rated
 thumbs-up, thumbs-down, and not rated, each as a share of briefings
@@ -142,13 +142,37 @@ be compared before and after. The comment is the qualitative channel that
 tells us *why*, and it is the input to the next prompt revision and to new
 eval cases.
 
-**Source.** Planned: `copilot_briefing_rating` table (rating, comment,
-cache key, prompt version, model, correlation id); `copilot rating` log
-line and audit row; Langfuse `score` named `physician_rating` on the
-briefing's trace, which gives the per-version breakdown as a built-in
-Langfuse view. Design and build notes in [`TODOS.md`](TODOS.md).
+**How it is collected.** Built 2026-09-24 (module 0.1.4). Under the AI
+summary the panel asks "Was this summary useful?" with a thumbs up and a
+thumbs down; a click records the rating and opens an optional comment box.
+Only a summary that was shown and cached can be rated: the briefing response
+carries the narration's `cache_key`, and `action=rate` on `chat.php` refuses
+(409) a key that is not one of the open patient's cached briefings, so a
+rating is always tied to the exact text the physician read. It needs the
+same CSRF token and chart ACL as the briefing. Rating the same summary again
+replaces the earlier rating (one vote per physician per summary).
 
-**Baseline.** None until built and used by a physician. Target for the
+**Source.** `copilot_briefing_rating` (rating, comment, cache key, prompt
+version and model read from the cache row, the briefing's correlation id);
+a `copilot rating` log line and an audit row carrying the rating and the
+comment's length; a Langfuse boolean score `physician_rating` (1 up, 0 down)
+on the trace of the briefing that showed the summary, so the per-version
+breakdown is a built-in Langfuse view. The report is
+`php bin/console copilot:ratings --days=7` (add `--json` for the weekly
+review): per day, briefings rendered (successful `action=brief` audit rows,
+metric 5's source) and the shares rated up, rated down and not rated, then
+up and down per prompt version and model.
+
+**The comment stays in the EHR.** The original design attached the comment
+to the Langfuse score. It is free text a physician types and can name the
+patient ("his daughter says..."), and Langfuse is an outside service, so the
+comment is stored only in `copilot_briefing_rating`. The log line, the audit
+row and the score carry its length, never its text, and a database test
+(`ChatControllerRateTest`) fails if a comment reaches any of them.
+
+**Baseline.** None yet: no physician has used it on the deployed app.
+Checked end to end in the dev stack's browser (thumbs down plus comment on
+a real briefing, one row after rating twice). Target for the
 first month of real use: rated on >30% of rendered briefings; thumbs-down
 below 15% of rendered.
 
@@ -300,8 +324,8 @@ in the submission, not as a health metric.
 ## Why not other metrics
 
 - *Physician satisfaction surveys*: valuable, but lagging and not
-  attributable to a change. The planned per-briefing rating (metric 6) is
-  the attributable replacement.
+  attributable to a change. The per-briefing rating (metric 6) is the
+  attributable replacement.
 - *Raw hallucination rate judged by an LLM*: the verifier makes ungrounded
   values structurally impossible to render; a judge would measure the
   semantic-inversion gap (eval case 08), which is real but is better handled
