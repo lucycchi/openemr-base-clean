@@ -18,7 +18,10 @@
  * the rubric's pass rate, computed over the case ids present in both the
  * baseline and this run, is also more than 5 points below the baseline.
  * Pending cases and "na" verdicts are never counted. A rubric with no ran
- * cases is reported n/a and neither passes nor fails.
+ * cases is reported n/a and neither passes nor fails. Two more rules apply
+ * to deterministic cases only: any case whose result is "fail" refuses the
+ * push even if its declared rubrics passed, and a case in the baseline that
+ * is missing from the run refuses it (see deterministicCasesHold()).
  *
  * Deterministic and live cases have separate baselines (baseline.json and
  * baseline-live.json) because the live set only runs with API keys.
@@ -123,6 +126,9 @@ $failed = !gateSubset('deterministic', $verdictsDet, __DIR__ . '/baseline.json',
 if ($runLive && !gateSubset('live', $verdictsLive, __DIR__ . '/baseline-live.json', $update, false)) {
     $failed = true;
 }
+if (!$update && !deterministicCasesHold($summary['cases'], $liveIds, __DIR__ . '/baseline.json')) {
+    $failed = true;
+}
 if ($harnessExit !== 0) {
     echo "harness reported failing cases (exit $harnessExit)\n";
 }
@@ -224,6 +230,65 @@ function gateSubset(string $label, array $verdicts, string $baselinePath, bool $
         printf("  %-22s %8s %8s %7d%% %10s  %s\n", $name, fmt($now), fmt($base), $threshold, $verdict, implode(', ', $regressed));
     }
     return $ok;
+}
+
+/**
+ * Two checks the rubric table cannot make, both on deterministic cases only
+ * (they replay recorded output, so any change is a real regression):
+ *
+ *  - a case whose result is "fail" fails the gate even when every rubric it
+ *    declares passed (an expectation mismatch that no declared rubric scores);
+ *  - a case in the baseline that is absent from this run (its file deleted or
+ *    renamed) fails the gate, so a case cannot disappear without
+ *    --update-baseline. Pending cases are reported, not failed; live cases
+ *    are left to the 5-point rule.
+ *
+ * run.php's exit code is not used here: it is also non-zero when a live case
+ * varies, and a harness that dies before writing results is already refused
+ * above ("harness produced no results").
+ *
+ * @param array<mixed> $cases the "cases" list from run.php's results
+ * @param list<string> $liveIds
+ */
+function deterministicCasesHold(array $cases, array $liveIds, string $baselinePath): bool
+{
+    $seen = [];
+    $pending = [];
+    $failedCases = [];
+    foreach ($cases as $case) {
+        if (!is_array($case)) {
+            continue;
+        }
+        $id = str($case, 'id');
+        if (in_array($id, $liveIds, true)) {
+            continue;
+        }
+        $seen[$id] = true;
+        $result = $case['result'] ?? '';
+        if ($result === 'pending') {
+            $pending[] = $id;
+        } elseif ($result === 'fail') {
+            $failedCases[] = $id;
+        }
+    }
+    $missing = [];
+    if (file_exists($baselinePath)) {
+        foreach (array_keys(map(jsonFile($baselinePath), 'cases')) as $baseId) {
+            if (!isset($seen[(string) $baseId])) {
+                $missing[] = (string) $baseId;
+            }
+        }
+    }
+    if ($failedCases !== []) {
+        echo "deterministic cases FAILED (any failure refuses the push): " . implode(', ', $failedCases) . "\n";
+    }
+    if ($missing !== []) {
+        echo "deterministic baseline cases MISSING from this run (restore them or run --update-baseline): " . implode(', ', $missing) . "\n";
+    }
+    if ($pending !== []) {
+        echo "deterministic cases pending (not counted): " . implode(', ', $pending) . "\n";
+    }
+    return $failedCases === [] && $missing === [];
 }
 
 /**
