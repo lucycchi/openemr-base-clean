@@ -27,7 +27,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | # | Deliverable | Status | Open tasks | Due |
 |---|---|---|---|---|
 | 1 | GitLab repository | Partly done | S1 | Early |
-| 2 | W2 architecture doc (`./W2_ARCHITECTURE.md`) | Partly done | S4 | Early |
+| 2 | W2 architecture doc (`./W2_ARCHITECTURE.md`) | Done | none | Early |
 | 3 | Key metrics doc (`./KEY_METRICS.md`) | Done | S10 (refresh at final) | Early |
 | 4 | Schemas | Done | (T2.1 in core list) | Early |
 | 5 | Eval dataset | Done | none | Early |
@@ -64,13 +64,13 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 
 | Part | Status | Evidence |
 |---|---|---|
-| File at `./W2_ARCHITECTURE.md` | Partly done | The root file is a 10-line pointer; the content is in [W2_ARCHITECTURE.md](W2_ARCHITECTURE.md) in this folder. A grader who opens the named path sees a link, not the document. → **S4** |
+| File at `./W2_ARCHITECTURE.md` | Done (S4) | [../W2_ARCHITECTURE.md](../W2_ARCHITECTURE.md) is the full document since 2026-09-23 (it used to be a pointer to this folder); the folder copy is now the pointer. |
 | Ingestion flow | Done | "Ingestion: from an upload to a cited fact". |
 | Worker graph | Done | "Agents: how many, and how they cooperate". |
 | RAG design | Done | "Retrieval and guideline evidence", "Reranker". |
 | Eval gate | Done | "The gate". |
 | Risks and tradeoffs | Done | "Risks and trade-offs". |
-| Accurate today | Partly done | Still says rerank is inactive (tools table and risks table), though `COHERE_API_KEY` is set on the droplet and reranking shows in its log (core task T3.1). → **S4** |
+| Accurate today | Done (S4) | Rerank shown as live, observability as covering every request type, the status line names the undeployed Phase 11 (core task T3.1). |
 
 ## 3. Key metrics doc
 
@@ -236,7 +236,7 @@ it is verified.
 - [ ] **S1 Deploy the current `pdf_reader` and re-verify.** Push to GitLab (through the gate), run `docker/vps/deploy.sh` (rebuilds the sidecar image), confirm `/ready`, the prompt version and both Bruno collections against the droplet; update `results-deployed.json`. Note: `deploy.sh` rsyncs the sidecar from the **working tree**, so uncommitted sidecar edits in progress would ship too.
 - [ ] **S2 Demo video.** Shot list done: [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Recording is the user's. Write a timed shot list (upload, extraction with an unverified value, click-to-source overlay, guideline evidence with citations, routing drawer, eval gate refusing a regression, Langfuse trace). The user records it.
 - [x] **S3 README and `.env.example`.** Done 2026-09-23: README names the branch, counts 70 cases, links EVAL_DATASET.md, notes the `LANGFUSE_BASE_URL` fallback; `.env.example` lists every variable the code reads, grouped, one comment each, and marks the tooling-only keys. Name the branch; make `.env.example` list every variable the code reads, with one line each; align `LANGFUSE_HOST`; explain the deploy-only keys; refresh counts.
-- [ ] **S4 `./W2_ARCHITECTURE.md` is the document, not a pointer**, and says what is true today (rerank live).
+- [x] **S4 `./W2_ARCHITECTURE.md` is the document, not a pointer**, and says what is true today (rerank live). Done 2026-09-23; links rewritten and checked.
 - [x] **S5 Eval dataset page**, done 2026-09-23: [EVAL_DATASET.md](EVAL_DATASET.md).: judge configuration (no LLM judge; which code check decides each rubric; thresholds; live vs recorded), results per rubric, where every piece lives.
 
 **Before the technical interview (Thu/Fri)**

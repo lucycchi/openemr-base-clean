@@ -6,7 +6,7 @@ eval gate). Week 1 documents stay in [../clinical_copilot_week1/](../clinical_co
 
 | Document | What it is |
 |---|---|
-| [W2_ARCHITECTURE.md](W2_ARCHITECTURE.md) | The architecture: extraction-stack spike and decision, tools by step, how the agents cooperate, the review/rating loop, findings log. Required by the Week 2 brief as `./W2_ARCHITECTURE.md` (a pointer file sits at the repo root). |
+| [../W2_ARCHITECTURE.md](../W2_ARCHITECTURE.md) | The architecture: extraction-stack spike and decision, tools by step, how the agents cooperate, the review/rating loop, findings log. At the repo root because the Week 2 brief names `./W2_ARCHITECTURE.md` (a pointer file stays in this folder). |
 | [DESIGN.md](DESIGN.md) | The approved design record and the phased TODO list, with decisions and the review history (three Claude passes, two Codex passes). Ticked as phases complete. |
 | [DOCUMENT_SOURCES.md](DOCUMENT_SOURCES.md) | Candidate sources for sample lab reports and intake forms, the no-real-patient rule, vetting status, and how a chosen source becomes a fixture. |
 | [STATIC_ANALYSIS.md](STATIC_ANALYSIS.md) | PHPStan level 10 for the Co-Pilot code: where the 544 errors were, the five root causes and their fixes, the decisions (typed readers, honest parser types, spike scripts excluded), and how to keep the run at zero. |
@@ -15,6 +15,10 @@ eval gate). Week 1 documents stay in [../clinical_copilot_week1/](../clinical_co
 | [ALERTS.md](ALERTS.md) | The three paging alerts re-specified for the Week 2 agent (what the sidecar changed in each), an extraction-latency rule, four watched rules, the Langfuse definitions, and the on-call runbook for every Week 2 failure mode. |
 | [DASHBOARD.md](DASHBOARD.md) | The Week 2 dashboard: what the module now sends for the sidecar workers, per-call model usage, extraction outcomes, retrieval and the pre-warm queue; the five Week 2 scores; every widget field-by-field; decisions and trade-offs; how to verify. |
 | [experiments/](experiments/answer-length-cap.md) | Measured decisions with their data and scripts. So far: the follow-up answer-length cap (uncapped vs 3, 6, 10 sentences; five timed calls each; six chosen). |
+| [SUBMISSION_REQUIREMENTS.md](SUBMISSION_REQUIREMENTS.md) | The PRD's submission table and hard gates checked against the repo, with the task list for the early and final submissions. |
+| [CORE_AGENT_REQUIREMENTS.md](CORE_AGENT_REQUIREMENTS.md) | The PRD's seven core agent requirements checked against the code, with their task list. |
+| [EVAL_DATASET.md](EVAL_DATASET.md) | The eval dataset on one page: what the 70 cases cover, the eight rubrics, the judge configuration (code checks, no LLM judge), results per rubric. |
+| [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | Timed shot list for the 3-5 minute demo video. |
 | [ENGINEERING_REQUIREMENTS.md](ENGINEERING_REQUIREMENTS.md) | The graded engineering requirements re-audited against the Week 2 code, one by one: how each is met, the decisions and trade-offs, how to verify it, what is open. Test design (1), correlation id (2), contracts (3), dashboards (4), the API collection (5), health/ready (6), alerts (7), baselines (8) and load tests (9): all nine. |
 
 ## Seeing click-to-source on the deployed instance

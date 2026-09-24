@@ -29,7 +29,7 @@ care physicians.
 |---|---|---|
 | What it does | A pre-room briefing and chart Q&A: deterministic PHP assembles cited facts from the chart, the model narrates by fact id, every sentence is verified before it renders | Lab PDFs and intake forms attached to the chart become cited facts (every value anchored to its row on the page, click-to-source highlight); follow-up questions cite guideline evidence from a hybrid-retrieval corpus; a supervisor routes work to two workers with a logged handoff per hop |
 | Where | PHP module `interface/modules/custom_modules/oe-module-clinical-copilot/` | the same module plus a Python sidecar (`sidecar/`, FastAPI + LangGraph) beside it; PHP keeps auth, storage, verification and the UI |
-| Docs | [clinical_copilot_week1/](clinical_copilot_week1/README.md) | [clinical_copilot_week2/](clinical_copilot_week2/README.md), starting with [W2_ARCHITECTURE.md](clinical_copilot_week2/W2_ARCHITECTURE.md) |
+| Docs | [clinical_copilot_week1/](clinical_copilot_week1/README.md) | [clinical_copilot_week2/](clinical_copilot_week2/README.md), starting with [W2_ARCHITECTURE.md](W2_ARCHITECTURE.md) |
 | Evals | 15 cases | 70 cases (16 live) behind a push-blocking gate ([tests/evals/](tests/evals/README.md), summary in [EVAL_DATASET.md](clinical_copilot_week2/EVAL_DATASET.md)) |
 
 **Branch:** `pdf_reader` (GitLab's default branch) holds Week 1 and Week 2; everything below assumes it.
@@ -38,7 +38,9 @@ care physicians.
 
 | Document | Purpose |
 |---|---|
-| [clinical_copilot_week2/W2_ARCHITECTURE.md](clinical_copilot_week2/W2_ARCHITECTURE.md) | Week 2 architecture: the extraction-stack spike, ingestion, agents, retrieval, the gate, risks (also linked from the root `W2_ARCHITECTURE.md`) |
+| [W2_ARCHITECTURE.md](W2_ARCHITECTURE.md) | Week 2 architecture: the extraction-stack spike, ingestion, agents, retrieval, the gate, risks and trade-offs |
+| [clinical_copilot_week2/SUBMISSION_REQUIREMENTS.md](clinical_copilot_week2/SUBMISSION_REQUIREMENTS.md) | Every Week 2 submission deliverable, where it is, and its status |
+| [clinical_copilot_week2/EVAL_DATASET.md](clinical_copilot_week2/EVAL_DATASET.md) | The eval dataset: cases, rubrics, judge configuration, results |
 | [clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md](clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md) | The graded engineering requirements audited one by one: how each is met, decisions, trade-offs |
 | [KEY_METRICS.md](KEY_METRICS.md) | Eleven metrics with baselines and alerts (8–11 are Week 2) |
 | [COST_AND_LATENCY.md](COST_AND_LATENCY.md) | Latency per step, bottlenecks, actual development spend |
