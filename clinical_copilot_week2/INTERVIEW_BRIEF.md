@@ -52,9 +52,11 @@ Say these before you are asked.
   (database connections, not the model).
 - **Two synthetic layouts.** The anchor rule is layout-agnostic, but it has
   only seen generated reports. Real-world layouts are the next fixtures.
-- **The supervisor does not decide "final answer is ready".** The graph ends
-  after retrieval; PHP writes and verifies the answer. Documented as a split
-  rather than moved into the graph (core task T4.1).
+- **"Final answer is ready" is decided in PHP, not inside the LangGraph
+  graph.** The sidecar graph ends after retrieval; PHP writes and verifies
+  the answer, and the handoff log records those stages as hops
+  (`supervisor -> answer_writer -> verifier -> done`, core task T4.1), so the
+  decision is inspectable even though it runs outside the graph.
 - **The model provider sees document text**, as it sees chart facts in
   Week 1. Covered by the provider agreement, not by code. Identifiers never
   reach logs or Langfuse.

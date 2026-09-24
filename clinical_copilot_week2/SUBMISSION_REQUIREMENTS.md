@@ -214,7 +214,7 @@ submission too. The S8 brief doubles as preparation.
 | Part | Status | Evidence |
 |---|---|---|
 | Synthetic data only | Done | Seed patients and generated fixtures ([DOCUMENT_SOURCES.md](DOCUMENT_SOURCES.md)). |
-| No raw PHI in logs | Done | Sidecar runtime allowlist; PHI eval cases; PHP-side runtime allowlist is core task T7.3. |
+| No raw PHI in logs | Done | Runtime log-field allowlists in both the sidecar and PHP (`Ops/LogFields.php` via `CorrelatedLogger`, core task T7.3, `e3b7dd6`); the PHI eval cases check the same list. |
 | Screenshots and video treated as sensitive | Watch | Applies to S2 and S9. |
 
 ### Optional extensions the PRD lists under Core Deliverables
