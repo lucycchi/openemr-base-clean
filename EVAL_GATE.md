@@ -232,28 +232,29 @@ script's header).
 
 <!-- mutants:start -->
 
-Latest run: 2026-09-24T04:56:01Z on `404437af7a`, 15 of 18 planted regressions refused by the plain push (14 by the evals and unit tests, 1 by the prompt lock). First run: 2026-09-24T04:56:01Z on `404437af7a`, 15 of 18 refused. Controls passed before and after; canaries C1 (comment only) SURVIVED and C2 (syntax error) was ERROR, as required.
+Latest run: 2026-09-24T05:10:24Z on `f244a00749`, 19 of 19 planted regressions refused by the plain push (18 by the evals and unit tests, 1 by the prompt lock). First run: 2026-09-24T04:56:01Z on `404437af7a`, 15 of 18 refused. Controls passed before and after; canaries C1 (comment only) SURVIVED and C2 (syntax error) was ERROR, as required.
 
 | Mutant | Layer | Regression planted | Expected killer | First run | Latest | Caught by | Detail |
 |---|---|---|---|---|---|---|---|
 | M1 | Verifier | keep a sentence whose fact-id list is empty | golden: citation_present (01, 06) | KILLED | **KILLED** | PHPUnit | 4) OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\VerifierTest::testSentenceWithNoFactReferenceIsStripped 5) OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\VerifierTest::testAllSentencesStrippedIsReportedAsTotalFailure |
+| M2 | OmissionGuard | never report an omitted must-surface fact | golden: case 04; OmissionGuardTest | KILLED | **KILLED** | PHPUnit | see log |
+| M3 | anchoring | a value within edit distance 1 of the proposed value anchors | golden: anchor_correct (17, 43); pytest | SURVIVED | **KILLED** | pytest | FAILED tests/test_anchor.py::test_a_value_one_digit_off_the_printed_one_never_anchors |
+| M4 | anchoring | the analyte need not be in the value's row | golden: anchor_correct (18); pytest | KILLED | **KILLED** | pytest | FAILED tests/test_anchor.py::test_hundred_in_three_columns_anchors_only_the_ldl_result |
+| M5 | retrieval | the relevance floor keeps every fused candidate | golden: safe_refusal (32) | KILLED | **KILLED** | pytest | FAILED tests/test_retrieve.py::test_off_corpus_question_returns_nothing |
+| M6 | retrieval | a rerank failure returns no evidence instead of the fused order | pytest: test_rerank_failure_falls_back_to_rrf_order | KILLED | **KILLED** | pytest | FAILED tests/test_retrieve.py::test_rerank_failure_falls_back_to_rrf_order |
+| M7 | supervisor | a question no longer routes to evidence_retriever (inverted check) | golden: routing_correct (25, 28); pytest | KILLED | **KILLED** | pytest | FAILED tests/test_supervisor.py::test_question_goes_to_the_retriever |
+| M8 | supervisor | an already extracted document is sent to intake_extractor again | golden: routing_correct (26); pytest | KILLED | **KILLED** | pytest | FAILED tests/test_supervisor.py::test_already_extracted_document_is_not_re_extracted |
+| M9 | lab judgement | h and l no longer count as abnormal flags | unknown | SURVIVED | **KILLED** | PHPUnit | 2) OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\LabJudgeTest::testTheLabsOwnFlagMakesAResultAbnormal 3) OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\LabJudgeTest::testTheLabsOwnFlagMakesAResultAbnormal |
 | M10 | citations | every citation is serialised with an empty quote_or_value | schema_valid or PHPUnit | KILLED | **KILLED** | PHPUnit | 4) OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\PanelPayloadTest::testAnswerPayloadCarriesTypeSentencesAndFactsHash |
-| M11 | schema | a lab row without a unit gets "" instead of null | golden: case 48; pytest | SURVIVED | **SURVIVED** | - | GATE: PASS |
+| M11 | schema | a lab row without a unit gets "" instead of null | golden: case 48; pytest | SURVIVED | **KILLED** | pytest | FAILED tests/test_anchor.py::test_a_result_without_a_printed_unit_keeps_unit_null |
 | M12 | PHI logging | the extract log message carries the whole extraction (patient name, values) | golden: no_phi_in_logs (69, 70) | KILLED | **KILLED** | golden | no_phi_in_logs BELOW 69-phi-lab-upload-logs-recorded, 70-phi-intake-upload-logs-recorded;deterministic cases FAILED (any failure refuses the push): 69-phi-lab-upload-logs-recorded, 70-phi-intake-upload-logs-recorded; |
 | M13a | PHI logging | the ask log message text carries the question | golden: no_phi_in_logs (72) | KILLED | **KILLED** | golden | no_phi_in_logs BELOW 72-phi-question-logs-recorded;deterministic cases FAILED (any failure refuses the push): 72-phi-question-logs-recorded; |
 | M13b | PHI logging | the question is logged under an allowlisted key | golden: no_phi_in_logs (72) | KILLED | **KILLED** | golden | no_phi_in_logs BELOW 72-phi-question-logs-recorded;deterministic cases FAILED (any failure refuses the push): 72-phi-question-logs-recorded; |
 | M13c | PHI logging | the question is logged under a new key | golden: no_phi_in_logs (72, dropped_fields) | KILLED | **KILLED** | golden | no_phi_in_logs BELOW 72-phi-question-logs-recorded;deterministic cases FAILED (any failure refuses the push): 72-phi-question-logs-recorded; |
 | M14 | prompt | rule 1 (cite every sentence) deleted from the briefing and follow-up prompts | prompt lock (PromptLockTest) | KILLED | **KILLED** | prompt lock | PROMPT CHANGED: briefing_system |
 | M15 | eval gate | a deterministic case file is deleted (05-empty-fact-set) | golden: baseline case MISSING | KILLED | **KILLED** | case index | see log |
+| M15b | eval gate | a deterministic case is deleted along with its README row (the case index stays consistent) | golden: baseline case MISSING | not in first run | **KILLED** | golden | deterministic baseline cases MISSING from this run (restore them or run --update-baseline): 05-empty-fact-set; |
 | M16 | eval gate | the harness stops after 30 cases without writing results | harness: no results | KILLED | **KILLED** | harness | harness produced no results |
-| M2 | OmissionGuard | never report an omitted must-surface fact | golden: case 04; OmissionGuardTest | KILLED | **KILLED** | PHPUnit | see log |
-| M3 | anchoring | a value within edit distance 1 of the proposed value anchors | golden: anchor_correct (17, 43); pytest | SURVIVED | **SURVIVED** | - | GATE: PASS |
-| M4 | anchoring | the analyte need not be in the value's row | golden: anchor_correct (18); pytest | KILLED | **KILLED** | pytest | FAILED tests/test_anchor.py::test_hundred_in_three_columns_anchors_only_the_ldl_result |
-| M5 | retrieval | the relevance floor keeps every fused candidate | golden: safe_refusal (32) | KILLED | **KILLED** | pytest | FAILED tests/test_retrieve.py::test_off_corpus_question_returns_nothing |
-| M6 | retrieval | a rerank failure returns no evidence instead of the fused order | pytest: test_rerank_failure_falls_back_to_rrf_order | KILLED | **KILLED** | pytest | FAILED tests/test_retrieve.py::test_rerank_failure_falls_back_to_rrf_order |
-| M7 | supervisor | a question no longer routes to evidence_retriever (inverted check) | golden: routing_correct (25, 28); pytest | KILLED | **KILLED** | pytest | FAILED tests/test_supervisor.py::test_question_goes_to_the_retriever |
-| M8 | supervisor | an already extracted document is sent to intake_extractor again | golden: routing_correct (26); pytest | KILLED | **KILLED** | pytest | FAILED tests/test_supervisor.py::test_already_extracted_document_is_not_re_extracted |
-| M9 | lab judgement | h and l no longer count as abnormal flags | unknown | SURVIVED | **SURVIVED** | - | GATE: PASS |
 
 Generated by `tests/evals/mutants/table.py` from `tests/evals/mutants/results.json`; do not edit by hand.
 

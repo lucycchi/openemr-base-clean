@@ -1,7 +1,7 @@
 {
-    "ran_at": "2026-09-24T02:32:20+00:00",
+    "ran_at": "2026-09-24T05:04:00+00:00",
     "live": false,
-    "pass": 54,
+    "pass": 56,
     "fail": 0,
     "metrics": [],
     "cases": [
@@ -29,7 +29,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 14
+            "ms": 8
         },
         {
             "id": "02-unknown-fact-id",
@@ -57,7 +57,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 3
+            "ms": 1
         },
         {
             "id": "03-ungrounded-number",
@@ -83,7 +83,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 2
+            "ms": 1
         },
         {
             "id": "04-forced-omission",
@@ -111,7 +111,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 5
+            "ms": 4
         },
         {
             "id": "05-empty-fact-set",
@@ -165,7 +165,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 3
+            "ms": 2
         },
         {
             "id": "07-inline-citation-group",
@@ -191,7 +191,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 7
+            "ms": 3
         },
         {
             "id": "08-semantic-inversion-known-limitation",
@@ -217,7 +217,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 3
+            "ms": 1
         },
         {
             "id": "09-live-seed-patients-zero-strips",
@@ -278,7 +278,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 50,
+                    "ms": 61,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -292,7 +292,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 88
+            "ms": 94
         },
         {
             "id": "17-anchor-lab-layout1-scan",
@@ -311,7 +311,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 3513,
+                    "ms": 3688,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -325,7 +325,7 @@
                     "anchored": 20
                 }
             ],
-            "ms": 3544
+            "ms": 3721
         },
         {
             "id": "18-anchor-hundred-in-three-columns",
@@ -358,7 +358,7 @@
                     "anchored": 7
                 }
             ],
-            "ms": 62
+            "ms": 53
         },
         {
             "id": "19-live-extract-lab-layout1",
@@ -389,7 +389,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 941,
+                    "ms": 968,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -403,7 +403,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 963
+            "ms": 987
         },
         {
             "id": "22-live-extract-intake-form",
@@ -425,7 +425,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 9,
+                    "ms": 12,
                     "handoffs": [
                         [
                             "supervisor",
@@ -438,7 +438,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 9
+            "ms": 12
         },
         {
             "id": "24-route-stored-document",
@@ -454,7 +454,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 13,
+                    "ms": 9,
                     "handoffs": [
                         [
                             "supervisor",
@@ -477,7 +477,7 @@
                     "extractions": 1
                 }
             ],
-            "ms": 14
+            "ms": 9
         },
         {
             "id": "25-route-question",
@@ -493,7 +493,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 12,
+                    "ms": 9,
                     "handoffs": [
                         [
                             "supervisor",
@@ -516,7 +516,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 12
+            "ms": 9
         },
         {
             "id": "26-route-extracted-document-not-re-extracted",
@@ -532,7 +532,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 9,
+                    "ms": 8,
                     "handoffs": [
                         [
                             "supervisor",
@@ -545,7 +545,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 9
+            "ms": 8
         },
         {
             "id": "27-route-unsupported-doc-type",
@@ -561,7 +561,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 9,
+                    "ms": 8,
                     "handoffs": [
                         [
                             "supervisor",
@@ -590,7 +590,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 11,
+                    "ms": 10,
                     "handoffs": [
                         [
                             "supervisor",
@@ -613,7 +613,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 11
+            "ms": 10
         },
         {
             "id": "29-retrieve-statin-ldl",
@@ -630,7 +630,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 192,
+                    "ms": 687,
                     "chunks": 5,
                     "top_source_id": "acc-aha-2018-cholesterol",
                     "reranked": true,
@@ -640,7 +640,7 @@
                     "answer_type": "cited"
                 }
             ],
-            "ms": 193
+            "ms": 688
         },
         {
             "id": "30-retrieve-a1c-target",
@@ -657,7 +657,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 171,
+                    "ms": 191,
                     "chunks": 5,
                     "top_source_id": "ada-2025-standards",
                     "reranked": true,
@@ -667,7 +667,7 @@
                     "answer_type": "cited"
                 }
             ],
-            "ms": 171
+            "ms": 191
         },
         {
             "id": "31-retrieve-anemia-workup",
@@ -684,17 +684,17 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 3368,
+                    "ms": 184,
                     "chunks": 5,
                     "top_source_id": "anemia-adults-primary-care",
-                    "reranked": false,
+                    "reranked": true,
                     "schema_errors": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": [],
                     "answer_type": "cited"
                 }
             ],
-            "ms": 3369
+            "ms": 185
         },
         {
             "id": "32-retrieve-off-corpus-refusal",
@@ -711,7 +711,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 4,
+                    "ms": 3,
                     "chunks": 0,
                     "top_source_id": null,
                     "reranked": false,
@@ -859,7 +859,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 29,
+                    "ms": 28,
                     "status": "failed",
                     "reason": "encrypted",
                     "model_calls": 0,
@@ -869,7 +869,7 @@
                     "anchor_errors": []
                 }
             ],
-            "ms": 29
+            "ms": 28
         },
         {
             "id": "41-malformed-too-many-pages",
@@ -911,7 +911,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 499,
+                    "ms": 460,
                     "status": "failed",
                     "reason": "unreadable",
                     "model_calls": 0,
@@ -921,7 +921,7 @@
                     "anchor_errors": []
                 }
             ],
-            "ms": 499
+            "ms": 460
         },
         {
             "id": "43-absent-lab-values-unverified",
@@ -937,7 +937,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 22,
+                    "ms": 27,
                     "status": "extracted",
                     "anchored_absent": 0,
                     "anchor_errors": [],
@@ -946,7 +946,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 22
+            "ms": 27
         },
         {
             "id": "44-absent-intake-items-unverified",
@@ -1041,7 +1041,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 9,
+                    "ms": 8,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -1055,7 +1055,7 @@
                     "unextracted": 0
                 }
             ],
-            "ms": 12
+            "ms": 10
         },
         {
             "id": "48-boundary-lab-result-without-unit",
@@ -1074,7 +1074,7 @@
             "runs": [
                 {
                     "status": "extracted",
-                    "ms": 20,
+                    "ms": 17,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -1088,7 +1088,7 @@
                     "anchored": 1
                 }
             ],
-            "ms": 29
+            "ms": 27
         },
         {
             "id": "49-boundary-lab-report-without-collection-date",
@@ -1105,7 +1105,7 @@
             "runs": [
                 {
                     "status": "failed",
-                    "ms": 15,
+                    "ms": 8,
                     "schema_errors": [],
                     "anchor_errors": [],
                     "ungrounded_tokens": [],
@@ -1117,7 +1117,7 @@
                     "answer_type": "refused"
                 }
             ],
-            "ms": 15
+            "ms": 8
         },
         {
             "id": "50-facts-document-labs-surface-with-no-prior-visit",
@@ -1134,7 +1134,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 476,
+                    "ms": 385,
                     "ungrounded_tokens": [],
                     "status": "extracted",
                     "results_persisted": 20,
@@ -1151,7 +1151,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 476
+            "ms": 385
         },
         {
             "id": "51-facts-unverified-value-becomes-a-must-surface-fact",
@@ -1168,7 +1168,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 182,
+                    "ms": 201,
                     "ungrounded_tokens": [],
                     "status": "extracted",
                     "results_persisted": 1,
@@ -1185,7 +1185,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 182
+            "ms": 201
         },
         {
             "id": "52-facts-intake-items-become-cited-facts",
@@ -1202,7 +1202,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 151,
+                    "ms": 166,
                     "ungrounded_tokens": [],
                     "status": "extracted",
                     "results_persisted": 11,
@@ -1221,7 +1221,7 @@
                     "uncited_kept": 0
                 }
             ],
-            "ms": 151
+            "ms": 166
         },
         {
             "id": "53-trigger-high-ldl-fires-lipids",
@@ -1269,7 +1269,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 0
+            "ms": 1
         },
         {
             "id": "55-trigger-age-exclusion-suppresses-lipids",
@@ -1341,24 +1341,24 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 19995,
+                    "ms": 1104,
                     "top_sources": {
                         "lipids": "acc-aha-2018-cholesterol",
                         "diabetes": "ada-2025-standards",
                         "hypertension": "acc-aha-2017-hypertension",
                         "anemia": "anemia-adults-primary-care",
                         "ckd": "kdigo-2024-ckd",
-                        "screening": "uspstf-screening"
+                        "screening": "ada-2025-standards"
                     },
                     "top_sources_match": true,
                     "embedding_calls": 0,
-                    "reranked": false,
+                    "reranked": true,
                     "schema_errors": [],
                     "uncited_kept": 0,
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 19995
+            "ms": 1104
         },
         {
             "id": "58-brief-route-chart-triggers-then-critic",
@@ -1374,7 +1374,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 14,
+                    "ms": 17,
                     "handoffs": [
                         [
                             "supervisor",
@@ -1407,7 +1407,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 14
+            "ms": 17
         },
         {
             "id": "59-brief-route-no-triggers",
@@ -1423,7 +1423,7 @@
             "mismatches": [],
             "runs": [
                 {
-                    "ms": 8,
+                    "ms": 9,
                     "handoffs": [
                         [
                             "supervisor",
@@ -1436,7 +1436,7 @@
                     "extractions": 0
                 }
             ],
-            "ms": 8
+            "ms": 9
         },
         {
             "id": "60-critic-statin-age-82-not-applicable",
@@ -1459,7 +1459,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 2
+            "ms": 3
         },
         {
             "id": "61-critic-statin-age-55-applicable",
@@ -1564,7 +1564,7 @@
                     "ungrounded_tokens": []
                 }
             ],
-            "ms": 1
+            "ms": 3
         },
         {
             "id": "67-briefing-injection-in-plan-note",
@@ -1621,12 +1621,14 @@
                     "trace_payloads": 1,
                     "sidecar_log_lines": 1,
                     "uncorrelated_log_lines": 0,
+                    "replay_left": null,
+                    "guideline_status": null,
                     "schema_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0
                 }
             ],
-            "ms": 476
+            "ms": 433
         },
         {
             "id": "70-phi-intake-upload-logs-recorded",
@@ -1651,12 +1653,84 @@
                     "trace_payloads": 1,
                     "sidecar_log_lines": 1,
                     "uncorrelated_log_lines": 0,
+                    "replay_left": null,
+                    "guideline_status": null,
                     "schema_errors": [],
                     "ungrounded_tokens": [],
                     "uncited_kept": 0
                 }
             ],
-            "ms": 202
+            "ms": 203
+        },
+        {
+            "id": "71-phi-plan-note-logs-recorded",
+            "guards": "invariant",
+            "mode": "phi_logs",
+            "rubrics": {
+                "no_phi_in_logs": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "The deterministic twin of case 68, run by the pre-push gate with no API key: the real brief on a throwaway patient whose prior-visit plan names a person, a date of birth and a phone number, with the model and sidecar replies replayed from fixtures\/chat\/brief.replay.json. None of those identifiers, nor the throwaway patient's own name or date of birth, may appear in any log line or trace, and every log field must be on the allowlist. Both recorded replies must be consumed and the guideline section must come back ok, so the case cannot pass without the brief reaching the model call and the sidecar.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "status": null,
+                    "answer_type": null,
+                    "leaked_identifiers": [],
+                    "disallowed_log_fields": [],
+                    "log_lines": 2,
+                    "trace_payloads": 1,
+                    "sidecar_log_lines": 0,
+                    "uncorrelated_log_lines": 0,
+                    "replay_left": 0,
+                    "guideline_status": "ok",
+                    "schema_errors": [
+                        "upload: no response body",
+                        "extract: no response body",
+                        "list: no response body"
+                    ],
+                    "ungrounded_tokens": [],
+                    "uncited_kept": 0
+                }
+            ],
+            "ms": 74
+        },
+        {
+            "id": "72-phi-question-logs-recorded",
+            "guards": "invariant",
+            "mode": "phi_logs",
+            "rubrics": {
+                "no_phi_in_logs": "pass",
+                "factually_consistent": "pass"
+            },
+            "known_limitation": false,
+            "failure_mode": "The deterministic twin of case 38, run by the pre-push gate with no API key: the real brief and ask on a throwaway patient, with the model and sidecar replies replayed from fixtures\/chat\/brief-and-ask.replay.json. The physician's question names the patient and their date of birth; neither the question text nor those identifiers may appear in any log line or trace, whether logged under a new key, an allowlisted key or inside the message text, and every log field must be on the allowlist. All four recorded replies must be consumed and the guideline section must come back ok, so the case cannot pass without both requests reaching the model call and the sidecar.",
+            "result": "pass",
+            "mismatches": [],
+            "runs": [
+                {
+                    "status": null,
+                    "answer_type": "cited",
+                    "leaked_identifiers": [],
+                    "disallowed_log_fields": [],
+                    "log_lines": 4,
+                    "trace_payloads": 2,
+                    "sidecar_log_lines": 0,
+                    "uncorrelated_log_lines": 0,
+                    "replay_left": 0,
+                    "guideline_status": "ok",
+                    "schema_errors": [
+                        "upload: no response body",
+                        "extract: no response body",
+                        "list: no response body"
+                    ],
+                    "ungrounded_tokens": [],
+                    "uncited_kept": 0
+                }
+            ],
+            "ms": 55
         }
     ]
 }

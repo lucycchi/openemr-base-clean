@@ -1113,42 +1113,44 @@ Execution order: launch A, B, C in parallel worktrees; merge all; then the first
 Conflict flags: A and B both touch tests/evals/ (gate.sh vs phi.php and cases): different files, low risk. Another session is editing CorrelatedLogger/LogFields (T7.3), which F1's twins scan; land T7.3 first or re-run the twins after it.
 
 ## Implementation Tasks
+
+Done 2026-09-24 (commits e7a317f..HEAD on pdf_reader). Final kill-matrix run on f244a00: 19 of 19 refused; first run on 404437a: 15 of 18. Table: EVAL_GATE.md section 7.
 Synthesized from this review's findings. Each task derives from a specific
 finding above. Run with Claude Code or Codex; checkbox as you ship.
 
-- [ ] **T1 (P1, human: ~3 h / CC: ~30 min)** gate.sh: sidecar sync before pytest
+- [x] **T1 (P1, human: ~3 h / CC: ~30 min)** gate.sh: sidecar sync before pytest
   - Surfaced by: Architecture A1 / D3, Code quality Q1
   - Files: tests/evals/gate.sh
   - Verify: T6 passes; edit a sidecar module in the worktree and see pytest report the edit
-- [ ] **T2 (P1, human: ~1 h / CC: ~10 min)** gate.php: fail on missing deterministic cases or a non-zero harness exit
+- [x] **T2 (P1, human: ~1 h / CC: ~10 min)** gate.php: fail on missing deterministic cases or a non-zero harness exit
   - Surfaced by: Outside voice OV5 / D8
   - Files: tests/evals/gate.php, tests/evals/README.md
   - Verify: `php tests/evals/gate.php` passes on the clean tree; M15 KILLED in the matrix
-- [ ] **T3 (P1, human: ~2 h / CC: ~20 min)** ChatController seams with today's defaults, plus the seam test
+- [x] **T3 (P1, human: ~2 h / CC: ~20 min)** ChatController seams with today's defaults, plus the seam test
   - Surfaced by: Scope S1 / D2, Tests T1 / D5
   - Files: module src/Controller/ChatController.php, tests/Tests/Services/Modules/ClinicalCopilot/ChatControllerBriefTest.php
   - Verify: ChatControllerBriefTest green; live cases 36-38, 68 and smoke.php green once before commit; PHPStan 0
-- [ ] **T4 (P1, human: ~3 h / CC: ~40 min)** brief/ask PHI twins on Guzzle MockHandler
+- [x] **T4 (P1, human: ~3 h / CC: ~40 min)** brief/ask PHI twins on Guzzle MockHandler
   - Surfaced by: Problem hole 1 / D1, Outside voice OV4
   - Files: tests/evals/phi.php, tests/evals/run.php (if needed), tests/evals/cases/71-*.json, 72-*.json, recorded reply fixtures, baseline.json
   - Verify: twins pass on a clean tree; M13a-c KILLED
-- [ ] **T5 (P2, human: ~2 h / CC: ~25 min)** Prompt locks: PHP rendered prompts, Python constants + discovery
+- [x] **T5 (P2, human: ~2 h / CC: ~25 min)** Prompt locks: PHP rendered prompts, Python constants + discovery
   - Surfaced by: Problem hole 2 / D2, D10
   - Files: tests/Tests/Isolated/Modules/ClinicalCopilot/PromptLockTest.php + lock, sidecar/tests/test_prompt_lock.py + lock
   - Verify: both green; M14 KILLED; UPDATE_PROMPT_LOCK=1 rewrites each lock
-- [ ] **T6 (P2, human: ~2 h / CC: ~20 min)** gate-sync-test.sh (unchanged, copied, pyproject refused)
+- [x] **T6 (P2, human: ~2 h / CC: ~20 min)** gate-sync-test.sh (unchanged, copied, pyproject refused)
   - Surfaced by: Tests T3 / D7
   - Files: tests/evals/gate-sync-test.sh
   - Verify: green inside the mutants worktree
-- [ ] **T7 (P2, human: ~4 h / CC: ~45 min)** run.sh: worktree/keys guard, lint-before-gate, canaries, controls, classification, run list, --check-stale
+- [x] **T7 (P2, human: ~4 h / CC: ~45 min)** run.sh: worktree/keys guard, lint-before-gate, canaries, controls, classification, run list, --check-stale
   - Surfaced by: D4, D6, A3, A4, OV6
   - Files: tests/evals/mutants/run.sh, tests/evals/mutants/C1.patch, C2.patch, tests/evals/mutants/results.json
   - Verify: C1 SURVIVED, C2 ERROR, controls PASS
-- [ ] **T8 (P2, human: ~1 day / CC: ~2 h)** Mutant patches M1, M12, M13a-c, M14, M15, then M2-M11 (M6 expected killed by pytest)
+- [x] **T8 (P2, human: ~1 day / CC: ~2 h)** Mutant patches M1, M12, M13a-c, M14, M15, then M2-M11 (M6 expected killed by pytest)
   - Surfaced by: design mutant list, OV7, D8
   - Files: tests/evals/mutants/M*.patch, new regression cases for survivors
   - Verify: run.sh final run; first-run and final kill rates in EVAL_GATE.md
-- [ ] **T9 (P3, human: ~1 h / CC: ~15 min)** Docs: EVAL_GATE.md limits (A5/D11, D9 rebuild, D10 blind spot) and kill table; EVAL_DATASET.md; CORE_AGENT_REQUIREMENTS.md T6.3 row
+- [x] **T9 (P3, human: ~1 h / CC: ~15 min)** Docs: EVAL_GATE.md limits (A5/D11, D9 rebuild, D10 blind spot) and kill table; EVAL_DATASET.md; CORE_AGENT_REQUIREMENTS.md T6.3 row
   - Surfaced by: A5, D9, D10, D11, design step 5
   - Files: EVAL_GATE.md, clinical_copilot_week2/EVAL_DATASET.md, clinical_copilot_week2/CORE_AGENT_REQUIREMENTS.md
   - Verify: links resolve; numbers match results.json
