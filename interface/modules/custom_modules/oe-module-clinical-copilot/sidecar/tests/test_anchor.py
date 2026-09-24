@@ -130,6 +130,32 @@ def test_wrong_value_or_unit_is_unverified_not_dropped(fixtures: Path) -> None:
     assert 0 < anchor.confidence(anchor.citations_of(report)) < 1
 
 
+# Pins "values must match exactly": the OCR tolerance applies to analyte
+# names, never to numbers. A model that misreads one digit (BUN 22 read as
+# 23) must leave the result unverified; anchoring it would put a wrong number
+# on screen under a highlight that says it was checked against the page.
+# Found by the kill matrix (mutant M3 survived the first run).
+def test_a_value_one_digit_off_the_printed_one_never_anchors(fixtures: Path) -> None:
+    parsed = parse.parse_pdf((fixtures / "lab-layout1.pdf").read_bytes())
+    assert anchor.anchor_lab_result(parsed, "BUN", "22", "mg/dL", 1)[0] is not None
+    assert anchor.anchor_lab_result(parsed, "BUN", "23", "mg/dL", 1)[0] is None
+    assert anchor.anchor_lab_result(parsed, "Chloride", "98", "mmol/L", 1)[0] is None
+
+
+# Pins "unit is null when none was printed": a result the model read with no
+# unit keeps unit=None through anchoring, so PHP stores no unit and the
+# briefing says the unit is missing instead of printing a bare number with an
+# empty unit. Found by the kill matrix (mutant M11 survived the first run).
+def test_a_result_without_a_printed_unit_keeps_unit_null(fixtures: Path) -> None:
+    parsed = parse.parse_pdf((fixtures / "lab-layout1.pdf").read_bytes())
+    truth = json.loads((fixtures / "lab-layout1.truth.json").read_text())
+    prop = proposal_from_truth(truth)
+    prop.results[0].unit = None
+    report, _ = anchor.build_lab_report(1, parsed, prop, anchor.load_loinc_map())
+    assert report is not None
+    assert report.results[0].unit is None
+
+
 # Pins the unit_mismatch flag: when the proposed unit differs from the unit
 # the LOINC map expects for that analyte, the result is flagged. Glucose in
 # mmol/L versus mg/dL differs by a factor of 18; an unflagged mix-up would

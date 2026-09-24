@@ -109,7 +109,7 @@ lint_changed() {
     for f in $(git -C "$root" apply --numstat "$1" | awk '{print $3}'); do
         case "$f" in
             *.php) docker exec "$GATE_CONTAINER" php -l "/var/www/localhost/htdocs/openemr/$f" >/dev/null 2>&1 || return 1 ;;
-            *.py) python3 -m py_compile "$root/$f" 2>/dev/null || return 1 ;;
+            *.py) python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$root/$f" 2>/dev/null || return 1 ;;
         esac
     done
 }
@@ -185,7 +185,7 @@ done
 echo "== mutants"
 rows=$(mktemp)
 failed=0
-for patch in "$here"/M*.patch; do
+for patch in $(ls "$here"/M*.patch | sort -V); do
     id=$(header "$patch" id)
     if [ -n "$only" ] && [ "$id" != "$only" ]; then continue; fi
     run_patch "$patch" "$logs/$id.log"
