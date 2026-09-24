@@ -391,7 +391,7 @@ Closed only after it is verified, like the S tasks.
 
 - [x] **G4 Add the eval gate to `.gitlab-ci.yml` as a blocking merge request
   job.** Done 2026-09-24 (`f0a5f4e`, pushed): `eval-gate` runs
-  `tests/evals/ci-gate.sh` on runner 251 on the droplet; `pdf_reader`
+  `tests/evals/ci-gate.sh` on runner 257 on the droplet; `pdf_reader`
   protected via the API ("Pipelines must succeed" was turned on, then off
   again once pipelines were confirmed unavailable). Fresh-clone dry
   runs: clean PASS, planted M12 FAIL. GitLab still refuses to create the
