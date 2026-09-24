@@ -13,9 +13,9 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 |---|---|---|---|
 | 1 | Document ingestion and extraction | Partly met | T1.1, T1.2 |
 | 2 | Structured schemas | Partly met | T2.1 |
-| 3 | Basic hybrid RAG plus rerank | Met (docs out of date) | T3.1, T3.2 |
+| 3 | Basic hybrid RAG plus rerank | Met | ~~T3.1~~, T3.2 |
 | 4 | Supervisor plus two workers | Partly met | T4.1, T4.2, T4.3 |
-| 5 | Citation contract | Partly met | T5.1, T5.2 |
+| 5 | Citation contract | Partly met | ~~T5.1~~, T5.2 |
 | 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, ~~T6.2~~, T6.3 |
 | 7 | Observability and cost tracking | Partly met | T7.1, T7.2, T7.3 |
 
@@ -65,7 +65,7 @@ grading first.
 |---|---|---|
 | Small corpus | Met | 6 guideline summaries, 30 chunks (`sidecar/corpus/`). |
 | Sparse + dense | Met | BM25 plus `text-embedding-3-small` with committed vectors, fused by reciprocal rank (`retrieve.py`). |
-| Rerank | Met | Cohere `rerank-v3.5`. `COHERE_API_KEY` is set on the droplet and reranking shows in its sidecar log (checked 2026-09-23). **`W2_ARCHITECTURE.md` still says rerank is inactive.** → **T3.1**. With no key, or on a Cohere error, it quietly falls back to fused order; only the trace's `reranked` flag shows it. |
+| Rerank | Met | Cohere `rerank-v3.5`. `COHERE_API_KEY` is set on the droplet and reranking shows in its sidecar log (checked 2026-09-23). `W2_ARCHITECTURE.md` (now at the repo root) was corrected in `a2520f6`. With no key, or on a Cohere error, it quietly falls back to fused order; only the trace's `reranked` flag shows it. |
 | Only top evidence to the model | Met, one caveat | Follow-up answers get the top 5 chunks. The briefing gets 2 per triggered guideline rule, up to 12 chunks, filtered by the critic. → **T3.2** |
 
 ## 4. Supervisor plus two workers
@@ -98,8 +98,8 @@ grading first.
 |---|---|---|
 | Five-field shape defined | Met | `contracts/citation.schema.json` has exactly the five fields, plus `bbox`, `row_bbox`, `anchored`. |
 | Chart and document facts cited | Met | `Fact::citationOrChart()`; lab/intake facts carry document citations with boxes. |
-| Guideline evidence cited in the same shape | Not met | Guideline chunks use `{chunk_id, source_id, title, section, quote, url, score}`: the same information under different names. → **T5.1** |
-| Every sentence carries its citation | Partly met | Sentences carry `fact_ids`; the citation objects are on `facts[]` and must be joined by id. → **T5.1** |
+| Guideline evidence cited in the same shape | Met (T5.1 done) | Every guideline passage (briefing cards and answer guidelines) now carries a `citation` in the five-field shape (`source_type: guideline`), next to its existing fields (`EvidenceChunk::citation()`). |
+| Every sentence carries its citation | Met (T5.1 done) | Each sentence carries `citations`: one full five-field citation per id it cites, chart, document or guideline (`PanelPayload::sentences`). Required by `contracts/sentence.schema.json`; `ContractsTest` checks both shapes. |
 | Unsupported sentences removed | Met | `Verifier` strips uncited, unknown-id, mixed and ungrounded-number sentences. |
 | PDF bounding-box overlay | Met | PDF.js viewer draws the row box and the value box, for lab PDFs and intake forms, including scanned pages (`public/source-viewer.js`). |
 | From a claim to the PDF in one click | Partly met | Clicking a sentence's citation only highlights the fact row; the PDF opens from the "source p.N" link in the facts table. → **T5.2** |
@@ -147,7 +147,7 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 
 - [x] **T6.1 Make the gate catch a single regressed case.** Done: any flip fails for deterministic cases; the self-test flips one `factually_consistent` verdict (about 97%, above threshold) and the gate refuses it, where the old rule said `ok`.
 - [x] **T6.2 Score `no_phi_in_logs` in the hook.** Done: cases 69 and 70 (no key needed) score it at 100%; a planted leak in the controller's log line takes it to 0% and the gate refuses. Also fixed: a case with a failed rubric now prints FAIL (it printed PASS). Add deterministic cases that run the real logging path with recorded model output, and stop the three live extraction cases passing it vacuously.
-- [ ] **T5.1 Guideline citations in the five-field shape.** Emit `{source_type, source_id, page_or_section, field_or_chunk_id, quote_or_value}` for guideline evidence and attach resolved citations to each sentence; update the contracts and cases.
+- [x] **T5.1 Guideline citations in the five-field shape.** Done: `citation` on every guideline passage, `citations` on every sentence, contracts updated, `ContractsTest` covers chart and guideline citations in answers and briefings.
 - [ ] **T4.1 Supervisor decides "final answer is ready".** Either bring answer verification into the graph's decision or document the split.
 - [ ] **T1.1 Intake items as OpenEMR records.** Decide whether patient-reported meds/allergies go to OpenEMR lists, or document why they stay separate.
 - [ ] **T5.2 One click from a claim to the PDF overlay.**
@@ -160,4 +160,4 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [ ] **T3.2 Cap briefing evidence**, or document why the cap is per rule.
 - [ ] **T4.3 Fix the `no_question` handoff label.**
 - [ ] **T6.3 Judge configuration and fresh results:** state there is no LLM judge, commit current `results.json`, fix README counts.
-- [ ] **T3.1 Update `W2_ARCHITECTURE.md`**: rerank is live, observability covers chat.
+- [x] **T3.1 Update `W2_ARCHITECTURE.md`** Done in `a2520f6` (by the submission-docs session; the file moved to the repo root): rerank shown as live, observability covers briefing and follow-up traces.

@@ -111,6 +111,10 @@
               },
               "score": {
                 "type": "number"
+              },
+              "citation": {
+                "$ref": "citation.schema.json",
+                "description": "The passage's citation in the five-field shape (source_type=guideline, page_or_section=section, field_or_chunk_id=chunk_id, quote_or_value=quote)."
               }
             },
             "required": [
@@ -120,7 +124,8 @@
               "section",
               "quote",
               "url",
-              "score"
+              "score",
+              "citation"
             ],
             "additionalProperties": false
           }

@@ -35,7 +35,7 @@ final class PanelPayload
         return self::base($assembled, $correlationId) + [
             'guidelines' => ($guidelines ?? GuidelineSection::none('not_configured'))->toArray(),
             'narration' => [
-                'sentences' => self::sentences($briefing->sentences),
+                'sentences' => self::sentences($briefing->sentences, $assembled->facts(), ($guidelines ?? GuidelineSection::none('not_configured'))->chunks()),
                 'stripped' => $briefing->strippedCount,
                 'omitted_fact_ids' => array_map(fn(Fact $f) => $f->id, $briefing->omitted),
                 'status' => $briefing->status,
@@ -58,7 +58,7 @@ final class PanelPayload
             'chart_changed' => false,
             'answer' => [
                 'type' => $answer->answerType,
-                'sentences' => self::sentences($answer->sentences),
+                'sentences' => self::sentences($answer->sentences, $assembled->facts(), $answer->evidence),
                 'stripped' => $answer->strippedCount,
                 'status' => $answer->status,
                 'tokens' => ['prompt' => $answer->promptTokens, 'completion' => $answer->completionTokens],
@@ -106,11 +106,33 @@ final class PanelPayload
     }
 
     /**
+     * Each sentence also carries, for every id it cites, the full citation in
+     * the five-field shape (contracts/citation.schema.json), so a claim holds
+     * its own provenance and a client need not join ids against facts[].
+     * Ids resolve against the chart and document facts first, then the
+     * guideline passages; the Verifier has already stripped any sentence
+     * citing an id that is in neither.
+     *
      * @param list<Sentence> $sentences
-     * @return list<array{text: string, fact_ids: list<string>}>
+     * @param list<EvidenceChunk> $chunks
+     * @return list<array{text: string, fact_ids: list<string>, citations: list<array<string, mixed>>}>
      */
-    private static function sentences(array $sentences): array
+    private static function sentences(array $sentences, FactSet $facts, array $chunks): array
     {
-        return array_map(fn(Sentence $s) => ['text' => $s->text, 'fact_ids' => $s->factIds], $sentences);
+        $byId = [];
+        foreach ($chunks as $c) {
+            $byId[$c->chunkId] = $c;
+        }
+        return array_map(static function (Sentence $s) use ($facts, $byId): array {
+            $citations = [];
+            foreach ($s->factIds as $id) {
+                if ($facts->has($id)) {
+                    $citations[] = $facts->get($id)->citationOrChart()->toArray();
+                } elseif (isset($byId[$id])) {
+                    $citations[] = $byId[$id]->citation()->toArray();
+                }
+            }
+            return ['text' => $s->text, 'fact_ids' => $s->factIds, 'citations' => $citations];
+        }, $sentences);
     }
 }

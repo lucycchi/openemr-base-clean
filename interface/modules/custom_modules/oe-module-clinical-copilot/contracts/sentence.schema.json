@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-emr.org/clinical-copilot/contracts/sentence.schema.json",
   "title": "Cited sentence",
-  "description": "One sentence of narration with the fact ids it is grounded in. The Verifier strips any sentence with no ids, an unknown id, or a number/date not present verbatim in a cited fact.",
+  "description": "One sentence of narration with the fact ids it is grounded in and, for each id, its full citation. The Verifier strips any sentence with no ids, an unknown id, or a number/date not present verbatim in a cited fact. citations resolves every id to its citation in the five-field shape (citation.schema.json), so each claim carries its own machine-readable provenance.",
   "type": "object",
   "properties": {
     "text": {
@@ -13,8 +13,13 @@
       "type": "array",
       "description": "Ids of the facts this sentence is about. At least one is required for the sentence to be kept.",
       "items": { "type": "string" }
+    },
+    "citations": {
+      "type": "array",
+      "description": "One citation per entry in fact_ids, in the same order: the chart or document fact's citation, or the guideline passage's (source_type=guideline).",
+      "items": { "$ref": "citation.schema.json" }
     }
   },
-  "required": ["text", "fact_ids"],
+  "required": ["text", "fact_ids", "citations"],
   "additionalProperties": false
 }

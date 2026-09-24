@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
+
 /**
  * A passage from a clinical guideline, found by the sidecar's retriever for
  * the question being asked. It plays the role a Fact plays for chart data:
@@ -40,13 +42,24 @@ final readonly class EvidenceChunk
     }
 
     /**
+     * The chunk's citation in the shared five-field shape
+     * (contracts/citation.schema.json): the guideline's id, the section
+     * heading, the chunk id and the verbatim quote. A guideline passage is
+     * its own anchor, so it is always anchored and has no bbox.
+     */
+    public function citation(): Citation
+    {
+        return new Citation('guideline', $this->sourceId, $this->section, $this->chunkId, $this->quote, true);
+    }
+
+    /**
      * The chunk as the panel receives it, so it can show the title and link
-     * beside a cited sentence.
+     * beside a cited sentence, plus its citation in the five-field shape.
      *
-     * @return array{chunk_id: string, source_id: string, title: string, section: string, quote: string, url: string, score: float}
+     * @return array{chunk_id: string, source_id: string, title: string, section: string, quote: string, url: string, score: float, citation: array<string, mixed>}
      */
     public function toArray(): array
     {
-        return ['chunk_id' => $this->chunkId, 'source_id' => $this->sourceId, 'title' => $this->title, 'section' => $this->section, 'quote' => $this->quote, 'url' => $this->url, 'score' => $this->score];
+        return ['chunk_id' => $this->chunkId, 'source_id' => $this->sourceId, 'title' => $this->title, 'section' => $this->section, 'quote' => $this->quote, 'url' => $this->url, 'score' => $this->score, 'citation' => $this->citation()->toArray()];
     }
 }

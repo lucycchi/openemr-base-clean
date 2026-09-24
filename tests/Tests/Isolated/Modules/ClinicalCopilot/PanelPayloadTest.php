@@ -102,7 +102,7 @@ final class PanelPayloadTest extends TestCase
             ],
             $facts[0]
         );
-        self::assertSame([['text' => 'A new medication was started.', 'fact_ids' => ['rx0001']]], $narration['sentences']);
+        self::assertSame([['text' => 'A new medication was started.', 'fact_ids' => ['rx0001'], 'citations' => [['source_type' => 'chart', 'source_id' => 'PrescriptionService#17', 'page_or_section' => 'drug', 'field_or_chunk_id' => 'rx0001', 'quote_or_value' => 'Lisinopril 10 MG', 'anchored' => true]]]], $narration['sentences']);
         self::assertSame(1, $narration['stripped']);
         self::assertSame(['al0001'], $narration['omitted_fact_ids']);
         self::assertNull($narration['status']);
@@ -143,7 +143,7 @@ final class PanelPayloadTest extends TestCase
 
         self::assertSame('corr-2', $payload['correlation_id']);
         self::assertSame('cited', $answerSection['type']);
-        self::assertSame([['text' => 'Started at the last visit.', 'fact_ids' => ['rx0001']]], $answerSection['sentences']);
+        self::assertSame([['text' => 'Started at the last visit.', 'fact_ids' => ['rx0001'], 'citations' => [['source_type' => 'chart', 'source_id' => 'PrescriptionService#17', 'page_or_section' => 'drug', 'field_or_chunk_id' => 'rx0001', 'quote_or_value' => 'Lisinopril 10 MG', 'anchored' => true]]]], $answerSection['sentences']);
         self::assertSame($this->assembled(null)->facts()->hash(), $payload['facts_hash']);
         self::assertFalse($payload['chart_changed']);
     }

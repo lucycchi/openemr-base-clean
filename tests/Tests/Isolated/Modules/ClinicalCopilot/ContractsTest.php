@@ -24,6 +24,7 @@ use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
 use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
 use OpenEMR\Modules\ClinicalCopilot\Contracts;
 use OpenEMR\Modules\ClinicalCopilot\EncounterRecord;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceChunk;
 use OpenEMR\Modules\ClinicalCopilot\Fact;
 use OpenEMR\Modules\ClinicalCopilot\FactCategory;
 use OpenEMR\Modules\ClinicalCopilot\FactSet;
@@ -215,7 +216,8 @@ final class ContractsTest extends TestCase
 
     public function testBriefingPayloadWithGuidelineCardsConformsToContract(): void
     {
-        $briefing = new BriefingResult([], 0, [], null, false, false, 0, 0);
+        // One sentence restates a card's passage, so it cites the chunk id, not a fact.
+        $briefing = new BriefingResult([new Sentence('Guidelines recommend a statin here.', ['aaaaaaaaaaaa'])], 0, [], null, false, false, 0, 0);
         $run = \OpenEMR\Modules\ClinicalCopilot\Documents\RunResult::fromArray(['correlation_id' => 'c', 'extractions' => [], 'chunks' => [], 'evidence' => [
             ['trigger_id' => 'lipids', 'chunks' => [['chunk_id' => 'aaaaaaaaaaaa', 'source_id' => 'acc-aha-2018-cholesterol', 'section' => 'T > S', 'quote' => 'A passage.', 'score' => 0.8]], 'applicable' => true, 'reason' => 'no restriction stated'],
             ['trigger_id' => 'anemia', 'chunks' => [['chunk_id' => 'bbbbbbbbbbbb', 'source_id' => 'anemia-adults-primary-care', 'section' => 'T > S', 'quote' => 'B passage.', 'score' => 0.7]], 'applicable' => null, 'reason' => null],
@@ -225,7 +227,12 @@ final class ContractsTest extends TestCase
             new \OpenEMR\Modules\ClinicalCopilot\Guidelines\FiredTrigger('anemia', 'Anemia', 'q', 'anemia-adults-primary-care', [], ['on the problem list: Anemia']),
         ];
         $section = \OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection::fromRun($triggers, $run, new \OpenEMR\Modules\ClinicalCopilot\GuidelineManifest());
-        self::assertConforms('chat.briefing.response', PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID, $section));
+        $payload = PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID, $section);
+        self::assertConforms('chat.briefing.response', $payload);
+        $sentence = self::path($payload, 'narration', 'sentences', 0);
+        $citations = self::path($sentence, 'citations');
+        self::assertSame(['source_type' => 'guideline', 'source_id' => 'acc-aha-2018-cholesterol', 'page_or_section' => 'T > S', 'field_or_chunk_id' => 'aaaaaaaaaaaa', 'quote_or_value' => 'A passage.', 'anchored' => true], $citations[0]);
+        self::assertSame($citations[0], self::path($payload, 'guidelines', 'cards', 0, 'chunks', 0, 'citation'));
         self::assertConforms('chat.briefing.response', PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID, \OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection::none('unavailable')));
     }
 
@@ -241,6 +248,49 @@ final class ContractsTest extends TestCase
         self::assertConforms('chat.answer.response', PanelPayload::answer($this->assembled(), $answer, self::CORRELATION_ID));
         $declined = new AnswerResult('not_in_facts', [], 0, null, 0, 0);
         self::assertConforms('chat.answer.response', PanelPayload::answer($this->assembled(), $declined, self::CORRELATION_ID));
+    }
+
+    /**
+     * The PRD's citation contract: every clinical claim carries machine-readable
+     * citation metadata in the five-field shape. Each sentence carries one full
+     * citation per id it cites, a chart fact's or a guideline passage's, and each
+     * guideline passage carries its own.
+     */
+    public function testEverySentenceCarriesTheFiveFieldCitationOfEachIdItCites(): void
+    {
+        $drug = Fact::idFor('PrescriptionService', 17, 'drug');
+        $chunk = new EvidenceChunk('cccccccccccc', 'ada-2025-standards', 'Pharmacologic therapy > Metformin', 'Metformin is the preferred initial agent.', 0.9, 'ADA Standards of Care 2025', 'https://example.org/ada');
+        $answer = new AnswerResult('cited', [
+            new Sentence('Lisinopril 10 MG is on the chart.', [$drug]),
+            new Sentence('Guidelines prefer metformin first.', ['cccccccccccc']),
+        ], 0, null, 400, 30, [$chunk]);
+        $payload = PanelPayload::answer($this->assembled(), $answer, self::CORRELATION_ID);
+        self::assertConforms('chat.answer.response', $payload);
+
+        $chart = self::path($payload, 'answer', 'sentences', 0, 'citations');
+        self::assertCount(1, $chart);
+        self::assertSame('chart', self::path($chart, 0, 'source_type'));
+        self::assertSame($drug, self::path($chart, 0, 'field_or_chunk_id'));
+
+        $guideline = self::path($payload, 'answer', 'sentences', 1, 'citations');
+        self::assertSame(['source_type' => 'guideline', 'source_id' => 'ada-2025-standards', 'page_or_section' => 'Pharmacologic therapy > Metformin', 'field_or_chunk_id' => 'cccccccccccc', 'quote_or_value' => 'Metformin is the preferred initial agent.', 'anchored' => true], $guideline[0]);
+        self::assertSame($guideline[0], self::path($payload, 'answer', 'guidelines', 0, 'citation'));
+    }
+
+    /**
+     * Walks nested arrays by key and returns the value, failing the test when a key is missing.
+     *
+     * @param array<mixed> $a
+     */
+    private static function path(array $a, int|string ...$keys): mixed
+    {
+        $node = $a;
+        foreach ($keys as $k) {
+            self::assertIsArray($node);
+            self::assertArrayHasKey($k, $node);
+            $node = $node[$k];
+        }
+        return $node;
     }
 
     public function testChartChangedPayloadConformsToContract(): void

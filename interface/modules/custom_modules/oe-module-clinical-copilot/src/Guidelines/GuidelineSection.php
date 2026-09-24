@@ -84,6 +84,23 @@ final readonly class GuidelineSection
     }
 
     /** @return array<string, mixed> */
+    /**
+     * Every guideline passage on the section's cards, for resolving a
+     * briefing sentence's citation by chunk id.
+     *
+     * @return list<EvidenceChunk>
+     */
+    public function chunks(): array
+    {
+        $out = [];
+        foreach ($this->cards as $card) {
+            foreach ($card->chunks as $chunk) {
+                $out[] = $chunk;
+            }
+        }
+        return $out;
+    }
+
     public function toArray(): array
     {
         return [
