@@ -200,7 +200,7 @@ def test_unreadable_document_fails_that_document_not_the_run(client: TestClient)
     body = r.json()
     assert body["extractions"][0]["status"] == "failed"
     assert body["extractions"][0]["failure_reason"] == "unreadable"
-    assert [h["reason"] for h in body["handoffs"]] == ["stored_document", "worker_failed", "no_question"]
+    assert [h["reason"] for h in body["handoffs"]] == ["stored_document", "worker_failed", "worker_finished"]
     assert body["usage"] == []
 
 

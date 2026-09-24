@@ -243,12 +243,11 @@ Node = Literal["supervisor", "intake_extractor", "evidence_retriever", "critic",
 #   stored_document      a stored document of a supported type is waiting
 #   question_present     answer mode and a question is waiting
 #   no_documents         extract mode with no documents at all
-#   no_question          nothing left to do (also the label of the final hop
-#                        after an extraction)
+#   no_question          nothing left to do: no worker ran and no question
 #   already_extracted    documents were sent but none is still "stored"
 #   unsupported_doc_type stored documents exist but none of a supported type
-#   worker_finished      a worker reports success (or the final hop after a
-#                        retrieval)
+#   worker_finished      a worker reports success (or the final hop after any
+#                        worker)
 #   worker_failed        a worker reports failure
 HandoffReason = Literal[
     "stored_document",

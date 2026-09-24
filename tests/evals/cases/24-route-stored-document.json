@@ -33,7 +33,7 @@
       [
         "supervisor",
         "done",
-        "no_question"
+        "worker_finished"
       ]
     ]
   }

@@ -170,9 +170,9 @@ writing them; none changes a test today.
   inside the `try` or map the error.
 - **Timeout detection in `llm.propose` is a substring match** on the
   exception text; use the exception type.
-- **`graph.supervisor_node` labels the hop after the extractor `no_question`**
-  rather than `worker_finished`. Pinned by `test_supervisor.py`; decide which
-  is meant and align the contract's enum comment.
+- ~~**`graph.supervisor_node` labels the hop after the extractor `no_question`**~~
+  Fixed 2026-09-23 (T4.3): the closing hop after any worker is
+  `worker_finished`; `no_question` is left for an ending with no worker run.
 - **Idempotency key includes the correlation id**, so a PHP retry that mints
   a new id re-runs the graph; `facts_hash` is not in the key. Documented as
   is; revisit with the retry policy.

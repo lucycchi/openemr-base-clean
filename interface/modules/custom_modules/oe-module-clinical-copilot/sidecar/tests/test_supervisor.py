@@ -50,10 +50,10 @@ def test_already_extracted_document_is_not_re_extracted() -> None:
 
 # Pins the normal extraction route: supervisor -> extractor -> supervisor ->
 # done, exactly once, with one extraction in the result. The final reason
-# is no_question because an extract-mode run carries no question.
+# is worker_finished, as after a retrieval: the hop before it says how the worker did.
 def test_stored_document_goes_to_the_extractor_once_then_done() -> None:
     s = run("extract", None, [doc("stored")])
-    assert hops(s) == [("supervisor", "intake_extractor", "stored_document"), ("intake_extractor", "supervisor", "worker_finished"), ("supervisor", "done", "no_question")]
+    assert hops(s) == [("supervisor", "intake_extractor", "stored_document"), ("intake_extractor", "supervisor", "worker_finished"), ("supervisor", "done", "worker_finished")]
     assert len(s["extractions"]) == 1
 
 
@@ -69,7 +69,7 @@ def test_failed_worker_is_reported_not_retried() -> None:
 
     g = graph.build_graph(failing, graph.stub_retrieve)
     s = graph.run("extract", "abcdefgh", "0" * 64, None, [doc("stored")], graph=g)
-    assert hops(s) == [("supervisor", "intake_extractor", "stored_document"), ("intake_extractor", "supervisor", "worker_failed"), ("supervisor", "done", "no_question")]
+    assert hops(s) == [("supervisor", "intake_extractor", "stored_document"), ("intake_extractor", "supervisor", "worker_failed"), ("supervisor", "done", "worker_finished")]
 
 
 # Pins the answer route: a question goes to the retriever exactly once with

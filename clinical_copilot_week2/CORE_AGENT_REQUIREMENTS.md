@@ -14,7 +14,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 | 1 | Document ingestion and extraction | Met | ~~T1.1~~, ~~T1.2~~ |
 | 2 | Structured schemas | Met | ~~T2.1~~ |
 | 3 | Basic hybrid RAG plus rerank | Met | ~~T3.1~~, ~~T3.2~~ |
-| 4 | Supervisor plus two workers | Partly met | ~~T4.1~~, ~~T4.2~~, T4.3 |
+| 4 | Supervisor plus two workers | Met | ~~T4.1~~, ~~T4.2~~, ~~T4.3~~ |
 | 5 | Citation contract | Met | ~~T5.1~~, ~~T5.2~~ |
 | 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, ~~T6.2~~, T6.3 |
 | 7 | Observability and cost tracking | Partly met | ~~T7.1~~, ~~T7.2~~, T7.3 (deferred) |
@@ -112,7 +112,7 @@ recorded as future work rather than attempted before the deadline.
 | Supervisor decides "final answer is ready" | Met (T4.1 done) | The graph still ends when the evidence is ready; answering stays in PHP, which owns the chart, access checks and the Verifier. PHP now appends the answer stage to the same handoff log (`src/AnswerRoute.php`): `supervisor → answer_writer → verifier → done` with a fixed outcome (`answer_verified`, `answer_refused`, `all_stripped`, `no_claims`), `model_failed`, or `cached_draft` for a cached briefing. It is in the log line and the trace. |
 | Handoffs explicit and logged | Met | `Handoff{from,to,reason,state_keys_changed,ms}` with fixed reasons; one log line per hop; returned in the response; Langfuse worker spans. |
 | Handoffs visible | Met (T4.2 done) | Briefing and answer responses carry `handoffs`, and the panel's "Why this result" drawer shows the full route after every briefing, question and extraction. Checked in the browser: a briefing showed evidence_retriever → critic → answer_writer → verifier → answer verified, and a question showed evidence_retriever → answer_writer → verifier. |
-| Known bug | Open | The hop back from the extractor is labelled `no_question` (TODOS.md). → **T4.3** |
+| Known bug | Fixed (T4.3) | The closing hop after an extraction was labelled `no_question`; it is now `worker_finished`, as after a retrieval. |
 
 ## 5. Citation contract
 
@@ -185,6 +185,6 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [x] **T4.2 Show routing for briefings and questions** in the "Why this result" drawer. Done: `handoffs` on chat responses, drawer rendered after briefings and answers; checked in Selenium Chrome.
 - [x] **T7.2 Name the per-encounter eval outcome** in the docs and trace. Done: `eval_outcome` on every briefing and answer log line and trace.
 - [x] **T3.2 Cap briefing evidence**, or document why the cap is per rule. Decided: the per-topic cap stays (2 per triggered topic, critic-filtered); the reasoning is under requirement 3.
-- [ ] **T4.3 Fix the `no_question` handoff label.**
+- [x] **T4.3 Fix the `no_question` handoff label.** Done: `worker_finished` after any worker; supervisor tests and route case 24 updated.
 - [ ] **T6.3 Judge configuration and fresh results:** state there is no LLM judge, commit current `results.json`, fix README counts.
 - [x] **T3.1 Update `W2_ARCHITECTURE.md`** Done in `a2520f6` (by the submission-docs session; the file moved to the repo root): rerank shown as live, observability covers briefing and follow-up traces.

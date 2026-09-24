@@ -149,11 +149,11 @@ def supervisor_node(state: RunState, critic_enabled: bool = False) -> RunState:
         _hop(state, "supervisor", "evidence_retriever", "question_present", [])
         state["next"] = "evidence_retriever"
         return state
-    # Back from a worker, or nothing left to do.
-    # The closing hop is labelled worker_finished only after a retrieval;
-    # every other ending, including the return from the extractor, is
-    # labelled no_question.
-    reason = "worker_finished" if state.get("retrieved_once") else "no_question"
+    # Back from a worker, or nothing left to do. The closing hop after any
+    # worker (extractor or retriever) is labelled worker_finished; the hop
+    # before it already says whether that worker succeeded or failed.
+    # no_question is left for an ending with no worker run and no question.
+    reason = "worker_finished" if state.get("retrieved_once") or state.get("extracted_once") else "no_question"
     _hop(state, "supervisor", "done", reason, [])
     state["next"] = END
     return state
