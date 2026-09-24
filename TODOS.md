@@ -1,6 +1,6 @@
 # TODOS
 
-## Week 1 grader feedback (open, scheduled for Week 2 Thursday)
+## Week 1 grader feedback (both closed 2026-09-23)
 
 Two items from the Week 1 submission review. Both are documentation, both
 are scheduled as tasks 9.1 and 9.2 in
@@ -17,9 +17,11 @@ are scheduled as tasks 9.1 and 9.2 in
 **Effort:** S
 **Priority:** P1
 
-### USERS.md: personas and use cases are thin
+### ~~USERS.md: personas and use cases are thin~~ (done 2026-09-23)
 
-**What:** Expand the PCP persona (day shape, what they will not read, what "safe to act on" means), add the front-desk uploader persona that Week 2 introduces (permissions, what they see, what they must not see), and add UC4 (a lab PDF arrives before the visit) and UC5 (the intake form contradicts the chart) with the exact click path.
+**Done:** USERS.md now has the PCP's day, what they will not read and what "safe to act on" means; the front-desk uploader persona (permissions, what they see, what they must not see); UC4 and UC5 with click paths; Week 2 rows in the traceability table.
+
+**What (original):** Expand the PCP persona (day shape, what they will not read, what "safe to act on" means), add the front-desk uploader persona that Week 2 introduces (permissions, what they see, what they must not see), and add UC4 (a lab PDF arrives before the visit) and UC5 (the intake form contradicts the chart) with the exact click path.
 
 **Where:** `USERS.md`.
 

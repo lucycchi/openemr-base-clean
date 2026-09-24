@@ -309,7 +309,7 @@ on the droplet.
 
 Tasks 9.1 and 9.2 are the two items from last week's submission feedback.
 
-- [ ] 9.1 `USERS.md`: full PCP persona; front-desk uploader persona (permissions, sees, must not see); UC4 lab PDF before the visit; UC5 intake contradicts the chart, with click paths.
+- [x] 9.1 (done 2026-09-23) `USERS.md`: full PCP persona; front-desk uploader persona (permissions, sees, must not see); UC4 lab PDF before the visit; UC5 intake contradicts the chart, with click paths.
 - [x] 9.2 (done 2026-09-23: COST_AND_LATENCY.md §4) `COST_AND_LATENCY.md` tiers: 1 clinic / 50 / 500 physicians; per tier monthly chat, embedding and rerank spend from measured tokens; pre-warm on/off; cache-hit assumptions; the architectural change each tier forces. Reuse `tests/load/results/` and commit 99d926a.
 - [ ] 9.3 Remaining fixtures (`lab-layout2.pdf` with the "100 in three columns" row, `lab-layout1-scan.pdf`, `lab-missing-unit.pdf`, `lab-multipage.pdf`, `lab-unreadable.pdf`, `intake-blank-fields.pdf`, `intake-freetext.pdf`, `unsupported.pdf`, recorded rerank response) and the 27 remaining cases to reach 50; re-baseline.
 
