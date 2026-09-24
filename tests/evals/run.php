@@ -78,11 +78,13 @@ require_once $root . '/vendor/autoload.php';
 $live = (new ArgvInput())->hasParameterOption('--live', true);
 
 // Cases in "facts" mode persist a recorded extraction and assemble facts from
-// the database (no model), so they need the OpenEMR runtime even when not --live.
+// the database, and deterministic "phi_logs" cases drive the real controllers
+// with a recorded model reply (no model either way), so they need the OpenEMR
+// runtime even when not --live.
 $needsDb = $live;
 foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $p) {
     $c = json_decode((string) file_get_contents($p), true);
-    if (is_array($c) && ($c['mode'] ?? '') === 'facts' && ($c['pending'] ?? false) !== true) {
+    if (is_array($c) && in_array($c['mode'] ?? '', ['facts', 'phi_logs'], true) && ($c['pending'] ?? false) !== true && ($c['live'] ?? false) !== true) {
         $needsDb = true;
     }
 }
@@ -955,7 +957,8 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
     } elseif ($mode === 'absent') {
         $runs[] = runAbsentCase($case);
     } elseif ($mode === 'phi_logs') {
-        // Live: the real controllers with a capturing logger and tracer (tests/evals/phi.php).
+        // The real controllers with a capturing logger and tracer (tests/evals/phi.php); live
+        // cases call the model, deterministic ones replay the case's recorded model reply.
         // The question this mode answers: after a real upload, extract and ask, does any
         // value read from the document, or the question itself, appear in a log line or a
         // trace? The case's "phi" list is JSON pointers into truth.json naming the values
@@ -1117,10 +1120,12 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
             $rubrics[$name] = ($verdict === 'fail' || $prev === 'fail') ? 'fail' : (($verdict === 'pass' || $prev === 'pass') ? 'pass' : 'na');
         }
     }
-    $ok = $mismatches === [];
+    // A case passes only when every expectation matched and no rubric failed: a rubric
+    // can fail with no expectation mismatch (a phi_logs leak, for one).
+    $failedRubrics = array_keys(array_filter($rubrics, fn(string $v) => $v === 'fail'));
+    $ok = $mismatches === [] && $failedRubrics === [];
     $ok ? $pass++ : $fail++;
     $known = (bool) ($case['known_limitation'] ?? false);
-    $failedRubrics = array_keys(array_filter($rubrics, fn(string $v) => $v === 'fail'));
     printf("%-42s %s%s%s\n", $id, $ok ? 'PASS' : 'FAIL', $known ? ' (known limitation: passes by design; see failure_mode)' : '', $failedRubrics === [] ? '' : ' rubrics failed: ' . implode(',', $failedRubrics));
     foreach ($mismatches as $m) {
         echo "    - $m\n";

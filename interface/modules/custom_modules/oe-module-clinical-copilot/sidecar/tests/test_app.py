@@ -235,6 +235,23 @@ def test_eval_anchor_refuses_paths_outside_the_fixtures_dir(client: TestClient) 
     assert r.status_code == 200 and r.json()["status"] == "failed"
 
 
+# /eval/run-recorded answers a real run.request in the run.response shape,
+# through the real graph, with the recorded proposal standing in for the
+# model: the deterministic phi_logs eval cases point PHP's DocumentController
+# at it. No usage means no model call was made.
+def test_eval_run_recorded_answers_a_run_request_without_a_model_call(client: TestClient) -> None:
+    from copilot_sidecar.schemas import RunResponse
+
+    proposal = {"patient_name_on_report": None, "collection_date": "2026-09-15", "reported_date": None, "lab_name": None, "results": []}
+    r = client.post("/eval/run-recorded", json={"run": request(), "proposal": proposal})
+    assert r.status_code == 200, r.text
+    body = RunResponse.model_validate(r.json())
+    assert body.correlation_id == "abcdefgh-0001"
+    assert [e.status for e in body.extractions] == ["failed"]  # the junk bytes do not parse
+    assert body.usage == []
+    assert ("supervisor", "intake_extractor") in [(h.from_, h.to) for h in body.handoffs]
+
+
 # -- brief mode ---------------------------------------------------------------
 
 def test_run_brief_returns_evidence_per_trigger_and_the_route(client: TestClient, monkeypatch) -> None:

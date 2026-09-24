@@ -52,7 +52,7 @@ from . import anchor, contracts, extractor, graph
 from . import retrieve as retrieve_module
 from .llm import PROMPT_VERSION
 from .logging_setup import bind_correlation_id, setup_logging
-from .schemas import IntakeFormProposal, LabReportProposal, RunError, RunRequest, RunResponse, SidecarHealth, SidecarReady, TriggerQuery, CriticVerdict
+from .schemas import CriticVerdict, Extraction, IntakeFormProposal, LabReportProposal, RunDocument, RunError, RunRequest, RunResponse, SidecarHealth, SidecarReady, TriggerQuery, Usage
 
 # Module-level statements run once, when the process imports this file:
 # logging is configured before the first log line, and `app` is the object
@@ -303,6 +303,13 @@ class CriticEvalRequest(BaseModel):
     recorded: CriticVerdict | None = None
 
 
+class RunRecordedEvalRequest(BaseModel):
+    """A run.request exactly as PHP sends it to POST /run, plus the recorded
+    model reply the extractor should use instead of calling the model."""
+    run: dict
+    proposal: dict
+
+
 class BriefEvidenceEvalRequest(BaseModel):
     """Brief-mode retrieval for a list of fired triggers, offline when their
     query text matches the committed vectors."""
@@ -442,6 +449,26 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         finally:
             root.removeHandler(handler)
         return {"correlation_id": cid, "status": outcome.extraction.status, "lines": lines, "extra_keys_seen": sorted(raw_keys), "allowlist": sorted(ALLOWED)}
+
+    @app.post("/eval/run-recorded")
+    def eval_run_recorded(req: RunRecordedEvalRequest) -> dict:
+        """What POST /run answers for an extract request, with the extractor
+        given a recorded model reply instead of calling the model. The eval
+        harness points the real PHP DocumentController here, so its logging,
+        tracing and persistence run in the pre-push gate without an API key
+        (the deterministic no_phi_in_logs cases)."""
+        run_req = RunRequest.model_validate(req.run)
+        bind_correlation_id(run_req.correlation_id)
+
+        def recorded_extract(doc: RunDocument, correlation_id: str) -> tuple[Extraction, list[Usage]]:
+            model = LabReportProposal if doc.doc_type == "lab_pdf" else IntakeFormProposal
+            outcome = extractor.extract(doc.document_id, doc.doc_type, extractor.decode(doc.bytes_base64), correlation_id, proposal=model.model_validate(req.proposal))
+            return outcome.extraction, outcome.usage
+
+        g = graph.build_graph(recorded_extract, graph.no_retrieve)
+        state = graph.run(run_req.mode, run_req.correlation_id, run_req.facts_hash, run_req.question, run_req.documents, graph=g, queries=run_req.queries, patient=run_req.patient, facts=run_req.facts)
+        resp = RunResponse(correlation_id=run_req.correlation_id, extractions=state["extractions"], chunks=state["chunks"], evidence=state.get("evidence", []), handoffs=state["handoffs"], usage=state["usage"])
+        return json.loads(resp.model_dump_json(by_alias=True))
 
     @app.post("/eval/extract")
     def eval_extract(req: AnchorEvalRequest) -> dict:

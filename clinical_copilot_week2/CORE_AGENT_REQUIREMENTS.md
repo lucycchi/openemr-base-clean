@@ -16,7 +16,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 | 3 | Basic hybrid RAG plus rerank | Met (docs out of date) | T3.1, T3.2 |
 | 4 | Supervisor plus two workers | Partly met | T4.1, T4.2, T4.3 |
 | 5 | Citation contract | Partly met | T5.1, T5.2 |
-| 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, T6.2, T6.3 |
+| 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, ~~T6.2~~, T6.3 |
 | 7 | Observability and cost tracking | Partly met | T7.1, T7.2, T7.3 |
 
 The tasks are worked in the order in the [task list](#task-list), riskiest to
@@ -116,8 +116,8 @@ grading first.
 
 | Part | Status | Evidence |
 |---|---|---|
-| 50-case golden set | Met | 68 cases: 52 run by the hook, 16 live. They cover extraction, retrieval, citations, refusals and missing data ([EVAL_GATE.md](../EVAL_GATE.md)). |
-| Five rubric categories | Partly met | All five exist, but **`no_phi_in_logs` is never scored by the hook**: only live cases score it, so the default run shows `n/a`. Three live extraction cases also pass it without scanning anything. → **T6.2** |
+| 50-case golden set | Met | 70 cases: 54 run by the hook, 16 live. They cover extraction, retrieval, citations, refusals and missing data ([EVAL_GATE.md](../EVAL_GATE.md)). |
+| Five rubric categories | Met (T6.2 done) | All five are scored by the hook. `no_phi_in_logs` comes from cases 69 and 70: the real upload and extract controllers with a recorded model reply (sidecar `/eval/run-recorded`), scanning PHP logs, traces and sidecar logs. A planted leak fails both cases and the gate. Cases 19, 20 and 22 no longer claim the rubric they never scanned. |
 | Fails on >5% regression or below threshold | Met (T6.1 done) | `gate.php` fails below threshold, and for the deterministic cases the hook runs, on **any** case that flipped from pass to fail. Before T6.1 a single broken case in a 90% rubric (a 3.3-point drop) passed; the self-test now flips exactly that and requires a refusal. Live cases keep the 5-point allowance for model variance. |
 | Git hook blocks pushes | Met | Pre-push hook, proven from a fresh clone ([EVAL_GATE.md](../EVAL_GATE.md) §5). Client-side only; GitLab refuses student pipelines. |
 | Judge configuration and results | Partly met | No LLM judge (every rubric is a code check), but no document says so. `tests/evals/results.json` is from 2026-09-22 and covers cases 1-52 only; README counts are stale. → **T6.3** |
@@ -145,8 +145,8 @@ grading first.
 
 Ordered by risk to grading. Each task is closed only after it is verified.
 
-- [x] **T6.1 Make the gate catch a single regressed case.** Done: any flip fails for deterministic cases; the self-test flips one `factually_consistent` verdict (96.7%, above threshold) and the gate refuses it, where the old rule said `ok`. The grader's "small regression" may break one case; today that can pass. Decide the rule, change `gate.php`, extend `--self-test`, update EVAL_GATE.md.
-- [ ] **T6.2 Score `no_phi_in_logs` in the hook.** Add deterministic cases that run the real logging path with recorded model output, and stop the three live extraction cases passing it vacuously.
+- [x] **T6.1 Make the gate catch a single regressed case.** Done: any flip fails for deterministic cases; the self-test flips one `factually_consistent` verdict (about 97%, above threshold) and the gate refuses it, where the old rule said `ok`.
+- [x] **T6.2 Score `no_phi_in_logs` in the hook.** Done: cases 69 and 70 (no key needed) score it at 100%; a planted leak in the controller's log line takes it to 0% and the gate refuses. Also fixed: a case with a failed rubric now prints FAIL (it printed PASS). Add deterministic cases that run the real logging path with recorded model output, and stop the three live extraction cases passing it vacuously.
 - [ ] **T5.1 Guideline citations in the five-field shape.** Emit `{source_type, source_id, page_or_section, field_or_chunk_id, quote_or_value}` for guideline evidence and attach resolved citations to each sentence; update the contracts and cases.
 - [ ] **T4.1 Supervisor decides "final answer is ready".** Either bring answer verification into the graph's decision or document the split.
 - [ ] **T1.1 Intake items as OpenEMR records.** Decide whether patient-reported meds/allergies go to OpenEMR lists, or document why they stay separate.

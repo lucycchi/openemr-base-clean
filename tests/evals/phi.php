@@ -5,10 +5,17 @@
  * DocumentController (upload + extract) and ChatController (ask) in-process
  * with a capturing logger and a capturing tracer, and returns every log
  * record and trace payload so run.php can scan them. Needs the full
- * OpenEMR runtime (run.php --live boots it). The upload is removed
- * afterwards so the seed data stays as seeded. run.php pairs each case with
- * the sidecar's own log lines for the same fixture (POST /eval/phi) and also
- * requires every one of those lines to carry the request's correlation id.
+ * OpenEMR runtime, which run.php boots whenever a phi_logs case will run.
+ * The upload is removed afterwards so the seed data stays as seeded.
+ * run.php pairs each case with the sidecar's own log lines for the same
+ * fixture (POST /eval/phi) and also requires every one of those lines to
+ * carry the request's correlation id.
+ *
+ * Live cases call the model. Deterministic cases (no "live": true) run in
+ * the pre-push gate without an API key: the controller's sidecar call goes
+ * to the test-only /eval/run-recorded with the case's recorded model reply,
+ * and the case gets a throwaway patient, so it also runs on a fresh
+ * clone's empty database.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -23,17 +30,24 @@ namespace OpenEMR\Tests\Evals;
 
 use DateTimeImmutable;
 use Document;
+use GuzzleHttp\Client;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use GuzzleHttp\Psr7\Utils;
 use Monolog\Handler\TestHandler;
 use Monolog\Logger;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Common\Session\PatientSessionUtil;
 use OpenEMR\Common\Session\SessionWrapperFactory;
+use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\Controller\ChatController;
 use OpenEMR\Modules\ClinicalCopilot\Controller\DocumentController;
+use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarClient;
 use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
 use OpenEMR\Modules\ClinicalCopilot\Row;
+use Psr\Http\Message\RequestInterface;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
@@ -69,8 +83,16 @@ function runPhiCase(array $case): array
     $session->set('authUser', 'admin');
     $session->set('authUserID', 1);
     $session->set('authProvider', 'Default');
+    // A deterministic case runs in the pre-push gate on any database, a fresh clone's empty
+    // one included, so it gets a throwaway patient one above the highest pid (removed below).
+    $recorded = ($case['live'] ?? false) !== true;
+    $throwawayPid = null;
+    if ($recorded) {
+        $throwawayPid = intOf(QueryUtils::fetchSingleValue("SELECT MAX(pid) AS m FROM patient_data", 'm')) + 1;
+        QueryUtils::sqlInsert("INSERT INTO patient_data (pid, fname, lname, DOB, sex) VALUES (?, 'Eval', 'PhiLogs', '1980-05-05', 'Female')", [$throwawayPid]);
+    }
     $newest = QueryUtils::querySingleRow("SELECT pid FROM patient_data ORDER BY pid DESC LIMIT 1");
-    $pid = int($case, 'pid', is_array($newest) ? Row::int($newest, 'pid') : 0);
+    $pid = $throwawayPid ?? int($case, 'pid', is_array($newest) ? Row::int($newest, 'pid') : 0);
     PatientSessionUtil::setPid($pid);
     CsrfUtils::setupCsrfKey($session);
     $csrf = CsrfUtils::collectCsrfToken($session);
@@ -86,6 +108,8 @@ function runPhiCase(array $case): array
     if ($hasFixture) {
         copy($fixture, $tmp);
     }
+    // Deterministic cases send the controller's sidecar call to the recorded model reply.
+    $sidecar = $recorded ? recordedSidecar(jsonFile(__DIR__ . '/fixtures/docs/' . str($case, 'model_output'))) : null;
     $documentId = null;
     $status = null;
     $answerType = null;
@@ -103,13 +127,18 @@ function runPhiCase(array $case): array
         $seededSoap = (int) QueryUtils::sqlInsert("INSERT INTO form_soap (date, pid, user, groupname, authorized, activity, subjective, objective, assessment, plan) VALUES (?, ?, 'admin', 'Default', 1, 1, '', '', '', ?)", [$yesterday, $pid, $case['soap_plan']]);
         QueryUtils::sqlInsert("INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir) VALUES (?, ?, 'SOAP', ?, ?, 'admin', 'Default', 1, 0, 'soap')", [$yesterday, $encounterNumber, $seededSoap, $pid]);
     }
+    // The controllers set HTTP headers and a status code; in this CLI run the harness has
+    // already printed progress lines, so PHP warns that headers were already sent. Those
+    // warnings (and only those) are silenced while the controllers run; any other
+    // warning still goes to the default handler.
+    set_error_handler(static fn(int $no, string $msg): bool => $no === E_WARNING && (str_contains($msg, 'headers already sent') || str_contains($msg, 'Cannot set response code')));
     try {
         // Upload through the real controller. The controller echoes its JSON reply, so
         // output buffering (ob_start / ob_get_clean) captures it as a string instead.
         if ($hasFixture) {
             $req = Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'upload', 'doc_type' => str($case, 'doc_type')], [], ['file' => new UploadedFile($tmp, basename($fixture), 'application/pdf', null, true)]);
             ob_start();
-            (new DocumentController($logger, $req, null, $tracer))->handleRequest();
+            (new DocumentController($logger, $req, null, $tracer, null, null, $sidecar))->handleRequest();
             $body = json_decode((string) ob_get_clean(), true);
             $bodies['upload'] = $body;
             $documentId = is_array($body) && is_int($body['document_id'] ?? null) ? $body['document_id'] : null;
@@ -117,12 +146,12 @@ function runPhiCase(array $case): array
         if ($documentId !== null) {
             $req = Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'extract', 'document_id' => (string) $documentId]);
             ob_start();
-            (new DocumentController($logger, $req, null, $tracer))->handleRequest();
+            (new DocumentController($logger, $req, null, $tracer, null, null, $sidecar))->handleRequest();
             $body = json_decode((string) ob_get_clean(), true);
             $bodies['extract'] = $body;
             $status = is_array($body) && is_string($body['status'] ?? null) ? $body['status'] : null;
             ob_start();
-            (new DocumentController($logger, Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'list']), null, $tracer))->handleRequest();
+            (new DocumentController($logger, Request::create('/documents.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'list']), null, $tracer, null, null, $sidecar))->handleRequest();
             $bodies['list'] = json_decode((string) ob_get_clean(), true);
         }
         if (is_string($case['question'] ?? null) || $seededSoap !== null) {
@@ -141,6 +170,7 @@ function runPhiCase(array $case): array
             $answerType = is_string($type) ? $type : null;
         }
     } finally {
+        restore_error_handler();
         @unlink($tmp);
         if ($documentId !== null) {
             removeDocument($documentId);
@@ -154,6 +184,9 @@ function runPhiCase(array $case): array
             QueryUtils::sqlStatementThrowException("DELETE FROM form_encounter WHERE id = ?", [$seededEncounter]);
         }
         QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$pid]);
+        if ($throwawayPid !== null) {
+            QueryUtils::sqlStatementThrowException("DELETE FROM patient_data WHERE pid = ?", [$throwawayPid]);
+        }
     }
     // Render each log record as "message {context}" for the text scan, and collect the set of
     // context keys for the allowlist check in run.php.
@@ -166,6 +199,27 @@ function runPhiCase(array $case): array
         }
     }
     return ['logs' => $logs, 'traces' => $tracer->payloads, 'log_keys' => array_keys($keys), 'status' => $status, 'answer_type' => $answerType, 'document_id' => $documentId, 'bodies' => $bodies];
+}
+
+/**
+ * A SidecarClient for the deterministic PHI cases. The controller's POST /run
+ * is sent to the sidecar's test-only /eval/run-recorded with the case's
+ * recorded model reply attached, so extraction runs without a model call
+ * while everything the controller logs, traces and persists is the real path.
+ *
+ * @param array<string, mixed> $proposal
+ */
+function recordedSidecar(array $proposal): SidecarClient
+{
+    $stack = HandlerStack::create();
+    $stack->push(Middleware::mapRequest(static function (RequestInterface $request) use ($proposal): RequestInterface {
+        $run = json_decode((string) $request->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        return $request
+            ->withUri($request->getUri()->withPath('/eval/run-recorded'))
+            ->withoutHeader('Content-Length')
+            ->withBody(Utils::streamFor(json_encode(['run' => $run, 'proposal' => $proposal], JSON_THROW_ON_ERROR)));
+    }));
+    return new SidecarClient(new Client(['handler' => $stack, 'timeout' => 60.0, 'connect_timeout' => 5.0]), Config::fromEnvironment());
 }
 
 /**

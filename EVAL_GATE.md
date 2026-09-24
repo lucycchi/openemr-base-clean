@@ -22,7 +22,7 @@ All of these are committed.
 | Briefing and follow-up prompts, plus the model's output schemas (`Prompt::VERSION`) | [interface/modules/custom_modules/oe-module-clinical-copilot/src/Prompt.php](interface/modules/custom_modules/oe-module-clinical-copilot/src/Prompt.php) |
 | Document extraction and guideline-critic prompts (`PROMPT_VERSION`) | [interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/llm.py](interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/llm.py) (`SYSTEM`, `CRITIC_SYSTEM`) |
 | Schemas (the contracts every output is validated against) | [interface/modules/custom_modules/oe-module-clinical-copilot/contracts/](interface/modules/custom_modules/oe-module-clinical-copilot/contracts/) (30 `*.schema.json`, with examples) |
-| Golden set: cases | [tests/evals/cases/](tests/evals/cases/): 68 cases, 52 deterministic and 16 live. Each case declares what it guards and the failure it catches; the table is in [tests/evals/README.md](tests/evals/README.md#cases-and-the-failure-mode-each-guards) |
+| Golden set: cases | [tests/evals/cases/](tests/evals/cases/): 70 cases, 54 deterministic and 16 live. Each case declares what it guards and the failure it catches; the table is in [tests/evals/README.md](tests/evals/README.md#cases-and-the-failure-mode-each-guards) |
 | Golden set: fixtures | [tests/evals/fixtures/](tests/evals/fixtures/): documents with `truth.json` answer keys, and committed query vectors |
 | Baselines the gate compares against | [tests/evals/baseline.json](tests/evals/baseline.json) (deterministic) and [tests/evals/baseline-live.json](tests/evals/baseline-live.json) (live) |
 | Gate logic, rubrics and thresholds | [tests/evals/gate.php](tests/evals/gate.php), harness [tests/evals/run.php](tests/evals/run.php), wrapper [tests/evals/gate.sh](tests/evals/gate.sh) |
@@ -85,7 +85,7 @@ Rubrics and thresholds:
 
 - any rubric's pass rate is below its minimum; or
 - **any** case that passed a rubric in the baseline now fails it. This applies
-  to the 52 deterministic cases the hook runs. They replay recorded model
+  to the 54 deterministic cases the hook runs. They replay recorded model
   output, so a flip is always a real regression, and a single broken case in
   a 90% rubric (a drop of about 3 points) is still refused. This is stricter
   than the PRD's 5% rule.
@@ -98,8 +98,12 @@ The safety rubrics sit at 100% because one wrong citation, one leaked
 identifier or one mis-anchored value is one too many.
 
 Not counted: a verdict of `na` (the rubric doesn't apply to that case) and
-pending cases. `no_phi_in_logs` is scored only by live cases, so it reads
-`n/a` in the default run. A baseline changes only through
+pending cases. `no_phi_in_logs` is scored in the default run by two cases
+(69 and 70). They upload and extract a lab report and an intake form through
+the real controllers, with the sidecar replaying a recorded model reply, and
+scan every PHP log line, trace and sidecar log line for the document's
+identifiers and values. The live cases add the briefing and question paths.
+A baseline changes only through
 `gate.sh pre-push --update-baseline`, committed together with the change that
 justifies it.
 
@@ -107,7 +111,7 @@ justifies it.
 
 | Run | Needs |
 |---|---|
-| Default gate (what `git push` runs) | **Nothing.** The 52 deterministic cases replay recorded model output and make no external API calls. |
+| Default gate (what `git push` runs) | **Nothing.** The 54 deterministic cases replay recorded model output and make no external API calls. |
 | Live cases (`COPILOT_GATE_LIVE=1`) | `OPENAI_API_KEY` in a `.env` file at the repo root (read by both containers). Optional: `OPENAI_MODEL`, and `COHERE_API_KEY` for reranking. Without a key the live cases are skipped with a note, never failed. |
 
 Set by the stack itself; nothing to configure: `COPILOT_SIDECAR_URL`, and
@@ -163,8 +167,8 @@ What the log shows, in order:
 To reproduce: after section 2, `tests/evals/install-hooks.sh --self-test`
 flips a single recorded verdict to a failure, in the rubric with the lowest
 threshold (`factually_consistent`, 90%), and requires the gate to refuse it.
-That one flip leaves the rate at 96.7%, above the threshold, so only the
-any-flip rule catches it. The manual version is
-the one above: delete the `$sentence->factIds === []` line in
+That one flip leaves the rate at about 97% (96.9% with 32 scored cases),
+above the threshold, so only the any-flip rule catches it. The manual version
+is the one above: delete the `$sentence->factIds === []` line in
 [Verifier.php](interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php),
 commit, and `git push`.

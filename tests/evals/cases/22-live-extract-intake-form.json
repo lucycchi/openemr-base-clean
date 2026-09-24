@@ -11,8 +11,7 @@
     "schema_valid": true,
     "citation_present": true,
     "anchor_correct": true,
-    "factually_consistent": true,
-    "no_phi_in_logs": true
+    "factually_consistent": true
   },
   "expect": {
     "status": "extracted"

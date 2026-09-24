@@ -43,22 +43,19 @@
             "schema_valid": "pass",
             "citation_present": "pass",
             "anchor_correct": "pass",
-            "factually_consistent": "pass",
-            "no_phi_in_logs": "pass"
+            "factually_consistent": "pass"
         },
         "20-live-extract-lab-layout1-scan": {
             "schema_valid": "pass",
             "citation_present": "pass",
             "anchor_correct": "pass",
-            "factually_consistent": "pass",
-            "no_phi_in_logs": "pass"
+            "factually_consistent": "pass"
         },
         "22-live-extract-intake-form": {
             "schema_valid": "pass",
             "citation_present": "pass",
             "anchor_correct": "pass",
-            "factually_consistent": "pass",
-            "no_phi_in_logs": "pass"
+            "factually_consistent": "pass"
         },
         "36-phi-lab-upload-logs": {
             "schema_valid": "pass",
