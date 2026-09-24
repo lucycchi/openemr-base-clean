@@ -11,7 +11,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 
 | # | Requirement | Status | Open tasks |
 |---|---|---|---|
-| 1 | Document ingestion and extraction | Partly met | T1.1, T1.2 |
+| 1 | Document ingestion and extraction | Partly met | ~~T1.1~~, T1.2 |
 | 2 | Structured schemas | Partly met | T2.1 |
 | 3 | Basic hybrid RAG plus rerank | Met | ~~T3.1~~, T3.2 |
 | 4 | Supervisor plus two workers | Partly met | ~~T4.1~~, T4.2, T4.3 |
@@ -38,7 +38,34 @@ grading first.
 | Source stored in OpenEMR | Met | `Document::createDocument` into the standard `documents` table ("Lab Report" / "Patient Information" categories), `DocumentStore.php`. |
 | Strict-schema JSON | Partly met | The sidecar reply is validated against the contract before anything is saved (`SidecarClient.php`, `Contracts.php`), but the tool **returns only a summary** (counts, status), not the validated extraction JSON. → **T1.2** |
 | Lab values as OpenEMR/FHIR records | Met | Anchored results become `procedure_order` / `procedure_report` / `procedure_result` rows with UUIDs, so they appear as FHIR Observations (`DocumentIngestService.php`). Dedup by file hash and by (LOINC, date, value). |
-| Intake items as OpenEMR/FHIR records | Partly met | Medications, allergies, family history and chief concern are saved only in the module's own `copilot_intake` table, not in OpenEMR's medication / allergy lists. This is deliberate (patient-reported, unverified), but the PRD says "appropriate FHIR resources or OpenEMR records". → **T1.1** |
+| Intake items as OpenEMR/FHIR records | Met by decision (T1.1) | Medications, allergies, family history and chief concern are OpenEMR database records in the module's `copilot_intake` table, each with its page and bounding box, linked to the stored document. They are deliberately **not** filed into OpenEMR's medication and allergy lists; see [the decision below](#decision-intake-items-stay-patient-reported). |
+
+### Decision: intake items stay patient-reported
+
+The PRD asks for derived facts to be persisted as "appropriate" FHIR resources
+or OpenEMR records. For an intake form, the appropriate record is a
+patient-reported one, not an entry in the chart's medication or allergy list:
+
+- **They are unreviewed.** An intake form is what the patient wrote at the
+  front desk. Filing "penicillin allergy" or "metformin 500 mg" straight into
+  the chart's lists would put unverified entries in front of every clinician
+  who opens the chart, pharmacy checks included, before anyone has confirmed
+  them.
+- **They would duplicate.** Most intake medications are already on the list,
+  under a different spelling or dose. Automatic filing needs matching and
+  reconciliation, which is a clinician's job (medication reconciliation), not
+  an extractor's.
+- **They are still records, with provenance.** Each item is a row in
+  `copilot_intake` tied to the stored OpenEMR document, with its page and
+  bounding box. The briefing shows each one as a cited fact marked as coming
+  from the intake form: medications and allergies must be surfaced, and a
+  name or date of birth that disagrees with the chart is flagged, never stored.
+- **Lab values are different.** A lab report is a clinical source document,
+  so its anchored results are filed as real OpenEMR lab results
+  (`procedure_result`, visible as FHIR Observations).
+
+The right next step is a clinician-confirmed "add to chart" action per item,
+recorded as future work rather than attempted before the deadline.
 
 ## 2. Structured schemas
 
@@ -149,7 +176,7 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [x] **T6.2 Score `no_phi_in_logs` in the hook.** Done: cases 69 and 70 (no key needed) score it at 100%; a planted leak in the controller's log line takes it to 0% and the gate refuses. Also fixed: a case with a failed rubric now prints FAIL (it printed PASS). Add deterministic cases that run the real logging path with recorded model output, and stop the three live extraction cases passing it vacuously.
 - [x] **T5.1 Guideline citations in the five-field shape.** Done: `citation` on every guideline passage, `citations` on every sentence, contracts updated, `ContractsTest` covers chart and guideline citations in answers and briefings.
 - [x] **T4.1 Supervisor decides "final answer is ready".** Done: the answer stage is logged as handoffs with a fixed ready/refused/stripped/failed outcome (`AnswerRoute`), checked on a real briefing through the controller. Either bring answer verification into the graph's decision or document the split.
-- [ ] **T1.1 Intake items as OpenEMR records.** Decide whether patient-reported meds/allergies go to OpenEMR lists, or document why they stay separate.
+- [x] **T1.1 Intake items as OpenEMR records.** Decided: they stay patient-reported in `copilot_intake`, with the clinical reasons written up under requirement 1; a clinician-confirmed "add to chart" action is future work.
 - [ ] **T5.2 One click from a claim to the PDF overlay.**
 - [ ] **T7.1 Retrieval hits on every encounter**, including briefings; record retrieved as well as cited.
 - [ ] **T7.3 PHP runtime log allowlist**, matching the sidecar's.
