@@ -95,6 +95,19 @@ def test_contract_and_model_accept_the_same_documents(name: str) -> None:
 
 # Pins housekeeping: an example file with no matching schema file is a
 # renamed or deleted contract whose examples would otherwise test nothing.
+# The models are strict about types, as the JSON Schemas are: a string is
+# not an int, a string is not a bool. Dates are the one exception, since JSON
+# carries them as ISO strings (the lab-report examples above cover that).
+def test_models_refuse_values_of_the_wrong_type() -> None:
+    schemas.Usage.model_validate({"model": "m", "kind": "chat", "input": 5, "output": 1})
+    with pytest.raises(ValidationError):
+        schemas.Usage.model_validate({"model": "m", "kind": "chat", "input": "5", "output": 1})
+    citation = {"source_type": "chart", "source_id": "PrescriptionService#17", "page_or_section": "drug", "field_or_chunk_id": "rx0001", "quote_or_value": "Lisinopril 10 MG", "anchored": True}
+    schemas.Citation.model_validate(citation)
+    with pytest.raises(ValidationError):
+        schemas.Citation.model_validate({**citation, "anchored": "true"})
+
+
 def test_every_example_file_names_a_contract() -> None:
     for path in EXAMPLES.glob("*.examples.json"):
         name = path.name[: -len(".examples.json")]

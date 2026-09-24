@@ -44,17 +44,26 @@ Notes for readers new to Python and Pydantic:
 from __future__ import annotations
 
 from datetime import date
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
+
+
+# A date that arrives as an ISO string ("2026-09-15") in JSON. Strict mode
+# refuses a string for a date, and JSON has no date type, so these fields
+# (and only these) still parse the ISO form.
+IsoDate = Annotated[date, Field(strict=False)]
 
 
 class Strict(BaseModel):
     """Base class for every model in this file. `extra="forbid"` makes
     Pydantic reject any key the model does not declare, so a typo or a
     smuggled field is an error rather than ignored. The contract files
-    say additionalProperties: false; this is the Python side of that."""
-    model_config = ConfigDict(extra="forbid")
+    say additionalProperties: false; this is the Python side of that.
+    `strict=True` stops Pydantic quietly converting types: "1" is not an
+    int and "true" is not a bool, as in the JSON Schemas. Dates are the one
+    exception (IsoDate)."""
+    model_config = ConfigDict(extra="forbid", strict=True)
 
 
 # ---- Contract models -------------------------------------------------------
@@ -158,9 +167,9 @@ class LabReport(Strict):
     # apart, and so Pydantic can pick the right one when both are allowed.
     doc_type: Literal["lab_pdf"] = "lab_pdf"
     patient_name_on_report: str | None  # as printed; PHP compares it to the chart
-    collection_date: date  # required: a report with no specimen date is refused
+    collection_date: IsoDate  # required: a report with no specimen date is refused
     collection_date_citation: Citation
-    reported_date: date | None
+    reported_date: IsoDate | None
     reported_date_citation: Citation | None
     lab_name: str | None
     # At least one result: a report with none is not a lab report and is
@@ -215,7 +224,7 @@ class IntakeFamilyHistory(Strict):
 class IntakeForm(Strict):
     """The whole extracted intake form."""
     doc_type: Literal["intake_form"] = "intake_form"
-    form_date: date | None
+    form_date: IsoDate | None
     form_date_citation: Citation | None
     demographics: Demographics
     chief_concern: CitedString | None
