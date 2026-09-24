@@ -41,8 +41,11 @@ push gate. `install-hooks.sh` installs it as `.git/hooks/pre-push`.
 | `applicability_correct` | Critic verdict equals `expect.applicable` (critic mode) | 100% |
 
 Rule: fail if any rubric is below its threshold, or if a case that passed a
-rubric in the baseline now fails it and the rubric's rate over the common
-case ids drops more than 5 points. Verdicts are `pass`, `fail` or `na` (the
+rubric in the baseline now fails it. For deterministic cases any such flip
+fails (they replay recorded output, so a flip is a real regression, and one
+broken case in a 90% rubric must not slip through). For live cases, which
+vary with the model, the rubric's rate over the common case ids must also
+drop more than 5 points. Verdicts are `pass`, `fail` or `na` (the
 rubric is declared but not decidable for that mode; never counted). Pending
 cases (`"pending": true`, implementation not landed) are skipped.
 Deterministic cases compare with `baseline.json`; live cases with

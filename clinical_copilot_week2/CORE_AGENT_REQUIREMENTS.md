@@ -1,0 +1,163 @@
+# Core agent requirements: status and tasks
+
+The seven **Core Agent Requirements** from the Week 2 PRD (pages 4-5), checked
+against the code on `pdf_reader` on 2026-09-23. Each requirement quotes the PRD,
+gives its status, and links the evidence. Every gap becomes a task.
+
+Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
+**Not met**.
+
+## Summary
+
+| # | Requirement | Status | Open tasks |
+|---|---|---|---|
+| 1 | Document ingestion and extraction | Partly met | T1.1, T1.2 |
+| 2 | Structured schemas | Partly met | T2.1 |
+| 3 | Basic hybrid RAG plus rerank | Met (docs out of date) | T3.1, T3.2 |
+| 4 | Supervisor plus two workers | Partly met | T4.1, T4.2, T4.3 |
+| 5 | Citation contract | Partly met | T5.1, T5.2 |
+| 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, T6.2, T6.3 |
+| 7 | Observability and cost tracking | Partly met | T7.1, T7.2, T7.3 |
+
+The tasks are worked in the order in the [task list](#task-list), riskiest to
+grading first.
+
+---
+
+## 1. Document ingestion and extraction
+
+> Implement attach_and_extract(patient_id, file_path, doc_type) or an equivalent
+> tool. It must support lab_pdf and intake_form. It must store the source
+> document in OpenEMR, return strict-schema JSON, and persist derived facts as
+> appropriate FHIR resources or OpenEMR records.
+
+| Part | Status | Evidence |
+|---|---|---|
+| Equivalent tool | Met | `copilot:attach <pid> <file> <doc_type>` ([AttachCommand.php](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Command/AttachCommand.php)); the UI uses upload + extract in `public/documents.php`. Both share `ExtractionRunner`. |
+| lab_pdf and intake_form | Met | `DocType` enum (`src/Documents/DocType.php`), matching Pydantic literal in the sidecar. |
+| Source stored in OpenEMR | Met | `Document::createDocument` into the standard `documents` table ("Lab Report" / "Patient Information" categories), `DocumentStore.php`. |
+| Strict-schema JSON | Partly met | The sidecar reply is validated against the contract before anything is saved (`SidecarClient.php`, `Contracts.php`), but the tool **returns only a summary** (counts, status), not the validated extraction JSON. → **T1.2** |
+| Lab values as OpenEMR/FHIR records | Met | Anchored results become `procedure_order` / `procedure_report` / `procedure_result` rows with UUIDs, so they appear as FHIR Observations (`DocumentIngestService.php`). Dedup by file hash and by (LOINC, date, value). |
+| Intake items as OpenEMR/FHIR records | Partly met | Medications, allergies, family history and chief concern are saved only in the module's own `copilot_intake` table, not in OpenEMR's medication / allergy lists. This is deliberate (patient-reported, unverified), but the PRD says "appropriate FHIR resources or OpenEMR records". → **T1.1** |
+
+## 2. Structured schemas
+
+> Use Pydantic, Zod, or equivalent strict schemas. Required lab fields include
+> at least test name, value, unit, reference range, collection date, abnormal
+> flag, and source citation. Required intake fields include demographics fields,
+> chief concern, current medications, allergies, family history, and source
+> citation.
+
+| Part | Status | Evidence |
+|---|---|---|
+| All required lab fields | Met | `LabResult` / `LabReport` in `sidecar/copilot_sidecar/schemas.py`; `contracts/lab-report.schema.json`. |
+| All required intake fields | Met | `IntakeForm` (demographics, chief_concern, medications, allergies, family_history, a citation on every item); `contracts/intake-form.schema.json`. |
+| Strict | Partly met | Every model forbids unknown fields (`extra="forbid"`), and the JSON Schemas forbid extra keys. But Pydantic's **strict typing is off**, so `"1"` is accepted as an int and `"true"` as a bool. The PHP-side JSON Schema check catches wrong types, so the end-to-end path is strict, but the models alone are not. → **T2.1** |
+| Validation tests | Met | `sidecar/tests/test_contracts.py` (JSON Schema and Pydantic accept/reject the same examples), `ContractExamplesTest.php`, `SidecarClientTest.php`, `DocumentIngestServiceTest.php`. |
+
+## 3. Basic hybrid RAG plus rerank
+
+> Index a small clinical-guideline corpus. Retrieve with sparse+dense search,
+> rerank candidate chunks with Cohere Rerank or an equivalent reranker, and
+> feed only the top grounded evidence to the answer model.
+
+| Part | Status | Evidence |
+|---|---|---|
+| Small corpus | Met | 6 guideline summaries, 30 chunks (`sidecar/corpus/`). |
+| Sparse + dense | Met | BM25 plus `text-embedding-3-small` with committed vectors, fused by reciprocal rank (`retrieve.py`). |
+| Rerank | Met | Cohere `rerank-v3.5`. `COHERE_API_KEY` is set on the droplet and reranking shows in its sidecar log (checked 2026-09-23). **`W2_ARCHITECTURE.md` still says rerank is inactive.** → **T3.1**. With no key, or on a Cohere error, it quietly falls back to fused order; only the trace's `reranked` flag shows it. |
+| Only top evidence to the model | Met, one caveat | Follow-up answers get the top 5 chunks. The briefing gets 2 per triggered guideline rule, up to 12 chunks, filtered by the critic. → **T3.2** |
+
+## 4. Supervisor plus two workers
+
+> Use LangGraph, the OpenAI Agents SDK, or another inspectable orchestration
+> framework. Required workers are intake-extractor and evidence-retriever.
+>
+> (Stage 3) The supervisor should decide when extraction is needed, when
+> evidence retrieval is needed, and when the final answer is ready. Keep
+> handoffs explicit.
+
+| Part | Status | Evidence |
+|---|---|---|
+| Inspectable framework | Met | LangGraph `StateGraph` (`sidecar/copilot_sidecar/graph.py`). |
+| intake-extractor, evidence-retriever | Met | Nodes `intake_extractor`, `evidence_retriever` (plus an optional critic). |
+| Supervisor decides extraction / retrieval | Met | Deterministic rules in `supervisor_node`; PHP chooses the request mode first. |
+| Supervisor decides "final answer is ready" | Not met as worded | The graph ends when retrieval is done; the answer is written and verified in PHP afterwards (`NarrationPipeline.php`). → **T4.1** |
+| Handoffs explicit and logged | Met | `Handoff{from,to,reason,state_keys_changed,ms}` with fixed reasons; one log line per hop; returned in the response; Langfuse worker spans. |
+| Handoffs visible | Partly met | The "Why this result" drawer shows routing only after a document extraction, not for briefings or questions. → **T4.2** |
+| Known bug | Open | The hop back from the extractor is labelled `no_question` (TODOS.md). → **T4.3** |
+
+## 5. Citation contract
+
+> Every clinical claim in the final response must include machine-readable
+> citation metadata. Minimum citation shape: {source_type, source_id,
+> page_or_section, field_or_chunk_id, quote_or_value}. A visual PDF
+> bounding-box overlay is required.
+
+| Part | Status | Evidence |
+|---|---|---|
+| Five-field shape defined | Met | `contracts/citation.schema.json` has exactly the five fields, plus `bbox`, `row_bbox`, `anchored`. |
+| Chart and document facts cited | Met | `Fact::citationOrChart()`; lab/intake facts carry document citations with boxes. |
+| Guideline evidence cited in the same shape | Not met | Guideline chunks use `{chunk_id, source_id, title, section, quote, url, score}`: the same information under different names. → **T5.1** |
+| Every sentence carries its citation | Partly met | Sentences carry `fact_ids`; the citation objects are on `facts[]` and must be joined by id. → **T5.1** |
+| Unsupported sentences removed | Met | `Verifier` strips uncited, unknown-id, mixed and ungrounded-number sentences. |
+| PDF bounding-box overlay | Met | PDF.js viewer draws the row box and the value box, for lab PDFs and intake forms, including scanned pages (`public/source-viewer.js`). |
+| From a claim to the PDF in one click | Partly met | Clicking a sentence's citation only highlights the fact row; the PDF opens from the "source p.N" link in the facts table. → **T5.2** |
+
+## 6. Eval-driven CI gate
+
+> Build a 50-case golden set and a PR-blocking Git Hook. Boolean rubric
+> categories must include schema_valid, citation_present, factually_consistent,
+> safe_refusal, and no_phi_in_logs. The build must fail if any category
+> regresses by more than 5% or drops below the pass threshold.
+>
+> (Hard gate) During grading, we will introduce a small regression and confirm
+> your CI gate fails.
+
+| Part | Status | Evidence |
+|---|---|---|
+| 50-case golden set | Met | 68 cases: 52 run by the hook, 16 live. They cover extraction, retrieval, citations, refusals and missing data ([EVAL_GATE.md](../EVAL_GATE.md)). |
+| Five rubric categories | Partly met | All five exist, but **`no_phi_in_logs` is never scored by the hook**: only live cases score it, so the default run shows `n/a`. Three live extraction cases also pass it without scanning anything. → **T6.2** |
+| Fails on >5% regression or below threshold | Met (T6.1 done) | `gate.php` fails below threshold, and for the deterministic cases the hook runs, on **any** case that flipped from pass to fail. Before T6.1 a single broken case in a 90% rubric (a 3.3-point drop) passed; the self-test now flips exactly that and requires a refusal. Live cases keep the 5-point allowance for model variance. |
+| Git hook blocks pushes | Met | Pre-push hook, proven from a fresh clone ([EVAL_GATE.md](../EVAL_GATE.md) §5). Client-side only; GitLab refuses student pipelines. |
+| Judge configuration and results | Partly met | No LLM judge (every rubric is a code check), but no document says so. `tests/evals/results.json` is from 2026-09-22 and covers cases 1-52 only; README counts are stale. → **T6.3** |
+
+## 7. Observability and cost tracking
+
+> Each encounter must log tool sequence, latency by step, token usage, cost
+> estimate, retrieval hits, extraction confidence, and eval outcome. Logs must
+> not contain raw PHI.
+
+| Item | Status | Evidence |
+|---|---|---|
+| Tool sequence | Met | PHP step spans plus sidecar handoff spans in Langfuse; `handoff` log lines. |
+| Latency by step | Met | `duration_ms` per step span; sidecar `ms` per hop. |
+| Token usage | Met | Per-call generations and totals on every trace. |
+| Cost estimate | Met | `Pricing.php` list-price table; `cost_usd` on each trace and audit line. |
+| Retrieval hits | Partly met | Follow-up answers record the cited chunk count and a `retrieval_hit` score; **briefings record neither**, and nothing records how many chunks were retrieved (only how many were cited). → **T7.1** |
+| Extraction confidence | Met | Share of anchored citations, logged and traced per extraction. |
+| Eval outcome | Partly met | Each encounter records the verifier's outcome (`verification_pass`, `stripped`, `routing_ok`, `extraction_ok`), but nothing calls this the per-encounter eval outcome. → **T7.2** |
+| No raw PHI in logs | Partly met | The sidecar enforces a log-field allowlist at runtime. **PHP does not**: the allowlist exists only in the eval test. No raw text was found in logs. → **T7.3** |
+
+---
+
+## Task list
+
+Ordered by risk to grading. Each task is closed only after it is verified.
+
+- [x] **T6.1 Make the gate catch a single regressed case.** Done: any flip fails for deterministic cases; the self-test flips one `factually_consistent` verdict (96.7%, above threshold) and the gate refuses it, where the old rule said `ok`. The grader's "small regression" may break one case; today that can pass. Decide the rule, change `gate.php`, extend `--self-test`, update EVAL_GATE.md.
+- [ ] **T6.2 Score `no_phi_in_logs` in the hook.** Add deterministic cases that run the real logging path with recorded model output, and stop the three live extraction cases passing it vacuously.
+- [ ] **T5.1 Guideline citations in the five-field shape.** Emit `{source_type, source_id, page_or_section, field_or_chunk_id, quote_or_value}` for guideline evidence and attach resolved citations to each sentence; update the contracts and cases.
+- [ ] **T4.1 Supervisor decides "final answer is ready".** Either bring answer verification into the graph's decision or document the split.
+- [ ] **T1.1 Intake items as OpenEMR records.** Decide whether patient-reported meds/allergies go to OpenEMR lists, or document why they stay separate.
+- [ ] **T5.2 One click from a claim to the PDF overlay.**
+- [ ] **T7.1 Retrieval hits on every encounter**, including briefings; record retrieved as well as cited.
+- [ ] **T7.3 PHP runtime log allowlist**, matching the sidecar's.
+- [ ] **T2.1 Pydantic strict typing.**
+- [ ] **T1.2 Return the validated extraction JSON** from `copilot:attach` (for example a `--json` flag).
+- [ ] **T4.2 Show routing for briefings and questions** in the "Why this result" drawer.
+- [ ] **T7.2 Name the per-encounter eval outcome** in the docs and trace.
+- [ ] **T3.2 Cap briefing evidence**, or document why the cap is per rule.
+- [ ] **T4.3 Fix the `no_question` handoff label.**
+- [ ] **T6.3 Judge configuration and fresh results:** state there is no LLM judge, commit current `results.json`, fix README counts.
+- [ ] **T3.1 Update `W2_ARCHITECTURE.md`**: rerank is live, observability covers chat.

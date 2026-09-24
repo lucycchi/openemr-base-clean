@@ -168,9 +168,11 @@ tracer payloads and asserts against the fixture's PHI list plus the deny list.
 | `routing_correct` | Handoff sequence equals expected | ≥ 90% |
 
 Gate rule: results are stored per case id and rubric. Fail if any category is
-below threshold, or if any case that passed in the baseline now fails and the
-category's pass rate over the identical case-id set is more than 5 points
-below baseline. Deterministic and live baselines are separate files. A
+below threshold, or if any case that passed in the baseline now fails. For
+deterministic cases any flip fails (tightened 2026-09-23: one broken case in a
+90% category is only a ~3 point drop and used to pass). For live cases the
+category's pass rate over the identical case-id set must also be more than 5
+points below baseline. Deterministic and live baselines are separate files. A
 category with zero ran cases is n/a. `--update-baseline` is the only way a
 baseline changes.
 

@@ -10,9 +10,13 @@
  *
  * Rule (clinical_copilot_week2/DESIGN.md, "Rubrics and
  * thresholds"): the gate fails if any rubric's pass rate is below its
- * threshold, or if any case that passed a rubric in the baseline now fails
- * it and that rubric's pass rate, computed over the case ids present in both
- * the baseline and this run, is more than 5 points below the baseline.
+ * threshold, or if a case that passed a rubric in the baseline now fails it.
+ * For deterministic cases any such flip fails the gate: they replay recorded
+ * model output, so a flip is always a real regression, and one broken case
+ * in a 90% rubric (a ~3 point drop) must not slip through. Live cases call
+ * the model and vary between runs, so a flip there fails the gate only when
+ * the rubric's pass rate, computed over the case ids present in both the
+ * baseline and this run, is also more than 5 points below the baseline.
  * Pending cases and "na" verdicts are never counted. A rubric with no ran
  * cases is reported n/a and neither passes nor fails.
  *
@@ -115,8 +119,8 @@ foreach ($summary['cases'] as $case) {
     }
 }
 
-$failed = !gateSubset('deterministic', $verdictsDet, __DIR__ . '/baseline.json', $update);
-if ($runLive && !gateSubset('live', $verdictsLive, __DIR__ . '/baseline-live.json', $update)) {
+$failed = !gateSubset('deterministic', $verdictsDet, __DIR__ . '/baseline.json', $update, true);
+if ($runLive && !gateSubset('live', $verdictsLive, __DIR__ . '/baseline-live.json', $update, false)) {
     $failed = true;
 }
 if ($harnessExit !== 0) {
@@ -125,15 +129,20 @@ if ($harnessExit !== 0) {
 
 if ($selfTest) {
     // Prove the comparison logic refuses a regression: take the real
-    // deterministic verdicts, flip one passing rubric to fail, and require
-    // the gate to reject it against the committed baseline.
+    // deterministic verdicts, flip a single passing verdict to fail, and
+    // require the gate to reject it against the committed baseline. The flip
+    // is in the rubric with the lowest threshold, the hardest case: one
+    // broken case there stays above the threshold and drops the rate by only
+    // a few points, so only the any-flip rule can catch it.
+    $thresholds = THRESHOLDS;
+    asort($thresholds);
     $flipped = $verdictsDet;
     $done = false;
-    foreach ($flipped as $id => $rubrics) {
-        foreach ($rubrics as $name => $v) {
-            if ($v === 'pass') {
+    foreach (array_keys($thresholds) as $name) {
+        foreach ($flipped as $id => $rubrics) {
+            if (($rubrics[$name] ?? null) === 'pass') {
                 $flipped[$id][$name] = 'fail';
-                echo "\nself-test: flipping $id/$name to fail\n";
+                echo "\nself-test: flipping one verdict, $id/$name (threshold {$thresholds[$name]}%), to fail\n";
                 $done = true;
                 break 2;
             }
@@ -143,7 +152,7 @@ if ($selfTest) {
         fwrite(STDERR, "self-test: no passing rubric to flip\n");
         exit(1);
     }
-    $refused = !gateSubset('self-test', $flipped, __DIR__ . '/baseline.json', false);
+    $refused = !gateSubset('self-test', $flipped, __DIR__ . '/baseline.json', false, true);
     echo $refused ? "self-test: gate refused the injected regression (OK)\n" : "self-test: gate did NOT refuse the injected regression\n";
     exit($refused ? 0 : 1);
 }
@@ -154,10 +163,13 @@ exit($failed ? 1 : 0);
 /**
  * Compares one subset (deterministic or live) with its baseline file.
  * Prints a table and returns true when the subset passes the gate.
+ * With $anyFlipFails, one case that flipped from pass to fail is a
+ * regression on its own; without it, the rubric's rate over the common
+ * cases must also drop more than MAX_REGRESSION_POINTS.
  *
  * @param array<string, array<string, string>> $verdicts
  */
-function gateSubset(string $label, array $verdicts, string $baselinePath, bool $update): bool
+function gateSubset(string $label, array $verdicts, string $baselinePath, bool $update, bool $anyFlipFails): bool
 {
     $rates = rates($verdicts);
     if ($update || !file_exists($baselinePath)) {
@@ -201,12 +213,12 @@ function gateSubset(string $label, array $verdicts, string $baselinePath, bool $
                 $regressed[] = $id;
             }
         }
-        // A regression needs both: a named case that flipped from pass to fail, and the
-        // rubric's rate over the common cases falling more than the allowed points.
+        // A regression is a named case that flipped from pass to fail; for live cases the
+        // rubric's rate over the common cases must also fall more than the allowed points.
         $base = $baseRates[$name] ?? null;
         $drop = ($base !== null && isset($commonRates[$name])) ? $base - $commonRates[$name] : 0.0;
         $belowThreshold = $now < $threshold;
-        $regression = $regressed !== [] && $drop > MAX_REGRESSION_POINTS;
+        $regression = $regressed !== [] && ($anyFlipFails || $drop > MAX_REGRESSION_POINTS);
         $verdict = $belowThreshold ? 'BELOW' : ($regression ? 'REGRESSED' : 'ok');
         $ok = $ok && !$belowThreshold && !$regression;
         printf("  %-22s %8s %8s %7d%% %10s  %s\n", $name, fmt($now), fmt($base), $threshold, $verdict, implode(', ', $regressed));

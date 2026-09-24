@@ -84,9 +84,15 @@ Rubrics and thresholds:
 **The push is refused if either:**
 
 - any rubric's pass rate is below its minimum; or
-- a case that passed a rubric in the baseline now fails it, and that rubric's
-  pass rate (over the cases in both runs) is more than **5 points** below the
-  baseline.
+- **any** case that passed a rubric in the baseline now fails it. This applies
+  to the 52 deterministic cases the hook runs. They replay recorded model
+  output, so a flip is always a real regression, and a single broken case in
+  a 90% rubric (a drop of about 3 points) is still refused. This is stricter
+  than the PRD's 5% rule.
+
+For the live cases (`COPILOT_GATE_LIVE=1`), which call the model and can vary
+from run to run, a flip fails the gate only when that rubric's pass rate (over
+the cases in both runs) is also more than **5 points** below the baseline.
 
 The safety rubrics sit at 100% because one wrong citation, one leaked
 identifier or one mis-anchored value is one too many.
@@ -155,8 +161,10 @@ What the log shows, in order:
    carried it alone was refused.
 
 To reproduce: after section 2, `tests/evals/install-hooks.sh --self-test`
-flips one case's recorded verdict to a failure and requires the gate to refuse
-it (`schema_valid` goes BELOW). The manual version is
+flips a single recorded verdict to a failure, in the rubric with the lowest
+threshold (`factually_consistent`, 90%), and requires the gate to refuse it.
+That one flip leaves the rate at 96.7%, above the threshold, so only the
+any-flip rule catches it. The manual version is
 the one above: delete the `$sentence->factIds === []` line in
 [Verifier.php](interface/modules/custom_modules/oe-module-clinical-copilot/src/Verifier.php),
 commit, and `git push`.
