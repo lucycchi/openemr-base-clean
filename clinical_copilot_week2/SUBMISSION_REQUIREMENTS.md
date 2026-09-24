@@ -26,7 +26,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 
 | # | Deliverable | Status | Open tasks | Due |
 |---|---|---|---|---|
-| 1 | GitLab repository | Partly done | S1 | Early |
+| 1 | GitLab repository | Done | none | Early |
 | 2 | W2 architecture doc (`./W2_ARCHITECTURE.md`) | Done | none | Early |
 | 3 | Key metrics doc (`./KEY_METRICS.md`) | Done | S10 (refresh at final) | Early |
 | 4 | Schemas | Done | (T2.1 in core list) | Early |
@@ -34,7 +34,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | 6 | CI evidence | Done | S10 (re-run proof at final) | Early |
 | 7 | Demo video | User | S2 | Early and final |
 | 8 | Cost and latency report | Done | none | Final |
-| 9 | Deployed application | Partly done | S1 | Early |
+| 9 | Deployed application | Done | none | Early |
 | 10 | Technical interview | User | S8 | Thu/Fri |
 | 11 | Social post | User | S9 | Final |
 | 12 | AI interview | User | none | after each submission |
@@ -52,7 +52,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | Part | Status | Evidence |
 |---|---|---|
 | Week 1 fork with Week 2 changes | Done | `ssh://git@labs.gauntletai.com:22022/lucychi/openemr.git`. GitLab's default branch is `pdf_reader`, so graders land on the Week 2 code. |
-| Up to date on GitLab | Partly done | Local `pdf_reader` is 1 commit ahead of `gitlab/pdf_reader` (`e8737cb`, the gate's pass-to-fail rule). → **S1** |
+| Up to date on GitLab | Done (S1) | Pushed through the gate on 2026-09-23 21:00 CT (`gitlab/pdf_reader` at `b6f4c60`, GATE: PASS, 54/54). Later commits go out with the next push. |
 | Setup guide | Done | Root [README.md](../README.md) "The core flow in five commands" and "Running the App Locally"; [docker/vps/README.md](../docker/vps/README.md) for deployment. |
 | Deployed link | Done | Root README, "Deployed:" line, with /health and /ready links. |
 | Environment variables documented | Done (S3) | Fixed 2026-09-23. Before:  The README table is close, but [.env.example](../.env.example) is missing `OPENAI_MODEL`, `COPILOT_SIDECAR_URL`, `COPILOT_PREWARM_ENABLED`, `COPILOT_EVAL_ENDPOINTS` and the two price overrides; it lists `LANGFUSE_BASE_URL` where the README lists `LANGFUSE_HOST` (the code reads both, `LANGFUSE_HOST` first, `Config.php:51`); the deploy-only keys (`DIGITALOCEAN_*`, `GITLAB_*`) have no explanation. → **S3** |
@@ -151,7 +151,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 |---|---|---|
 | Publicly accessible | Done | https://146-190-139-37.sslip.io, `/health` returns `ok` (checked 2026-09-23 20:26 CT). |
 | Week 2 core flow working | Done for the 2026-09-22 build | Both Bruno collections passed against the droplet (Week 2 17/17, Week 1 19/19, `api-collection/results-deployed.json`). |
-| Running the current code | Not done | The droplet runs `Prompt::VERSION 2026-09-22.5`. The expanded briefing (guideline section, critic, vitals, ranges), the click-to-source demo docs and the gate fixes are not deployed. The sidecar image must be rebuilt. → **S1** |
+| Running the current code | Done (S1) | Deployed `b6f4c60` on 2026-09-23 21:00 CT with the sidecar rebuilt: `/ready` reports all five dependencies ok, `Prompt::VERSION 2026-09-23.1`. Week 2 collection 17/17 requests, 41/41 assertions ([results-deployed.json](api-collection/results-deployed.json)). Week 1 collection 18/19: request 17 (alert webhook) returned 401 because the run had no `alertToken`, not a regression; re-run it with the droplet's `ALERT_WEBHOOK_SECRET`. T5.2 (`7b6532b`, citation chip opens the PDF) is committed after this deploy and ships with the next one. |
 
 ## 10. Technical interview (early submission only)
 
@@ -233,7 +233,7 @@ it is verified.
 
 **Tonight (early submission, 23:59 Central)**
 
-- [ ] **S1 Deploy the current `pdf_reader` and re-verify.** Push to GitLab (through the gate), run `docker/vps/deploy.sh` (rebuilds the sidecar image), confirm `/ready`, the prompt version and both Bruno collections against the droplet; update `results-deployed.json`. Note: `deploy.sh` rsyncs the sidecar from the **working tree**, so uncommitted sidecar edits in progress would ship too.
+- [x] **S1 Deploy the current `pdf_reader` and re-verify.** Done 2026-09-23 21:00 CT: `b6f4c60` deployed, `/ready` ok, Week 2 collection 17/17; Week 1 18/19 (alert webhook needs its token in the run). Push to GitLab (through the gate), run `docker/vps/deploy.sh` (rebuilds the sidecar image), confirm `/ready`, the prompt version and both Bruno collections against the droplet; update `results-deployed.json`. Note: `deploy.sh` rsyncs the sidecar from the **working tree**, so uncommitted sidecar edits in progress would ship too.
 - [ ] **S2 Demo video.** Shot list done: [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Recording is the user's. Write a timed shot list (upload, extraction with an unverified value, click-to-source overlay, guideline evidence with citations, routing drawer, eval gate refusing a regression, Langfuse trace). The user records it.
 - [x] **S3 README and `.env.example`.** Done 2026-09-23: README names the branch, counts 70 cases, links EVAL_DATASET.md, notes the `LANGFUSE_BASE_URL` fallback; `.env.example` lists every variable the code reads, grouped, one comment each, and marks the tooling-only keys. Name the branch; make `.env.example` list every variable the code reads, with one line each; align `LANGFUSE_HOST`; explain the deploy-only keys; refresh counts.
 - [x] **S4 `./W2_ARCHITECTURE.md` is the document, not a pointer**, and says what is true today (rerank live). Done 2026-09-23; links rewritten and checked.
