@@ -414,8 +414,8 @@ Closed only after it is verified, like the S tasks.
 - [x] **G6 Build metric 6, the physician rating.** Done 2026-09-24: thumbs
   up/down and optional comment under the AI summary (`action=rate`, module
   0.1.4, `copilot_briefing_rating`), `physician_rating` Langfuse score,
-  `copilot:ratings` report; the comment stays in the EHR. Checked in the dev
-  browser; not yet deployed. Original plan: Thumbs up/down (and an
+  `copilot:ratings` report; the comment stays in the EHR. Deployed
+  2026-09-24 (`a1c1385`) and checked in a browser on the droplet. Original plan: Thumbs up/down (and an
   optional comment) on each briefing, stored in `copilot_briefing_rating`
   keyed by briefing, `Prompt::VERSION` and model; comment text never goes to
   Langfuse or the log (PHI). Add the rating as a Langfuse score so it sits

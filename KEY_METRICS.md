@@ -171,8 +171,10 @@ row and the score carry its length, never its text, and a database test
 (`ChatControllerRateTest`) fails if a comment reaches any of them.
 
 **Baseline.** None yet: no physician has used it on the deployed app.
-Checked end to end in the dev stack's browser (thumbs down plus comment on
-a real briefing, one row after rating twice). Target for the
+Deployed 2026-09-24 (`a1c1385`) and checked end to end in a browser on the
+droplet and on the dev stack: thumbs down plus a comment on a real
+briefing, one row after rating twice, `copilot:ratings` counting it; the
+test ratings were then deleted. Target for the
 first month of real use: rated on >30% of rendered briefings; thumbs-down
 below 15% of rendered.
 
