@@ -1,0 +1,23 @@
+# Compose override for the eval gate in GitLab CI (tests/evals/ci-gate.sh).
+#
+# The CI runner lives on the production droplet, so the throwaway stack is
+# capped to leave the live app its share: at most 3 CPUs and about 5 GB of
+# memory between the three services, of 4 CPUs and 7.7 GB on the host. Only
+# mysql, openemr and copilot-sidecar are started; the other services of
+# docker/development-easy are not needed by the gate.
+#
+# Xdebug is off: the gate does not debug, and the profiler would write a
+# cachegrind file for every request.
+services:
+  openemr:
+    cpus: 2.0
+    mem_limit: 3g
+    environment:
+      XDEBUG_ON: 0
+      XDEBUG_PROFILER_ON: 0
+  mysql:
+    cpus: 0.5
+    mem_limit: 1g
+  copilot-sidecar:
+    cpus: 0.5
+    mem_limit: 1g
