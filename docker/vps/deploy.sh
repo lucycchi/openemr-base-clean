@@ -31,6 +31,9 @@ fi
 
 if [ "$push" = 1 ]; then
     git push "$GITLAB_REMOTE" "$DEPLOY_BRANCH"
+    # A push by a personal account starts no pipeline on this instance; the
+    # project bot token does (tests/evals/ci-pipeline.sh). Not waited on here.
+    tests/evals/ci-pipeline.sh "$DEPLOY_BRANCH" || echo "no CI pipeline started (see above); deploying anyway" >&2
 fi
 remote_sha=$(git ls-remote "$GITLAB_REMOTE" "refs/heads/$DEPLOY_BRANCH" | cut -f1)
 echo "deploying $DEPLOY_BRANCH @ ${remote_sha:0:7} from GitLab"
