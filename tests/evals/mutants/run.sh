@@ -47,7 +47,7 @@ check_stale() {
     sha=$(python3 -c "import json,sys; runs=json.load(open(sys.argv[1])); print(runs[-1]['sha'] if runs else '')" "$results")
     [ -n "$sha" ] || { echo "no recorded run"; return 1; }
     local changed
-    changed=$(git -C "$root" diff --name-only "$sha" HEAD -- "${stale_paths[@]}" | grep -v '^tests/evals/mutants/results.json$' || true)
+    changed=$(git -C "$root" diff --name-only "$sha" HEAD -- "${stale_paths[@]}" | grep -v -E '^tests/evals/(mutants/)?results.json$' || true)
     if [ -n "$changed" ]; then
         echo "STALE: the last recorded run ($sha) predates changes to:"
         printf '  %s\n' $changed
