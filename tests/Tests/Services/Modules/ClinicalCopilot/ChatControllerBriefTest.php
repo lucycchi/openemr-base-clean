@@ -1,11 +1,17 @@
 <?php
 
 /**
- * DB-backed pin for the brief action when the sidecar cannot be reached:
- * the facts still arrive, the guideline section says "unavailable" (or
- * "no_triggers" when nothing fired for the seeded patient), and the HTTP
- * status is 200. A 500 here would blank the whole panel for a physician
- * because one optional dependency was down.
+ * DB-backed pins for the brief action.
+ *
+ * When the sidecar cannot be reached the facts still arrive, the guideline
+ * section says "unavailable" (or "no_triggers" when nothing fired for the
+ * seeded patient), and the HTTP status is 200. A 500 here would blank the
+ * whole panel for a physician because one optional dependency was down.
+ *
+ * With a SidecarClient injected (the seam the eval harness uses to replay
+ * recorded replies), the brief request goes to that client and its evidence
+ * reaches the panel; with none, the controller builds its own from Config,
+ * which is what the first test exercises.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -18,6 +24,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Services\Modules\ClinicalCopilot;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use GuzzleHttp\Psr7\Response;
 use Monolog\Handler\TestHandler;
 use Monolog\Logger;
 use OpenEMR\Common\Csrf\CsrfUtils;
@@ -26,10 +37,12 @@ use OpenEMR\Common\Session\PatientSessionUtil;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\Controller\ChatController;
+use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarClient;
 use OpenEMR\Modules\ClinicalCopilot\Ops\NullTracer;
 use OpenEMR\Modules\ClinicalCopilot\Row;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\RequestInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 class ChatControllerBriefTest extends TestCase
@@ -58,7 +71,8 @@ class ChatControllerBriefTest extends TestCase
         }
     }
 
-    public function testBriefWithoutSidecarStillReturnsFacts(): void
+    /** Signs in as admin on the seeded patient and returns a CSRF token for the request. */
+    private function signIn(): string
     {
         $session = SessionWrapperFactory::getInstance()->getActiveSession();
         $session->set('authUser', 'admin');
@@ -66,11 +80,20 @@ class ChatControllerBriefTest extends TestCase
         $session->set('authProvider', 'Default');
         PatientSessionUtil::setPid($this->pid);
         CsrfUtils::setupCsrfKey($session);
-        $csrf = CsrfUtils::collectCsrfToken($session);
+        return CsrfUtils::collectCsrfToken($session);
+    }
 
-        // An established diagnosis on the problem list fires the diabetes trigger whatever the
-        // visit history, so the sidecar path is exercised for certain.
+    /** An established diagnosis on the problem list fires the diabetes trigger whatever the visit history. */
+    private function addDiabetesProblem(): void
+    {
         $this->problemId = (int) QueryUtils::sqlInsert("INSERT INTO lists (pid, type, title, begdate, activity, date) VALUES (?, 'medical_problem', 'Type 2 diabetes mellitus (brief test)', '2020-01-01', 1, NOW())", [$this->pid]);
+    }
+
+    public function testBriefWithoutSidecarStillReturnsFacts(): void
+    {
+        $csrf = $this->signIn();
+        // The diabetes trigger makes sure the sidecar path is exercised.
+        $this->addDiabetesProblem();
         // No chat model, and a sidecar URL nothing listens on.
         $config = new Config('', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', '', sidecarUrl: 'http://127.0.0.1:9');
         $handler = new TestHandler();
@@ -93,5 +116,47 @@ class ChatControllerBriefTest extends TestCase
         $narration = $body['narration'];
         self::assertIsArray($narration);
         self::assertSame('AI summary unavailable: not configured on this server', $narration['status']);
+    }
+
+    public function testAnInjectedSidecarClientReceivesTheBriefRequest(): void
+    {
+        $csrf = $this->signIn();
+        $this->addDiabetesProblem();
+        // Recorded reply: evidence for the diabetes trigger. The client never opens a socket.
+        $reply = [
+            'correlation_id' => 'c0ffee00-brief-0001',
+            'extractions' => [],
+            'chunks' => [],
+            'handoffs' => [
+                ['from' => 'supervisor', 'to' => 'evidence_retriever', 'reason' => 'chart_triggers', 'state_keys_changed' => [], 'ms' => 0],
+                ['from' => 'evidence_retriever', 'to' => 'supervisor', 'reason' => 'worker_finished', 'state_keys_changed' => ['evidence'], 'ms' => 1],
+                ['from' => 'supervisor', 'to' => 'done', 'reason' => 'worker_finished', 'state_keys_changed' => [], 'ms' => 0],
+            ],
+            'usage' => [],
+            'evidence' => [['trigger_id' => 'diabetes', 'chunks' => [['chunk_id' => 'bbbbbbbbbbbb', 'source_id' => 'ada-2025-standards', 'section' => 'Glycemic goals > A1C', 'quote' => 'An A1C goal of less than 7% is appropriate for many adults.', 'score' => 0.8]], 'applicable' => true, 'reason' => 'no restriction stated']],
+        ];
+        $mock = new MockHandler([new Response(200, ['Content-Type' => 'application/json'], json_encode($reply, JSON_THROW_ON_ERROR))]);
+        $sent = [];
+        $stack = HandlerStack::create($mock);
+        $stack->push(Middleware::tap(static function (RequestInterface $request) use (&$sent): void {
+            $sent[] = $request;
+        }));
+        $config = new Config('', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', '', sidecarUrl: 'http://127.0.0.1:9');
+        $sidecar = new SidecarClient(new Client(['handler' => $stack]), $config);
+        $request = Request::create('/chat.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'brief']);
+
+        ob_start();
+        (new ChatController(new Logger('test', [new TestHandler()]), $request, $config, new NullTracer(), sidecar: $sidecar))->handleRequest();
+        $body = json_decode((string) ob_get_clean(), true, 32, JSON_THROW_ON_ERROR);
+
+        self::assertCount(1, $sent, 'the brief request goes to the injected client, once');
+        self::assertCount(0, $mock, 'the recorded reply was consumed');
+        $sentBody = json_decode((string) $sent[0]->getBody(), true, 16, JSON_THROW_ON_ERROR);
+        self::assertIsArray($sentBody);
+        self::assertSame('brief', $sentBody['mode']);
+        self::assertIsArray($body);
+        $guidelines = $body['guidelines'];
+        self::assertIsArray($guidelines);
+        self::assertSame('ok', $guidelines['status'], 'the injected client\'s evidence reaches the panel');
     }
 }

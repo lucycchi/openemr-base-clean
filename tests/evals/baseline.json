@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-24T01:26:52+00:00",
+    "ran_at": "2026-09-24T04:27:42+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -244,6 +244,14 @@
         },
         "70-phi-intake-upload-logs-recorded": {
             "schema_valid": "pass",
+            "no_phi_in_logs": "pass",
+            "factually_consistent": "pass"
+        },
+        "71-phi-plan-note-logs-recorded": {
+            "no_phi_in_logs": "pass",
+            "factually_consistent": "pass"
+        },
+        "72-phi-question-logs-recorded": {
             "no_phi_in_logs": "pass",
             "factually_consistent": "pass"
         }

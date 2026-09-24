@@ -1,0 +1,74 @@
+{
+  "_about": "Recorded replies for a deterministic brief/ask case, replayed by ChatReplay in tests/evals/phi.php. openai: chat completions in call order; sidecar: run.response bodies in call order.",
+  "openai": [
+    {
+      "id": "chatcmpl-recorded",
+      "object": "chat.completion",
+      "model": "gpt-4o-mini",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"sentences\": [{\"text\": \"Type 2 diabetes mellitus is on the problem list.\", \"fact_ids\": []}]}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 900,
+        "completion_tokens": 40,
+        "total_tokens": 940
+      }
+    }
+  ],
+  "sidecar": [
+    {
+      "correlation_id": "recorded-brief-0001",
+      "extractions": [],
+      "chunks": [],
+      "handoffs": [
+        {
+          "from": "supervisor",
+          "to": "evidence_retriever",
+          "reason": "chart_triggers",
+          "state_keys_changed": [],
+          "ms": 0
+        },
+        {
+          "from": "evidence_retriever",
+          "to": "supervisor",
+          "reason": "worker_finished",
+          "state_keys_changed": [
+            "evidence"
+          ],
+          "ms": 1
+        },
+        {
+          "from": "supervisor",
+          "to": "done",
+          "reason": "worker_finished",
+          "state_keys_changed": [],
+          "ms": 0
+        }
+      ],
+      "usage": [],
+      "evidence": [
+        {
+          "trigger_id": "diabetes",
+          "chunks": [
+            {
+              "chunk_id": "bbbbbbbbbbbb",
+              "source_id": "ada-2025-standards",
+              "section": "Glycemic goals > A1C",
+              "quote": "An A1C goal of less than 7% is appropriate for many adults.",
+              "score": 0.8
+            }
+          ],
+          "applicable": true,
+          "reason": "no restriction stated"
+        }
+      ]
+    }
+  ]
+}

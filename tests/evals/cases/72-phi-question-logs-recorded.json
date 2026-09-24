@@ -1,0 +1,23 @@
+{
+  "id": "72-phi-question-logs-recorded",
+  "guards": "invariant",
+  "theme": "authorization",
+  "failure_mode": "The deterministic twin of case 38, run by the pre-push gate with no API key: the real brief and ask on a throwaway patient, with the model and sidecar replies replayed from fixtures/chat/brief-and-ask.replay.json. The physician's question names the patient and their date of birth; neither the question text nor those identifiers may appear in any log line or trace, whether logged under a new key, an allowlisted key or inside the message text, and every log field must be on the allowlist. All four recorded replies must be consumed and the guideline section must come back ok, so the case cannot pass without both requests reaching the model call and the sidecar.",
+  "mode": "phi_logs",
+  "question": "Does Eval PhiLogs, born 1980-05-05, need a statin for the diabetes?",
+  "seed_problem": "Type 2 diabetes mellitus (eval)",
+  "chat_replay": "brief-and-ask.replay.json",
+  "phi_literals": [
+    "PhiLogs",
+    "1980-05-05"
+  ],
+  "rubrics": {
+    "no_phi_in_logs": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "replay_left": 0,
+    "guideline_status": "ok",
+    "answer_type": "cited"
+  }
+}

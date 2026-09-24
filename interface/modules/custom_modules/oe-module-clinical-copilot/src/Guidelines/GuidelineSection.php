@@ -101,6 +101,7 @@ final readonly class GuidelineSection
         return $out;
     }
 
+    /** @return array<string, mixed> the section as the panel payload and the briefing cache store it */
     public function toArray(): array
     {
         return [

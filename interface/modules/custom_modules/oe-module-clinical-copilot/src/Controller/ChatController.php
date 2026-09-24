@@ -26,9 +26,9 @@ use OpenEMR\Common\Logging\EventAuditLogger;
 use OpenEMR\Common\Session\EncounterSessionUtil;
 use OpenEMR\Common\Session\PatientSessionUtil;
 use OpenEMR\Common\Session\SessionWrapperFactory;
-use OpenEMR\Modules\ClinicalCopilot\AnswerRoute;
 use OpenEMR\Modules\ClinicalCopilot\AccessDeniedException;
 use OpenEMR\Modules\ClinicalCopilot\AclAuthorization;
+use OpenEMR\Modules\ClinicalCopilot\AnswerRoute;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
 use OpenEMR\Modules\ClinicalCopilot\BriefingPipelineFactory;
 use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
@@ -73,7 +73,10 @@ use Symfony\Component\HttpFoundation\Request;
  * body with a correlation id, a structured log line, and a trace.
  *
  * Constructor arguments are all optional so production can `new` it with
- * no arguments while tests inject a fake request, logger and tracer.
+ * no arguments while tests inject a fake request, logger and tracer. The
+ * last two let the eval harness replay recorded model and sidecar replies
+ * (tests/evals/phi.php); left out, the pipeline factory and the sidecar
+ * client are built from the per-request Config exactly where they are used.
  */
 final class ChatController
 {
@@ -106,8 +109,15 @@ final class ChatController
     private readonly PrewarmReceipts $receipts;
     private ?WarmOutcome $warm = null;
 
-    public function __construct(?LoggerInterface $logger = null, ?Request $request = null, ?Config $config = null, ?Tracer $tracer = null, ?PrewarmReceipts $receipts = null)
-    {
+    public function __construct(
+        ?LoggerInterface $logger = null,
+        ?Request $request = null,
+        ?Config $config = null,
+        ?Tracer $tracer = null,
+        ?PrewarmReceipts $receipts = null,
+        private readonly ?BriefingPipelineFactory $pipelines = null,
+        private readonly ?SidecarClient $sidecar = null,
+    ) {
         $this->correlationId = CorrelationId::generate();
         $this->logger = new CorrelatedLogger($logger ?? ServiceContainer::getLogger(), $this->correlationId);
         $this->request = $request ?? HttpRestRequest::createFromGlobals();
@@ -377,7 +387,7 @@ final class ChatController
             }
         }
         try {
-            $run = SidecarClient::fromConfig($config)->brief($this->correlationId, $factsHash, $fired, array_values(array_unique($lines)), $age, $who->sex);
+            $run = ($this->sidecar ?? SidecarClient::fromConfig($config))->brief($this->correlationId, $factsHash, $fired, array_values(array_unique($lines)), $age, $who->sex);
         } catch (SidecarException $e) {
             $this->logger->warning('copilot guideline evidence unavailable; briefing without it', ['code' => $e->errorCode]);
             return GuidelineSection::none('unavailable');
@@ -440,7 +450,7 @@ final class ChatController
         try {
             $run = $this->steps->measure(
                 'retrieve_evidence',
-                fn() => SidecarClient::fromConfig($config)->answer($this->correlationId, $assembled->facts()->hash(), (string) $chat->question),
+                fn() => ($this->sidecar ?? SidecarClient::fromConfig($config))->answer($this->correlationId, $assembled->facts()->hash(), (string) $chat->question),
                 static fn($r) => ['chunks' => count($r->chunks), 'handoffs' => count($r->handoffs)],
             );
             $evidence = EvidenceSet::fromRun($run->chunks, new GuidelineManifest());
@@ -486,7 +496,7 @@ final class ChatController
 
     private function pipeline(Config $config, AssembledFacts $assembled, PatientId $pid): NarrationPipeline
     {
-        return (new BriefingPipelineFactory())->create($config, $assembled, $pid, $this->correlationId, $this->steps);
+        return ($this->pipelines ?? new BriefingPipelineFactory())->create($config, $assembled, $pid, $this->correlationId, $this->steps);
     }
 
     /** @return list<array<string, scalar|null>> */

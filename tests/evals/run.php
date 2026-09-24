@@ -1043,6 +1043,9 @@ foreach (glob(__DIR__ . '/cases/*.json') ?: [] as $path) {
             'trace_payloads' => count($out['traces']),
             'sidecar_log_lines' => count($sidecarLines),
             'uncorrelated_log_lines' => $uncorrelated,
+            // Brief/ask cases with recorded replies: 0 left means both calls were made.
+            'replay_left' => $out['replay_left'],
+            'guideline_status' => $out['guideline_status'],
             'schema_errors' => $schemaErrors,
             'ungrounded_tokens' => [],
             'uncited_kept' => 0,

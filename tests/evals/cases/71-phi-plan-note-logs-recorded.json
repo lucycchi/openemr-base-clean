@@ -1,0 +1,25 @@
+{
+  "id": "71-phi-plan-note-logs-recorded",
+  "guards": "invariant",
+  "theme": "authorization",
+  "failure_mode": "The deterministic twin of case 68, run by the pre-push gate with no API key: the real brief on a throwaway patient whose prior-visit plan names a person, a date of birth and a phone number, with the model and sidecar replies replayed from fixtures/chat/brief.replay.json. None of those identifiers, nor the throwaway patient's own name or date of birth, may appear in any log line or trace, and every log field must be on the allowlist. Both recorded replies must be consumed and the guideline section must come back ok, so the case cannot pass without the brief reaching the model call and the sidecar.",
+  "mode": "phi_logs",
+  "soap_plan": "Discussed with Jane Q Sample (DOB 1961-04-02, phone 512-555-0133): recheck A1c in 3 months and start lisinopril 10 mg.",
+  "seed_problem": "Type 2 diabetes mellitus (eval)",
+  "chat_replay": "brief.replay.json",
+  "phi_literals": [
+    "Jane Q Sample",
+    "1961-04-02",
+    "512-555-0133",
+    "PhiLogs",
+    "1980-05-05"
+  ],
+  "rubrics": {
+    "no_phi_in_logs": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "replay_left": 0,
+    "guideline_status": "ok"
+  }
+}
