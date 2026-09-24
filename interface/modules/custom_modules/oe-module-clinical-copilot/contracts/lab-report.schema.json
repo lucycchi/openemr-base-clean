@@ -21,7 +21,8 @@
     "collection_date": {
       "type": "string",
       "format": "date",
-      "description": "ISO date the specimen was collected. Required; anchored once per document."
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "ISO date the specimen was collected (YYYY-MM-DD, no time). Required; anchored once per document. The pattern holds even for a validator that treats format as an annotation only."
     },
     "collection_date_citation": {
       "$ref": "citation.schema.json"
@@ -31,7 +32,8 @@
         "string",
         "null"
       ],
-      "format": "date"
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
     },
     "reported_date_citation": {
       "oneOf": [

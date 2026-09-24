@@ -138,6 +138,7 @@ final class ContractsTest extends TestCase
             'llm follow-up output' => ['llm.followup.output'],
             'fact' => ['fact'],
             'citation' => ['citation'],
+            'cited sentence' => ['sentence'],
             'lab report extraction' => ['lab-report'],
             'intake form extraction' => ['intake-form'],
             'handoff' => ['handoff'],
@@ -236,7 +237,12 @@ final class ContractsTest extends TestCase
         $citations = self::pathArray($sentence, 'citations');
         self::assertSame(['source_type' => 'guideline', 'source_id' => 'acc-aha-2018-cholesterol', 'page_or_section' => 'T > S', 'field_or_chunk_id' => 'aaaaaaaaaaaa', 'quote_or_value' => 'A passage.', 'anchored' => true], $citations[0]);
         self::assertSame($citations[0], self::path($payload, 'guidelines', 'cards', 0, 'chunks', 0, 'citation'));
-        self::assertConforms('chat.briefing.response', PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID, \OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection::none('unavailable')));
+        // With the section unavailable the chunk id resolves to nothing, so the
+        // sentence would go out with no citation: it is dropped and counted instead.
+        $uncited = PanelPayload::briefing($this->assembled(), $briefing, self::CORRELATION_ID, \OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection::none('unavailable'));
+        self::assertConforms('chat.briefing.response', $uncited);
+        self::assertSame([], self::path($uncited, 'narration', 'sentences'));
+        self::assertSame(1, self::path($uncited, 'narration', 'stripped'));
     }
 
     public function testBriefingPayloadWithProviderFailureConformsToContract(): void
@@ -287,6 +293,35 @@ final class ContractsTest extends TestCase
         $guideline = self::pathArray($payload, 'answer', 'sentences', 1, 'citations');
         self::assertSame(['source_type' => 'guideline', 'source_id' => 'ada-2025-standards', 'page_or_section' => 'Pharmacologic therapy > Metformin', 'field_or_chunk_id' => 'cccccccccccc', 'quote_or_value' => 'Metformin is the preferred initial agent.', 'anchored' => true], $guideline[0]);
         self::assertSame($guideline[0], self::path($payload, 'answer', 'guidelines', 0, 'citation'));
+    }
+
+    /**
+     * No citation, no claim, held twice: the sentence contract refuses a
+     * claim with no ids, no citations or an id of the wrong shape, and
+     * PanelPayload never emits a sentence that cites an id it cannot resolve
+     * (it drops it and counts it as stripped) or that has lost its text.
+     */
+    public function testNoSentenceGoesOutWithoutACitationForEveryIdItCites(): void
+    {
+        $drug = Fact::idFor('PrescriptionService', 17, 'drug');
+        $citation = ['source_type' => 'chart', 'source_id' => 'PrescriptionService#17', 'page_or_section' => 'drug', 'field_or_chunk_id' => $drug, 'quote_or_value' => 'Lisinopril 10 MG', 'anchored' => true];
+        self::assertConforms('sentence', ['text' => 'Lisinopril was started.', 'fact_ids' => [$drug], 'citations' => [$citation]]);
+        self::assertViolates('sentence', ['text' => 'Lisinopril was started.', 'fact_ids' => [], 'citations' => []]);
+        self::assertViolates('sentence', ['text' => 'Lisinopril was started.', 'fact_ids' => [$drug], 'citations' => []]);
+        self::assertViolates('sentence', ['text' => 'Lisinopril was started.', 'fact_ids' => ['PrescriptionService#17'], 'citations' => [$citation]]);
+        self::assertViolates('sentence', ['text' => '', 'fact_ids' => [$drug], 'citations' => [$citation]]);
+
+        $answer = new AnswerResult('cited', [
+            new Sentence('Lisinopril 10 MG is on the chart.', [$drug]),
+            new Sentence('Half of this claim has no source.', [$drug, 'deadbeef']),
+            new Sentence('', [$drug]),
+        ], 2, null, 400, 30);
+        $payload = PanelPayload::answer($this->assembled(), $answer, self::CORRELATION_ID);
+        self::assertConforms('chat.answer.response', $payload);
+        $sentences = self::pathArray($payload, 'answer', 'sentences');
+        self::assertCount(1, $sentences);
+        self::assertSame('Lisinopril 10 MG is on the chart.', self::path($sentences, 0, 'text'));
+        self::assertSame(4, self::path($payload, 'answer', 'stripped'), 'the Verifier\'s 2 plus the 2 dropped here');
     }
 
     /**

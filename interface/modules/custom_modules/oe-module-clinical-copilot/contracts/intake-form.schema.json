@@ -16,7 +16,8 @@
         "string",
         "null"
       ],
-      "format": "date"
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
     },
     "form_date_citation": {
       "oneOf": [

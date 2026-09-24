@@ -20,6 +20,20 @@
       "reason": "applicability_check",
       "state_keys_changed": [],
       "ms": 0
+    },
+    {
+      "from": "answer_writer",
+      "to": "verifier",
+      "reason": "draft_written",
+      "state_keys_changed": [],
+      "ms": 0
+    },
+    {
+      "from": "supervisor",
+      "to": "verifier",
+      "reason": "cached_draft",
+      "state_keys_changed": [],
+      "ms": 0
     }
   ],
   "reject": [

@@ -32,11 +32,13 @@ final class PanelPayload
      */
     public static function briefing(AssembledFacts $assembled, BriefingResult $briefing, string $correlationId, ?GuidelineSection $guidelines = null): array
     {
+        $guidelines ??= GuidelineSection::none('not_configured');
+        [$sentences, $uncited] = self::sentences($briefing->sentences, $assembled->facts(), $guidelines->chunks());
         return self::base($assembled, $correlationId) + [
-            'guidelines' => ($guidelines ?? GuidelineSection::none('not_configured'))->toArray(),
+            'guidelines' => $guidelines->toArray(),
             'narration' => [
-                'sentences' => self::sentences($briefing->sentences, $assembled->facts(), ($guidelines ?? GuidelineSection::none('not_configured'))->chunks()),
-                'stripped' => $briefing->strippedCount,
+                'sentences' => $sentences,
+                'stripped' => $briefing->strippedCount + $uncited,
                 'omitted_fact_ids' => array_map(fn(Fact $f) => $f->id, $briefing->omitted),
                 'status' => $briefing->status,
                 'from_cache' => $briefing->fromCache,
@@ -54,12 +56,13 @@ final class PanelPayload
      */
     public static function answer(AssembledFacts $assembled, AnswerResult $answer, string $correlationId): array
     {
+        [$sentences, $uncited] = self::sentences($answer->sentences, $assembled->facts(), $answer->evidence);
         return self::base($assembled, $correlationId) + [
             'chart_changed' => false,
             'answer' => [
                 'type' => $answer->answerType,
-                'sentences' => self::sentences($answer->sentences, $assembled->facts(), $answer->evidence),
-                'stripped' => $answer->strippedCount,
+                'sentences' => $sentences,
+                'stripped' => $answer->strippedCount + $uncited,
                 'status' => $answer->status,
                 'tokens' => ['prompt' => $answer->promptTokens, 'completion' => $answer->completionTokens],
                 // Week 2: guideline passages the kept sentences cite, rendered apart from the patient's facts.
@@ -113,9 +116,17 @@ final class PanelPayload
      * guideline passages; the Verifier has already stripped any sentence
      * citing an id that is in neither.
      *
+     * No citation, no claim: a sentence goes out only when it has text and
+     * every id it cites resolves here to a citation (contracts/sentence.schema.json).
+     * The Verifier guarantees that when it ran against these same facts and
+     * chunks; this holds it even when a caller passes a different evidence
+     * set. A sentence that fails is dropped, never shown half-cited, and
+     * counted with the stripped ones.
+     *
      * @param list<Sentence> $sentences
      * @param list<EvidenceChunk> $chunks
-     * @return list<array{text: string, fact_ids: list<string>, citations: list<array<string, mixed>>}>
+     * @return array{list<array{text: string, fact_ids: non-empty-list<string>, citations: non-empty-list<array<string, mixed>>}>, int}
+     *         the sentences to show, and how many were dropped for a missing citation
      */
     private static function sentences(array $sentences, FactSet $facts, array $chunks): array
     {
@@ -123,7 +134,9 @@ final class PanelPayload
         foreach ($chunks as $c) {
             $byId[$c->chunkId] = $c;
         }
-        return array_map(static function (Sentence $s) use ($facts, $byId): array {
+        $kept = [];
+        $uncited = 0;
+        foreach ($sentences as $s) {
             $citations = [];
             foreach ($s->factIds as $id) {
                 if ($facts->has($id)) {
@@ -132,7 +145,12 @@ final class PanelPayload
                     $citations[] = $byId[$id]->citation()->toArray();
                 }
             }
-            return ['text' => $s->text, 'fact_ids' => $s->factIds, 'citations' => $citations];
-        }, $sentences);
+            if ($s->text === '' || $s->factIds === [] || $citations === [] || count($citations) !== count($s->factIds)) {
+                $uncited++;
+                continue;
+            }
+            $kept[] = ['text' => $s->text, 'fact_ids' => $s->factIds, 'citations' => $citations];
+        }
+        return [$kept, $uncited];
     }
 }

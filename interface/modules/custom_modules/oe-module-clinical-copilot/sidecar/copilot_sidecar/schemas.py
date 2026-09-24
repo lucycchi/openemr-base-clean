@@ -43,16 +43,32 @@ Notes for readers new to Python and Pydantic:
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StrictBool, model_validator
+
+
+# The one spelling of a date on the wire: the contracts' pattern for
+# collection_date, reported_date and form_date.
+_ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
+def _iso_date_only(value: object) -> object:
+    """Refuse anything but a date or a plain "YYYY-MM-DD" string before
+    Pydantic parses it. Lax date parsing alone would also take a datetime
+    string ("2026-09-15T00:00:00Z") or a Unix timestamp, which the contract
+    does not allow."""
+    if isinstance(value, date) or (isinstance(value, str) and _ISO_DATE.fullmatch(value)):
+        return value
+    raise ValueError("expected an ISO date, YYYY-MM-DD")
 
 
 # A date that arrives as an ISO string ("2026-09-15") in JSON. Strict mode
 # refuses a string for a date, and JSON has no date type, so these fields
-# (and only these) still parse the ISO form.
-IsoDate = Annotated[date, Field(strict=False)]
+# (and only these) parse the ISO form, and nothing looser (_iso_date_only).
+IsoDate = Annotated[date, BeforeValidator(_iso_date_only), Field(strict=False)]
 
 
 class Strict(BaseModel):
@@ -281,7 +297,7 @@ class Handoff(Strict):
     Field(alias="from") writes it out as "from" in JSON to match the contract.
     """
     from_: Node = Field(alias="from")
-    to: Literal["supervisor", "intake_extractor", "evidence_retriever", "critic", "done"]
+    to: Node | Literal["done"]
     reason: HandoffReason
     state_keys_changed: list[str]  # which parts of the shared state the hop wrote
     ms: int = Field(ge=0)  # milliseconds since the previous hop

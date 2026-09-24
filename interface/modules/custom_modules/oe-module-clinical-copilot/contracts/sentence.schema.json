@@ -2,20 +2,23 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-emr.org/clinical-copilot/contracts/sentence.schema.json",
   "title": "Cited sentence",
-  "description": "One sentence of narration with the fact ids it is grounded in and, for each id, its full citation. The Verifier strips any sentence with no ids, an unknown id, or a number/date not present verbatim in a cited fact. citations resolves every id to its citation in the five-field shape (citation.schema.json), so each claim carries its own machine-readable provenance.",
+  "description": "One sentence of narration with the fact ids it is grounded in and, for each id, its full citation. The Verifier strips any sentence with no ids, an unknown id, or a number/date not present verbatim in a cited fact. citations resolves every id to its citation in the five-field shape (citation.schema.json), so each claim carries its own machine-readable provenance. No citation, no claim: a sentence with no ids or no citations does not conform, and PanelPayload drops (and counts as stripped) any sentence whose ids do not all resolve to a citation, so citations always has exactly one entry per id.",
   "type": "object",
   "properties": {
     "text": {
       "type": "string",
+      "minLength": 1,
       "description": "The sentence as the model wrote it (or, after verification, as kept). Must not contain fact ids inline."
     },
     "fact_ids": {
       "type": "array",
-      "description": "Ids of the facts this sentence is about. At least one is required for the sentence to be kept.",
-      "items": { "type": "string" }
+      "minItems": 1,
+      "description": "Ids of the facts this sentence is about: a chart or document fact id (8 hex) or a guideline chunk id (12 hex). At least one.",
+      "items": { "type": "string", "pattern": "^([0-9a-f]{8}|[0-9a-f]{12})$" }
     },
     "citations": {
       "type": "array",
+      "minItems": 1,
       "description": "One citation per entry in fact_ids, in the same order: the chart or document fact's citation, or the guideline passage's (source_type=guideline).",
       "items": { "$ref": "citation.schema.json" }
     }

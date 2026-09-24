@@ -46,8 +46,10 @@ def _registry() -> Registry:
 
 
 # A JSON Schema checker for one named contract, able to follow references.
+# format is checked too ("date" must be a real calendar date), as the PHP
+# validator does: draft 2020-12 treats format as a note unless asked.
 def validator(name: str) -> Draft202012Validator:
-    return Draft202012Validator(contracts.load(name), registry=_registry())
+    return Draft202012Validator(contracts.load(name), registry=_registry(), format_checker=Draft202012Validator.FORMAT_CHECKER)
 
 
 # The shared example file for a contract: {"accept": [...], "reject": [...]}.
@@ -106,6 +108,20 @@ def test_models_refuse_values_of_the_wrong_type() -> None:
     schemas.Citation.model_validate(citation)
     with pytest.raises(ValidationError):
         schemas.Citation.model_validate({**citation, "anchored": "true"})
+
+
+# Pins the one date spelling: a date field takes a date or a plain
+# "YYYY-MM-DD" string, never a timestamp, a Unix number or an impossible day,
+# on both sides of the contract. (The lab-report and intake-form reject
+# examples carry the same cases through the shared PHP test.)
+@pytest.mark.parametrize("value", ["2026-09-15T00:00:00Z", "2026-09-15T00:00:00", "2026-02-30", "20260915", "2026-9-15", 1758000000])
+def test_date_fields_take_only_an_iso_date(value: object) -> None:
+    doc = {**examples("lab-report")["accept"][0], "collection_date": value}
+    assert not validator("lab-report").is_valid(doc)
+    with pytest.raises(ValidationError):
+        schemas.LabReport.model_validate(doc)
+    assert schemas.LabReport.model_validate({**doc, "collection_date": "2026-09-15"}).collection_date == date(2026, 9, 15)
+    assert schemas.LabReport.model_validate({**doc, "collection_date": date(2026, 9, 15)}).collection_date == date(2026, 9, 15)
 
 
 def test_every_example_file_names_a_contract() -> None:
@@ -193,6 +209,7 @@ def test_handoff_reasons_and_run_modes_match_the_contracts() -> None:
     handoff = json.loads((CONTRACTS / "handoff.schema.json").read_text())["properties"]
     assert set(typing.get_args(schemas.HandoffReason)) == set(handoff["reason"]["enum"])
     assert set(typing.get_args(schemas.Node)) == set(handoff["from"]["enum"])
+    assert set(typing.get_args(schemas.Node)) | {"done"} == set(handoff["to"]["enum"])
     request = json.loads((CONTRACTS / "run.request.schema.json").read_text())["properties"]
     assert set(typing.get_args(schemas.RunRequest.model_fields["mode"].annotation)) == set(request["mode"]["enum"]) == {"extract", "answer", "brief"}
 
