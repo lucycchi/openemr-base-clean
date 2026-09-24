@@ -156,6 +156,20 @@
         // mouseenter/mouseleave fire when the pointer moves onto/off the badge.
         c.addEventListener('mouseenter', () => highlight(id, true));
         c.addEventListener('mouseleave', () => highlight(id, false));
+        // Week 2: a chip citing a fact read from an uploaded document is a button that
+        // opens the page it was read from, with the box drawn, in one click from the
+        // sentence. role/tabindex make it reachable and operable from the keyboard
+        // (Enter or Space), as a real button would be.
+        if (fact && fact.citation && fact.citation.source_type === 'document') {
+            c.classList.add('copilot-chip-source');
+            c.setAttribute('role', 'button');
+            c.setAttribute('tabindex', '0');
+            c.title += '\nClick to open the source page';
+            c.addEventListener('click', e => { e.preventDefault(); openSource(fact); });
+            c.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSource(fact); }
+            });
+        }
         return c;
     }
 
@@ -230,13 +244,22 @@
         a.addEventListener('click', e => {
             // preventDefault stops the browser from following href="#" (which would jump to the top of the page).
             e.preventDefault();
-            // The viewer is a separate ES module that registers itself on `window`; if it
-            // failed to load (old browser, blocked script) say so instead of doing nothing.
-            if (!window.copilotSourceViewer) { setStatus('The document viewer is not available.', true); return; }
-            // For a flag, pass no citation so the viewer opens the document without a box.
-            window.copilotSourceViewer.open(docUrl(c.source_id), flag ? null : c, 'Document ' + c.source_id + (flag ? '' : ', page ' + (c.page_or_section || '?')));
+            openSource(f);
         });
         return a;
+    }
+
+    // Opens the page a document fact was read from in the source viewer, with the
+    // box drawn when the value was anchored. Shared by the "source p.N" link in the
+    // fact table and the citation chips in the summary.
+    function openSource(f) {
+        const c = f.citation;
+        const flag = f.category === 'document_mismatch';
+        // The viewer is a separate ES module that registers itself on `window`; if it
+        // failed to load (old browser, blocked script) say so instead of doing nothing.
+        if (!window.copilotSourceViewer) { setStatus('The document viewer is not available.', true); return; }
+        // For a flag, pass no citation so the viewer opens the document without a box.
+        window.copilotSourceViewer.open(docUrl(c.source_id), flag ? null : c, 'Document ' + c.source_id + (flag ? '' : ', page ' + (c.page_or_section || '?')));
     }
 
     // Fill the {pid} and {id} slots of the server-supplied URL template. That

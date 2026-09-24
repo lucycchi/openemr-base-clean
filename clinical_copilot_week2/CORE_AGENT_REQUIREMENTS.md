@@ -15,7 +15,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 | 2 | Structured schemas | Partly met | T2.1 |
 | 3 | Basic hybrid RAG plus rerank | Met | ~~T3.1~~, T3.2 |
 | 4 | Supervisor plus two workers | Partly met | ~~T4.1~~, T4.2, T4.3 |
-| 5 | Citation contract | Partly met | ~~T5.1~~, T5.2 |
+| 5 | Citation contract | Met | ~~T5.1~~, ~~T5.2~~ |
 | 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, ~~T6.2~~, T6.3 |
 | 7 | Observability and cost tracking | Partly met | T7.1, T7.2, T7.3 |
 
@@ -129,7 +129,7 @@ recorded as future work rather than attempted before the deadline.
 | Every sentence carries its citation | Met (T5.1 done) | Each sentence carries `citations`: one full five-field citation per id it cites, chart, document or guideline (`PanelPayload::sentences`). Required by `contracts/sentence.schema.json`; `ContractsTest` checks both shapes. |
 | Unsupported sentences removed | Met | `Verifier` strips uncited, unknown-id, mixed and ungrounded-number sentences. |
 | PDF bounding-box overlay | Met | PDF.js viewer draws the row box and the value box, for lab PDFs and intake forms, including scanned pages (`public/source-viewer.js`). |
-| From a claim to the PDF in one click | Partly met | Clicking a sentence's citation only highlights the fact row; the PDF opens from the "source p.N" link in the facts table. → **T5.2** |
+| From a claim to the PDF in one click | Met (T5.2 done) | A citation chip in the summary that cites a lab PDF or intake form is a button: one click (or Enter) opens the page with the row and cell boxed. Checked in the browser on a real briefing (Vitamin D 27.1, document page 5, two boxes drawn). Chart and guideline chips keep the hover highlight. |
 
 ## 6. Eval-driven CI gate
 
@@ -177,7 +177,7 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [x] **T5.1 Guideline citations in the five-field shape.** Done: `citation` on every guideline passage, `citations` on every sentence, contracts updated, `ContractsTest` covers chart and guideline citations in answers and briefings.
 - [x] **T4.1 Supervisor decides "final answer is ready".** Done: the answer stage is logged as handoffs with a fixed ready/refused/stripped/failed outcome (`AnswerRoute`), checked on a real briefing through the controller. Either bring answer verification into the graph's decision or document the split.
 - [x] **T1.1 Intake items as OpenEMR records.** Decided: they stay patient-reported in `copilot_intake`, with the clinical reasons written up under requirement 1; a clinician-confirmed "add to chart" action is future work.
-- [ ] **T5.2 One click from a claim to the PDF overlay.**
+- [x] **T5.2 One click from a claim to the PDF overlay.** Done: document citation chips open the source viewer with the boxes (mouse or keyboard); checked in Selenium Chrome.
 - [ ] **T7.1 Retrieval hits on every encounter**, including briefings; record retrieved as well as cited.
 - [ ] **T7.3 PHP runtime log allowlist**, matching the sidecar's.
 - [ ] **T2.1 Pydantic strict typing.**

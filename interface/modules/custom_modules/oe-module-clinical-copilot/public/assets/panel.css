@@ -17,6 +17,8 @@
 #copilot-panel .copilot-chip { display: inline-block; font-family: monospace; font-size: .7rem; background: #e9ecef; color: #495057; border-radius: .25rem; padding: 0 .3rem; margin-left: .3rem; cursor: help; vertical-align: middle; }
 #copilot-panel .copilot-chip.copilot-chip-ref { background: #cfe2ff; color: #052c65; }
 #copilot-panel .copilot-chip.copilot-chip-hit { outline: 2px solid #0d6efd; }
+#copilot-panel .copilot-chip.copilot-chip-source { cursor: pointer; text-decoration: underline dotted; }
+#copilot-panel .copilot-chip.copilot-chip-source:focus-visible { outline: 2px solid #0d6efd; outline-offset: 1px; }
 #copilot-panel .copilot-ask { display: flex; gap: .5rem; margin-top: .75rem; }
 #copilot-panel .copilot-thread { margin-top: .5rem; }
 #copilot-panel .copilot-turn { padding: .35rem .5rem; border-left: 3px solid #dee2e6; margin-bottom: .35rem; font-size: .9rem; }
