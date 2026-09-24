@@ -6,6 +6,10 @@ against the repo on `pdf_reader` on 2026-09-23 at 20:30 Central. Each row
 quotes the PRD, gives its status, and links the evidence. Every gap becomes a
 task in the [task list](#task-list).
 
+The early submission scored **91/100**; the breakdown, what each comment
+means and the G tasks that follow from it are in
+[Early submission grade](#early-submission-grade-received-2026-09-24).
+
 The seven **Core Agent Requirements** (what the agent must do) are tracked
 separately in [CORE_AGENT_REQUIREMENTS.md](CORE_AGENT_REQUIREMENTS.md). This
 file covers what has to be **handed in**: documents, evidence, the deployed
@@ -28,11 +32,11 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 |---|---|---|---|---|
 | 1 | GitLab repository | Done | none | Early |
 | 2 | W2 architecture doc (`./W2_ARCHITECTURE.md`) | Done | none | Early |
-| 3 | Key metrics doc (`./KEY_METRICS.md`) | Done | S10 (refresh at final) | Early |
-| 4 | Schemas | Done | (T2.1 in core list) | Early |
+| 3 | Key metrics doc (`./KEY_METRICS.md`) | Done; metrics 6 and 7 still planned (cost 2 points) | G6, G7, S10 | Early |
+| 4 | Schemas | Done; Gate 3 scored 9/15 | G2, G8 | Early |
 | 5 | Eval dataset | Done | none | Early |
-| 6 | CI evidence | Done | S10 (re-run proof at final) | Early |
-| 7 | Demo video | User | S2 | Early and final |
+| 6 | CI evidence | Done (hook); reviewer wants a GitLab CI merge request job for the final | G3, G4, G5, S10 | Early |
+| 7 | Demo video | Done for early (graded 4/5); re-record for final | G9 | Early and final |
 | 8 | Cost and latency report | Done | none | Final |
 | 9 | Deployed application | Done | none | Early |
 | 10 | Technical interview | User | S8 | Thu/Fri |
@@ -94,7 +98,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | Pydantic schemas for both types | Done | `LabReport` / `LabResult` and `IntakeForm` in [schemas.py](../interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/schemas.py); matching JSON Schemas in [contracts/](../interface/modules/custom_modules/oe-module-clinical-copilot/contracts/README.md). |
 | Source citation fields | Done | Every lab result and intake item carries a citation (`source_type, source_id, page_or_section, field_or_chunk_id, quote_or_value`, plus `bbox`, `row_bbox`, `anchored`). |
 | Validation tests | Done | `sidecar/tests/test_contracts.py` (Pydantic and JSON Schema accept and reject the same shared examples), `ContractExamplesTest.php`, `SidecarClientTest.php`; eval rubric `schema_valid`. |
-| Strict typing | Tracked elsewhere | Pydantic coerces `"1"` to an int; the PHP-side JSON Schema check catches it end to end. Core task T2.1. |
+| Strict typing | Done | Every contract model is `ConfigDict(extra="forbid", strict=True)` since `0667ee0` (core task T2.1): `"1"` is not an int, `"true"` is not a bool. The three date fields take ISO date strings. `test_models_refuse_values_of_the_wrong_type` pins it. (Until 2026-09-24 this row still described the old coercion gap; see G1.) |
 
 ## 5. Eval dataset
 
@@ -127,7 +131,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 
 | Part | Status | Evidence |
 |---|---|---|
-| Video recorded | User | Not recorded (DESIGN.md 8.4). Due with the early submission tonight. → **S2** |
+| Video recorded | Done for early | Submitted with the early submission 2026-09-23; graded 4/5 (Gate 8). Re-record for the final. → **G9** |
 | Shot list | Done | [DEMO_SCRIPT.md](DEMO_SCRIPT.md): a timed script covering the six things the PRD names, on synthetic patients, against the deployed app. → **S2** |
 | HIPAA | Watch | Record only seed/synthetic patients; no real names, no `.env`, no API keys on screen, no Langfuse page showing keys. |
 
@@ -234,7 +238,7 @@ it is verified.
 **Tonight (early submission, 23:59 Central)**
 
 - [x] **S1 Deploy the current `pdf_reader` and re-verify.** Done 2026-09-23 21:00 CT: `b6f4c60` deployed, `/ready` ok, Week 2 collection 17/17; Week 1 18/19 (alert webhook needs its token in the run). Redeployed 22:15 CT at `3f9cc74` with every core agent task (T1-T7) included: `/ready` ok, Week 2 collection 17/17, 41/41. Push to GitLab (through the gate), run `docker/vps/deploy.sh` (rebuilds the sidecar image), confirm `/ready`, the prompt version and both Bruno collections against the droplet; update `results-deployed.json`. Note: `deploy.sh` rsyncs the sidecar from the **working tree**, so uncommitted sidecar edits in progress would ship too.
-- [ ] **S2 Demo video.** Shot list done: [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Recording is the user's. Write a timed shot list (upload, extraction with an unverified value, click-to-source overlay, guideline evidence with citations, routing drawer, eval gate refusing a regression, Langfuse trace). The user records it.
+- [x] **S2 Demo video.** Recorded and submitted 2026-09-23 (graded 4/5; the final re-record is G9). Shot list done: [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Recording is the user's. Write a timed shot list (upload, extraction with an unverified value, click-to-source overlay, guideline evidence with citations, routing drawer, eval gate refusing a regression, Langfuse trace). The user records it.
 - [x] **S3 README and `.env.example`.** Done 2026-09-23: README names the branch, counts 70 cases, links EVAL_DATASET.md, notes the `LANGFUSE_BASE_URL` fallback; `.env.example` lists every variable the code reads, grouped, one comment each, and marks the tooling-only keys. Name the branch; make `.env.example` list every variable the code reads, with one line each; align `LANGFUSE_HOST`; explain the deploy-only keys; refresh counts.
 - [x] **S4 `./W2_ARCHITECTURE.md` is the document, not a pointer**, and says what is true today (rerank live). Done 2026-09-23; links rewritten and checked.
 - [x] **S5 Eval dataset page**, done 2026-09-23: [EVAL_DATASET.md](EVAL_DATASET.md).: judge configuration (no LLM judge; which code check decides each rubric; thresholds; live vs recorded), results per rubric, where every piece lives.
@@ -249,3 +253,183 @@ it is verified.
 - [x] **S7 USERS.md**, done 2026-09-23: full PCP persona, front-desk uploader persona, UC4 and UC5 with click paths.
 - [x] **S9 Social post draft**, done 2026-09-23 ([SOCIAL_POST.md](SOCIAL_POST.md)). Posting is the user's.
 - [ ] **S10 Final pass**: final deploy, both collections and the gate self-test again, refresh numbers in KEY_METRICS and README, check every link in the submission docs resolves.
+
+---
+
+## Early submission grade (received 2026-09-24)
+
+Submitted Wed 2026-09-23 21:24, graded the same day by the Gauntlet
+reviewer. Screenshot: [early_submission_grade.png](early_submission_grade.png).
+
+**Score: 91 / 100.**
+
+| Rubric gate | Score | Lost | What the reviewer said about it |
+|---|---|---|---|
+| 1 Deployed application and Week 2 setup | 10/10 | 0 | nothing |
+| 2 Document ingestion and extraction | 15/15 | 0 | praised: strict document contracts, anchored extraction |
+| 3 Strict schemas and citation contract | 9/15 | **6** | no comment (see interpretation) |
+| 4 Eval framework and PR-blocking CI gate | 25/25 | 0 | praised: 70 cases, planted-regression evidence, the pre-push gate refuses a regression |
+| 5 Supervisor, workers and evidence retrieval | 12/12 | 0 | praised: supervisor routing, hybrid retrieval |
+| 6 Observability | 8/10 | **2** | "continue building out the production adoption and physician feedback metrics that are currently documented as planned" |
+| 7 W2_ARCHITECTURE.md, Week 1 debt and ... | 8/8 | 0 | nothing |
+| 8 Demo video | 4/5 | **1** | no comment |
+
+### The reviewer's comment
+
+> Lucy, this is a strong Week 2 submission. You have 70 eval cases, strict
+> document contracts, anchored extraction, citation verification, supervisor
+> routing, hybrid retrieval, PHI safe tracing, cost and latency
+> instrumentation, and extensive automated testing. The planted regression
+> evidence is also good and demonstrates that your local pre push gate
+> actually refuses a regression.
+>
+> The main area to address going forward is Gate 5. Your GitLab pipeline
+> currently performs linting and deployment, but the evaluation gate itself
+> runs through a local pre push hook rather than as a blocking merge request
+> CI job. Move the golden set and regression gate into GitLab CI so a failed
+> evaluation automatically prevents a merge. I would also continue building
+> out the production adoption and physician feedback metrics that are
+> currently documented as planned.
+
+### What it means
+
+**1. The CI comment cost nothing now, but it is the reviewer's top ask for
+the final.** The eval gate scored 25/25. The comment says "Gate 5", but in
+the rubric Gate 5 is the supervisor (12/12, full marks) and the CI gate is
+Gate 4. Read "Gate 5" as a numbering slip meaning the CI gate. The reviewer
+accepted the hook for the early submission and is asking for a real merge
+request job before the final. Expect the final to be graded harder on this.
+
+**2. The reviewer believes our GitLab pipeline runs. It never has.** The
+reviewer read [.gitlab-ci.yml](../.gitlab-ci.yml) (`php-lint`, `compose-lint`,
+`deploy-vps`) and concluded it "currently performs linting and deployment".
+In fact GitLab has refused every pipeline for this project: `POST
+/projects/1993/pipeline` returns 403 even as Owner, `shared_runners_enabled`
+is false, no runners exist, zero pipelines have ever run (checked
+2026-09-23; the instructors then said a hook plus proof was acceptable). The
+file also still deploys from the old `audit` branch, not `pdf_reader`. So:
+
+- Moving the gate into `.gitlab-ci.yml` is easy, but it will not *run* until
+  someone with instance or group rights turns CI on for the project. That
+  part is outside our control and has to be asked for (G3).
+- Whatever happens, the repo should stop implying the pipeline runs. A
+  grader who reads the YAML and trusts it will be surprised when a merge
+  request shows no pipeline (G5).
+
+**3. Gate 3 (-6) is the biggest loss and has no comment.** Likely causes,
+most likely first:
+
+- *Our own document admitted a strict-schema gap.* Row 4 of this file said
+  "Pydantic coerces `"1"` to an int" and pointed at T2.1 as open. Strict
+  typing landed in `0667ee0` (19:10 by the commit clock), after `b6f4c60`
+  was pushed and deployed, and this row was never updated. A grader scoring
+  "strict schemas" who read this file, or who looked at the schemas at
+  `b6f4c60`, saw non-strict models. Row 4 is fixed now (G1).
+- *The date fields are still loose.* `collection_date`, `reported_date` and
+  `form_date` accept any string that parses as an ISO date; the JSON Schemas
+  may not pin a `format` or pattern. Small, but it is exactly what "strict"
+  graders poke at.
+- *Citation contract coverage.* The PRD requires every clinical claim in the
+  final response to carry `{source_type, source_id, page_or_section,
+  field_or_chunk_id, quote_or_value}`. `a8e7f1f` made that true for guideline
+  passages too, and it was in the graded build, but a grader who found one
+  claim without the five fields (a Week 1 structured-record fact, a
+  "no data" statement) would dock here.
+
+Asking the reviewer which of these it was is cheaper than guessing (G2).
+
+**4. Gate 6 (-2) is the two "planned, not yet built" metrics.**
+[KEY_METRICS.md](../KEY_METRICS.md) metric 6 (physician rating of the
+summary) and metric 7 (chat adoption per encounter) are both marked
+"planned, not yet built". Everything else in observability (tool sequence,
+per-step latency, tokens, cost, retrieval hits, extraction confidence, eval
+outcome, PHI-safe logs) got credit. Building those two closes the gap
+(G6, G7).
+
+**5. Gate 8 (-1) has no comment.** The PRD asks for 3-5 minutes showing
+upload, extraction, evidence retrieval, citations, eval results and
+observability. The usual one-point losses are running over or under length,
+or one of the six being shown only in passing (eval results and the Langfuse
+trace are the easiest to rush). Re-record for the final (G9).
+
+### Where the remaining points are
+
+| Gate | Available | Fix | Size |
+|---|---|---|---|
+| 3 Strict schemas and citations | 6 | G1 (done), G2, G8 | small to medium |
+| 6 Observability | 2 | G6, G7 | medium (new table, UI control, a metric query) |
+| 8 Demo video | 1 | G9 | one recording session |
+| 4 CI gate | 0 now, at risk at final | G3, G4, G5 | small in the repo; the blocker is GitLab permissions |
+
+### Grade task list
+
+Closed only after it is verified, like the S tasks.
+
+**Before the technical interview (Thu/Fri)**
+
+- [x] **G1 Correct the stale strict-typing row** in section 4 of this file.
+  Done 2026-09-24: row 4 now describes `0667ee0` and the pinning test.
+- [ ] **G2 Ask the reviewer what cost the Gate 3 and Gate 8 points.** (User.)
+  One short message: "Could you tell me what I lost the six Gate 3 points
+  on, strict typing, the date fields, or a claim without the full citation?
+  And the one point on the video?" The answer decides whether G8 is needed.
+- [ ] **G3 Ask for GitLab CI to be turned on** for project 1993 (or for a
+  project runner to be allowed). (User.) Group Maintainers who can act:
+  zacsmith, tomtarpey. Say what you need exactly: pipelines allowed on
+  `lucychi/openemr`, and either shared runners or permission to register a
+  project runner on the droplet. Quote the reviewer's request so it is clear
+  why.
+- [ ] **Interview prep:** add the CI answer to
+  [INTERVIEW_BRIEF.md](INTERVIEW_BRIEF.md) under weak points: what was tried
+  (pipeline API 403 as Owner, no runners, group project blocked by branch
+  protection), what the hook does, the kill-matrix result (19/19 planted
+  regressions refused), and the plan (G4, G5). Staff are likely to ask.
+
+**Before the final (Sun 12:00)**
+
+- [ ] **G4 Add the eval gate to `.gitlab-ci.yml` as a blocking merge request
+  job.** A `eval-gate` job in the `check` stage that runs the same thing the
+  hook runs (`tests/evals/gate.sh`: sidecar pytest, isolated PHPUnit, the 54
+  deterministic cases, `gate.php` thresholds), on `merge_request_event` and
+  on pushes to `pdf_reader`. Check first what `gate.sh` needs from the host
+  (PHP, Python, vendor/, docker) and pick an image that has it. Also: point
+  `DEPLOY_BRANCH` at `pdf_reader`, make `deploy-vps` depend on `eval-gate`,
+  and turn on "Pipelines must succeed" in the project's merge request
+  settings. If G3 comes through, open a merge request with a planted
+  regression and screenshot the blocked merge, like the hook proof.
+- [ ] **G5 Say plainly what runs and what does not.** At the top of
+  [EVAL_GATE.md](../EVAL_GATE.md) and in the root README: the pre-push hook
+  is the gate that runs today; the `.gitlab-ci.yml` jobs (including the new
+  `eval-gate`) are ready but GitLab refuses pipelines for this project (403,
+  no runners), with the date checked. If G3 lands, replace this with the
+  pipeline link.
+- [ ] **G6 Build metric 6, the physician rating.** Thumbs up/down (and an
+  optional comment) on each briefing, stored in `copilot_briefing_rating`
+  keyed by briefing, `Prompt::VERSION` and model; comment text never goes to
+  Langfuse or the log (PHI). Add the rating as a Langfuse score so it sits
+  next to the trace. New table means the Module Manager upgrade or the
+  by-hand `mariadb` step on the droplet; new log keys go in
+  `LogFields::ALLOWED`. Update KEY_METRICS.md from "planned" to live, with
+  the first numbers.
+- [ ] **G7 Build metric 7, chat adoption per encounter.** The numerator
+  already exists in the audit rows; write the query (encounters with at
+  least one chat turn / encounters), expose it where the other metrics are
+  read ([DASHBOARD.md](DASHBOARD.md)), and mark it live in KEY_METRICS.md.
+- [x] **G8 Tighten the date fields and audit citation coverage.** Done
+  2026-09-24, verified: isolated PHPUnit 429 tests green, PHPStan clean on
+  the full codebase, `gate.sh` PASS (56/56, every rubric 100 %): one ISO date rule on all three validators;
+  the sentence contract requires a citation; `PanelPayload` drops a claim
+  whose ids do not all resolve to a citation; Pydantic's handoff `to`
+  matches the contract. Details in CORE_AGENT_REQUIREMENTS.md sections 2
+  and 5. Original plan: Pin the three date fields to
+  a date type or an ISO pattern in both Pydantic and the JSON Schemas; add an
+  eval case that rejects a malformed date. Walk one briefing and one
+  follow-up answer and confirm every clinical claim, including Week 1
+  structured-record facts, carries all five citation fields.
+- [ ] **G9 Re-record the demo video** from [DEMO_SCRIPT.md](DEMO_SCRIPT.md),
+  timed to 3-5 minutes, with each of the six PRD items on screen long
+  enough to read: upload, extraction (with an unverified value), evidence
+  retrieval, click-to-source citation, eval results (the gate refusing a
+  regression, and the GitLab pipeline if G3 lands), observability (a
+  Langfuse trace, plus the new rating from G6). Synthetic patients only.
+- [ ] **S10** (above) now also covers: re-verify G4-G7 on the final deploy.
