@@ -80,9 +80,12 @@ tests/evals/gate.sh pre-push --update-baseline
 ```
 
 The hook is client-side: it blocks `git push` where it is installed and can
-be bypassed with `--no-verify`. This GitLab instance does not allow student
-pipelines, so there is no server-side copy; `gate.php` is the job if that
-changes.
+be bypassed with `--no-verify`. The server-side copy is the `eval-gate` job in
+`.gitlab-ci.yml` (`tests/evals/ci-gate.sh` on a fresh stack), which fails the
+pipeline and, with "Pipelines must succeed" on, blocks the merge request.
+Student accounts cannot create pipelines on this instance, so a project bot
+token starts them: `tests/evals/ci-pipeline.sh`. Evidence in
+[EVAL_GATE.md](../../EVAL_GATE.md).
 
 ### How graders test the gate
 

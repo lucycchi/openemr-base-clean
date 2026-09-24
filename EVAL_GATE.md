@@ -9,27 +9,40 @@ The gate lives in the codebase: the pre-push hook comes from
 [tests/evals/install-hooks.sh](tests/evals/install-hooks.sh), and the same gate
 is the `copilot-eval-gate` hook in
 [.pre-commit-config.yaml](.pre-commit-config.yaml). Tom Tarpey (Gauntlet staff)
-confirmed on 2026-09-24 that a hook kept in the codebase, run locally or on a runner on
-DigitalOcean, is the expected setup, because this GitLab instance does not
-create pipelines for student projects.
+confirmed on 2026-09-24 that a hook kept in the codebase, run locally or on a
+runner on DigitalOcean, is the expected setup.
 
-**GitLab CI is ready but cannot run here.** After the Week 2 early-submission
-review asked for the gate as a blocking merge-request job, it was built as one:
-the `eval-gate` job in [.gitlab-ci.yml](.gitlab-ci.yml) runs
-[tests/evals/ci-gate.sh](tests/evals/ci-gate.sh) on a project runner on the
-DigitalOcean droplet (shell executor, tag `copilot-eval`, registered and
-online) and `pdf_reader` is a protected branch. "Pipelines must succeed" was
-turned on, then off again once pipelines were confirmed unavailable: with no
-pipeline possible it would block every merge request. GitLab still refuses to create the pipeline: a push creates none and
-`POST /projects/1993/pipeline` returns 403 for the project Owner (checked
-2026-09-24; none of the 12 projects in the `gauntletai/gauntlet` group has a
-pipeline either). If pipeline creation is ever allowed, the next push runs the
-job with no further change. Run locally from a fresh clone, the CI path passes
-a clean commit (stack healthy after 378 s, 56/56) and refuses kill-matrix
-regression M12 (`no_phi_in_logs` 50 % against a 100 % threshold, exit 1).
+**It also runs in GitLab CI and blocks merges.** After the Week 2
+early-submission review asked for the gate as a blocking merge-request job, it
+was built as one: the `eval-gate` job in [.gitlab-ci.yml](.gitlab-ci.yml) runs
+[tests/evals/ci-gate.sh](tests/evals/ci-gate.sh), which brings up a throwaway
+OpenEMR stack from the commit under test and runs the same gate against it, on
+a project runner on the DigitalOcean droplet (shell executor, tag
+`copilot-eval`). `pdf_reader` is protected and "Pipelines must succeed" is on.
 
-The proof for item 5 is therefore a recorded, refused push rather than a
-blocked merge request.
+One wrinkle on this GitLab instance: a student's personal account cannot create
+pipelines (a push creates none; `POST /pipeline` returns 403 even for the
+project Owner), but the bot user of a project access token can, as Gauntlet
+suggested ("use a service account"). So pipelines are started with that token by
+[tests/evals/ci-pipeline.sh](tests/evals/ci-pipeline.sh), which
+`docker/vps/deploy.sh` calls after its push.
+
+Evidence, 2026-09-24:
+
+- Pipeline [#28015](https://labs.gauntletai.com/lucychi/openemr/-/pipelines/28015)
+  on `pdf_reader`: passed. `eval-gate` 407 s (stack healthy after 201 s,
+  sidecar pytest 106, PHPUnit 445, 56/56 golden cases, `GATE: PASS`).
+- Merge request [!1](https://labs.gauntletai.com/lucychi/openemr/-/merge_requests/1)
+  from `ci-proof-regression` (`pdf_reader` plus kill-matrix regression M12, the
+  extraction written to a log line): its pipeline
+  [#28040](https://labs.gauntletai.com/lucychi/openemr/-/pipelines/28040)
+  failed, `eval-gate` reporting `no_phi_in_logs` 50 % against a 100 %
+  threshold (cases 69 and 70) and `GATE: FAIL`, and GitLab reports the merge
+  request as not mergeable (`detailed_merge_status: ci_must_pass`). The branch
+  was pushed with `--no-verify` on purpose, since the local hook refuses it; the
+  merge request stays open, unmerged, as the record.
+
+The local proof, a refused push, is in section 5.
 
 Detailed reference: [tests/evals/README.md](tests/evals/README.md). This
 page is the summary.
@@ -72,6 +85,8 @@ to enable the module in the UI. After that:
 - **Run it the way CI does:** `tests/evals/ci-gate.sh` brings up a throwaway
   stack from this checkout (random ports, no API keys), runs the gate against
   the committed files rather than your dev stack, and removes the stack.
+- **Start the GitLab pipeline:** `tests/evals/ci-pipeline.sh [--wait] [branch]`
+  or `--mr <iid>` for a merge request (needs `GITLAB_CI_BOT_TOKEN` in `.env`).
 - **Include the live cases:** `COPILOT_GATE_LIVE=1 git push` (needs an API key; see section 4).
 - **Uninstall:** `tests/evals/install-hooks.sh --uninstall`.
 

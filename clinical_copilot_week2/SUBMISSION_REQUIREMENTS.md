@@ -35,7 +35,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | 3 | Key metrics doc (`./KEY_METRICS.md`) | Done; metric 6 built 2026-09-24, metric 7 still planned | G7, S10 | Early |
 | 4 | Schemas | Done; Gate 3 scored 9/15 | G2, G8 | Early |
 | 5 | Eval dataset | Done | none | Early |
-| 6 | CI evidence | Done: hook in the codebase (staff-confirmed 2026-09-24); GitLab CI job built, GitLab refuses pipelines | S10 | Early |
+| 6 | CI evidence | Done: hook in the codebase, and a blocking GitLab CI merge-request job (pipeline #28015 green, MR !1 blocked by a planted regression) | S10 | Early |
 | 7 | Demo video | Done for early (graded 4/5); re-record for final | G9 | Early and final |
 | 8 | Cost and latency report | Done | none | Final |
 | 9 | Deployed application | Done | none | Early |
@@ -394,8 +394,10 @@ Closed only after it is verified, like the S tasks.
   `tests/evals/ci-gate.sh` on runner 257 on the droplet; `pdf_reader`
   protected via the API ("Pipelines must succeed" was turned on, then off
   again once pipelines were confirmed unavailable). Fresh-clone dry
-  runs: clean PASS, planted M12 FAIL. GitLab still refuses to create the
-  pipeline (403), so the job has never run on GitLab. Original plan: A `eval-gate` job in the `check` stage that runs the same thing the
+  runs: clean PASS, planted M12 FAIL. Running on GitLab since 2026-09-24:
+  pipelines are started by a project bot token (personal accounts get 403);
+  #28015 passed, MR !1 with planted M12 failed `eval-gate` and is blocked
+  (`ci_must_pass`). Original plan: A `eval-gate` job in the `check` stage that runs the same thing the
   hook runs (`tests/evals/gate.sh`: sidecar pytest, isolated PHPUnit, the 54
   deterministic cases, `gate.php` thresholds), on `merge_request_event` and
   on pushes to `pdf_reader`. Check first what `gate.sh` needs from the host

@@ -220,14 +220,17 @@ sentences only.
 
 Every push runs `tests/evals/gate.sh` from the pre-push hook
 (`tests/evals/install-hooks.sh`): the sidecar's pytest, the module's
-isolated PHPUnit suite, `case-index.php --check`, then the 39 deterministic
+isolated PHPUnit suite, `case-index.php --check`, then the 56 deterministic
 golden cases through `gate.php`, which compares each case's rubric verdicts
-with the committed baseline and refuses the push on a threshold breach or a
-per-case regression of more than five points. `COPILOT_GATE_LIVE=1` adds
-the 13 live cases. There is no server-side CI (GitLab pipelines are not
-available to students), so the hook is the gate and `--no-verify` is the
-only way round it; the recorded refusal transcript is in
-[../tests/evals/README.md](tests/evals/README.md#how-graders-test-the-gate).
+with the committed baseline and refuses the push on a threshold breach or on
+any case that went from pass to fail. `COPILOT_GATE_LIVE=1` adds the 16 live
+cases. The same gate runs server-side as the `eval-gate` GitLab CI job on a
+fresh stack (`tests/evals/ci-gate.sh`), and with "Pipelines must succeed" on
+a failed evaluation blocks the merge request; pipelines are started by a
+project bot token because student accounts cannot create them here. The
+recorded refusal transcript is in
+[../tests/evals/README.md](tests/evals/README.md#how-graders-test-the-gate),
+the pipeline and blocked merge request in [EVAL_GATE.md](EVAL_GATE.md).
 
 ## Risks and trade-offs
 
