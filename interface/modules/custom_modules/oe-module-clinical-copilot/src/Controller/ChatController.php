@@ -94,6 +94,9 @@ final class ChatController
      * @var list<array{from: string, to: string, reason: string, state_keys_changed: list<string>, ms: int}>
      */
     private array $handoffs = [];
+
+    /** Guideline passages retrieval returned for this request; null when retrieval did not run. */
+    private ?int $retrievedChunks = null;
     /**
      * Week 2: the sidecar's model calls for this question (embedding, rerank), priced, for the trace.
      *
@@ -242,7 +245,10 @@ final class ChatController
             'cost_usd' => $costUsd,
             'llm_attempts' => $this->llmAttempts,
             'llm_retried' => $this->llmAttempts > 1,
-            'guideline_chunks' => is_array($outcome['guidelines'] ?? null) ? count($outcome['guidelines']) : null,
+            // Retrieval hits: how many guideline passages retrieval returned for this
+            // encounter, and how many of them the final response cites.
+            'retrieved_chunks' => $this->retrievedChunks,
+            'guideline_chunks' => is_array($outcome['guidelines'] ?? null) ? count($outcome['guidelines']) : self::citedGuidelineChunks($outcome),
             'handoffs' => $this->handoffs,
             'reranked' => array_filter($this->sidecarUsage, static fn(array $u): bool => $u['kind'] === 'rerank') !== [],
         ] + ($this->warm?->toLogContext() ?? []);
@@ -298,6 +304,9 @@ final class ChatController
             fn() => $this->guidelineSection($assembled, $config, $pid),
             static fn(GuidelineSection $g) => ['guideline_status' => $g->status, 'guideline_cards' => count($g->cards), 'guideline_dropped' => $g->dropped],
         );
+        // The passages on the guideline cards (fresh from the sidecar or from the cache);
+        // null when no guideline rule fired or the sidecar was unavailable.
+        $this->retrievedChunks = $guidelines->status === 'ok' ? count($guidelines->chunks()) : null;
         if (!$config->hasOpenAi()) {
             return PanelPayload::briefing($assembled, $this->unconfigured($assembled), $this->correlationId, $guidelines);
         }
@@ -428,6 +437,7 @@ final class ChatController
                 static fn($r) => ['chunks' => count($r->chunks), 'handoffs' => count($r->handoffs)],
             );
             $evidence = EvidenceSet::fromRun($run->chunks, new GuidelineManifest());
+            $this->retrievedChunks = count($run->chunks);
             $handoffs = array_map(static fn($h) => $h->toArray(), $run->handoffs);
             $this->sidecarUsage = Pricing::fromConfig($config)->priceUsage($run->usage, $config->openAiModel);
         } catch (SidecarException $e) {
@@ -442,6 +452,29 @@ final class ChatController
         // The answer stage joins the graph's hops, so the log shows when the answer was ready.
         $this->handoffs = [...$handoffs, ...AnswerRoute::forAnswer($answer, $this->llmMs, $this->llmAttempts)];
         return PanelPayload::answer($assembled, $answer, $this->correlationId);
+    }
+
+    /**
+     * Distinct guideline passages the briefing's kept sentences cite, read from the
+     * sentences' citations; null when the outcome has no sentences (an error).
+     *
+     * @param array<mixed> $outcome
+     */
+    private static function citedGuidelineChunks(array $outcome): ?int
+    {
+        if (!is_array($outcome['sentences'] ?? null)) {
+            return null;
+        }
+        $ids = [];
+        foreach ($outcome['sentences'] as $sentence) {
+            $citations = is_array($sentence) && is_array($sentence['citations'] ?? null) ? $sentence['citations'] : [];
+            foreach ($citations as $c) {
+                if (is_array($c) && ($c['source_type'] ?? null) === 'guideline' && is_string($c['field_or_chunk_id'] ?? null)) {
+                    $ids[$c['field_or_chunk_id']] = true;
+                }
+            }
+        }
+        return count($ids);
     }
 
     private function pipeline(Config $config, AssembledFacts $assembled, PatientId $pid): NarrationPipeline

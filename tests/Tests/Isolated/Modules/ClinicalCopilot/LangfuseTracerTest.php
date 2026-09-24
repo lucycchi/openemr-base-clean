@@ -387,6 +387,22 @@ final class LangfuseTracerTest extends TestCase
         self::assertSame('sidecar.evidence_retriever', $retriever['name']);
     }
 
+    public function testABriefingScoresRetrievalHitFromTheRetrievedCount(): void
+    {
+        // A briefing whose guideline rules fired: retrieval returned 4 passages and the
+        // narration cites 1. retrieval_hit is about retrieval, so it reads the retrieved count.
+        $brief = new RequestTrace('corr-abc', 'copilot.brief', 'physician', 1_700_000_000_000, 900, ['http_status' => 200, 'retrieved_chunks' => 4, 'guideline_chunks' => 1, 'verification_pass' => true], 'gpt-4o-mini', 500, 40, 600, null);
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($brief);
+        self::assertTrue($this->scores()['retrieval_hit']);
+    }
+
+    public function testRetrievalThatFoundNothingIsAMissEvenWhenTheOldCountIsAbsent(): void
+    {
+        $brief = new RequestTrace('corr-abc', 'copilot.brief', 'physician', 1_700_000_000_000, 900, ['http_status' => 200, 'retrieved_chunks' => 0, 'verification_pass' => true], 'gpt-4o-mini', 500, 40, 600, null);
+        $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($brief);
+        self::assertFalse($this->scores()['retrieval_hit']);
+    }
+
     public function testAPrewarmSweepScoresOkWhenNoPatientErrored(): void
     {
         $sweep = new RequestTrace('corr-abc', 'copilot.prewarm', 'cron', 1_700_000_000_000, 12000, ['scheduled' => 8, 'warmed' => 6, 'already_cached' => 2, 'skipped' => 0, 'errored' => 0, 'queue_depth_after' => 0], null, 0, 0, 0, null);

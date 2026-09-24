@@ -17,7 +17,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 | 4 | Supervisor plus two workers | Partly met | ~~T4.1~~, T4.2, T4.3 |
 | 5 | Citation contract | Met | ~~T5.1~~, ~~T5.2~~ |
 | 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, ~~T6.2~~, T6.3 |
-| 7 | Observability and cost tracking | Partly met | T7.1, T7.2, T7.3 |
+| 7 | Observability and cost tracking | Partly met | ~~T7.1~~, T7.2, T7.3 |
 
 The tasks are worked in the order in the [task list](#task-list), riskiest to
 grading first.
@@ -161,7 +161,7 @@ recorded as future work rather than attempted before the deadline.
 | Latency by step | Met | `duration_ms` per step span; sidecar `ms` per hop. |
 | Token usage | Met | Per-call generations and totals on every trace. |
 | Cost estimate | Met | `Pricing.php` list-price table; `cost_usd` on each trace and audit line. |
-| Retrieval hits | Partly met | Follow-up answers record the cited chunk count and a `retrieval_hit` score; **briefings record neither**, and nothing records how many chunks were retrieved (only how many were cited). → **T7.1** |
+| Retrieval hits | Met (T7.1 done) | Every briefing and answer where retrieval ran records `retrieved_chunks` (passages retrieval returned) and `guideline_chunks` (passages the response cites) on its log line and trace, and a `retrieval_hit` score (retrieved > 0). Checked on real briefings: patient 30 retrieved 6, cited 0. |
 | Extraction confidence | Met | Share of anchored citations, logged and traced per extraction. |
 | Eval outcome | Partly met | Each encounter records the verifier's outcome (`verification_pass`, `stripped`, `routing_ok`, `extraction_ok`), but nothing calls this the per-encounter eval outcome. → **T7.2** |
 | No raw PHI in logs | Partly met | The sidecar enforces a log-field allowlist at runtime. **PHP does not**: the allowlist exists only in the eval test. No raw text was found in logs. → **T7.3** |
@@ -178,7 +178,7 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [x] **T4.1 Supervisor decides "final answer is ready".** Done: the answer stage is logged as handoffs with a fixed ready/refused/stripped/failed outcome (`AnswerRoute`), checked on a real briefing through the controller. Either bring answer verification into the graph's decision or document the split.
 - [x] **T1.1 Intake items as OpenEMR records.** Decided: they stay patient-reported in `copilot_intake`, with the clinical reasons written up under requirement 1; a clinician-confirmed "add to chart" action is future work.
 - [x] **T5.2 One click from a claim to the PDF overlay.** Done: document citation chips open the source viewer with the boxes (mouse or keyboard); checked in Selenium Chrome.
-- [ ] **T7.1 Retrieval hits on every encounter**, including briefings; record retrieved as well as cited.
+- [x] **T7.1 Retrieval hits on every encounter** Done: `retrieved_chunks` and `guideline_chunks` on briefings and answers, `retrieval_hit` from the retrieved count., including briefings; record retrieved as well as cited.
 - [ ] **T7.3 PHP runtime log allowlist**, matching the sidecar's.
 - [ ] **T2.1 Pydantic strict typing.**
 - [ ] **T1.2 Return the validated extraction JSON** from `copilot:attach` (for example a `--json` flag).

@@ -211,8 +211,11 @@ final readonly class LangfuseTracer implements Tracer
             $scores['extraction_ok'] = $extracted;
             $scores['extraction_verified'] = $extracted && ($t->metadata['unverified'] ?? 1) === 0 && ($t->metadata['unextracted'] ?? 1) === 0;
         }
-        if (is_int($t->metadata['guideline_chunks'] ?? null)) {
-            // A follow-up question: did the retriever find guideline evidence for it?
+        if (is_int($t->metadata['retrieved_chunks'] ?? null)) {
+            // A briefing or follow-up where retrieval ran: did it return guideline evidence?
+            $scores['retrieval_hit'] = $t->metadata['retrieved_chunks'] > 0;
+        } elseif (is_int($t->metadata['guideline_chunks'] ?? null)) {
+            // Traces recorded before retrieved_chunks existed: fall back to the cited count.
             $scores['retrieval_hit'] = $t->metadata['guideline_chunks'] > 0;
         }
         $hops = self::hops($t);
