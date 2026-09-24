@@ -897,7 +897,7 @@ function compare(array $expect, array $actual): array
             }
             continue;
         }
-        if ($key === 'min_chunks' || $key === 'categories' || $key === 'absent' || $key === 'cited' || $key === 'min_chunks_per_trigger' || $key === 'top_sources_allowed') {
+        if (in_array($key, ['min_chunks', 'categories', 'absent', 'cited', 'min_chunks_per_trigger', 'top_sources_allowed'], true)) {
             continue; // scored into ungrounded_tokens / anchor_errors by the mode runner
         }
         if ($key === 'max_stripped') {
