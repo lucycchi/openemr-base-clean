@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-emr.org/clinical-copilot/contracts/handoff.schema.json",
   "title": "Supervisor handoff",
-  "description": "One routing step in the sidecar graph, appended by the supervisor on every transition so the multi-agent run is inspectable. PHP writes each as a Langfuse span and the panel shows the list in its 'Why this answer' drawer. Reasons are fixed codes, never free text, so they are safe to log.",
+  "description": "One routing step, appended on every transition so the multi-agent run is inspectable. The sidecar graph's supervisor records extraction, retrieval and critic hops; PHP appends the answer stage (answer_writer, verifier) with a fixed outcome reason, so the log also shows when the final answer was ready (src/AnswerRoute.php). PHP writes each as a Langfuse span and the panel shows the list in its 'Why this answer' drawer. Reasons are fixed codes, never free text, so they are safe to log.",
   "type": "object",
   "properties": {
     "from": {
@@ -11,7 +11,9 @@
         "supervisor",
         "intake_extractor",
         "evidence_retriever",
-        "critic"
+        "critic",
+        "answer_writer",
+        "verifier"
       ]
     },
     "to": {
@@ -21,6 +23,8 @@
         "intake_extractor",
         "evidence_retriever",
         "critic",
+        "answer_writer",
+        "verifier",
         "done"
       ]
     },
@@ -37,7 +41,15 @@
         "worker_failed",
         "chart_triggers",
         "no_triggers",
-        "applicability_check"
+        "applicability_check",
+        "evidence_ready",
+        "draft_written",
+        "cached_draft",
+        "model_failed",
+        "answer_verified",
+        "answer_refused",
+        "all_stripped",
+        "no_claims"
       ]
     },
     "state_keys_changed": {

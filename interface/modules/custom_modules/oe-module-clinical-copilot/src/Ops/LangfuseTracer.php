@@ -268,7 +268,9 @@ final readonly class LangfuseTracer implements Tracer
         $clock = $anchor;
         foreach ($hops as $i => $hop) {
             $clock += $hop['ms'];
-            if ($hop['from'] !== 'supervisor' || $hop['to'] === 'done') {
+            // Only the sidecar's workers become sidecar spans; the answer stage PHP appends
+            // (answer_writer, verifier) already has its own step spans.
+            if ($hop['from'] !== 'supervisor' || !in_array($hop['to'], ['intake_extractor', 'evidence_retriever', 'critic'], true)) {
                 continue;
             }
             $back = $hops[$i + 1] ?? null;

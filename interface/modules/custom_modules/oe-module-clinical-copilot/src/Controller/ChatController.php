@@ -26,6 +26,7 @@ use OpenEMR\Common\Logging\EventAuditLogger;
 use OpenEMR\Common\Session\EncounterSessionUtil;
 use OpenEMR\Common\Session\PatientSessionUtil;
 use OpenEMR\Common\Session\SessionWrapperFactory;
+use OpenEMR\Modules\ClinicalCopilot\AnswerRoute;
 use OpenEMR\Modules\ClinicalCopilot\AccessDeniedException;
 use OpenEMR\Modules\ClinicalCopilot\AclAuthorization;
 use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
@@ -319,6 +320,8 @@ final class ChatController
         $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
         $this->llmCalled = !$result->fromCache;
         $this->llmAttempts = $pipeline->llmAttempts();
+        // The answer stage joins the graph's hops, so the log shows when the briefing was ready.
+        $this->handoffs = [...$this->handoffs, ...AnswerRoute::forBriefing($result, $this->llmMs)];
         return PanelPayload::briefing($assembled, $result, $this->correlationId, $guidelines);
     }
 
@@ -436,7 +439,8 @@ final class ChatController
         $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
         $this->llmCalled = true;
         $this->llmAttempts = $pipeline->llmAttempts();
-        $this->handoffs = $handoffs;
+        // The answer stage joins the graph's hops, so the log shows when the answer was ready.
+        $this->handoffs = [...$handoffs, ...AnswerRoute::forAnswer($answer, $this->llmMs, $this->llmAttempts)];
         return PanelPayload::answer($assembled, $answer, $this->correlationId);
     }
 

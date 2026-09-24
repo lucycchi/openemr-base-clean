@@ -14,7 +14,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 | 1 | Document ingestion and extraction | Partly met | T1.1, T1.2 |
 | 2 | Structured schemas | Partly met | T2.1 |
 | 3 | Basic hybrid RAG plus rerank | Met | ~~T3.1~~, T3.2 |
-| 4 | Supervisor plus two workers | Partly met | T4.1, T4.2, T4.3 |
+| 4 | Supervisor plus two workers | Partly met | ~~T4.1~~, T4.2, T4.3 |
 | 5 | Citation contract | Partly met | ~~T5.1~~, T5.2 |
 | 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, ~~T6.2~~, T6.3 |
 | 7 | Observability and cost tracking | Partly met | T7.1, T7.2, T7.3 |
@@ -82,7 +82,7 @@ grading first.
 | Inspectable framework | Met | LangGraph `StateGraph` (`sidecar/copilot_sidecar/graph.py`). |
 | intake-extractor, evidence-retriever | Met | Nodes `intake_extractor`, `evidence_retriever` (plus an optional critic). |
 | Supervisor decides extraction / retrieval | Met | Deterministic rules in `supervisor_node`; PHP chooses the request mode first. |
-| Supervisor decides "final answer is ready" | Not met as worded | The graph ends when retrieval is done; the answer is written and verified in PHP afterwards (`NarrationPipeline.php`). → **T4.1** |
+| Supervisor decides "final answer is ready" | Met (T4.1 done) | The graph still ends when the evidence is ready; answering stays in PHP, which owns the chart, access checks and the Verifier. PHP now appends the answer stage to the same handoff log (`src/AnswerRoute.php`): `supervisor → answer_writer → verifier → done` with a fixed outcome (`answer_verified`, `answer_refused`, `all_stripped`, `no_claims`), `model_failed`, or `cached_draft` for a cached briefing. It is in the log line and the trace. |
 | Handoffs explicit and logged | Met | `Handoff{from,to,reason,state_keys_changed,ms}` with fixed reasons; one log line per hop; returned in the response; Langfuse worker spans. |
 | Handoffs visible | Partly met | The "Why this result" drawer shows routing only after a document extraction, not for briefings or questions. → **T4.2** |
 | Known bug | Open | The hop back from the extractor is labelled `no_question` (TODOS.md). → **T4.3** |
@@ -148,7 +148,7 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [x] **T6.1 Make the gate catch a single regressed case.** Done: any flip fails for deterministic cases; the self-test flips one `factually_consistent` verdict (about 97%, above threshold) and the gate refuses it, where the old rule said `ok`.
 - [x] **T6.2 Score `no_phi_in_logs` in the hook.** Done: cases 69 and 70 (no key needed) score it at 100%; a planted leak in the controller's log line takes it to 0% and the gate refuses. Also fixed: a case with a failed rubric now prints FAIL (it printed PASS). Add deterministic cases that run the real logging path with recorded model output, and stop the three live extraction cases passing it vacuously.
 - [x] **T5.1 Guideline citations in the five-field shape.** Done: `citation` on every guideline passage, `citations` on every sentence, contracts updated, `ContractsTest` covers chart and guideline citations in answers and briefings.
-- [ ] **T4.1 Supervisor decides "final answer is ready".** Either bring answer verification into the graph's decision or document the split.
+- [x] **T4.1 Supervisor decides "final answer is ready".** Done: the answer stage is logged as handoffs with a fixed ready/refused/stripped/failed outcome (`AnswerRoute`), checked on a real briefing through the controller. Either bring answer verification into the graph's decision or document the split.
 - [ ] **T1.1 Intake items as OpenEMR records.** Decide whether patient-reported meds/allergies go to OpenEMR lists, or document why they stay separate.
 - [ ] **T5.2 One click from a claim to the PDF overlay.**
 - [ ] **T7.1 Retrieval hits on every encounter**, including briefings; record retrieved as well as cited.

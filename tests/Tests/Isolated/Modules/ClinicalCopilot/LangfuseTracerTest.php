@@ -369,9 +369,13 @@ final class LangfuseTracerTest extends TestCase
 
     public function testAFollowUpScoresRetrievalHitFromTheChunkCount(): void
     {
-        $ask = new RequestTrace('corr-abc', 'copilot.ask', 'physician', 1_700_000_000_000, 900, ['http_status' => 200, 'guideline_chunks' => 0, 'handoffs' => [['from' => 'supervisor', 'to' => 'evidence_retriever', 'reason' => 'question_present', 'state_keys_changed' => [], 'ms' => 1], ['from' => 'evidence_retriever', 'to' => 'supervisor', 'reason' => 'worker_finished', 'state_keys_changed' => ['chunks'], 'ms' => 300], ['from' => 'supervisor', 'to' => 'done', 'reason' => 'worker_finished', 'state_keys_changed' => [], 'ms' => 0]], 'verification_pass' => true], 'gpt-4o-mini', 500, 40, 600, null, [], 0.0001, [['model' => 'text-embedding-3-small', 'kind' => 'embedding', 'input' => 12, 'output' => 0, 'cost_usd' => 0.00000024]]);
+        $ask = new RequestTrace('corr-abc', 'copilot.ask', 'physician', 1_700_000_000_000, 900, ['http_status' => 200, 'guideline_chunks' => 0, 'handoffs' => [['from' => 'supervisor', 'to' => 'evidence_retriever', 'reason' => 'question_present', 'state_keys_changed' => [], 'ms' => 1], ['from' => 'evidence_retriever', 'to' => 'supervisor', 'reason' => 'worker_finished', 'state_keys_changed' => ['chunks'], 'ms' => 300], ['from' => 'supervisor', 'to' => 'done', 'reason' => 'worker_finished', 'state_keys_changed' => [], 'ms' => 0], ['from' => 'supervisor', 'to' => 'answer_writer', 'reason' => 'evidence_ready', 'state_keys_changed' => [], 'ms' => 0], ['from' => 'answer_writer', 'to' => 'verifier', 'reason' => 'draft_written', 'state_keys_changed' => [], 'ms' => 600], ['from' => 'verifier', 'to' => 'done', 'reason' => 'answer_verified', 'state_keys_changed' => [], 'ms' => 0]], 'verification_pass' => true], 'gpt-4o-mini', 500, 40, 600, null, [], 0.0001, [['model' => 'text-embedding-3-small', 'kind' => 'embedding', 'input' => 12, 'output' => 0, 'cost_usd' => 0.00000024]]);
         $this->tracer(new MockHandler([new Response(207, [], '{}')]))->record($ask);
 
+        // The answer stage PHP appends (answer_writer, verifier) is not a sidecar worker: the only
+        // sidecar span is the retriever's.
+        $sidecarSpans = array_values(array_filter(array_map(static fn(array $e) => is_array($e['body']) ? $e['body']['name'] : null, $this->types('span-create')), static fn($n) => is_string($n) && str_starts_with($n, 'sidecar.')));
+        self::assertSame(['sidecar.evidence_retriever'], $sidecarSpans);
         $scores = $this->scores();
         self::assertFalse($scores['retrieval_hit']);
         self::assertTrue($scores['routing_ok']);

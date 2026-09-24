@@ -227,7 +227,9 @@ class IntakeForm(Strict):
 
 # The nodes of the graph in graph.py that can hand off. ("critic" is reserved
 # in the contract; graph.py does not build one.)
-Node = Literal["supervisor", "intake_extractor", "evidence_retriever", "critic"]
+# answer_writer and verifier are the answer stage PHP appends after the graph
+# (src/AnswerRoute.php); the sidecar never emits them.
+Node = Literal["supervisor", "intake_extractor", "evidence_retriever", "critic", "answer_writer", "verifier"]
 # Why a hop happened, as graph.py assigns them:
 #   stored_document      a stored document of a supported type is waiting
 #   question_present     answer mode and a question is waiting
@@ -251,6 +253,15 @@ HandoffReason = Literal[
     "chart_triggers",  # brief mode: the chart fired guideline topics, retrieve them
     "no_triggers",  # brief mode: no topic applies, nothing to retrieve
     "applicability_check",  # brief mode: the critic checks each passage's population against the chart
+    # The answer stage PHP appends after the graph (src/AnswerRoute.php); never emitted here.
+    "evidence_ready",
+    "draft_written",
+    "cached_draft",
+    "model_failed",
+    "answer_verified",
+    "answer_refused",
+    "all_stripped",
+    "no_claims",
 ]
 
 
