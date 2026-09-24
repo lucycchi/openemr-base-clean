@@ -156,6 +156,18 @@ are scheduled as tasks 9.1 and 9.2 in
 **Priority:** P2
 **Depends on:** None
 
+### Push gate runs its deterministic cases with the model keys off
+
+**What:** `tests/evals/gate.sh` runs the sidecar pytest and the deterministic golden cases with `OPENAI_API_KEY` and `COHERE_API_KEY` forced empty for the sidecar, whatever the developer's `.env` holds.
+
+**Why:** The plain push is meant to be keyless and deterministic. Today the sidecar loads the root `.env` (`docker/development-easy/docker-compose.yml:218-221`), and `rerank()` calls Cohere whenever `COHERE_API_KEY` is set (`sidecar/copilot_sidecar/retrieve.py:240-254`), so on this machine every push makes live rerank calls (~$0.002 each) and a Cohere rate limit or ranking change can flip a retrieve case. Case 57 already tolerates either passage for this reason.
+
+**Context:** Found in the eng review of `docs/designs/golden-set-kill-matrix.md` (2026-09-23, D12). The kill matrix's `run.sh` already refuses to run when either key is set in its worktree, so only the everyday push is affected. `docker exec -e` covers pytest, but the golden cases reach the long-running sidecar process over HTTP and it reads the keys from its environment at call time, so the override has to reach that process (a test-only request header the `/eval/*` endpoints honour, or a keyless sidecar instance for the gate).
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** None
+
 ## Completed
 
 ### Noted during the 8.5 comment pass (2026-09-23), not changed
