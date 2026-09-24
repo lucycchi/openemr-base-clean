@@ -169,7 +169,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 
 | Part | Status | Evidence |
 |---|---|---|
-| Draft | Not done | → **S9** |
+| Draft | Done (S9) | [SOCIAL_POST.md](SOCIAL_POST.md): an X version (252 characters) and a LinkedIn version. |
 | Posted | User | With a screenshot or clip of synthetic data only. |
 
 ## 12. AI interview (final submission only)
@@ -247,5 +247,5 @@ it is verified.
 
 - [x] **S6 Cost and latency report**, done 2026-09-23: projected production cost per tier for the Week 2 agent (extraction, embeddings, rerank, critic), extraction p50/p95 from the load runs, the expanded briefing's cost and latency.
 - [x] **S7 USERS.md**, done 2026-09-23: full PCP persona, front-desk uploader persona, UC4 and UC5 with click paths.
-- [ ] **S9 Social post draft.**
+- [x] **S9 Social post draft**, done 2026-09-23 ([SOCIAL_POST.md](SOCIAL_POST.md)). Posting is the user's.
 - [ ] **S10 Final pass**: final deploy, both collections and the gate self-test again, refresh numbers in KEY_METRICS and README, check every link in the submission docs resolves.

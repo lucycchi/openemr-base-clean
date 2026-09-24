@@ -19,6 +19,8 @@ eval gate). Week 1 documents stay in [../clinical_copilot_week1/](../clinical_co
 | [CORE_AGENT_REQUIREMENTS.md](CORE_AGENT_REQUIREMENTS.md) | The PRD's seven core agent requirements checked against the code, with their task list. |
 | [EVAL_DATASET.md](EVAL_DATASET.md) | The eval dataset on one page: what the 70 cases cover, the eight rubrics, the judge configuration (code checks, no LLM judge), results per rubric. |
 | [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | Timed shot list for the 3-5 minute demo video. |
+| [INTERVIEW_BRIEF.md](INTERVIEW_BRIEF.md) | Technical-interview preparation: key decisions and what each beat, weak points, numbers, coding workflow. |
+| [SOCIAL_POST.md](SOCIAL_POST.md) | Drafts of the final-submission social post (X and LinkedIn). |
 | [ENGINEERING_REQUIREMENTS.md](ENGINEERING_REQUIREMENTS.md) | The graded engineering requirements re-audited against the Week 2 code, one by one: how each is met, the decisions and trade-offs, how to verify it, what is open. Test design (1), correlation id (2), contracts (3), dashboards (4), the API collection (5), health/ready (6), alerts (7), baselines (8) and load tests (9): all nine. |
 
 ## Seeing click-to-source on the deployed instance
