@@ -16,7 +16,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 | 3 | Basic hybrid RAG plus rerank | Met | ~~T3.1~~, ~~T3.2~~ |
 | 4 | Supervisor plus two workers | Met | ~~T4.1~~, ~~T4.2~~, ~~T4.3~~ |
 | 5 | Citation contract | Met | ~~T5.1~~, ~~T5.2~~ |
-| 6 | Eval-driven CI gate | Partly met | ~~T6.1~~, ~~T6.2~~, T6.3 |
+| 6 | Eval-driven CI gate | Met | ~~T6.1~~, ~~T6.2~~, ~~T6.3~~ |
 | 7 | Observability and cost tracking | Partly met | ~~T7.1~~, ~~T7.2~~, T7.3 (deferred) |
 
 The tasks are worked in the order in the [task list](#task-list), riskiest to
@@ -147,7 +147,7 @@ recorded as future work rather than attempted before the deadline.
 | Five rubric categories | Met (T6.2 done) | All five are scored by the hook. `no_phi_in_logs` comes from cases 69 and 70: the real upload and extract controllers with a recorded model reply (sidecar `/eval/run-recorded`), scanning PHP logs, traces and sidecar logs. A planted leak fails both cases and the gate. Cases 19, 20 and 22 no longer claim the rubric they never scanned. |
 | Fails on >5% regression or below threshold | Met (T6.1 done) | `gate.php` fails below threshold, and for the deterministic cases the hook runs, on **any** case that flipped from pass to fail. Before T6.1 a single broken case in a 90% rubric (a 3.3-point drop) passed; the self-test now flips exactly that and requires a refusal. Live cases keep the 5-point allowance for model variance. |
 | Git hook blocks pushes | Met | Pre-push hook, proven from a fresh clone ([EVAL_GATE.md](../EVAL_GATE.md) §5). Client-side only; GitLab refuses student pipelines. |
-| Judge configuration and results | Partly met | No LLM judge (every rubric is a code check), but no document says so. `tests/evals/results.json` is from 2026-09-22 and covers cases 1-52 only; README counts are stale. → **T6.3** |
+| Judge configuration and results | Met (T6.3 done) | No LLM judge: every rubric is a deterministic code check (`evaluateRubrics()` in `tests/evals/run.php`), stated in [EVAL_DATASET.md](EVAL_DATASET.md#3-judge-configuration), [EVAL_GATE.md](../EVAL_GATE.md) and `tests/evals/README.md`. `tests/evals/results.json` regenerated from the current code (54/54 deterministic, 2026-09-24 02:23 UTC); live results are in `baseline-live.json`. |
 
 ## 7. Observability and cost tracking
 
@@ -186,5 +186,5 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [x] **T7.2 Name the per-encounter eval outcome** in the docs and trace. Done: `eval_outcome` on every briefing and answer log line and trace.
 - [x] **T3.2 Cap briefing evidence**, or document why the cap is per rule. Decided: the per-topic cap stays (2 per triggered topic, critic-filtered); the reasoning is under requirement 3.
 - [x] **T4.3 Fix the `no_question` handoff label.** Done: `worker_finished` after any worker; supervisor tests and route case 24 updated.
-- [ ] **T6.3 Judge configuration and fresh results:** state there is no LLM judge, commit current `results.json`, fix README counts.
+- [x] **T6.3 Judge configuration and fresh results:** state there is no LLM judge, commit current `results.json`, fix README counts. Done.
 - [x] **T3.1 Update `W2_ARCHITECTURE.md`** Done in `a2520f6` (by the submission-docs session; the file moved to the repo root): rerank shown as live, observability covers briefing and follow-up traces.

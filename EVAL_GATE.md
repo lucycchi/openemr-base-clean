@@ -68,7 +68,10 @@ In order, stopping at the first failure:
 4. **Golden cases:** `gate.php` runs every non-pending case, scores its rubrics,
    and compares the pass rates with the baseline.
 
-Rubrics and thresholds:
+Rubrics and thresholds. There is no LLM judge: every verdict is computed by
+deterministic code (`evaluateRubrics()` in [run.php](tests/evals/run.php)); the
+judge configuration and per-rubric checks are in
+[clinical_copilot_week2/EVAL_DATASET.md](clinical_copilot_week2/EVAL_DATASET.md#3-judge-configuration).
 
 | Rubric | What it checks | Minimum pass rate |
 |---|---|---|
