@@ -16,7 +16,14 @@
 # Runner: a project runner with the shell executor and the tag copilot-eval,
 # on a Linux host with Docker (the jobs call docker directly; the eval gate
 # bind-mounts the checkout into its stack, which the docker executor cannot
-# do without docker-in-docker). It runs one job at a time.
+# do without docker-in-docker). It takes up to three jobs at once, and the
+# eval-gate job's resource_group keeps the eval stack to one at a time.
+#
+# Who can start a pipeline: on labs.gauntletai.com a student's personal account
+# cannot (403), but a project access token's bot user can. Pipelines are started
+# with that token (GITLAB_CI_BOT_TOKEN in .env), e.g.
+#   curl -X POST -H "PRIVATE-TOKEN: $GITLAB_CI_BOT_TOKEN" \
+#     https://labs.gauntletai.com/api/v4/projects/1993/pipeline?ref=pdf_reader
 #
 # Deploys are not a pipeline job: they run from a workstation with
 # docker/vps/deploy.sh (see docker/vps/README.md), which rebuilds the sidecar
@@ -45,6 +52,10 @@ default:
 eval-gate:
   stage: check
   timeout: 50m
+  # One eval stack at a time across all pipelines: two would collide on the
+  # copilot-ci compose project and double the load on the droplet. The runner
+  # itself takes several jobs at once so the lint jobs never queue behind it.
+  resource_group: copilot-ci-stack
   variables:
     COPILOT_CI_PROJECT: copilot-ci
   script:
