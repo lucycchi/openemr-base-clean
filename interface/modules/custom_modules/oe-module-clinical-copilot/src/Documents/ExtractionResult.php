@@ -35,6 +35,14 @@ final readonly class ExtractionResult
         public float $confidence,
         /** Model calls beyond one per page (the sidecar's omission-driven re-ask); the dashboard's retry count. */
         public int $retries = 0,
+        /**
+         * The extraction exactly as the sidecar returned it, already validated against
+         * the lab-report or intake-form contract (SidecarClient refuses anything else):
+         * the strict-schema JSON copilot:attach --json returns to its caller.
+         *
+         * @var array<mixed>|null
+         */
+        public ?array $extractionJson = null,
     ) {
     }
 
@@ -63,6 +71,6 @@ final readonly class ExtractionResult
         }
         // A missing or negative retry count is read as zero rather than refused: it is telemetry, not data.
         $retries = $a['retries'] ?? 0;
-        return new self($a['document_id'], $status, is_string($a['failure_reason'] ?? null) ? $a['failure_reason'] : null, $ext, (float) $a['confidence'], is_int($retries) && $retries >= 0 ? $retries : 0);
+        return new self($a['document_id'], $status, is_string($a['failure_reason'] ?? null) ? $a['failure_reason'] : null, $ext, (float) $a['confidence'], is_int($retries) && $retries >= 0 ? $retries : 0, is_array($a['extraction'] ?? null) ? $a['extraction'] : null);
     }
 }

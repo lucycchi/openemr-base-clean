@@ -62,7 +62,7 @@ final class AttachCommand extends Command
             ->addArgument('doc_type', InputArgument::REQUIRED, 'lab_pdf or intake_form')
             ->addOption('site', null, InputOption::VALUE_REQUIRED, 'OpenEMR site (consumed by bin/console)', 'default')
             ->addOption('user', null, InputOption::VALUE_REQUIRED, 'Username recorded as the uploader', 'admin')
-            ->addOption('json', null, InputOption::VALUE_NONE, 'Print the summary as JSON');
+            ->addOption('json', null, InputOption::VALUE_NONE, 'Print the summary as JSON, with the validated extraction (strict-schema JSON) under "extraction"');
     }
 
     /**
@@ -129,9 +129,12 @@ final class AttachCommand extends Command
             'handoffs' => array_map(static fn($h) => $h->from . ' -> ' . $h->to . ' (' . $h->reason . ')', $outcome['run']->handoffs ?? []),
             'model_calls' => $outcome['run']?->chatTokens()['calls'] ?? 0,
         ];
-        // --json for scripts; otherwise an aligned key/value listing for a person.
+        // --json for scripts: the summary plus the extraction itself, as the sidecar returned
+        // it and the lab-report / intake-form contract validated it (null when the document
+        // was already extracted and nothing new was read). Otherwise an aligned key/value
+        // listing for a person, without the extracted values.
         if ($input->getOption('json')) {
-            $output->writeln(json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+            $output->writeln(json_encode($summary + ['extraction' => $extraction?->extractionJson], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
         } else {
             foreach ($summary as $k => $v) {
                 $output->writeln(sprintf('%-18s %s', $k, is_array($v) ? implode('; ', $v) : json_encode($v)));

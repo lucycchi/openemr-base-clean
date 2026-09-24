@@ -91,6 +91,24 @@ final class SidecarClientTest extends TestCase
     }
 
     /**
+     * Pins: the extraction the contract validated is kept verbatim, so
+     * copilot:attach --json can return the strict-schema JSON itself, not
+     * only a summary of it. Uses the contract's own accepted example reply.
+     */
+    public function testTheValidatedExtractionIsKeptVerbatimForTheCaller(): void
+    {
+        $examples = json_decode((string) file_get_contents(dirname(__DIR__, 5) . '/interface/modules/custom_modules/oe-module-clinical-copilot/contracts/examples/run.response.examples.json'), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($examples);
+        $reply = $examples['accept'][0];
+        self::assertIsArray($reply);
+        $reply['correlation_id'] = self::CORRELATION_ID;
+        $result = $this->client($reply)->answer(self::CORRELATION_ID, str_repeat('0', 64), 'q');
+        self::assertCount(1, $result->extractions);
+        self::assertSame($reply['extractions'][0]['extraction'], $result->extractions[0]->extractionJson);
+        self::assertSame('lab_pdf', $result->extractions[0]->extractionJson['doc_type'] ?? null);
+    }
+
+    /**
      * Pins: the contract, not the typed parser, is the gate. A failure means
      * a reply with a reason code outside the contract's list would be
      * accepted and its free text could reach a log.

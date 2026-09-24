@@ -11,7 +11,7 @@ Status key: **Met**, **Partly met** (works, with a gap a grader could point to),
 
 | # | Requirement | Status | Open tasks |
 |---|---|---|---|
-| 1 | Document ingestion and extraction | Partly met | ~~T1.1~~, T1.2 |
+| 1 | Document ingestion and extraction | Met | ~~T1.1~~, ~~T1.2~~ |
 | 2 | Structured schemas | Met | ~~T2.1~~ |
 | 3 | Basic hybrid RAG plus rerank | Met | ~~T3.1~~, T3.2 |
 | 4 | Supervisor plus two workers | Partly met | ~~T4.1~~, T4.2, T4.3 |
@@ -36,7 +36,7 @@ grading first.
 | Equivalent tool | Met | `copilot:attach <pid> <file> <doc_type>` ([AttachCommand.php](../interface/modules/custom_modules/oe-module-clinical-copilot/src/Command/AttachCommand.php)); the UI uses upload + extract in `public/documents.php`. Both share `ExtractionRunner`. |
 | lab_pdf and intake_form | Met | `DocType` enum (`src/Documents/DocType.php`), matching Pydantic literal in the sidecar. |
 | Source stored in OpenEMR | Met | `Document::createDocument` into the standard `documents` table ("Lab Report" / "Patient Information" categories), `DocumentStore.php`. |
-| Strict-schema JSON | Partly met | The sidecar reply is validated against the contract before anything is saved (`SidecarClient.php`, `Contracts.php`), but the tool **returns only a summary** (counts, status), not the validated extraction JSON. → **T1.2** |
+| Strict-schema JSON | Met (T1.2 done) | The sidecar reply is validated against the contract before anything is saved (`SidecarClient.php`, `Contracts.php`). `copilot:attach <pid> <file> <doc_type> --json` returns the summary plus the validated extraction itself under `extraction` (for example an intake form's demographics, chief concern, medications, allergies and family history, each with its five-field citation and boxes). Checked with a real intake form. |
 | Lab values as OpenEMR/FHIR records | Met | Anchored results become `procedure_order` / `procedure_report` / `procedure_result` rows with UUIDs, so they appear as FHIR Observations (`DocumentIngestService.php`). Dedup by file hash and by (LOINC, date, value). |
 | Intake items as OpenEMR/FHIR records | Met by decision (T1.1) | Medications, allergies, family history and chief concern are OpenEMR database records in the module's `copilot_intake` table, each with its page and bounding box, linked to the stored document. They are deliberately **not** filed into OpenEMR's medication and allergy lists; see [the decision below](#decision-intake-items-stay-patient-reported). |
 
@@ -181,7 +181,7 @@ Ordered by risk to grading. Each task is closed only after it is verified.
 - [x] **T7.1 Retrieval hits on every encounter** Done: `retrieved_chunks` and `guideline_chunks` on briefings and answers, `retrieval_hit` from the retrieved count., including briefings; record retrieved as well as cited.
 - [ ] **T7.3 PHP runtime log allowlist**, matching the sidecar's. Deferred on 2026-09-23 (after the early submission). Known gap until then: PHP log fields are checked against the allowlist only at push time, by the PHI eval cases (69 and 70 in the hook, 36-38 and 68 live), not at runtime. No raw text was found in any PHP log line.
 - [x] **T2.1 Pydantic strict typing.** Done: strict everywhere, ISO strings for the three dates; probed in the container before committing.
-- [ ] **T1.2 Return the validated extraction JSON** from `copilot:attach` (for example a `--json` flag).
+- [x] **T1.2 Return the validated extraction JSON** from `copilot:attach`. Done: `--json` prints the contract-validated extraction under `extraction`.
 - [ ] **T4.2 Show routing for briefings and questions** in the "Why this result" drawer.
 - [ ] **T7.2 Name the per-encounter eval outcome** in the docs and trace.
 - [ ] **T3.2 Cap briefing evidence**, or document why the cap is per rule.
