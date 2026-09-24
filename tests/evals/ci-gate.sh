@@ -42,6 +42,10 @@ teardown() {
         return
     fi
     dc down --remove-orphans >/dev/null 2>&1 || true
+    # The openemr container writes into the bind-mounted checkout as root (a
+    # module it installs); hand every file back to this user so the runner can
+    # clean the working copy before the next job.
+    docker run --rm -v "$root:/w" alpine:3.20 chown -R "$HOST_UID:$HOST_GID" /w >/dev/null 2>&1 || true
     for v in "${state_volumes[@]}"; do
         docker volume rm "${COMPOSE_PROJECT_NAME}_$v" >/dev/null 2>&1 || true
     done
