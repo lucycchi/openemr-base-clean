@@ -33,7 +33,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | 1 | GitLab repository | Done | none | Early |
 | 2 | W2 architecture doc (`./W2_ARCHITECTURE.md`) | Done | none | Early |
 | 3 | Key metrics doc (`./KEY_METRICS.md`) | Done; metrics 6 and 7 built 2026-09-24 | S10 | Early |
-| 4 | Schemas | Done; Gate 3 scored 9/15 | G2, G8 | Early |
+| 4 | Schemas | Done; Gate 3 scored 9/15 | none | Early |
 | 5 | Eval dataset | Done | none | Early |
 | 6 | CI evidence | Done: hook in the codebase, and a blocking GitLab CI merge-request job (pipeline #28015 green, MR !1 blocked by a planted regression) | S10 | Early |
 | 7 | Demo video | Done for early (graded 4/5); re-record for final | G9 | Early and final |
@@ -369,7 +369,9 @@ Closed only after it is verified, like the S tasks.
 
 - [x] **G1 Correct the stale strict-typing row** in section 4 of this file.
   Done 2026-09-24: row 4 now describes `0667ee0` and the pinning test.
-- [ ] **G2 Ask the reviewer what cost the Gate 3 and Gate 8 points.** (User.)
+- [x] **G2 Ask the reviewer what cost the Gate 3 and Gate 8 points.** Closed 2026-09-25:
+  asked several people; no further detail is available. G8 was done on its
+  own merits (dates, citation coverage). Original plan (User.)
   One short message: "Could you tell me what I lost the six Gate 3 points
   on, strict typing, the date fields, or a claim without the full citation?
   And the one point on the video?" The answer decides whether G8 is needed.
