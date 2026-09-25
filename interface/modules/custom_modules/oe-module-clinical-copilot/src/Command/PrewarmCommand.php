@@ -19,12 +19,12 @@ namespace OpenEMR\Modules\ClinicalCopilot\Command;
 use DateTimeImmutable;
 use DateTimeZone;
 use OpenEMR\Modules\ClinicalCopilot\Config;
-use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
-use OpenEMR\Modules\ClinicalCopilot\PrewarmRow;
-use OpenEMR\Modules\ClinicalCopilot\PrewarmStatus;
 use OpenEMR\Modules\ClinicalCopilot\Ops\NullTracer;
 use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
+use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
+use OpenEMR\Modules\ClinicalCopilot\PrewarmRow;
+use OpenEMR\Modules\ClinicalCopilot\PrewarmStatus;
 use OpenEMR\Modules\ClinicalCopilot\RunLock;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Command\Command;
@@ -125,6 +125,9 @@ final class PrewarmCommand extends Command
                 'skipped' => $summary->skipped,
                 'errored' => $summary->errored,
                 'model_calls' => $modelCalls,
+                // What building the guideline cards cost (retrieval, rerank, critic); the
+                // narration's own model cost is on each chart open's trace, as before.
+                'sidecar_cost_usd' => $summary->sidecarCostUsd,
                 'queue_depth_after' => $summary->errored,
             ],
             null,
@@ -173,12 +176,13 @@ final class PrewarmCommand extends Command
     private function rowLine(PrewarmRow $row): string
     {
         return sprintf(
-            '%s pid=%d provider=%s event=%d hash=%s ms=%d corr=%s',
+            '%s pid=%d provider=%s event=%d hash=%s guidelines=%s ms=%d corr=%s',
             $row->status->value,
             $row->appointment->pid->value,
             $row->appointment->providerUsername,
             $row->appointment->eventId,
             $row->factsHash ?? '-',
+            $row->guidelineStatus->value ?? '-',
             $row->durationMs,
             $row->correlationId,
         );

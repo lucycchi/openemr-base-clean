@@ -21,8 +21,15 @@ use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
 use OpenEMR\Modules\ClinicalCopilot\BriefingNarrator;
 use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
 use OpenEMR\Modules\ClinicalCopilot\EncounterRecord;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceChunk;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
 use OpenEMR\Modules\ClinicalCopilot\FixedClock;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineCard;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineOutcome;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSource;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineStatus;
 use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
@@ -65,7 +72,15 @@ final class PrewarmerTest extends TestCase
     /** @var list<string> facts hashes the narrator saw, in order */
     private array $hashesSeen = [];
     private bool $narratorReturnsCached = false;
+    /** False: the narration comes back unstored (a model failure or a summary the verifier stripped entirely). */
+    private bool $narratorStores = true;
+    private ?string $narratorStatus = null;
     private ?\Throwable $narratorThrows = null;
+    /** @var list<list<string>> chunk ids of the evidence each narration was handed */
+    private array $evidenceSeen = [];
+    /** @var list<array{int, string, string}> pid, day (Y-m-d H:i), correlation id each guideline build was asked for */
+    public array $guidelineBuilds = [];
+    public ?GuidelineOutcome $guidelineOutcome = null;
     /** @var list<string> */
     private array $authorizedAs = [];
     private DateTimeZone $tz;
@@ -105,9 +120,20 @@ final class PrewarmerTest extends TestCase
             {
             }
 
-            public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId): BriefingResult
+            public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId, ?EvidenceSet $evidence = null): BriefingResult
             {
-                return $this->test->narrate($assembled, $pid, $correlationId);
+                return $this->test->narrate($assembled, $pid, $correlationId, $evidence ?? EvidenceSet::none());
+            }
+        };
+        $guidelines = new class ($this) implements GuidelineSource {
+            public function __construct(private readonly PrewarmerTest $test)
+            {
+            }
+
+            public function build(AssembledFacts $assembled, PatientId $pid, DateTimeImmutable $day, string $correlationId): GuidelineOutcome
+            {
+                $this->test->guidelineBuilds[] = [$pid->value, $day->format('Y-m-d H:i'), $correlationId];
+                return $this->test->guidelineOutcome ?? GuidelineOutcome::noneFired();
             }
         };
         $authorizationFor = function (string $username): FakeAuthorization {
@@ -129,18 +155,32 @@ final class PrewarmerTest extends TestCase
                 return null;
             }
         };
-        return new Prewarmer($schedule, $this->chart, $authorizationFor, $narrator, $this->tz, $receipts);
+        return new Prewarmer($schedule, $this->chart, $authorizationFor, $narrator, $guidelines, $this->tz, $receipts);
     }
 
     /** Records what the narrator was handed and returns a canned result (throws / reports cache-hit when the test says so). @internal called by the anonymous narrator */
-    public function narrate(AssembledFacts $assembled, PatientId $pid, string $correlationId): BriefingResult
+    public function narrate(AssembledFacts $assembled, PatientId $pid, string $correlationId, EvidenceSet $evidence): BriefingResult
     {
         if ($this->narratorThrows !== null) {
             throw $this->narratorThrows;
         }
         $this->hashesSeen[] = $assembled->facts()->hash();
         $this->narrated[] = [$pid, $correlationId, $this->narratorReturnsCached];
-        return new BriefingResult([], 0, [], null, $this->narratorReturnsCached, false, 100, 20);
+        $this->evidenceSeen[] = array_map(static fn(EvidenceChunk $c): string => $c->chunkId, $evidence->all());
+        // A stored (or cached) narration comes back with the key it lives under; an unstored one without.
+        $key = $this->narratorReturnsCached || $this->narratorStores ? 'key-' . $pid->value : null;
+        return new BriefingResult([], 0, [], $this->narratorStatus, $this->narratorReturnsCached, !$this->narratorStores && $this->narratorStatus === null, 100, 20, null, $key);
+    }
+
+    /** A built section with one card the critic judged applicable and one it could not judge. */
+    private function twoCards(): GuidelineOutcome
+    {
+        $chunk = static fn(string $id): EvidenceChunk => new EvidenceChunk($id, 'ada-2025-standards', 'Glycemic goals', 'An A1C goal of less than 7% is appropriate for many adults.', 0.8);
+        $section = new GuidelineSection('ok', [
+            new GuidelineCard('diabetes', 'Diabetes', [], [], [$chunk('aaaaaaaaaaaa')], true, 'adult'),
+            new GuidelineCard('lipids', 'Lipids', [], [], [$chunk('bbbbbbbbbbbb')], null, null),
+        ], 0, cacheable: false);
+        return new GuidelineOutcome($section, GuidelineStatus::Partial, false, [], [['model' => 'gpt-4o-mini', 'kind' => 'rerank', 'input' => 1, 'output' => 0, 'cost_usd' => 0.002]]);
     }
 
     public function testEveryScheduledPatientIsNarratedAsTheScheduledProvider(): void
@@ -278,5 +318,63 @@ final class PrewarmerTest extends TestCase
             ->assemble(new PatientId(7), null)->facts()->lines();
         self::assertSame($expected, $summary->rows[0]->factLines);
         self::assertNotSame([], $expected);
+    }
+
+    public function testTheCardsAreBuiltFirstForThePinnedDayWithTheRowsCorrelationId(): void
+    {
+        $this->appointments = [$this->appointment(1, 7, 'drsmith')];
+
+        $summary = $this->prewarmer()->run($this->day, null, false);
+
+        self::assertSame([[7, '2026-09-18 00:00', $summary->rows[0]->correlationId]], $this->guidelineBuilds, 'age is taken on the scheduled day, and the sidecar logs join this row');
+    }
+
+    public function testOnlyTheVettedPassagesReachTheNarrationAndTheRowRecordsTheCards(): void
+    {
+        $this->guidelineOutcome = $this->twoCards();
+        $this->appointments = [$this->appointment(1, 7, 'drsmith')];
+
+        $summary = $this->prewarmer()->run($this->day, null, false);
+
+        self::assertSame([['aaaaaaaaaaaa']], $this->evidenceSeen, 'the unassessed card is shown at chart open but never restated');
+        $row = $summary->rows[0];
+        self::assertSame(GuidelineStatus::Partial, $row->guidelineStatus);
+        self::assertSame('key-7', $row->cacheKey, 'the key the narration was stored under, not a recomputation');
+        self::assertSame(0.002, $row->sidecarCostUsd);
+        self::assertSame(0.002, $summary->sidecarCostUsd);
+    }
+
+    public function testANarrationTheModelFailedIsAnErrorNotAWarm(): void
+    {
+        $this->narratorStores = false;
+        $this->narratorStatus = 'AI summary unavailable: model error';
+        $this->appointments = [$this->appointment(1, 7, 'drsmith')];
+
+        $summary = $this->prewarmer()->run($this->day, null, false);
+
+        self::assertSame(PrewarmStatus::Error, $summary->rows[0]->status);
+        self::assertSame('AI summary unavailable: model error', $summary->rows[0]->error);
+        self::assertNull($summary->rows[0]->cacheKey);
+        self::assertSame(0, $summary->warmed);
+    }
+
+    public function testASummaryTheVerifierStrippedEntirelyIsAnErrorNotAWarm(): void
+    {
+        $this->narratorStores = false;
+        $this->appointments = [$this->appointment(1, 7, 'drsmith')];
+
+        $summary = $this->prewarmer()->run($this->day, null, false);
+
+        self::assertSame(PrewarmStatus::Error, $summary->rows[0]->status);
+        self::assertSame('every sentence was stripped; nothing stored', $summary->rows[0]->error);
+    }
+
+    public function testADryRunBuildsNoCards(): void
+    {
+        $this->appointments = [$this->appointment(1, 7, 'drsmith')];
+
+        $this->prewarmer()->run($this->day, null, true);
+
+        self::assertSame([], $this->guidelineBuilds);
     }
 }

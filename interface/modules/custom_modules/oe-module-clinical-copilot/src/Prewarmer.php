@@ -22,6 +22,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSource;
 
 /**
  * The overnight sweep. For every (patient, provider) pair on a day's
@@ -39,6 +40,7 @@ final readonly class Prewarmer
         private ChartSource $chart,
         private Closure $authorizationFor,
         private BriefingNarrator $narrator,
+        private GuidelineSource $guidelines,
         private DateTimeZone $tz,
         private PrewarmReceipts $receipts = new NullPrewarmReceipts(),
     ) {
@@ -104,11 +106,24 @@ final readonly class Prewarmer
             $assembled = $assembler->assemble($appointment->pid, null);
             $factsHash = $assembled->facts()->hash();
             $factLines = $assembled->facts()->lines();
+            // The guideline cards first, exactly as chart open builds them (same
+            // class, the pinned day for the patient's age, this row's correlation
+            // id): the section is cached for chart open, and its vetted passages
+            // are part of the summary's cache key, so the summary warmed here is
+            // the one chart open looks up.
+            $cards = $this->guidelines->build($assembled, $appointment->pid, $clock->now(), $correlationId);
             // brief() consults the cache first, so an unchanged chart that was
             // warmed yesterday costs no model call and is reported as such.
-            $result = $this->narrator->brief($assembled, $appointment->pid, $correlationId);
-            $status = $result->fromCache ? PrewarmStatus::AlreadyCached : PrewarmStatus::Warmed;
-            return new PrewarmRow($appointment, $status, $factsHash, $correlationId, $this->elapsedMs($started), !$result->fromCache, null, $factLines);
+            $result = $this->narrator->brief($assembled, $appointment->pid, $correlationId, new EvidenceSet($cards->vettedChunks()));
+            // A narration is warm only if it was stored: a model failure or a
+            // summary the verifier stripped entirely comes back as an ordinary
+            // result with no cache key, and must not be counted as warmed.
+            [$status, $error] = match (true) {
+                $result->fromCache => [PrewarmStatus::AlreadyCached, null],
+                $result->cacheKey !== null => [PrewarmStatus::Warmed, null],
+                default => [PrewarmStatus::Error, $result->status ?? ($result->totalFailure ? 'every sentence was stripped; nothing stored' : 'the briefing was not stored')],
+            };
+            return new PrewarmRow($appointment, $status, $factsHash, $correlationId, $this->elapsedMs($started), !$result->fromCache, $error, $factLines, $result->cacheKey, $cards->status, $cards->costUsd());
         } catch (\RuntimeException | \LogicException $e) {
             // One patient's upstream, data or ACL failure (LlmException,
             // SqlQueryException, AccessDeniedException, Guzzle transport errors

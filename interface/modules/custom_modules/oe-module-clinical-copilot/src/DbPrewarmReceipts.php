@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace OpenEMR\Modules\ClinicalCopilot;
 
 use OpenEMR\Common\Database\QueryUtils;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineStatus;
 
 /**
  * PrewarmReceipts stored in the copilot_prewarm table. record() denormalises
@@ -29,21 +30,22 @@ final readonly class DbPrewarmReceipts implements PrewarmReceipts
 
     public function record(string $runId, PrewarmRow $row): void
     {
-        $hash = $row->factsHash;
         QueryUtils::sqlInsert(
-            "INSERT INTO copilot_prewarm (run_id, target_date, pc_eid, pid, provider_username, facts_hash, cache_key,
+            "INSERT INTO copilot_prewarm (run_id, target_date, pc_eid, pid, provider_username, facts_hash, cache_key, guideline_status,
                                           prompt_version, model, fact_lines_json, status, duration_ms, model_called, correlation_id, error)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 $runId,
                 $row->appointment->day->format('Y-m-d'),
                 $row->appointment->eventId,
                 $row->appointment->pid->value,
                 $row->appointment->providerUsername,
-                $hash,
-                // Same formula as NarrationPipeline::cacheKey(), stored so a
-                // later reader can check whether that exact key is still in the cache.
-                $hash === null ? null : hash('sha256', $hash . '|' . Prompt::VERSION . '|' . $this->model),
+                $row->factsHash,
+                // The key the narration was actually stored under, as the pipeline
+                // returned it, never recomputed here: chart open compares it with
+                // the key it reads. Null when nothing was stored.
+                $row->cacheKey,
+                $row->guidelineStatus?->value,
                 Prompt::VERSION,
                 $this->model,
                 json_encode($row->factLines ?? [], JSON_THROW_ON_ERROR),
@@ -58,14 +60,17 @@ final readonly class DbPrewarmReceipts implements PrewarmReceipts
 
     public function latestFor(string $ymd, PatientId $pid, string $openerUsername): ?PrewarmReceipt
     {
-        // The opener's own receipt first (its ACL view is the one that can
-        // match), then the most recent for the patient that day.
+        // A successful warm first, the opener's own before anyone else's (its
+        // ACL view is the one that can match), newest first; only when the day
+        // has no successful warm, its latest failed one, so chart open can say
+        // the warm failed. Skipped rows (--dry-run) are never read, so a dry run
+        // or a failed rerun after the 06:00 warm cannot hide it.
         $row = QueryUtils::querySingleRow(
-            "SELECT run_id, target_date, pc_eid, pid, provider_username, facts_hash, cache_key, prompt_version, model,
+            "SELECT run_id, target_date, pc_eid, pid, provider_username, facts_hash, cache_key, guideline_status, prompt_version, model,
                     fact_lines_json, status, duration_ms, model_called, correlation_id, created_at
                FROM copilot_prewarm
-              WHERE target_date = ? AND pid = ? AND status IN ('warmed', 'already_cached')
-              ORDER BY (provider_username = ?) DESC, id DESC
+              WHERE target_date = ? AND pid = ? AND status IN ('warmed', 'already_cached', 'error')
+              ORDER BY (status <> 'error') DESC, (provider_username = ?) DESC, id DESC
               LIMIT 1",
             [$ymd, $pid->value, $openerUsername]
         );
@@ -95,6 +100,8 @@ final readonly class DbPrewarmReceipts implements PrewarmReceipts
             Row::int($row, 'model_called') === 1,
             Row::str($row, 'correlation_id'),
             Row::str($row, 'created_at'),
+            // NULL on a receipt written before 0.1.5: unknown, not "unavailable".
+            GuidelineStatus::tryFrom(self::nullableStr($row, 'guideline_status') ?? ''),
         );
     }
 

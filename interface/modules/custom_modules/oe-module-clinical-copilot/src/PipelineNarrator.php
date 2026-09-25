@@ -30,8 +30,8 @@ final readonly class PipelineNarrator implements BriefingNarrator
     ) {
     }
 
-    public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId): BriefingResult
+    public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId, ?EvidenceSet $evidence = null): BriefingResult
     {
-        return $this->factory->create($this->config, $assembled, $pid, $correlationId, new StepRecorder())->brief($assembled);
+        return $this->factory->create($this->config, $assembled, $pid, $correlationId, new StepRecorder())->brief($assembled, $evidence);
     }
 }

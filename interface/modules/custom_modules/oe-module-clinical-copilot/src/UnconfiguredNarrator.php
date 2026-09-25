@@ -23,7 +23,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 final readonly class UnconfiguredNarrator implements BriefingNarrator
 {
-    public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId): BriefingResult
+    public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId, ?EvidenceSet $evidence = null): BriefingResult
     {
         throw new \RuntimeException('AI is not configured on this server (OPENAI_API_KEY unset)');
     }

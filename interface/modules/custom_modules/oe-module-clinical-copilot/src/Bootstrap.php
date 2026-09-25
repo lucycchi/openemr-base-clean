@@ -29,6 +29,7 @@ use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentIngestService;
 use OpenEMR\Modules\ClinicalCopilot\Documents\DocumentStore;
 use OpenEMR\Modules\ClinicalCopilot\Documents\ExtractionRunner;
 use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarClient;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineEvidence;
 use OpenEMR\Modules\ClinicalCopilot\Ops\LangfuseTracer;
 use OpenEMR\Modules\ClinicalCopilot\Ops\NullTracer;
 use Psr\Log\LoggerInterface;
@@ -78,6 +79,9 @@ final class Bootstrap
             new OpenEmrChartSource(),
             static fn(string $username): Authorization => new AclAuthorization($username),
             $config->hasOpenAi() ? new PipelineNarrator($config) : new UnconfiguredNarrator(),
+            // The same card builder chart open uses, so the sweep caches the
+            // guideline cards and the summary chart open will look up.
+            new GuidelineEvidence(new OpenEmrChartSource(), SidecarClient::fromConfig($config), $config, $this->logger),
             $tz,
             new DbPrewarmReceipts($config->openAiModel),
         );

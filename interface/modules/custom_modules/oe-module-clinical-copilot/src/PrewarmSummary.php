@@ -26,6 +26,8 @@ final readonly class PrewarmSummary
     public int $alreadyCached;
     public int $skipped;
     public int $errored;
+    /** What the sidecar's calls for the guideline cards cost across the run. */
+    public float $sidecarCostUsd;
 
     /** @param list<PrewarmRow> $rows */
     public function __construct(public string $runId, public array $rows)
@@ -35,6 +37,7 @@ final readonly class PrewarmSummary
         $this->alreadyCached = $this->count(PrewarmStatus::AlreadyCached);
         $this->skipped = $this->count(PrewarmStatus::Skipped);
         $this->errored = $this->count(PrewarmStatus::Error);
+        $this->sidecarCostUsd = round(array_sum(array_map(static fn(PrewarmRow $r): float => $r->sidecarCostUsd, $rows)), 6);
     }
 
     private function count(PrewarmStatus $status): int

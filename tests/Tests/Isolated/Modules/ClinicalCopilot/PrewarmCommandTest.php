@@ -21,12 +21,17 @@ use OpenEMR\Modules\ClinicalCopilot\BriefingNarrator;
 use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
 use OpenEMR\Modules\ClinicalCopilot\Command\PrewarmCommand;
 use OpenEMR\Modules\ClinicalCopilot\Config;
+use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
 use OpenEMR\Modules\ClinicalCopilot\FixedClock;
-use OpenEMR\Modules\ClinicalCopilot\PatientId;
-use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
-use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineOutcome;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSource;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineStatus;
 use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Score;
+use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
+use OpenEMR\Modules\ClinicalCopilot\PatientId;
+use OpenEMR\Modules\ClinicalCopilot\Prewarmer;
 use OpenEMR\Modules\ClinicalCopilot\RunLock;
 use OpenEMR\Modules\ClinicalCopilot\ScheduledAppointment;
 use OpenEMR\Modules\ClinicalCopilot\ScheduleSource;
@@ -95,12 +100,19 @@ final class PrewarmCommandTest extends TestCase
             {
             }
 
-            public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId): BriefingResult
+            public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId, ?EvidenceSet $evidence = null): BriefingResult
             {
                 return $this->test->narrate();
             }
         };
-        $prewarmer = new Prewarmer($schedule, new FakeChartSource(), static fn(string $u) => new FakeAuthorization(), $narrator, $this->tz);
+        // Every patient's cards cost one rerank, so the sweep's trace has a sidecar cost to report.
+        $guidelines = new class implements GuidelineSource {
+            public function build(AssembledFacts $assembled, PatientId $pid, DateTimeImmutable $day, string $correlationId): GuidelineOutcome
+            {
+                return new GuidelineOutcome(GuidelineSection::none('ok'), GuidelineStatus::Built, false, [], [['model' => 'rerank-v3.5', 'kind' => 'rerank', 'input' => 1, 'output' => 0, 'cost_usd' => 0.002]]);
+            }
+        };
+        $prewarmer = new Prewarmer($schedule, new FakeChartSource(), static fn(string $u) => new FakeAuthorization(), $narrator, $guidelines, $this->tz);
         $config = new Config('sk-test', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', '', prewarmEnabled: $enabled);
         $now = new FixedClock(new DateTimeImmutable('2026-09-17 22:00:00', $this->tz));
         $lock = new class ($test) implements RunLock {
@@ -149,7 +161,7 @@ final class PrewarmCommandTest extends TestCase
         $trace = $this->traces[0];
         self::assertSame('copilot.prewarm', $trace->name);
         self::assertSame('cron', $trace->user);
-        self::assertSame(['date' => '2026-09-18', 'dry_run' => false, 'scheduled' => 1, 'warmed' => 1, 'already_cached' => 0, 'skipped' => 0, 'errored' => 0, 'model_calls' => 1, 'queue_depth_after' => 0], $trace->metadata);
+        self::assertSame(['date' => '2026-09-18', 'dry_run' => false, 'scheduled' => 1, 'warmed' => 1, 'already_cached' => 0, 'skipped' => 0, 'errored' => 0, 'model_calls' => 1, 'sidecar_cost_usd' => 0.002, 'queue_depth_after' => 0], $trace->metadata);
         self::assertNull($trace->status);
         self::assertNull($trace->model, 'the sweep itself is not a model call; each row has its own receipt');
     }
@@ -183,7 +195,8 @@ final class PrewarmCommandTest extends TestCase
             throw new \RuntimeException('upstream down');
         }
         $this->narrations++;
-        return new BriefingResult([], 0, [], null, false, false, 10, 5);
+        // Stored, so it comes back with the key it lives under: the row counts as warmed.
+        return new BriefingResult([], 0, [], null, false, false, 10, 5, null, 'key');
     }
 
     public function testDisabledSiteDoesNothingAndExitsZero(): void

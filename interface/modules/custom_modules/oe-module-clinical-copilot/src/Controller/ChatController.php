@@ -61,10 +61,10 @@ use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
 use OpenEMR\Modules\ClinicalCopilot\PanelPayload;
 use OpenEMR\Modules\ClinicalCopilot\PatientId;
 use OpenEMR\Modules\ClinicalCopilot\PrewarmReceipts;
-use OpenEMR\Modules\ClinicalCopilot\RatedBriefing;
-use OpenEMR\Modules\ClinicalCopilot\RatingSubmission;
 use OpenEMR\Modules\ClinicalCopilot\Pricing;
 use OpenEMR\Modules\ClinicalCopilot\Prompt;
+use OpenEMR\Modules\ClinicalCopilot\RatedBriefing;
+use OpenEMR\Modules\ClinicalCopilot\RatingSubmission;
 use OpenEMR\Modules\ClinicalCopilot\VerificationResult;
 use OpenEMR\Modules\ClinicalCopilot\WarmOutcome;
 use Psr\Log\LoggerInterface;
@@ -114,6 +114,8 @@ final class ChatController
     private readonly PrewarmReceipts $receipts;
     private readonly BriefingRatings $ratings;
     private ?WarmOutcome $warm = null;
+    /** Whether this open's guideline cards came from the cache: a warm hit covers the summary only, so this is logged beside it. */
+    private bool $warmCardsCached = false;
 
     public function __construct(
         ?LoggerInterface $logger = null,
@@ -285,7 +287,7 @@ final class ChatController
             // The encounter's eval outcome: the verifier's final verdict on this briefing or answer.
             'eval_outcome' => AnswerRoute::outcomeOf($this->handoffs),
             'reranked' => array_filter($this->sidecarUsage, static fn(array $u): bool => $u['kind'] === 'rerank') !== [],
-        ] + ($this->warm?->toLogContext() ?? []);
+        ] + ($this->warm === null ? [] : $this->warm->toLogContext() + ['warm_cards_cached' => $this->warmCardsCached]);
         // One line per failed tool with the real reason (the user-facing
         // status label above is deliberately vague), then one line per request
         // with the ordered steps and their timings.
@@ -424,20 +426,24 @@ final class ChatController
         if (!$config->hasOpenAi()) {
             return PanelPayload::briefing($assembled, $this->unconfigured($assembled), $this->correlationId, $guidelines);
         }
-        $this->warm = $this->steps->measure(
-            'warm_lookup',
-            fn() => $this->warmOutcome($assembled, $config, $pid, $user),
-            static fn(?WarmOutcome $w) => $w?->toLogContext() ?? ['warm_result' => null],
-        );
         // The passages of cards the critic vetted for this patient are offered to the
         // narration under the same contract as an answer's evidence: cited by chunk
         // id, numbers verified. An unassessed card is shown but never restated.
+        $evidence = new EvidenceSet($cards->vettedChunks());
         $t = hrtime(true);
         $pipeline = $this->pipeline($config, $assembled, $pid);
-        $result = $pipeline->brief($assembled, new EvidenceSet($cards->vettedChunks()));
+        $result = $pipeline->brief($assembled, $evidence);
         $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
         $this->llmCalled = !$result->fromCache;
         $this->llmAttempts = $pipeline->llmAttempts();
+        // After the narration, so a pre-warm hit is checked, not inferred: the
+        // receipt's key must be the key this open read, and the read a cache hit.
+        $this->warmCardsCached = $cards->fromCache;
+        $this->warm = $this->steps->measure(
+            'warm_lookup',
+            fn() => $this->warmOutcome($assembled, $config, $pid, $user, $pipeline->cacheKey($assembled, $evidence), $result->fromCache),
+            static fn(?WarmOutcome $w) => $w?->toLogContext() ?? ['warm_result' => null],
+        );
         // The answer stage joins the graph's hops, so the log shows when the briefing was ready.
         $this->handoffs = [...$this->handoffs, ...AnswerRoute::forBriefing($result, $this->llmMs)];
         return PanelPayload::briefing($assembled, $result, $this->correlationId, $guidelines);
@@ -452,7 +458,7 @@ final class ChatController
         return new GuidelineEvidence(new OpenEmrChartSource(), $this->sidecar ?? SidecarClient::fromConfig($config), $config, $this->logger);
     }
 
-    private function warmOutcome(AssembledFacts $assembled, Config $config, PatientId $pid, string $user): ?WarmOutcome
+    private function warmOutcome(AssembledFacts $assembled, Config $config, PatientId $pid, string $user, string $keyRead, bool $servedFromCache): ?WarmOutcome
     {
         $today = ServiceContainer::getClock()->now()->format('Y-m-d');
         try {
@@ -468,8 +474,8 @@ final class ChatController
         if ($receipt === null && !$config->prewarmEnabled) {
             return null;
         }
-        $outcome = WarmOutcome::evaluate($receipt, $assembled, $user, Prompt::VERSION, $config->openAiModel);
-        $this->logger->notice('copilot warm', $outcome->toLogContext() + ['pid' => $pid->value, 'user' => $user]);
+        $outcome = WarmOutcome::evaluate($receipt, $assembled, $user, Prompt::VERSION, $config->openAiModel, $keyRead, $servedFromCache);
+        $this->logger->notice('copilot warm', $outcome->toLogContext() + ['warm_cards_cached' => $this->warmCardsCached, 'pid' => $pid->value, 'user' => $user]);
         return $outcome;
     }
 

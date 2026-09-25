@@ -23,6 +23,9 @@ namespace OpenEMR\Modules\ClinicalCopilot;
  */
 interface BriefingNarrator
 {
-    /** @param string $correlationId  Request id threaded through logs and traces. */
-    public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId): BriefingResult;
+    /**
+     * @param string $correlationId  Request id threaded through logs and traces.
+     * @param ?EvidenceSet $evidence The guideline passages the summary may restate; part of the cache key, so the pre-warm must pass what chart open will.
+     */
+    public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId, ?EvidenceSet $evidence = null): BriefingResult;
 }

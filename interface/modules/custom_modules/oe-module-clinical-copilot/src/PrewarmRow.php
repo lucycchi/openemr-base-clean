@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineStatus;
+
 /**
  * In-memory result for one patient in a pre-warm run, produced by Prewarmer
  * and then persisted as a PrewarmReceipt. $factLines is the human-readable
@@ -32,6 +34,12 @@ final readonly class PrewarmRow
         public ?string $error = null,
         /** @var list<string>|null FactSet::lines() of what was narrated; null when nothing was assembled */
         public ?array $factLines = null,
+        /** The briefing cache key the narration was stored under; null when nothing was stored. */
+        public ?string $cacheKey = null,
+        /** What happened to the guideline cards; null when the row never got that far (dry run, an early error). */
+        public ?GuidelineStatus $guidelineStatus = null,
+        /** What building the guideline cards cost (retrieval, rerank, critic); the sweep's trace carries the total. */
+        public float $sidecarCostUsd = 0.0,
     ) {
     }
 }

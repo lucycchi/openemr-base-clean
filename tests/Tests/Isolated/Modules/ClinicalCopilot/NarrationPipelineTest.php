@@ -331,6 +331,15 @@ final class NarrationPipelineTest extends TestCase
         self::assertSame(hash('sha256', $prefix . 'a1b2c3d4e5f6|' . GuidelineTriggers::indexVersion()), $pipeline->cacheKey($this->assembled(), $this->evidence()), 'an edited passage keeps its chunk id, so the corpus version marks new wording');
     }
 
+    public function testTheOrderOfTheOfferedPassagesDoesNotChangeTheKey(): void
+    {
+        // Chart open and the pre-warm must compute the same key for the same cards.
+        $a = new EvidenceChunk('a1b2c3d4e5f6', 'acc-aha-2018-cholesterol', 'Statin therapy', 'Moderate-intensity statin therapy.', 0.9);
+        $b = new EvidenceChunk('bbbbbbbbbbbb', 'ada-2025-standards', 'Glycemic goals', 'An A1C goal of less than 7%.', 0.8);
+
+        self::assertSame($this->pipeline()->cacheKey($this->assembled(), new EvidenceSet([$a, $b])), $this->pipeline()->cacheKey($this->assembled(), new EvidenceSet([$b, $a])));
+    }
+
     public function testBriefingCacheKeyChangesWithEvidenceAndACacheHitIsReverifiedAgainstIt(): void
     {
         $pipeline = $this->pipeline();

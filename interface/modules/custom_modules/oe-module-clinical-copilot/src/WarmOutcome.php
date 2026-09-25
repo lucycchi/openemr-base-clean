@@ -44,13 +44,21 @@ final readonly class WarmOutcome
     }
 
     /**
-     * Decision order: no receipt -> prompt changed -> model changed -> hash
-     * equal (hit) -> diff the fact lines to decide viewer-vs-chart drift.
+     * Runs after narration, with the key this open read and whether the
+     * narration came from the cache: a hit is checked, not inferred. Decision
+     * order: no receipt -> failed warm -> prompt changed -> model changed ->
+     * hit (the receipt's key is the key read, and the read was a cache hit) ->
+     * same facts: why the key did not serve -> diff the fact lines to decide
+     * viewer-vs-chart drift.
      */
-    public static function evaluate(?PrewarmReceipt $receipt, AssembledFacts $assembled, string $openerUsername, string $promptVersion, string $model): self
+    public static function evaluate(?PrewarmReceipt $receipt, AssembledFacts $assembled, string $openerUsername, string $promptVersion, string $model, string $keyRead, bool $servedFromCache): self
     {
         if ($receipt === null) {
             return new self(false, WarmMissReason::NoRow, null, [], []);
+        }
+        // DbPrewarmReceipts returns a failed row only when the day has no successful one.
+        if ($receipt->status === PrewarmStatus::Error) {
+            return new self(false, WarmMissReason::WarmFailed, $receipt, [], []);
         }
         // Prompt version and model are part of the cache key, so a receipt
         // warmed under another one cannot be the row this open will read
@@ -61,8 +69,17 @@ final readonly class WarmOutcome
         if ($receipt->model !== $model) {
             return new self(false, WarmMissReason::ModelChanged, $receipt, [], []);
         }
-        if ($receipt->factsHash === $assembled->facts()->hash()) {
+        if ($receipt->cacheKey !== null && $receipt->cacheKey === $keyRead && $servedFromCache) {
             return new self(true, null, $receipt, [], []);
+        }
+        if ($receipt->factsHash === $assembled->facts()->hash()) {
+            // The facts match, so the chart did not change; say why the warm still missed.
+            $reason = match (true) {
+                $receipt->cacheKey === null => WarmMissReason::ReceiptKeyUnknown,
+                $receipt->cacheKey !== $keyRead => WarmMissReason::GuidelineCardsDiffer,
+                default => WarmMissReason::CacheEntryMissing,
+            };
+            return new self(false, $reason, $receipt, [], []);
         }
 
         // Hash differs. Diff the recorded fact lines against today's to find
@@ -138,6 +155,8 @@ final readonly class WarmOutcome
         return [
             'warm_result' => $this->hit ? 'hit' : 'miss',
             'warm_reason' => $this->reason?->value,
+            // The 06:00 run's guideline cards: "unknown" on a receipt written before 0.1.5.
+            'warm_guideline_status' => $this->receipt === null ? null : ($this->receipt->guidelineStatus->value ?? 'unknown'),
             'warm_run_id' => $this->receipt?->runId,
             'warm_provider' => $this->receipt?->providerUsername,
             'warm_generated_at' => $this->receipt?->createdAt,

@@ -16,6 +16,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineStatus;
+
 /**
  * One persisted row from the pre-warm receipts table. Compared to
  * PrewarmRow (the in-memory version) it also carries the prompt version,
@@ -41,6 +43,8 @@ final readonly class PrewarmReceipt
         public bool $modelCalled,
         public string $correlationId,
         public string $createdAt,
+        /** What happened to the guideline cards at warm time; null on a receipt written before 0.1.5 (unknown). */
+        public ?GuidelineStatus $guidelineStatus = null,
     ) {
     }
 }

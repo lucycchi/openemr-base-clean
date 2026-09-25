@@ -49,7 +49,7 @@ final class LogFields
         'rating', 'comment_chars', 'briefing_correlation_id', 'prompt_version',
         // pre-warm (fact ids are hashes; the provider is the clinician's username, like `user`)
         'warm', 'warm_result', 'warm_reason', 'warm_miss_reason', 'warm_receipt_age_s', 'warm_run_id', 'warm_provider',
-        'warm_generated_at', 'warm_new_fact_ids', 'warm_gone_fact_ids',
+        'warm_generated_at', 'warm_new_fact_ids', 'warm_gone_fact_ids', 'warm_guideline_status', 'warm_cards_cached',
         // this filter's own report
         'dropped_fields',
     ];
