@@ -339,6 +339,21 @@ fail the gate if any sidecar line lacks the request's id.
 
 ## Findings and open issues (running log)
 
+- **2026-09-24, the pre-warm drifted from chart open.** The guideline cards
+  were built in `ChatController` and their passage ids went into the
+  narration's cache key, but the 06:00 sweep never built them. For any chart
+  with a card, the sweep warmed a narration chart open never read, and the
+  hit check (facts, prompt and model only) reported those misses as hits.
+  Found while answering "does the cron job use the sidecar?"; no user was
+  affected because the sweep is off. Fixed by one card builder for both paths
+  (`GuidelineEvidence`), a receipt that stores the key actually used, and a
+  hit checked after narration: [design](docs/designs/copilot-prewarm-guideline-cards.md),
+  commits `4ba7579` to `a01ba55`, proven by `PrewarmThenChartOpenTest` and a
+  live run on seed patients 30 and 15 (no sidecar or model call at chart
+  open). Two chart-open changes came with it: a card the critic could not
+  judge is still shown, but its passage no longer reaches the summary, and
+  such a section is no longer cached.
+
 - **2026-09-23, first Phase 8 deploy: a dev-only dependency in production.**
   `justinrainbow/json-schema`, used since requirement 3 to validate every
   sidecar reply at runtime, was in `require-dev`; the droplet's image

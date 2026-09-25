@@ -116,17 +116,23 @@ chart page load (today's encounter in session)
    ├─ per-category cap 50 → truncation fact
    └─ FactSet{ facts[id → …], hash }        ── rendered first, no model
         │
-        ├─ warm lookup: today's copilot_prewarm receipt for this pid
-        │     → WarmOutcome hit | miss{no_row, prompt_version, model_changed,
-        │       viewer_differs, hash_drift} → log + trace + warm_hit score
+        ├─ guideline cards (Week 2): GuidelineEvidence, shared with the pre-warm
+        │     → cached section, or the sidecar's retrieval + critic; only passages
+        │       the critic judged applicable are offered to the narration
         ▼
  NarrationPipeline
-   ├─ cache(facts_hash | Prompt::VERSION | model) ─hit─► verified narration
+   ├─ cache(facts_hash | Prompt::VERSION | model | vetted chunk ids | corpus version)
+   │     ─hit─► verified narration
    ├─ OpenAiClient (Structured Outputs, temperature 0, 1 retry, 25 s budget)
    ├─ Verifier: ≥1 known id per sentence; every number/date verbatim in a cited fact
    ├─ OmissionGuard: must-surface facts not cited → "Also on file"
    └─ cache store (never on total failure)
         │
+        ├─ warm lookup, after the narration: today's copilot_prewarm receipt
+        │     → WarmOutcome hit (the receipt's key is the key read, served from
+        │       the cache) | miss{no_row, warm_failed, prompt_version, model_changed,
+        │       receipt_key_unknown, guideline_cards_differ, cache_entry_missing,
+        │       viewer_differs, hash_drift} → log + trace + warm_hit score
         ▼
  PanelPayload → JSON → panel.js (table, summary with chips, status line)
         │
@@ -147,12 +153,17 @@ those same-day encounters); the enum case and contract entry remain.
 **Morning pre-warm.** `copilot:prewarm --date=today` (a Symfony Console
 command registered on `CommandRunnerFilterEvent`) reads the day's
 appointments, assembles each chart as the scheduled provider with the clock
-pinned to the start of that day, and runs the same `NarrationPipeline`
-through `BriefingPipelineFactory`, so the cache row it writes is the one the
-provider's chart open reads. Each patient gets a receipt in
-`copilot_prewarm` (run id, provider, facts hash, cache key, prompt version,
-model, fact lines, status, timing). At chart open, `WarmOutcome` compares
-the receipt with the fresh assembly and records hit or a miss reason; the
+pinned to the start of that day, builds the guideline cards through
+`GuidelineEvidence` (the class chart open uses, on the same day), and runs
+the same `NarrationPipeline` through `BriefingPipelineFactory` with the
+cards' vetted passages, so the cards and the narration it caches are the
+ones the provider's chart open reads. Each patient gets a receipt in
+`copilot_prewarm` (run id, provider, facts hash, the cache key the narration
+was actually stored under, the guideline card status, prompt version,
+model, fact lines, status, timing); a narration that was not stored is an
+`error`, never `warmed`. At chart open, after the narration, `WarmOutcome`
+compares the receipt's key with the key read and records hit or a miss
+reason; the
 panel label reads "generated 6:02 AM today · matches chart as of now" for a
 cached narration and "generated just now" otherwise. A `flock()` on
 `sites/<site>/documents/copilot/prewarm.lock` keeps sweeps from overlapping;

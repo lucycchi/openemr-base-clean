@@ -146,7 +146,36 @@ are scheduled as tasks 9.1 and 9.2 in
 **Priority:** P2
 **Depends on:** None
 
+### One briefing service for chart open and the pre-warm
+
+**What:** A single `BriefingService` that builds the whole briefing (the guideline cards, then the narration, then the route and the priced usage) and returns them together. `ChatController::brief()` and `Prewarmer` both call only it.
+
+**Why:** Approach B in `docs/designs/copilot-prewarm-guideline-cards.md`. The pre-warm drifted from chart open once already: the guideline step was added to the controller, not to wiring the sweep shared, and every pre-warmed chart with a card would have missed while reporting a hit. `GuidelineEvidence` (approach A) shares the card step; the two paths still assemble the briefing in two places, so the next step added to one can drift again.
+
+**Context:** Deferred at approval (2026-09-24) to keep the graded chart-open path stable before the final. `PrewarmThenChartOpenTest` is the guard: it runs the sweep and chart open through their real wiring and requires chart open to make no sidecar or model call. Keep it passing unchanged through the refactor.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** None
+
 ## Completed
+
+### ~~Pre-warm misses the cache for any chart with guideline cards, and reports a hit~~ (done 2026-09-24)
+
+**Design:** approved 2026-09-24, `docs/designs/copilot-prewarm-guideline-cards.md` (office hours plus a Codex review). It supersedes the fix sketched under Context below and adds two defects found since: the receipt stores a stale recomputed cache key, and a failed 06:00 narration is recorded as "warmed".
+
+**What:** The morning pre-warm (`copilot:prewarm`) caches each briefing with no guideline passages, but chart open asks for the briefing with the passages from the guideline cards, so the two use different cache keys. For any patient whose chart fires a guideline card that the critic keeps, the pre-warmed summary is never used. The warm-hit check also says "hit" when this happens.
+
+**Why:** Most primary-care charts fire at least one card (LDL, diabetes, blood pressure, screening age), so with the sweep turned on, most of the 6 a.m. work would be thrown away and those physicians would still wait for a cold briefing (4.2 s p50, 10.1 s p95). Worse, the `warm_hit` score and the `copilot warm` log line would report the misses as hits. That hides the failure from the receipts and the hit-rate alert, which were built so every miss has a reason. No user is affected today: the sweep is off on the droplet (no cron, `COPILOT_PREWARM_ENABLED` unset). It must be fixed before the sweep is turned on.
+
+**Context:** Found 2026-09-24 while answering "does the cron job use the sidecar?". Introduced by `682492d` (briefing narration may restate a cited guideline passage), which added the offered passages' chunk ids to the briefing cache key (`NarrationPipeline::cacheKey()`). Chart open builds the guideline section in `ChatController::guidelineSection()` (trigger rules, then a sidecar `brief` run: retrieval plus the critic) and passes the surviving cards' chunks to `NarrationPipeline::brief($assembled, new EvidenceSet($chunks))`. The sweep goes `Prewarmer` → `PipelineNarrator::brief()` → `NarrationPipeline::brief($assembled)` with no evidence, so its key is built with an empty chunk list. `WarmOutcome::evaluate()` compares the facts hash, prompt version and model only, so it scores these as hits. Fix: move the guideline-section build out of `ChatController` into a shared service that both the panel and the sweep call, so the sweep warms the same guideline section and passes the same chunks. A sidecar that is down at 6 a.m. then warms a briefing with no cards, as chart open already does, and the next open re-warms. Record the chunk ids (or the cache key itself) on the `copilot_prewarm` receipt, and have `WarmOutcome` compare them and report a new miss reason (for example `evidence_changed`) instead of a hit. Tests: a failing `PrewarmerTest` / `WarmOutcomeTest` case first, with a chart that fires a trigger whose card survives. The sweep's key and chart open's key must match, and a different chunk set must be reported as a miss. Then re-run the pre-warm live check from `docker/vps/README.md` on a seed patient with a high LDL.
+
+**Effort:** M
+**Priority:** P1 (blocks turning the pre-warm on)
+**Depends on:** None
+
+**Done:** `4ba7579`, `f617870`, `25bc6ae`, `a01ba55`, as designed in `docs/designs/copilot-prewarm-guideline-cards.md`. The sweep builds each patient's cards through `GuidelineEvidence`, the class chart open uses, then narrates with the passages the critic vetted, so chart open reads both from the cache. A row is "warmed" only when the narration was stored. The receipt stores the key the pipeline returned and the card status (module 0.1.5). Chart open checks the hit after narration, with four new miss reasons: `warm_failed`, `receipt_key_unknown`, `guideline_cards_differ`, `cache_entry_missing`. Proven by `PrewarmThenChartOpenTest` (sweep, then chart open, same tables: no sidecar or model call at open) and a live check on the dev stack (seed patients 30 and 15: `copilot:prewarm --force`, then chart open with the real sidecar and model: 0 sidecar calls, 0 model calls, `warm_result=hit`, `warm_cards_cached=true`). Two changes to chart open came with it: a card the critic could not judge is still shown but its passage no longer reaches the summary, and a section with such a card is no longer cached. The sweep is still off on the droplet.
+
 
 ### ~~Chat adoption per patient encounter~~ (done 2026-09-24)
 

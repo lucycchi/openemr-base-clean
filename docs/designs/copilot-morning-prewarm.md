@@ -342,6 +342,24 @@ bump), and nothing has been pushed or deployed.
 7. After one clinic week: read the reason histogram; pick follow-ups on
    evidence.
 
+## Revision 2026-09-24: the guideline cards
+
+Week 2 added guideline cards to the briefing, built in the chart-open
+controller, and put their passage ids in the narration's cache key. The
+sweep never built them, so for any chart with a card it warmed a narration
+under a key chart open never read, and `WarmOutcome`, which compared facts,
+prompt and model only, scored those misses as hits. The receipt's stored
+key was also recomputed from an old copy of the formula, and a narration
+that failed at 06:00 was recorded as `warmed`.
+
+Fixed as designed in [copilot-prewarm-guideline-cards.md](copilot-prewarm-guideline-cards.md):
+the sweep builds the cards through the same class as chart open
+(`GuidelineEvidence`) and narrates with the vetted passages; the receipt
+stores the key the pipeline returned and the card status; chart open checks
+the hit after narration, against the key it read; new reasons `warm_failed`,
+`receipt_key_unknown`, `guideline_cards_differ`, `cache_entry_missing`. The
+reason list and the evaluation order above describe the first version.
+
 ## What I noticed about how you think
 
 - You cut your own idea. You proposed a live "Today" block, then said "maybe
