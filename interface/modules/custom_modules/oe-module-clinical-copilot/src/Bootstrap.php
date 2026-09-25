@@ -70,18 +70,21 @@ final class Bootstrap
     public function registerCommands(CommandRunnerFilterEvent $event): void
     {
         // Composition root for the CLI: wire real DB/ACL/OpenAI implementations
-        // into the Prewarmer. Falls back to UnconfiguredNarrator when no API
-        // key is set so `--dry-run` still works.
+        // into the Prewarmer. With no API key the sweep still runs (`--dry-run`
+        // works, and a real run records "AI is not configured" per patient).
         $config = Config::fromEnvironment();
         $tz = new \DateTimeZone(date_default_timezone_get());
         $prewarmer = new Prewarmer(
             new DbScheduleSource(),
             new OpenEmrChartSource(),
             static fn(string $username): Authorization => new AclAuthorization($username),
-            $config->hasOpenAi() ? new PipelineNarrator($config) : new UnconfiguredNarrator(),
-            // The same card builder chart open uses, so the sweep caches the
+            // The same BriefingService chart open uses, so the sweep caches the
             // guideline cards and the summary chart open will look up.
-            new GuidelineEvidence(new OpenEmrChartSource(), SidecarClient::fromConfig($config), $config, $this->logger),
+            new BriefingService(
+                new GuidelineEvidence(new OpenEmrChartSource(), SidecarClient::fromConfig($config), $config, $this->logger),
+                new BriefingPipelineFactory(),
+                $config,
+            ),
             $tz,
             new DbPrewarmReceipts($config->openAiModel),
         );

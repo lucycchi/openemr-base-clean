@@ -22,7 +22,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
-use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSource;
+use OpenEMR\Modules\ClinicalCopilot\Ops\StepRecorder;
 
 /**
  * The overnight sweep. For every (patient, provider) pair on a day's
@@ -39,8 +39,7 @@ final readonly class Prewarmer
         private ScheduleSource $schedule,
         private ChartSource $chart,
         private Closure $authorizationFor,
-        private BriefingNarrator $narrator,
-        private GuidelineSource $guidelines,
+        private BriefingService $briefings,
         private DateTimeZone $tz,
         private PrewarmReceipts $receipts = new NullPrewarmReceipts(),
     ) {
@@ -106,15 +105,14 @@ final readonly class Prewarmer
             $assembled = $assembler->assemble($appointment->pid, null);
             $factsHash = $assembled->facts()->hash();
             $factLines = $assembled->facts()->lines();
-            // The guideline cards first, exactly as chart open builds them (same
-            // class, the pinned day for the patient's age, this row's correlation
-            // id): the section is cached for chart open, and its vetted passages
-            // are part of the summary's cache key, so the summary warmed here is
-            // the one chart open looks up.
-            $cards = $this->guidelines->build($assembled, $appointment->pid, $clock->now(), $correlationId);
-            // brief() consults the cache first, so an unchanged chart that was
-            // warmed yesterday costs no model call and is reported as such.
-            $result = $this->narrator->brief($assembled, $appointment->pid, $correlationId, new EvidenceSet($cards->vettedChunks()));
+            // The same BriefingService chart open calls, on the pinned day and with
+            // this row's correlation id: it builds and caches the guideline cards,
+            // then narrates with their vetted passages, so the rows it caches are the
+            // ones chart open looks up. The narration consults the cache first, so an
+            // unchanged chart that was warmed yesterday costs no model call.
+            $briefing = $this->briefings->brief($assembled, $appointment->pid, $clock->now(), $correlationId, new StepRecorder());
+            $cards = $briefing->cards;
+            $result = $briefing->narration ?? throw new \RuntimeException('AI is not configured on this server (OPENAI_API_KEY unset)');
             // A narration is warm only if it was stored: a model failure or a
             // summary the verifier stripped entirely comes back as an ordinary
             // result with no cache key, and must not be counted as warmed.

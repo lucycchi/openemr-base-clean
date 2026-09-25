@@ -16,17 +16,15 @@ namespace OpenEMR\Tests\Isolated\Modules\ClinicalCopilot;
 
 use DateTimeImmutable;
 use DateTimeZone;
-use OpenEMR\Modules\ClinicalCopilot\AssembledFacts;
-use OpenEMR\Modules\ClinicalCopilot\BriefingNarrator;
-use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
+use OpenEMR\Modules\ClinicalCopilot\BriefingService;
 use OpenEMR\Modules\ClinicalCopilot\Command\PrewarmCommand;
 use OpenEMR\Modules\ClinicalCopilot\Config;
-use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
+use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
 use OpenEMR\Modules\ClinicalCopilot\FixedClock;
 use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineOutcome;
 use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSection;
-use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineSource;
 use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineStatus;
+use OpenEMR\Modules\ClinicalCopilot\MedicationRecord;
 use OpenEMR\Modules\ClinicalCopilot\Ops\RequestTrace;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Score;
 use OpenEMR\Modules\ClinicalCopilot\Ops\Tracer;
@@ -37,13 +35,15 @@ use OpenEMR\Modules\ClinicalCopilot\ScheduledAppointment;
 use OpenEMR\Modules\ClinicalCopilot\ScheduleSource;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeAuthorization;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeChartSource;
+use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeGuidelineSource;
+use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\FakeNarrationPipelines;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
  * PrewarmCommand driven through Symfony's CommandTester with a real
- * Prewarmer wired to anonymous-class fakes for the schedule, narrator and
+ * Prewarmer wired to fakes for the schedule, the briefing (cards and model) and
  * lock (each calls back into the test so it can count and script
  * behaviour). Covers: the kill switch and --force; --date parsing
  * (today/tomorrow in the site zone, explicit date, garbage rejected before
@@ -63,8 +63,9 @@ final class PrewarmCommandTest extends TestCase
 
     /** @var list<string> Y-m-d of each day the schedule was asked for */
     private array $daysAsked = [];
-    private int $narrations = 0;
-    private bool $narratorFails = false;
+    private bool $briefingFails = false;
+    private FakeGuidelineSource $guidelines;
+    private FakeNarrationPipelines $pipelines;
     public bool $lockHeldElsewhere = false;
     public int $lockReleases = 0;
     /** @var list<RequestTrace> */
@@ -76,6 +77,8 @@ final class PrewarmCommandTest extends TestCase
     {
         $this->tz = new DateTimeZone('America/Los_Angeles');
         $this->tracer = $this->tracerDouble();
+        $this->guidelines = new FakeGuidelineSource();
+        $this->pipelines = new FakeNarrationPipelines();
     }
 
     /**
@@ -95,24 +98,16 @@ final class PrewarmCommandTest extends TestCase
                 return $this->test->schedule($day);
             }
         };
-        $narrator = new class ($test) implements BriefingNarrator {
-            public function __construct(private readonly PrewarmCommandTest $test)
-            {
-            }
-
-            public function brief(AssembledFacts $assembled, PatientId $pid, string $correlationId, ?EvidenceSet $evidence = null): BriefingResult
-            {
-                return $this->test->narrate();
-            }
-        };
         // Every patient's cards cost one rerank, so the sweep's trace has a sidecar cost to report.
-        $guidelines = new class implements GuidelineSource {
-            public function build(AssembledFacts $assembled, PatientId $pid, DateTimeImmutable $day, string $correlationId): GuidelineOutcome
-            {
-                return new GuidelineOutcome(GuidelineSection::none('ok'), GuidelineStatus::Built, false, [], [['model' => 'rerank-v3.5', 'kind' => 'rerank', 'input' => 1, 'output' => 0, 'cost_usd' => 0.002]]);
-            }
-        };
-        $prewarmer = new Prewarmer($schedule, new FakeChartSource(), static fn(string $u) => new FakeAuthorization(), $narrator, $guidelines, $this->tz);
+        $this->guidelines->outcome = new GuidelineOutcome(GuidelineSection::none('ok'), GuidelineStatus::Built, false, [], [['model' => 'rerank-v3.5', 'kind' => 'rerank', 'input' => 1, 'output' => 0, 'cost_usd' => 0.002]]);
+        $this->guidelines->throw = $this->briefingFails ? new \RuntimeException('upstream down') : null;
+        $chart = new FakeChartSource();
+        $chart->medications = [new MedicationRecord(17, 'Metformin 500 MG Oral Tablet', new DateTimeImmutable('2025-01-10'), true)];
+        // The model cites the chart's own fact, so the narration verifies and is stored: the row counts as warmed.
+        $factId = (new FactAssembler($chart, new FakeAuthorization(), new FixedClock(new DateTimeImmutable('2026-09-18', $this->tz))))->assemble(new PatientId(7), null)->facts()->all()[0]->id;
+        $this->pipelines->llm->reply = ['sentences' => [['text' => 'Metformin is on the medication list.', 'fact_ids' => [$factId]]]];
+        $briefings = new BriefingService($this->guidelines, $this->pipelines, new Config('sk-test', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', ''));
+        $prewarmer = new Prewarmer($schedule, $chart, static fn(string $u) => new FakeAuthorization(), $briefings, $this->tz);
         $config = new Config('sk-test', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', '', prewarmEnabled: $enabled);
         $now = new FixedClock(new DateTimeImmutable('2026-09-17 22:00:00', $this->tz));
         $lock = new class ($test) implements RunLock {
@@ -168,7 +163,7 @@ final class PrewarmCommandTest extends TestCase
 
     public function testAnErroredRowLeavesTheQueueDepthAndAStatusOnTheTrace(): void
     {
-        $this->narratorFails = true;
+        $this->briefingFails = true;
         $tester = $this->command(true);
         $tester->execute(['--date' => 'tomorrow']);
 
@@ -188,15 +183,10 @@ final class PrewarmCommandTest extends TestCase
         return [new ScheduledAppointment(1, new PatientId(7), 'drsmith', $day)];
     }
 
-    /** @internal called by the anonymous narrator */
-    public function narrate(): BriefingResult
+    /** How many patients' briefings the sweep started (it builds the cards first). */
+    private function briefed(): int
     {
-        if ($this->narratorFails) {
-            throw new \RuntimeException('upstream down');
-        }
-        $this->narrations++;
-        // Stored, so it comes back with the key it lives under: the row counts as warmed.
-        return new BriefingResult([], 0, [], null, false, false, 10, 5, null, 'key');
+        return count($this->guidelines->builds);
     }
 
     public function testDisabledSiteDoesNothingAndExitsZero(): void
@@ -208,7 +198,7 @@ final class PrewarmCommandTest extends TestCase
         self::assertSame(0, $exit);
         self::assertStringContainsString('pre-warm disabled on this site', $tester->getDisplay());
         self::assertSame([], $this->daysAsked);
-        self::assertSame(0, $this->narrations);
+        self::assertSame(0, $this->briefed());
     }
 
     public function testForceBypassesTheKillSwitchForOneRun(): void
@@ -218,7 +208,7 @@ final class PrewarmCommandTest extends TestCase
         $exit = $tester->execute(['--date' => 'today', '--force' => true]);
 
         self::assertSame(0, $exit);
-        self::assertSame(1, $this->narrations);
+        self::assertSame(1, $this->briefed());
     }
 
     public function testTodayAndTomorrowResolveInTheSiteZone(): void
@@ -247,7 +237,7 @@ final class PrewarmCommandTest extends TestCase
         $exit = $tester->execute(['--date' => 'today', '--dry-run' => true]);
 
         self::assertSame(0, $exit);
-        self::assertSame(0, $this->narrations);
+        self::assertSame(0, $this->briefed());
         self::assertStringContainsString('scheduled=1', $tester->getDisplay());
         self::assertStringContainsString('skipped=1', $tester->getDisplay());
     }
@@ -264,7 +254,7 @@ final class PrewarmCommandTest extends TestCase
 
     public function testAnyErroredRowMakesTheExitCodeNonZero(): void
     {
-        $this->narratorFails = true;
+        $this->briefingFails = true;
         $tester = $this->command(true);
 
         $exit = $tester->execute(['--date' => 'today']);
@@ -289,7 +279,7 @@ final class PrewarmCommandTest extends TestCase
 
     public function testTheLockIsReleasedAfterARunEvenWhenRowsErrored(): void
     {
-        $this->narratorFails = true;
+        $this->briefingFails = true;
 
         $this->command(true)->execute(['--date' => 'today']);
 
