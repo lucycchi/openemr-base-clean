@@ -32,7 +32,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 |---|---|---|---|---|
 | 1 | GitLab repository | Done | none | Early |
 | 2 | W2 architecture doc (`./W2_ARCHITECTURE.md`) | Done | none | Early |
-| 3 | Key metrics doc (`./KEY_METRICS.md`) | Done; metric 6 built 2026-09-24, metric 7 still planned | G7, S10 | Early |
+| 3 | Key metrics doc (`./KEY_METRICS.md`) | Done; metrics 6 and 7 built 2026-09-24 | S10 | Early |
 | 4 | Schemas | Done; Gate 3 scored 9/15 | G2, G8 | Early |
 | 5 | Eval dataset | Done | none | Early |
 | 6 | CI evidence | Done: hook in the codebase, and a blocking GitLab CI merge-request job (pipeline #28015 green, MR !1 blocked by a planted regression) | S10 | Early |
@@ -425,7 +425,14 @@ Closed only after it is verified, like the S tasks.
   by-hand `mariadb` step on the droplet; new log keys go in
   `LogFields::ALLOWED`. Update KEY_METRICS.md from "planned" to live, with
   the first numbers.
-- [ ] **G7 Build metric 7, chat adoption per encounter.** The numerator
+- [x] **G7 Build metric 7, chat adoption per encounter.** Done 2026-09-24:
+  every Co-Pilot audit row, log line and trace names the open encounter
+  (`encounter_id`); `php bin/console copilot:adoption --days=7 [--json]`
+  reports per physician per day and per week the encounters, how many the
+  chat was used on, the share and mean questions per used encounter; metric 7
+  is marked built in KEY_METRICS.md. Verified: AdoptionReportTest (6),
+  DbAdoptionCountsTest, ChatControllerBriefTest (the audit row names the
+  encounter), gate.sh PASS, PHPStan clean. Original plan: The numerator
   already exists in the audit rows; write the query (encounters with at
   least one chat turn / encounters), expose it where the other metrics are
   read ([DASHBOARD.md](DASHBOARD.md)), and mark it live in KEY_METRICS.md.

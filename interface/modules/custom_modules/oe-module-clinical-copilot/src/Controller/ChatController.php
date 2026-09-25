@@ -260,6 +260,10 @@ final class ChatController
         $status = is_string($outcome['status'] ?? null) ? $outcome['status'] : null;
         $metadata = [
             'action' => $action,
+            // The encounter the chart was open on (0 when none): KEY_METRICS.md metric 7
+            // counts chat use per encounter from the audit row below, and the log line
+            // and trace carry it too so all three records agree.
+            'encounter' => $encounter,
             'http_status' => $httpStatus,
             'facts' => count($assembled->facts()->all()),
             'stripped' => is_int($outcome['stripped'] ?? null) ? $outcome['stripped'] : null,
@@ -297,7 +301,7 @@ final class ChatController
             $user,
             $authProvider,
             $httpStatus === 200 ? 1 : 0,
-            sprintf('action=%s correlation_id=%s facts=%d stripped=%s from_cache=%s tokens=%d cost_usd=%s llm_attempts=%d status=%s', $action, $this->correlationId, $metadata['facts'], var_export($metadata['stripped'], true), var_export($metadata['from_cache'], true), $promptTokens + $completionTokens, $costUsd === null ? 'unknown' : number_format($costUsd, 6, '.', ''), $this->llmAttempts, $status ?? 'ok'),
+            sprintf('action=%s correlation_id=%s encounter_id=%d facts=%d stripped=%s from_cache=%s tokens=%d cost_usd=%s llm_attempts=%d status=%s', $action, $this->correlationId, $encounter, $metadata['facts'], var_export($metadata['stripped'], true), var_export($metadata['from_cache'], true), $promptTokens + $completionTokens, $costUsd === null ? 'unknown' : number_format($costUsd, 6, '.', ''), $this->llmAttempts, $status ?? 'ok'),
             $pid->value
         );
         $this->tracer->record(new RequestTrace(

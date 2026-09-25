@@ -16,6 +16,7 @@ namespace OpenEMR\Tests\Services\Modules\ClinicalCopilot;
 
 use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Common\Logging\EventAuditLogger;
+use OpenEMR\Modules\ClinicalCopilot\CopilotAuditLog;
 use OpenEMR\Modules\ClinicalCopilot\DbRatingCounts;
 use OpenEMR\Tests\Isolated\Modules\ClinicalCopilot\Support\ModuleAutoload;
 use PHPUnit\Framework\TestCase;
@@ -39,7 +40,7 @@ class DbRatingCountsTest extends TestCase
 
     public function testABriefAuditRowCountsAsRenderedAndARatingRowCountsOnItsDay(): void
     {
-        $counts = new DbRatingCounts(static fn(string $c): string => $c);
+        $counts = new DbRatingCounts(new CopilotAuditLog(static fn(string $c): string => $c));
         $from = new \DateTimeImmutable('today');
         $to = $from->modify('+1 day');
         $today = $from->format('Y-m-d');

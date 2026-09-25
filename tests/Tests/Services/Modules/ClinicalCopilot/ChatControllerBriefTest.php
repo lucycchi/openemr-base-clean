@@ -33,10 +33,12 @@ use Monolog\Handler\TestHandler;
 use Monolog\Logger;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Database\QueryUtils;
+use OpenEMR\Common\Session\EncounterSessionUtil;
 use OpenEMR\Common\Session\PatientSessionUtil;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Modules\ClinicalCopilot\Config;
 use OpenEMR\Modules\ClinicalCopilot\Controller\ChatController;
+use OpenEMR\Modules\ClinicalCopilot\CopilotAuditLog;
 use OpenEMR\Modules\ClinicalCopilot\Documents\SidecarClient;
 use OpenEMR\Modules\ClinicalCopilot\Ops\NullTracer;
 use OpenEMR\Modules\ClinicalCopilot\Row;
@@ -158,5 +160,32 @@ class ChatControllerBriefTest extends TestCase
         $guidelines = $body['guidelines'];
         self::assertIsArray($guidelines);
         self::assertSame('ok', $guidelines['status'], 'the injected client\'s evidence reaches the panel');
+    }
+
+    /**
+     * KEY_METRICS.md metric 7 counts chat use per encounter from these audit
+     * rows, so every request's row must name the encounter the chart was open on.
+     */
+    public function testTheAuditRowNamesTheOpenEncounter(): void
+    {
+        $csrf = $this->signIn();
+        $encounter = (string) random_int(900000000, 999999999);
+        EncounterSessionUtil::setEncounter($encounter);
+        $config = new Config('', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', '', sidecarUrl: 'http://127.0.0.1:9');
+        $request = Request::create('/chat.php', 'POST', ['csrf_token_form' => $csrf, 'action' => 'brief']);
+
+        try {
+            ob_start();
+            (new ChatController(new Logger('test', [new TestHandler()]), $request, $config, new NullTracer()))->handleRequest();
+            ob_end_clean();
+        } finally {
+            EncounterSessionUtil::setEncounter('0');
+        }
+
+        $today = new \DateTimeImmutable('today');
+        $rows = (new CopilotAuditLog(static fn(string $c): string => $c))->successful($today, $today->modify('+1 day'));
+        $mine = array_filter($rows, static fn(array $r): bool => str_contains($r['comment'], " encounter_id=$encounter "));
+        self::assertCount(1, $mine, 'exactly one audit row names the open encounter');
+        self::assertStringStartsWith('action=brief ', array_values($mine)[0]['comment']);
     }
 }

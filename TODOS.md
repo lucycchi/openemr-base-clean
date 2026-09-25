@@ -134,18 +134,6 @@ are scheduled as tasks 9.1 and 9.2 in
 **Priority:** P2
 **Depends on:** None (Langfuse score write is a small addition to `Tracer`; if server-side conversation persistence lands first, share its retention policy)
 
-### Chat adoption per patient encounter
-
-**What:** Log which encounter each chat turn belongs to and compute, per physician per day and per week, the share of patient encounters on which the chat was used at least once (`chat bot use / patient encounters`), plus mean `ask` turns per used encounter.
-
-**Why:** Metric 7 in `KEY_METRICS.md`. Metric 5 measures whether the panel is seen; this measures whether the conversation is chosen, per encounter, which is the production test of the PRD's rule that multi-turn must be justified by a use case.
-
-**Context:** Future iteration, deferred 2026-09-16 (office-hours; no time before the submission gate). Numerator: the audit rows `ChatController` already writes (`EventAuditLogger::newEvent('clinical-copilot', ...)` with `action=ask`) carry user and pid but not the encounter; add `encounter_id=<id>` to the audit event string (the session encounter is already known to the controller, it is what `FactAssembler::assemble()` receives) and to the `copilot response` log line and the Langfuse trace metadata, so all three stores agree. Denominator: `form_encounter` rows with `date` on that day and `provider_id` = the physician, which is OpenEMR's own definition of an encounter. Encounters with no chart open at all count in the denominator on purpose. Query: one SQL over `log` (action LIKE 'action=ask%') joined to `form_encounter` on pid + encounter id, grouped by user and day; ship it as `tests/evals/adoption.php` (same shape as `smoke.php`) that prints the table and writes JSON, and as a Langfuse saved view keyed on the `encounter_id` metadata if the dashboard is Langfuse. Do not count the auto-rendered `brief` action or a rating (`action=rate`, see the rating entry above) as use. If server-side conversation persistence lands first, the `copilot_conversation` table keyed by (pid, encounter_id, user_id) makes the numerator a `COUNT(DISTINCT encounter_id)` with no log parsing.
-
-**Effort:** S
-**Priority:** P2
-**Depends on:** None; simpler after server-side conversation persistence
-
 ### Move Langfuse to the v4 OpenTelemetry write path
 
 **What:** Replace the `/api/public/ingestion` batch call in `LangfuseTracer` with OTLP export (or the v4 SDK path). Confirmed 2026-09-22: every ingestion response now carries the shutdown notice (non-score events rejected from 2026-11-16); the legacy read APIs are already closed to this organisation. Scheduled for Phase 9; see clinical_copilot_week2/DASHBOARD.md § Decisions, item 7.
@@ -159,6 +147,20 @@ are scheduled as tasks 9.1 and 9.2 in
 **Depends on:** None
 
 ## Completed
+
+### ~~Chat adoption per patient encounter~~ (done 2026-09-24)
+
+**What:** Log which encounter each chat turn belongs to and compute, per physician per day and per week, the share of patient encounters on which the chat was used at least once (`chat bot use / patient encounters`), plus mean `ask` turns per used encounter.
+
+**Why:** Metric 7 in `KEY_METRICS.md`. Metric 5 measures whether the panel is seen; this measures whether the conversation is chosen, per encounter, which is the production test of the PRD's rule that multi-turn must be justified by a use case.
+
+**Context:** Future iteration, deferred 2026-09-16 (office-hours; no time before the submission gate). Numerator: the audit rows `ChatController` already writes (`EventAuditLogger::newEvent('clinical-copilot', ...)` with `action=ask`) carry user and pid but not the encounter; add `encounter_id=<id>` to the audit event string (the session encounter is already known to the controller, it is what `FactAssembler::assemble()` receives) and to the `copilot response` log line and the Langfuse trace metadata, so all three stores agree. Denominator: `form_encounter` rows with `date` on that day and `provider_id` = the physician, which is OpenEMR's own definition of an encounter. Encounters with no chart open at all count in the denominator on purpose. Query: one SQL over `log` (action LIKE 'action=ask%') joined to `form_encounter` on pid + encounter id, grouped by user and day; ship it as `tests/evals/adoption.php` (same shape as `smoke.php`) that prints the table and writes JSON, and as a Langfuse saved view keyed on the `encounter_id` metadata if the dashboard is Langfuse. Do not count the auto-rendered `brief` action or a rating (`action=rate`, see the rating entry above) as use. If server-side conversation persistence lands first, the `copilot_conversation` table keyed by (pid, encounter_id, user_id) makes the numerator a `COUNT(DISTINCT encounter_id)` with no log parsing.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** None; simpler after server-side conversation persistence
+
+**Done:** every Co-Pilot audit row, the `copilot response` log line and the trace metadata name the open encounter (`encounter_id`); `php bin/console copilot:adoption --days=7 [--json]` (`AdoptionReport` over `DbAdoptionCounts`, sharing `CopilotAuditLog` with metric 6) reports per physician per day and per ISO week. Counting starts with rows written from 2026-09-24. KEY_METRICS.md metric 7 is marked built.
 
 ### ~~Push gate runs its deterministic cases with the model keys off~~ (done 2026-09-24)
 

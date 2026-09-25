@@ -18,30 +18,20 @@ use OpenEMR\Common\Database\QueryUtils;
 
 /**
  * Briefings rendered are the successful action=brief audit rows, the same
- * source as metric 5. Audit comments are stored base64-encoded, or encrypted
- * when the site turns audit encryption on (log_comment_encrypt.encrypt);
- * $decrypt is OpenEMR's CryptoGen::decryptFromDatabase in production.
+ * source as metric 5 (read and decoded by CopilotAuditLog).
  */
 final readonly class DbRatingCounts implements RatingCounts
 {
-    /** @param \Closure(string): string $decrypt */
-    public function __construct(private \Closure $decrypt)
+    public function __construct(private CopilotAuditLog $audit)
     {
     }
 
     public function renderedByDay(\DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
-        $rows = QueryUtils::fetchRecords(
-            "SELECT DATE(l.date) AS day, l.comments, lce.encrypt, lce.version
-               FROM log l LEFT JOIN log_comment_encrypt lce ON lce.log_id = l.id
-              WHERE l.event = 'clinical-copilot' AND l.success = 1 AND l.date >= ? AND l.date < ?",
-            [$from->format('Y-m-d 00:00:00'), $to->format('Y-m-d 00:00:00')]
-        );
         $out = [];
-        foreach ($rows as $row) {
-            if (str_starts_with($this->comment($row), 'action=brief ')) {
-                $day = Row::str($row, 'day');
-                $out[$day] = ($out[$day] ?? 0) + 1;
+        foreach ($this->audit->successful($from, $to) as $row) {
+            if (str_starts_with($row['comment'], 'action=brief ')) {
+                $out[$row['day']] = ($out[$row['day']] ?? 0) + 1;
             }
         }
         return $out;
@@ -75,21 +65,5 @@ final readonly class DbRatingCounts implements RatingCounts
                FROM copilot_briefing_rating WHERE created_at >= ? AND created_at < ? GROUP BY grp",
             [$from->format('Y-m-d 00:00:00'), $to->format('Y-m-d 00:00:00')]
         );
-    }
-
-    /**
-     * The audit comment as written, following OpenEMR's log viewer: encrypted
-     * rows are decrypted, rows at log version 4 or later are base64.
-     *
-     * @param array<mixed> $row
-     */
-    private function comment(array $row): string
-    {
-        $comments = is_string($row['comments'] ?? null) ? $row['comments'] : '';
-        if (($row['encrypt'] ?? null) === 'Yes') {
-            return ($this->decrypt)($comments);
-        }
-        $version = is_numeric($row['version'] ?? null) ? (int) $row['version'] : 0;
-        return $version >= 4 ? (string) base64_decode($comments, true) : $comments;
     }
 }

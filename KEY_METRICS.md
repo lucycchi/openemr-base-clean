@@ -183,7 +183,7 @@ two consecutive weeks, or any comment mentioning a missed fact (which is a
 candidate omission-guard or fact-category gap, and goes into
 `tests/evals/` as a recorded case).
 
-## 7. Chat adoption per patient encounter (planned, not yet built)
+## 7. Chat adoption per patient encounter
 
 **Definition.** `chat bot use / patient encounters`: the number of patient
 encounters during which the physician used the chat at least once, divided
@@ -203,14 +203,23 @@ the PRD's rule that multi-turn only exists because a use case needs it
 (UC2 in [`USERS.md`](USERS.md)): a chat that is never used on a visit is a
 chat that should be a report.
 
-**Source.** Planned: numerator from the existing audit rows
-(`clinical-copilot`, action = ask) which already carry user and patient,
-once the encounter id is added to the audit string; denominator from
-`form_encounter` rows whose date falls on that day for that provider. Both
-are already in the database; no new table. Design and build notes in
-[`TODOS.md`](TODOS.md).
+**Source.** Numerator: the Co-Pilot's audit rows (`clinical-copilot`,
+successful `action=ask`), which since 2026-09-24 carry the encounter the
+chart was open on (`encounter_id=N`); the same id is on the `copilot
+response` log line and the Langfuse trace metadata, so the three records
+agree. Only questions the encounter's own provider asked count, so the
+numerator is always a subset of the denominator. Denominator: OpenEMR's own
+definition of a patient encounter, a `form_encounter` row dated that day whose
+provider is the physician; encounters where the chart was never opened count
+on purpose. No new table. The report is
+`php bin/console copilot:adoption --days=7` (add `--json` for the weekly
+review): per physician per day and per ISO week, the encounters, how many the
+chat was used on, that share, and the mean questions per used encounter, then
+the whole window. Counts only; no question text is read.
 
-**Baseline.** None until a physician uses it. Target for the first month of
+**Baseline.** None yet: counting starts with the rows written from
+2026-09-24 (earlier audit rows carry no encounter and are not counted), and
+no physician has used it on the deployed app. Target for the first month of
 real use: chat used on >20% of encounters (same bar as metric 5's follow-up
 target, restated per encounter), and no physician below 5% after week two
 without a conversation about why.

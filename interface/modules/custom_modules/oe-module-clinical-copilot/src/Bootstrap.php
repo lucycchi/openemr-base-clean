@@ -21,6 +21,7 @@ use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Events\Command\CommandRunnerFilterEvent;
 use OpenEMR\Events\PatientDemographics\RenderEvent;
+use OpenEMR\Modules\ClinicalCopilot\Command\AdoptionCommand;
 use OpenEMR\Modules\ClinicalCopilot\Command\AttachCommand;
 use OpenEMR\Modules\ClinicalCopilot\Command\PrewarmCommand;
 use OpenEMR\Modules\ClinicalCopilot\Command\RatingsCommand;
@@ -87,13 +88,13 @@ final class Bootstrap
         // Week 2: attach_and_extract(pid, file, doc_type) from the CLI, on the same path as the panel.
         $store = new DocumentStore();
         $event->setCommand(AttachCommand::class, new AttachCommand($store, new ExtractionRunner($store, SidecarClient::fromConfig($config), new DocumentIngestService())));
-        // KEY_METRICS.md metric 6: physician rating of the summary, per day and per prompt version.
+        // KEY_METRICS.md metrics 6 and 7 are counted from the Co-Pilot's audit rows.
         $crypto = ServiceContainer::getCrypto();
-        $event->setCommand(RatingsCommand::class, new RatingsCommand(
-            new RatingReport(new DbRatingCounts(static fn(string $c): string => $crypto->decryptFromDatabase($c))),
-            ServiceContainer::getClock(),
-            $tz,
-        ));
+        $audit = new CopilotAuditLog(static fn(string $c): string => $crypto->decryptFromDatabase($c));
+        // Metric 6: physician rating of the summary, per day and per prompt version.
+        $event->setCommand(RatingsCommand::class, new RatingsCommand(new RatingReport(new DbRatingCounts($audit)), ServiceContainer::getClock(), $tz));
+        // Metric 7: chat adoption per patient encounter, per physician per day and week.
+        $event->setCommand(AdoptionCommand::class, new AdoptionCommand(new AdoptionReport(new DbAdoptionCounts($audit)), ServiceContainer::getClock(), $tz));
     }
 
     /**
