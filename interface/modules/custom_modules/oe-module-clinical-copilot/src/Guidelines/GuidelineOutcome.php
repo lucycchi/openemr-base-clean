@@ -15,6 +15,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot\Guidelines;
 
+use OpenEMR\Modules\ClinicalCopilot\EvidenceChunk;
 use OpenEMR\Modules\ClinicalCopilot\Pricing;
 
 /**
@@ -45,6 +46,29 @@ final readonly class GuidelineOutcome
     public static function unavailable(): self
     {
         return new self(GuidelineSection::none('unavailable'), GuidelineStatus::Unavailable);
+    }
+
+    /**
+     * The passages the narration may restate: only from cards the critic judged
+     * to apply to this patient. A card with no verdict (the critic failed, or
+     * did not run) is still shown, labelled "applicability not assessed", but
+     * its passage never reaches the summary, where a sentence would carry no
+     * such label.
+     *
+     * @return list<EvidenceChunk>
+     */
+    public function vettedChunks(): array
+    {
+        $out = [];
+        foreach ($this->section->cards as $card) {
+            if ($card->applicable !== true) {
+                continue;
+            }
+            foreach ($card->chunks as $chunk) {
+                $out[] = $chunk;
+            }
+        }
+        return $out;
     }
 
     /** What the sidecar's calls for this section cost, or 0.0 when it was not called. */

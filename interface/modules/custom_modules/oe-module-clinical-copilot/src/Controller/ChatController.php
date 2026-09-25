@@ -429,17 +429,12 @@ final class ChatController
             fn() => $this->warmOutcome($assembled, $config, $pid, $user),
             static fn(?WarmOutcome $w) => $w?->toLogContext() ?? ['warm_result' => null],
         );
-        // The surviving cards' passages are offered to the narration under the same
-        // contract as an answer's evidence: cited by chunk id, numbers verified.
-        $chunks = [];
-        foreach ($guidelines->cards as $card) {
-            foreach ($card->chunks as $chunk) {
-                $chunks[] = $chunk;
-            }
-        }
+        // The passages of cards the critic vetted for this patient are offered to the
+        // narration under the same contract as an answer's evidence: cited by chunk
+        // id, numbers verified. An unassessed card is shown but never restated.
         $t = hrtime(true);
         $pipeline = $this->pipeline($config, $assembled, $pid);
-        $result = $pipeline->brief($assembled, new EvidenceSet($chunks));
+        $result = $pipeline->brief($assembled, new EvidenceSet($cards->vettedChunks()));
         $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
         $this->llmCalled = !$result->fromCache;
         $this->llmAttempts = $pipeline->llmAttempts();

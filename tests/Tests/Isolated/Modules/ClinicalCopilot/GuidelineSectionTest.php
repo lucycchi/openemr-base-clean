@@ -124,7 +124,7 @@ final class GuidelineSectionTest extends TestCase
         self::assertSame([], $run->evidence);
     }
 
-    public function testASectionFromAFailedRetrievalOrAnUnfinishedCriticIsNotCacheable(): void
+    public function testASectionFromAFailedRetrievalOrWithoutACriticVerdictIsNotCacheable(): void
     {
         $chunk = ['chunk_id' => 'aaaaaaaaaaaa', 'source_id' => 'acc-aha-2018-cholesterol', 'section' => 'T > S', 'quote' => 'A passage.', 'score' => 0.8];
         $hop = static fn(string $from, string $to, string $reason): array => ['from' => $from, 'to' => $to, 'reason' => $reason, 'state_keys_changed' => [], 'ms' => 1];
@@ -138,7 +138,7 @@ final class GuidelineSectionTest extends TestCase
         self::assertFalse(GuidelineSection::fromRun($triggers, $criticFailed, new GuidelineManifest())->cacheable);
 
         $noCritic = RunResult::fromArray($base + ['evidence' => [['trigger_id' => 'lipids', 'chunks' => [$chunk], 'applicable' => null, 'reason' => null]], 'handoffs' => [$hop('supervisor', 'evidence_retriever', 'chart_triggers'), $hop('evidence_retriever', 'supervisor', 'worker_finished'), $hop('supervisor', 'done', 'worker_finished')]]);
-        self::assertTrue(GuidelineSection::fromRun($triggers, $noCritic, new GuidelineManifest())->cacheable, 'no critic configured: the section is complete as it stands');
+        self::assertFalse(GuidelineSection::fromRun($triggers, $noCritic, new GuidelineManifest())->cacheable, 'no critic ran: the unassessed card is shown but not cached, so a later open with the critic assesses it');
 
         $good = RunResult::fromArray($base + ['evidence' => [['trigger_id' => 'lipids', 'chunks' => [$chunk], 'applicable' => true, 'reason' => 'ok']], 'handoffs' => [$hop('supervisor', 'evidence_retriever', 'chart_triggers'), $hop('evidence_retriever', 'supervisor', 'worker_finished'), $hop('supervisor', 'critic', 'applicability_check'), $hop('critic', 'supervisor', 'worker_finished'), $hop('supervisor', 'done', 'worker_finished')]]);
         self::assertTrue(GuidelineSection::fromRun($triggers, $good, new GuidelineManifest())->cacheable);

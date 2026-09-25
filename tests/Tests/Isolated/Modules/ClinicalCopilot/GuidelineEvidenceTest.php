@@ -209,5 +209,36 @@ final class GuidelineEvidenceTest extends TestCase
         self::assertCount(1, $outcome->section->cards, 'the unassessed card is still shown');
         self::assertNull($outcome->section->cards[0]->applicable);
         self::assertSame([], $this->cache->entries, 'a partial section is never cached, so the next open retries');
+        self::assertSame([], $outcome->vettedChunks(), 'an unassessed passage never reaches the summary');
+    }
+
+    public function testOnlyAPassageTheCriticJudgedApplicableIsOfferedToTheSummary(): void
+    {
+        $outcome = $this->evidence([self::ok($this->reply(true))])->build($this->highLdl(), new PatientId(7), $this->day, 'corr-1');
+
+        self::assertSame(['a1b2c3d4e5f6'], array_map(static fn($c): string => $c->chunkId, $outcome->vettedChunks()));
+    }
+
+    public function testACardTheCriticRejectedIsDroppedAndTheSectionIsStillBuilt(): void
+    {
+        $outcome = $this->evidence([self::ok($this->reply(false))])->build($this->highLdl(), new PatientId(7), $this->day, 'corr-1');
+
+        self::assertSame(GuidelineStatus::Built, $outcome->status, 'every card rejected is a complete answer, not a gap');
+        self::assertSame([], $outcome->section->cards);
+        self::assertSame(1, $outcome->section->dropped);
+        self::assertCount(1, $this->cache->entries);
+        self::assertSame([], $outcome->vettedChunks());
+    }
+
+    public function testWithoutTheCriticTheCardIsShownUnassessedAndNotCached(): void
+    {
+        // A sidecar with no model key skips the critic: no verdict on any card.
+        $outcome = $this->evidence([self::ok($this->reply(true, false))])->build($this->highLdl(), new PatientId(7), $this->day, 'corr-1');
+
+        self::assertSame(GuidelineStatus::Partial, $outcome->status);
+        self::assertCount(1, $outcome->section->cards);
+        self::assertNull($outcome->section->cards[0]->applicable);
+        self::assertSame([], $this->cache->entries, 'cached, it would stay unassessed after the key is added');
+        self::assertSame([], $outcome->vettedChunks());
     }
 }

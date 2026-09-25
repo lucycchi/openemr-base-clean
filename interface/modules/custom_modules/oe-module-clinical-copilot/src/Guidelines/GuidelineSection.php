@@ -28,7 +28,7 @@ final readonly class GuidelineSection
 
     /**
      * @param list<GuidelineCard> $cards
-     * @param bool $cacheable false when the run did not finish (a worker failed, or the critic ran but left a verdict unknown); such a section is shown but never cached
+     * @param bool $cacheable false when the run did not finish (a worker failed, or a card has no critic verdict); such a section is shown but never cached
      */
     public function __construct(
         public string $status,
@@ -74,12 +74,14 @@ final readonly class GuidelineSection
             $cards[] = new GuidelineCard($t->id, $t->label, $t->factIds, $t->reasons, $chunks, $e['applicable'], $e['reason']);
         }
         $failed = false;
-        $criticRan = false;
         foreach ($run->handoffs as $h) {
             $failed = $failed || $h->reason === 'worker_failed';
-            $criticRan = $criticRan || $h->to === 'critic';
         }
-        $unknown = $criticRan && array_filter($cards, static fn(GuidelineCard $c): bool => $c->applicable === null) !== [];
+        // A card with no verdict, because the critic failed or did not run (a
+        // sidecar with no model key), is shown as "not assessed" but not cached:
+        // cached, it would keep that label, and keep its passage out of the
+        // summary, after the critic is back.
+        $unknown = array_filter($cards, static fn(GuidelineCard $c): bool => $c->applicable === null) !== [];
         return new self('ok', $cards, $dropped, GuidelineTriggers::VERSION, !$failed && !$unknown);
     }
 
