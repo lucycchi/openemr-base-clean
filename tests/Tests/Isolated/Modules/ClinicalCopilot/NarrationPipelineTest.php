@@ -22,6 +22,7 @@ use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
 use OpenEMR\Modules\ClinicalCopilot\Fact;
 use OpenEMR\Modules\ClinicalCopilot\FactCategory;
 use OpenEMR\Modules\ClinicalCopilot\FactSet;
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineTriggers;
 use OpenEMR\Modules\ClinicalCopilot\Llm\LlmRateLimited;
 use OpenEMR\Modules\ClinicalCopilot\NarrationPipeline;
 use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
@@ -319,6 +320,15 @@ final class NarrationPipelineTest extends TestCase
         self::assertCount(1, $result->sentences);
         self::assertSame(1, $result->strippedCount);
         self::assertStringNotContainsString('Guideline evidence', $this->llm->lastUser);
+    }
+
+    public function testTheCorpusVersionIsInTheKeyOnlyWhenGuidelinePassagesAreOffered(): void
+    {
+        $pipeline = $this->pipeline();
+        $prefix = $this->assembled()->facts()->hash() . '|' . Prompt::VERSION . '|fake-model|';
+
+        self::assertSame(hash('sha256', $prefix), $pipeline->cacheKey($this->assembled()), 'a facts-only key keeps its form');
+        self::assertSame(hash('sha256', $prefix . 'a1b2c3d4e5f6|' . GuidelineTriggers::indexVersion()), $pipeline->cacheKey($this->assembled(), $this->evidence()), 'an edited passage keeps its chunk id, so the corpus version marks new wording');
     }
 
     public function testBriefingCacheKeyChangesWithEvidenceAndACacheHitIsReverifiedAgainstIt(): void

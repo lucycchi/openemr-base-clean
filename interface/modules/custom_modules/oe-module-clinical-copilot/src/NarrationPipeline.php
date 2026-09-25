@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Modules\ClinicalCopilot;
 
+use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineTriggers;
 use OpenEMR\Modules\ClinicalCopilot\Llm\LanguageModel;
 use OpenEMR\Modules\ClinicalCopilot\Llm\LlmCompletion;
 use OpenEMR\Modules\ClinicalCopilot\Llm\LlmException;
@@ -73,9 +74,13 @@ final class NarrationPipeline
     {
         // Guideline passages offered to the narration are part of what was said,
         // so their ids are part of the key: a different set is a different briefing.
+        // A chunk id names a passage's source, heading and position, not its text,
+        // so the corpus index version is in the key too: an edited passage is new
+        // wording. A facts-only key is unchanged.
         $ids = $evidence === null ? [] : array_map(static fn(EvidenceChunk $c): string => $c->chunkId, $evidence->all());
         sort($ids);
-        return hash('sha256', $assembled->facts()->hash() . '|' . Prompt::VERSION . '|' . $this->llm->model() . '|' . implode(',', $ids));
+        $corpus = $ids === [] ? '' : '|' . GuidelineTriggers::indexVersion();
+        return hash('sha256', $assembled->facts()->hash() . '|' . Prompt::VERSION . '|' . $this->llm->model() . '|' . implode(',', $ids) . $corpus);
     }
 
     /**

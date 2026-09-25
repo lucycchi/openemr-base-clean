@@ -62,15 +62,20 @@ final class GuidelineTriggers
     /**
      * The briefing cache key for the guideline section: everything that
      * decides which cards appear (the facts, the rules version, which rules
-     * fired and why, the patient's age and sex, the model, the corpus index).
+     * fired and why, the patient's age and sex, the model, the corpus index)
+     * and everything the critic reads (the whole active problem list, which
+     * is wider than the facts: an older problem is on the list but not a fact).
      *
      * @param list<FiredTrigger> $fired
+     * @param list<string> $activeProblems
      */
-    public static function cacheKey(string $factsHash, array $fired, ?int $age, ?string $sex, string $model, string $indexVersion): string
+    public static function cacheKey(string $factsHash, array $fired, ?int $age, ?string $sex, string $model, string $indexVersion, array $activeProblems = []): string
     {
         $ids = array_map(static fn(FiredTrigger $t): string => $t->id . ':' . implode('|', $t->factIds) . ':' . implode('|', $t->reasons), $fired);
         sort($ids);
-        return hash('sha256', implode("\n", [$factsHash, self::VERSION, implode(',', $ids), (string) ($age ?? ''), (string) ($sex ?? ''), $model, 'guidelines', $indexVersion]));
+        $problems = $activeProblems;
+        sort($problems);
+        return hash('sha256', implode("\n", [$factsHash, self::VERSION, implode(',', $ids), (string) ($age ?? ''), (string) ($sex ?? ''), $model, 'guidelines', $indexVersion, implode('|', $problems)]));
     }
 
     /** A fingerprint of the committed corpus index, so a rebuilt corpus invalidates cached cards. */

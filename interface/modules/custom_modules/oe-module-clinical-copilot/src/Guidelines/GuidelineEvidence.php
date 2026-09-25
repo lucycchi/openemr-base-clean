@@ -63,7 +63,7 @@ final readonly class GuidelineEvidence implements GuidelineSource
         }
         $factsHash = $assembled->facts()->hash();
         $age = $who->ageOn($day);
-        $key = GuidelineTriggers::cacheKey($factsHash, $fired, $age, $who->sex, $this->config->openAiModel, GuidelineTriggers::indexVersion());
+        $key = GuidelineTriggers::cacheKey($factsHash, $fired, $age, $who->sex, $this->config->openAiModel, GuidelineTriggers::indexVersion(), $assembled->activeProblemTitles());
         $cache = ($this->cacheFor)($pid, $factsHash);
         $hit = $cache->get($key);
         if ($hit !== null) {

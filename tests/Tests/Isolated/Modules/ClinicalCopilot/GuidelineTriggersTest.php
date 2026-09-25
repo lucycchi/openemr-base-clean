@@ -293,4 +293,14 @@ final class GuidelineTriggersTest extends TestCase
         self::assertNotSame($base, GuidelineTriggers::cacheKey('facts', $fired, 55, 'M', 'model', 'v1'));
         self::assertNotSame($base, GuidelineTriggers::cacheKey('facts', $fired, 55, 'F', 'model', 'v2'));
     }
+
+    public function testCacheKeyChangesWithTheProblemListTheCriticReads(): void
+    {
+        $ldl = $this->fact(1, FactCategory::LabAbnormal, 'LDL Cholesterol 165 mg/dL', ['loinc' => '2089-1', 'direction' => 'above']);
+        $fired = (new GuidelineTriggers())->fire($this->assembled([$ldl]), $this->aged(55), $this->today);
+        $base = GuidelineTriggers::cacheKey('facts', $fired, 55, 'F', 'model', 'v1', ['Hypertension', 'Asthma']);
+
+        self::assertSame($base, GuidelineTriggers::cacheKey('facts', $fired, 55, 'F', 'model', 'v1', ['Asthma', 'Hypertension']), 'order does not matter');
+        self::assertNotSame($base, GuidelineTriggers::cacheKey('facts', $fired, 55, 'F', 'model', 'v1', ['Hypertension']), 'a resolved or corrected problem is a different critic input');
+    }
 }
