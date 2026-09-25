@@ -107,11 +107,11 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 
 | Part | Status | Evidence |
 |---|---|---|
-| 50 synthetic/demo cases | Done | 70 cases in [tests/evals/cases/](../tests/evals/cases/), 54 deterministic and 16 live. All synthetic fixtures and seed patients. |
+| 50 synthetic/demo cases | Done | 72 cases in [tests/evals/cases/](../tests/evals/cases/), 56 deterministic and 16 live. All synthetic fixtures and seed patients. |
 | Expected behavior per case | Done | Each case has `expect`, `failure_mode` and `guards`; the table in [tests/evals/README.md](../tests/evals/README.md#cases-and-the-failure-mode-each-guards) lists them. |
 | Boolean rubrics | Done | Eight pass/fail rubrics, including the five the PRD names; thresholds in `gate.php`. |
 | Judge configuration | Done (S5) | [EVAL_DATASET.md](EVAL_DATASET.md) §3: no LLM judge; the code check and pass rule behind each rubric; the models under test. |
-| Results | Done (S5) | [EVAL_DATASET.md](EVAL_DATASET.md) §4: deterministic 54/54, live 16/16, per rubric; files [results.json](../tests/evals/results.json) and `baseline-live.json`. |
+| Results | Done (S5) | [EVAL_DATASET.md](EVAL_DATASET.md) §4: deterministic 56/56, live 16/16, per rubric; files [results.json](../tests/evals/results.json) and `baseline-live.json`. |
 
 ## 6. CI evidence
 
@@ -200,7 +200,7 @@ submission too. The S8 brief doubles as preparation.
 | Which branch | Done (S3) | README "Branch:" line names `pdf_reader`. |
 | Which env vars | Done (S3) | See row 1 above. |
 | Which service | Done | The README names the sidecar and the five-command flow brings it up. |
-| Counts current | Done (S3) | README says 70 cases (16 live). Re-check at S10. |
+| Counts current | Done (S3) | README says 72 cases (16 live); rechecked in the 2026-09-25 checkpoint. Re-check at S10. |
 
 ### H2. Week 1 debt documented and resolved
 

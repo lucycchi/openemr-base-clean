@@ -17,7 +17,7 @@ eval gate). Week 1 documents stay in [../clinical_copilot_week1/](../clinical_co
 | [experiments/](experiments/answer-length-cap.md) | Measured decisions with their data and scripts. So far: the follow-up answer-length cap (uncapped vs 3, 6, 10 sentences; five timed calls each; six chosen). |
 | [SUBMISSION_REQUIREMENTS.md](SUBMISSION_REQUIREMENTS.md) | The PRD's submission table and hard gates checked against the repo, with the task list for the early and final submissions. |
 | [CORE_AGENT_REQUIREMENTS.md](CORE_AGENT_REQUIREMENTS.md) | The PRD's seven core agent requirements checked against the code, with their task list. |
-| [EVAL_DATASET.md](EVAL_DATASET.md) | The eval dataset on one page: what the 70 cases cover, the eight rubrics, the judge configuration (code checks, no LLM judge), results per rubric. |
+| [EVAL_DATASET.md](EVAL_DATASET.md) | The eval dataset on one page: what the 72 cases cover, the eight rubrics, the judge configuration (code checks, no LLM judge), results per rubric. |
 | [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | Timed shot list for the 3-5 minute demo video. |
 | [INTERVIEW_BRIEF.md](INTERVIEW_BRIEF.md) | Technical-interview preparation: key decisions and what each beat, weak points, numbers, coding workflow. |
 | [SOCIAL_POST.md](SOCIAL_POST.md) | Drafts of the final-submission social post (X and LinkedIn). |

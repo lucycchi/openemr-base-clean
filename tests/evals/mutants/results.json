@@ -944,5 +944,196 @@
         "detail": "harness produced no results"
       }
     ]
+  },
+  {
+    "sha": "4c2e82c445a4042bede74f43ace9aa8bccce6905",
+    "ran_at": "2026-09-25T18:09:17Z",
+    "keys_empty": true,
+    "controls": {
+      "before": "PASS",
+      "after": "PASS"
+    },
+    "canaries": {
+      "C1": "SURVIVED",
+      "C2": "ERROR"
+    },
+    "inputs": {
+      "baseline.json": "54ddf82a22e119c867d1e09d4ad7001a1448bc5e430950923595ae69cffe5541",
+      "php prompts.lock.json": "d49835a37b194ae425dfccac8b401a48f059c039ffd1cdcf222c4cf36401ccad",
+      "sidecar prompts.lock.json": "512da3cd45d523342ce9bd2e5e9ba1957d87353a7002b6a6ba95c84423618688"
+    },
+    "mutants": [
+      {
+        "id": "M1",
+        "layer": "Verifier",
+        "mutation": "keep a sentence whose fact-id list is empty",
+        "expected": "golden: citation_present (01, 06)",
+        "verdict": "KILLED",
+        "stage": "PHPUnit",
+        "detail": "4) OpenEMR\\Tests\\Isolated\\Modules\\ClinicalCopilot\\VerifierTest::testSentenceWithNoFactReferenceIsStripped 5) OpenEMR\\Tests\\Isolated\\Modules\\ClinicalCopilot\\VerifierTest::testAllSentencesStrippedIsReportedAsTotalFailure "
+      },
+      {
+        "id": "M2",
+        "layer": "OmissionGuard",
+        "mutation": "never report an omitted must-surface fact",
+        "expected": "golden: case 04; OmissionGuardTest",
+        "verdict": "KILLED",
+        "stage": "PHPUnit",
+        "detail": "see log"
+      },
+      {
+        "id": "M3",
+        "layer": "anchoring",
+        "mutation": "a value within edit distance 1 of the proposed value anchors",
+        "expected": "golden: anchor_correct (17, 43); pytest",
+        "verdict": "KILLED",
+        "stage": "pytest",
+        "detail": "FAILED tests/test_anchor.py::test_a_value_one_digit_off_the_printed_one_never_anchors "
+      },
+      {
+        "id": "M4",
+        "layer": "anchoring",
+        "mutation": "the analyte need not be in the value's row",
+        "expected": "golden: anchor_correct (18); pytest",
+        "verdict": "KILLED",
+        "stage": "pytest",
+        "detail": "FAILED tests/test_anchor.py::test_hundred_in_three_columns_anchors_only_the_ldl_result "
+      },
+      {
+        "id": "M5",
+        "layer": "retrieval",
+        "mutation": "the relevance floor keeps every fused candidate",
+        "expected": "golden: safe_refusal (32)",
+        "verdict": "KILLED",
+        "stage": "pytest",
+        "detail": "FAILED tests/test_retrieve.py::test_off_corpus_question_returns_nothing "
+      },
+      {
+        "id": "M6",
+        "layer": "retrieval",
+        "mutation": "a rerank failure returns no evidence instead of the fused order",
+        "expected": "pytest: test_rerank_failure_falls_back_to_rrf_order",
+        "verdict": "KILLED",
+        "stage": "pytest",
+        "detail": "FAILED tests/test_retrieve.py::test_rerank_failure_falls_back_to_rrf_order "
+      },
+      {
+        "id": "M7",
+        "layer": "supervisor",
+        "mutation": "a question no longer routes to evidence_retriever (inverted check)",
+        "expected": "golden: routing_correct (25, 28); pytest",
+        "verdict": "KILLED",
+        "stage": "pytest",
+        "detail": "FAILED tests/test_supervisor.py::test_question_goes_to_the_retriever "
+      },
+      {
+        "id": "M8",
+        "layer": "supervisor",
+        "mutation": "an already extracted document is sent to intake_extractor again",
+        "expected": "golden: routing_correct (26); pytest",
+        "verdict": "KILLED",
+        "stage": "pytest",
+        "detail": "FAILED tests/test_supervisor.py::test_already_extracted_document_is_not_re_extracted "
+      },
+      {
+        "id": "M9",
+        "layer": "lab judgement",
+        "mutation": "h and l no longer count as abnormal flags",
+        "expected": "unknown",
+        "verdict": "KILLED",
+        "stage": "PHPUnit",
+        "detail": "2) OpenEMR\\Tests\\Isolated\\Modules\\ClinicalCopilot\\LabJudgeTest::testTheLabsOwnFlagMakesAResultAbnormal 3) OpenEMR\\Tests\\Isolated\\Modules\\ClinicalCopilot\\LabJudgeTest::testTheLabsOwnFlagMakesAResultAbnormal "
+      },
+      {
+        "id": "M10",
+        "layer": "citations",
+        "mutation": "every citation is serialised with an empty quote_or_value",
+        "expected": "schema_valid or PHPUnit",
+        "verdict": "KILLED",
+        "stage": "PHPUnit",
+        "detail": "4) OpenEMR\\Tests\\Isolated\\Modules\\ClinicalCopilot\\PanelPayloadTest::testAnswerPayloadCarriesTypeSentencesAndFactsHash "
+      },
+      {
+        "id": "M11",
+        "layer": "schema",
+        "mutation": "a lab row without a unit gets \"\" instead of null",
+        "expected": "golden: case 48; pytest",
+        "verdict": "KILLED",
+        "stage": "pytest",
+        "detail": "FAILED tests/test_anchor.py::test_a_result_without_a_printed_unit_keeps_unit_null "
+      },
+      {
+        "id": "M12",
+        "layer": "PHI logging",
+        "mutation": "the extract log message carries the whole extraction (patient name, values)",
+        "expected": "golden: no_phi_in_logs (69, 70)",
+        "verdict": "KILLED",
+        "stage": "golden",
+        "detail": "no_phi_in_logs BELOW 69-phi-lab-upload-logs-recorded, 70-phi-intake-upload-logs-recorded;deterministic cases FAILED (any failure refuses the push): 69-phi-lab-upload-logs-recorded, 70-phi-intake-upload-logs-recorded;"
+      },
+      {
+        "id": "M13a",
+        "layer": "PHI logging",
+        "mutation": "the ask log message text carries the question",
+        "expected": "golden: no_phi_in_logs (72)",
+        "verdict": "KILLED",
+        "stage": "golden",
+        "detail": "no_phi_in_logs BELOW 72-phi-question-logs-recorded;deterministic cases FAILED (any failure refuses the push): 72-phi-question-logs-recorded;"
+      },
+      {
+        "id": "M13b",
+        "layer": "PHI logging",
+        "mutation": "the question is logged under an allowlisted key",
+        "expected": "golden: no_phi_in_logs (72)",
+        "verdict": "KILLED",
+        "stage": "golden",
+        "detail": "no_phi_in_logs BELOW 72-phi-question-logs-recorded;deterministic cases FAILED (any failure refuses the push): 72-phi-question-logs-recorded;"
+      },
+      {
+        "id": "M13c",
+        "layer": "PHI logging",
+        "mutation": "the question is logged under a new key",
+        "expected": "golden: no_phi_in_logs (72, dropped_fields)",
+        "verdict": "KILLED",
+        "stage": "golden",
+        "detail": "no_phi_in_logs BELOW 72-phi-question-logs-recorded;deterministic cases FAILED (any failure refuses the push): 72-phi-question-logs-recorded;"
+      },
+      {
+        "id": "M14",
+        "layer": "prompt",
+        "mutation": "rule 1 (cite every sentence) deleted from the briefing and follow-up prompts",
+        "expected": "prompt lock (PromptLockTest)",
+        "verdict": "KILLED",
+        "stage": "prompt lock",
+        "detail": "PROMPT CHANGED: briefing_system"
+      },
+      {
+        "id": "M15",
+        "layer": "eval gate",
+        "mutation": "a deterministic case file is deleted (05-empty-fact-set)",
+        "expected": "golden: baseline case MISSING",
+        "verdict": "KILLED",
+        "stage": "case index",
+        "detail": "see log"
+      },
+      {
+        "id": "M15b",
+        "layer": "eval gate",
+        "mutation": "a deterministic case is deleted along with its README row (the case index stays consistent)",
+        "expected": "golden: baseline case MISSING",
+        "verdict": "KILLED",
+        "stage": "golden",
+        "detail": "deterministic baseline cases MISSING from this run (restore them or run --update-baseline): 05-empty-fact-set;"
+      },
+      {
+        "id": "M16",
+        "layer": "eval gate",
+        "mutation": "the harness stops after 30 cases without writing results",
+        "expected": "harness: no results",
+        "verdict": "KILLED",
+        "stage": "harness",
+        "detail": "harness produced no results"
+      }
+    ]
   }
 ]

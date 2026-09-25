@@ -78,7 +78,7 @@ Say these before you are asked.
 
 | | |
 |---|---|
-| Eval cases | 70 (54 deterministic, 16 live); 8 boolean rubrics; 5 at a 100 % threshold |
+| Eval cases | 72 (56 deterministic, 16 live); 8 boolean rubrics; 5 at a 100 % threshold |
 | Extraction, 5-page lab report | p50 13-17 s, p95 16-20 s at 10 users; 100 % extracted and anchored in the load runs |
 | Follow-up question | p50 ~5 s, p95 6-7 s under load; 1.8 s / 4.9 s single-user |
 | Cold briefing (expanded) | p50 4.2 s, p95 10.1 s at 10 users; a cache hit 0.5 s |

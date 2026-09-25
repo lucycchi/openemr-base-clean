@@ -305,8 +305,8 @@ exercised, not decorative.
 **Source.** `tests/evals/baseline.json`, `baseline-live.json`, the hook's
 output on each push; `results.json` for the last full run.
 
-**Baseline.** 52 cases, 7 rubrics, 100% on every rubric at the last full
-live run; three refusals recorded this week (a fact contract change, a
+**Baseline.** 72 cases (56 deterministic, 16 live), 8 rubrics, 100% on
+every rubric at the last full live run (2026-09-25); three refusals recorded this week (a fact contract change, a
 case-12 timeout, a log-field allowlist miss), each with the fix that
 followed.
 
