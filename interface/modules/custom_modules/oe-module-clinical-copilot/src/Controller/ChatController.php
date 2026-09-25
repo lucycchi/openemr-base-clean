@@ -34,6 +34,7 @@ use OpenEMR\Modules\ClinicalCopilot\BriefingPipelineFactory;
 use OpenEMR\Modules\ClinicalCopilot\BriefingRating;
 use OpenEMR\Modules\ClinicalCopilot\BriefingRatings;
 use OpenEMR\Modules\ClinicalCopilot\BriefingResult;
+use OpenEMR\Modules\ClinicalCopilot\BriefingService;
 use OpenEMR\Modules\ClinicalCopilot\ChatAction;
 use OpenEMR\Modules\ClinicalCopilot\ChatRequest;
 use OpenEMR\Modules\ClinicalCopilot\Config;
@@ -46,7 +47,6 @@ use OpenEMR\Modules\ClinicalCopilot\EvidenceSet;
 use OpenEMR\Modules\ClinicalCopilot\FactAssembler;
 use OpenEMR\Modules\ClinicalCopilot\GuidelineManifest;
 use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineEvidence;
-use OpenEMR\Modules\ClinicalCopilot\Guidelines\GuidelineOutcome;
 use OpenEMR\Modules\ClinicalCopilot\InvalidRequest;
 use OpenEMR\Modules\ClinicalCopilot\NarrationPipeline;
 use OpenEMR\Modules\ClinicalCopilot\OmissionGuard;
@@ -407,55 +407,47 @@ final class ChatController
      */
     private function brief(AssembledFacts $assembled, Config $config, PatientId $pid, string $user): array
     {
-        // The guideline section needs no chat model: retrieval runs in the sidecar
-        // and the critic is the sidecar's own call. It is built before the
-        // narration so an unconfigured or failed model still leaves it on the page.
-        // GuidelineEvidence is shared with the 06:00 pre-warm, so the cards the
-        // sweep caches are the cards this open reads.
-        $cards = $this->steps->measure(
-            'retrieve_chart_evidence',
-            fn() => $this->guidelineEvidence($config)->build($assembled, $pid, ServiceContainer::getClock()->now(), $this->correlationId),
-            static fn(GuidelineOutcome $g) => ['guideline_status' => $g->section->status, 'guideline_cards' => count($g->section->cards), 'guideline_dropped' => $g->section->dropped],
-        );
-        $this->handoffs = $cards->handoffs;
-        $this->sidecarUsage = $cards->usage;
+        // BriefingService builds the cards and the narration; the 06:00 pre-warm
+        // calls the same service, so the rows it caches are the ones this open reads.
+        $briefing = $this->briefings($config)->brief($assembled, $pid, ServiceContainer::getClock()->now(), $this->correlationId, $this->steps);
+        $cards = $briefing->cards;
         $guidelines = $cards->section;
+        $this->sidecarUsage = $cards->usage;
+        $this->handoffs = $briefing->handoffs();
         // The passages on the guideline cards (fresh from the sidecar or from the cache);
         // null when no guideline rule fired or the sidecar was unavailable.
         $this->retrievedChunks = $guidelines->status === 'ok' ? count($guidelines->chunks()) : null;
-        if (!$config->hasOpenAi()) {
+        $result = $briefing->narration;
+        if ($result === null || $briefing->keyRead === null) {
             return PanelPayload::briefing($assembled, $this->unconfigured($assembled), $this->correlationId, $guidelines);
         }
-        // The passages of cards the critic vetted for this patient are offered to the
-        // narration under the same contract as an answer's evidence: cited by chunk
-        // id, numbers verified. An unassessed card is shown but never restated.
-        $evidence = new EvidenceSet($cards->vettedChunks());
-        $t = hrtime(true);
-        $pipeline = $this->pipeline($config, $assembled, $pid);
-        $result = $pipeline->brief($assembled, $evidence);
-        $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
+        $this->llmMs = $briefing->llmMs;
         $this->llmCalled = !$result->fromCache;
-        $this->llmAttempts = $pipeline->llmAttempts();
+        $this->llmAttempts = $briefing->llmAttempts;
         // After the narration, so a pre-warm hit is checked, not inferred: the
         // receipt's key must be the key this open read, and the read a cache hit.
+        $keyRead = $briefing->keyRead;
         $this->warmCardsCached = $cards->fromCache;
         $this->warm = $this->steps->measure(
             'warm_lookup',
-            fn() => $this->warmOutcome($assembled, $config, $pid, $user, $pipeline->cacheKey($assembled, $evidence), $result->fromCache),
+            fn() => $this->warmOutcome($assembled, $config, $pid, $user, $keyRead, $result->fromCache),
             static fn(?WarmOutcome $w) => $w?->toLogContext() ?? ['warm_result' => null],
         );
-        // The answer stage joins the graph's hops, so the log shows when the briefing was ready.
-        $this->handoffs = [...$this->handoffs, ...AnswerRoute::forBriefing($result, $this->llmMs)];
         return PanelPayload::briefing($assembled, $result, $this->correlationId, $guidelines);
     }
 
     /**
-     * The guideline-card builder for this request: the injected sidecar client
-     * when a test or the eval harness supplied one, else one built from Config.
+     * The briefing builder for this request: the injected sidecar client and
+     * pipeline factory when a test or the eval harness supplied them, else
+     * ones built from Config.
      */
-    private function guidelineEvidence(Config $config): GuidelineEvidence
+    private function briefings(Config $config): BriefingService
     {
-        return new GuidelineEvidence(new OpenEmrChartSource(), $this->sidecar ?? SidecarClient::fromConfig($config), $config, $this->logger);
+        return new BriefingService(
+            new GuidelineEvidence(new OpenEmrChartSource(), $this->sidecar ?? SidecarClient::fromConfig($config), $config, $this->logger),
+            $this->pipelines ?? new BriefingPipelineFactory(),
+            $config,
+        );
     }
 
     private function warmOutcome(AssembledFacts $assembled, Config $config, PatientId $pid, string $user, string $keyRead, bool $servedFromCache): ?WarmOutcome

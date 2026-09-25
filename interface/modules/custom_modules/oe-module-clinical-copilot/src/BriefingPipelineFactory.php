@@ -27,7 +27,7 @@ use OpenEMR\Modules\ClinicalCopilot\Ops\StepRecorder;
  * factory (and tests, which substitute fakes) does. The Guzzle client is
  * injectable so tests can use a mock HTTP handler.
  */
-final readonly class BriefingPipelineFactory
+final readonly class BriefingPipelineFactory implements NarrationPipelines
 {
     public function __construct(private ClientInterface $http = new Client())
     {
