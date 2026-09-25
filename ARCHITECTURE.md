@@ -76,11 +76,12 @@ interface/modules/custom_modules/oe-module-clinical-copilot/
 │   ├── NarrationPipeline.php  cache → model → Verifier → OmissionGuard
 │   ├── Verifier.php, OmissionGuard.php   pure, unit-tested
 │   ├── DbBriefingCache.php    copilot_briefing_cache table (returns CachedNarration: data + generated_at)
-│   ├── BriefingPipelineFactory.php   one wiring of the pipeline for the panel and the pre-warm
+│   ├── BriefingService.php, Briefing.php   builds a briefing (guideline cards, then narration) for chart open and the pre-warm alike
+│   ├── BriefingPipelineFactory.php, NarrationPipelines.php   one wiring of the narration pipeline
 │   ├── PanelPayload.php       JSON contract to the panel
 │   ├── Command/PrewarmCommand.php    copilot:prewarm (bin/console), registered from Bootstrap
-│   ├── Prewarmer.php, ScheduleSource.php, DbScheduleSource.php, BriefingNarrator.php,
-│   │   PipelineNarrator.php, FixedClock.php, RunLock.php, FileRunLock.php   the morning sweep
+│   ├── Prewarmer.php, ScheduleSource.php, DbScheduleSource.php, FixedClock.php,
+│   │   RunLock.php, FileRunLock.php   the morning sweep
 │   ├── PrewarmReceipts.php, DbPrewarmReceipts.php, PrewarmRow/Receipt/Status/Summary.php   copilot_prewarm table
 │   ├── WarmOutcome.php, WarmMissReason.php   at chart open: did the sweep's receipt match, and why not
 │   ├── DbPrewarmRunLog.php, PrewarmRunStatus.php, PrewarmStatusPayload.php   prewarm.php body
@@ -116,7 +117,7 @@ chart page load (today's encounter in session)
    ├─ per-category cap 50 → truncation fact
    └─ FactSet{ facts[id → …], hash }        ── rendered first, no model
         │
-        ├─ guideline cards (Week 2): GuidelineEvidence, shared with the pre-warm
+        ├─ BriefingService (shared with the pre-warm) ▸ guideline cards (Week 2): GuidelineEvidence
         │     → cached section, or the sidecar's retrieval + critic; only passages
         │       the critic judged applicable are offered to the narration
         ▼
@@ -153,11 +154,11 @@ those same-day encounters); the enum case and contract entry remain.
 **Morning pre-warm.** `copilot:prewarm --date=today` (a Symfony Console
 command registered on `CommandRunnerFilterEvent`) reads the day's
 appointments, assembles each chart as the scheduled provider with the clock
-pinned to the start of that day, builds the guideline cards through
-`GuidelineEvidence` (the class chart open uses, on the same day), and runs
-the same `NarrationPipeline` through `BriefingPipelineFactory` with the
-cards' vetted passages, so the cards and the narration it caches are the
-ones the provider's chart open reads. Each patient gets a receipt in
+pinned to the start of that day, and builds the briefing through
+`BriefingService`, the service chart open calls (guideline cards through
+`GuidelineEvidence`, then the narration with the cards' vetted passages),
+so the cards and the narration it caches are the ones the provider's chart
+open reads. Each patient gets a receipt in
 `copilot_prewarm` (run id, provider, facts hash, the cache key the narration
 was actually stored under, the guideline card status, prompt version,
 model, fact lines, status, timing); a narration that was not stored is an

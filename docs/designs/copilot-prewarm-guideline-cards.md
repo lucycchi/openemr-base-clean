@@ -59,7 +59,7 @@ Codex (gpt-6-astra, read-only cold review of the code and the premises). Verifie
 ## Approaches Considered
 
 - **A: Share the guideline step (chosen).** Extract the card builder into one class that chart open and the sweep both call.
-- B: One briefing service for the whole briefing (cards, narration, route, usage). Rejected for now: more change to the graded chart-open path three days before the final, with no behavior gain over A. Logged as the follow-up.
+- B: One briefing service for the whole briefing (cards, narration, route, usage). Deferred at approval: more change to the graded chart-open path three days before the final, with no behavior gain over A. Built the same day as the follow-up, at the user's request: `57f8247`, `34fa50a` (`BriefingService`).
 - C: Stop the summary restating guideline passages (undo `682492d`). Rejected: removes a feature graders may have seen (eval case 66) to avoid a coupling that A handles.
 
 ## Recommended Approach (A), in detail

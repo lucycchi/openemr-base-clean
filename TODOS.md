@@ -146,7 +146,9 @@ are scheduled as tasks 9.1 and 9.2 in
 **Priority:** P2
 **Depends on:** None
 
-### One briefing service for chart open and the pre-warm
+## Completed
+
+### ~~One briefing service for chart open and the pre-warm~~ (done 2026-09-24)
 
 **What:** A single `BriefingService` that builds the whole briefing (the guideline cards, then the narration, then the route and the priced usage) and returns them together. `ChatController::brief()` and `Prewarmer` both call only it.
 
@@ -158,7 +160,8 @@ are scheduled as tasks 9.1 and 9.2 in
 **Priority:** P2
 **Depends on:** None
 
-## Completed
+**Done:** `57f8247` (chart open) and `34fa50a` (the pre-warm). `BriefingService` builds the guideline cards, then the narration with the vetted passages, on the caller's step recorder, and returns a `Briefing` (cards, narration, the key read, timing, attempts, route). `ChatController::brief()` and `Prewarmer` both call only it; `BriefingNarrator`, `PipelineNarrator` and `UnconfiguredNarrator` are removed. No behavior change: `PrewarmThenChartOpenTest` and the rest of the suite pass unchanged apart from the unit-test fakes, and a live `copilot:prewarm` on seed patient 30 matched the earlier run (same facts hash, `already_cached`, cards `built`, no model call).
+
 
 ### ~~Pre-warm misses the cache for any chart with guideline cards, and reports a hit~~ (done 2026-09-24)
 
