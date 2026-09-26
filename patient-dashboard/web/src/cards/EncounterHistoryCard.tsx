@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { LoadState } from '../hooks/loadState';
+import { formatShortDate } from '../mappers/dates';
+import type { DateDisplayFormat } from '../mappers/dates';
 import type { EncounterView } from '../mappers/encounters';
 
 /**
@@ -11,10 +13,13 @@ export function EncounterHistoryCard({
     patientId,
     state,
     pageSize,
+    dateFormat = 0,
 }: {
     patientId: string;
     state: LoadState<EncounterView[]>;
     pageSize: number;
+    /** The site date format (the date_display_format global), as the old page's oeFormatShortDate. */
+    dateFormat?: DateDisplayFormat;
 }) {
     const [showAll, setShowAll] = useState(false);
     if (state.status !== 'ready') {
@@ -56,7 +61,7 @@ export function EncounterHistoryCard({
                         <tbody>
                             {shown.map((encounter) => (
                                 <tr key={encounter.id} data-item="encounter">
-                                    <td data-field="date">{encounter.date}</td>
+                                    <td data-field="date">{formatShortDate(encounter.date, dateFormat)}</td>
                                     <td data-field="reason">{encounter.reason}</td>
                                     <td data-field="provider">{encounter.provider}</td>
                                 </tr>

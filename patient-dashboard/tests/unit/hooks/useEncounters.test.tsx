@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Bundle, Encounter, FhirResource, Practitioner } from 'fhir/r4';
 import type { ApiClient, Result } from '../../../web/src/api/client';
+import { displayName } from '../../../web/src/mappers/people';
 import { useEncounters } from '../../../web/src/hooks/useEncounters';
 import { loadFixture } from '../fixtures/load';
 
@@ -18,9 +19,27 @@ function fakeClient(
     bundle: Result<FhirResource[]>,
     reads: Record<string, Result<FhirResource>>,
     requested: string[] = [],
+    { namesFail = false, extraNames = {} }: { namesFail?: boolean; extraNames?: Record<string, string> } = {},
 ): ApiClient {
     return {
-        getJson: async () => ({ ok: false, error: { kind: 'network' } }),
+        // The BFF's /api/display-names, answered from the same test data (Fable review F1).
+        getJson: async (path: string) => {
+            requested.push(path);
+            if (namesFail) {
+                return { ok: false, error: { kind: 'http', status: 502 } };
+            }
+            const names: Record<string, string> = { ...extraNames };
+            for (const ref of new URLSearchParams(path.split('?')[1]).getAll('ref')) {
+                const read = reads[ref];
+                if (
+                    read?.ok &&
+                    (read.value.resourceType === 'Practitioner' || read.value.resourceType === 'Organization')
+                ) {
+                    names[ref] = displayName(read.value);
+                }
+            }
+            return { ok: true, value: { names } };
+        },
         getBundle: async <T extends FhirResource>(path: string) => {
             requested.push(path);
             return bundle as Result<T[]>;
@@ -49,7 +68,7 @@ describe('useEncounters', () => {
             'Name unavailable',
             'Lee, Donna',
         ]);
-        expect(requested).toEqual([`Encounter?patient=${TYPICAL}`, DONNA]);
+        expect(requested).toEqual([`Encounter?patient=${TYPICAL}`, `display-names?ref=${encodeURIComponent(DONNA)}`]);
     });
 
     it('an encounter for another patient is a load error (BM-004)', async () => {

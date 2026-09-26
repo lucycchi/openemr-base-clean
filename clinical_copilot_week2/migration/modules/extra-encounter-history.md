@@ -97,3 +97,9 @@ Observed on the old page (2026-09-26, `encounter_page_size` = 20, clinical view)
 - BM-039: the Issue, Forms, Billing, Insurance and document rows aren't in FHIR Encounter, so they aren't ported.
 - BM-035: the empty state reads "1-0 of 0" (encounters.php:470).
 - BM-028 and BM-008 (shared): participant names need extra reads, and the squad restriction has no FHIR equivalent.
+
+## 8. Update after the Fable parity review (2026-09-26)
+
+- Provider names are read through the BFF's server-only client (BM-048); a default Clinician cannot search Encounter at all (encounters auth_a, BM-049).
+- FHIR sorts by eid descending, so same-day visits keep the API order, which matches the old page's id descending. TP-HISTORY now has two visits on 2024-10-26.
+- Dates use the site format (`DATE_DISPLAY_FORMAT`), as the old page's oeFormatShortDate does.

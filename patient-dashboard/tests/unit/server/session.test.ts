@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SessionStore, ensureFreshToken } from '../../../server/session';
+import { OAuthError } from '../../../server/oauth';
 import type { OAuthClient } from '../../../server/oauth';
 
 function oauthCountingRefreshes() {
@@ -15,7 +16,41 @@ function oauthCountingRefreshes() {
     return { client, calls };
 }
 
+function oauthRefreshing(refresh: OAuthClient['refresh']): OAuthClient {
+    return {
+        authorizeUrl: () => 'unused',
+        exchangeCode: async () => ({ access_token: 'unused', expires_in: 0 }),
+        refresh,
+    };
+}
+
 describe('session tokens', () => {
+    it('a refresh token OpenEMR rejects logs the session out, so the user is sent to log in again', async () => {
+        const now = () => 10_000_000;
+        const store = new SessionStore({ ttlMs: 3_600_000, now });
+        const session = store.create();
+        session.tokens = { accessToken: 'old', refreshToken: 'revoked', expiresAt: now() + 1_000 };
+        const oauth = oauthRefreshing(async () => {
+            throw new OAuthError('Token endpoint returned HTTP 400', 400);
+        });
+
+        expect(await ensureFreshToken(session, oauth, now)).toBeUndefined();
+        expect(session.tokens).toBeUndefined();
+    });
+
+    it('a refresh that fails for another reason is an error, not a logout', async () => {
+        const now = () => 10_000_000;
+        const store = new SessionStore({ ttlMs: 3_600_000, now });
+        const session = store.create();
+        session.tokens = { accessToken: 'old', refreshToken: 'fine', expiresAt: now() + 1_000 };
+        const oauth = oauthRefreshing(async () => {
+            throw new TypeError('fetch failed');
+        });
+
+        await expect(ensureFreshToken(session, oauth, now)).rejects.toThrow('fetch failed');
+        expect(session.tokens?.refreshToken).toBe('fine');
+    });
+
     it('refresh runs when the access token is within 60 s of expiry', async () => {
         let clock = 10_000_000;
         const now = () => clock;

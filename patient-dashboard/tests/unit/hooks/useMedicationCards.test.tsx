@@ -29,6 +29,7 @@ function fakeClient(dates: Result<unknown>, paths: string[] = []): ApiClient {
 
 const typicalDates = {
     patient: TYPICAL,
+    list: 'medication',
     entries: [
         { uuid: 'a2d6832a-be78-4354-b0ac-9d7b893d0ac4', enddate: null, outcome: 0 },
         { uuid: 'a2d6832a-bf83-4fd5-a6da-ee15b8d4283a', enddate: '2027-06-30 00:00:00', outcome: 0 },
@@ -46,7 +47,7 @@ describe('useMedicationCards', () => {
             result.current.medications.status === 'ready' && result.current.medications.data.map((m) => m.name),
         ).toEqual(['Metformin 500 mg', 'Lisinopril 10 mg']);
         expect(paths.sort()).toEqual(
-            [`MedicationRequest?patient=${TYPICAL}`, `medication-end-dates?patient=${TYPICAL}`].sort(),
+            [`MedicationRequest?patient=${TYPICAL}`, `list-dates?list=medication&patient=${TYPICAL}`].sort(),
         );
     });
 

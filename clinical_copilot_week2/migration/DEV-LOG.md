@@ -2,6 +2,58 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-03 — Fixes from the Fable parity review
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- Fable reviewed the port read-only against the old code: 2 P1 and 8 P2 findings. It confirmed that the Codex-era fixes hold, except same-day order and the name checks in parity. Both P1s were checked against the OpenEMR source before any fix.
+- F1 (BM-048): OpenEMR's API lets only administrators read Practitioner and Organization.
+  - User decision: a server-only lookup, so `server/systemToken.ts` signs RS384 client assertions for a SMART backend-services client (scopes `system/Practitioner.rs system/Organization.rs` only).
+  - `server/displayNames.ts` (`/api/display-names?ref=…`) returns display names only, for logged-in users, at most 50 references.
+  - `useBundleWithNames` batches staff names through it; related persons are still read with the user's own token and checked against the patient.
+  - `register-client.mjs names` creates the key in the gitignored `patient-dashboard/certs/`, registers only the public JWKS, and was enabled on the dev database. The config requires `NAMES_CLIENT_ID` (and `NAMES_KEY_FILE`, which has a default).
+- F2 (BM-047, BM-016): user decision to read allergies' end dates and outcome from the Standard REST API.
+  - The medication route became `/api/list-dates?list=medication|allergy` (files renamed with `git mv`).
+  - The allergy branch reads `GET /api/patient/:puuid/allergy` and treats a 200 with validation errors as a failure.
+  - `isCurrentListRow` is shared by both cards.
+  - `useAllergyCard` errors the card if the dates fail.
+  - Scope `user/allergy.rs` was added to the app client.
+- F3: same-day visits keep the API order (FHIR sorts by eid descending, which is the old page's id descending); a second TP-HISTORY visit on 2024-10-26 pins it in parity.
+- F5: encounter parity accepts "Name unavailable" only where FHIR sends no primary performer.
+- F6: a refresh token OpenEMR rejects (400 or 401) logs the session out, so the proxy answers 401 and the browser re-logs in; other refresh failures are 502, never 500.
+- F7: `DATE_DISPLAY_FORMAT` (0, 1, 2) mirrors `date_display_format`; `formatShortDate` ports `oeFormatShortDate` for the header DOB, the deceased date and visit dates.
+- F8: `DISABLE_PRESCRIPTIONS=1` hides the Prescriptions card, as `disable_prescriptions` does.
+- F9: the visit-copy merge key adds diagnosis codes.
+- F10: the proxy refuses a search without `patient=` except the picker's `Patient?name=`.
+- `tests/e2e/clinician.spec.ts`: logs in as the seeded non-admin `tp-physician` (Physicians group); every test before it logged in as admin, which is how F1 slipped through.
+
+### Decisions
+- Ruling (F4, BM-050): a medication-list row linked to a prescription disappears once the prescription is discontinued; the old card still lists it. Kept as a documented difference, because showing a drug whose only prescription was stopped as current is arguably worse. Cost if wrong: one list entry missing for that case.
+- Ruling (BM-049): Clinicians' Encounter search (encounters auth_a) is left to OpenEMR's permissions; the names decision did not cover it. Cost if wrong: default Clinicians see "Couldn't load encounters" until a site grants auth_a.
+- The names route answers any Practitioner or Organization for a logged-in user rather than only those linked to the open patient: staff and facility names are directory data the old page showed to anyone who could open a patient, and the route returns the name alone.
+
+### Tests
+- Unit: 224 / 224 passing
+- Playwright: 31 / 31 passing (new: clinician as non-admin, allergy list-date failure)
+- Lint, typecheck and Prettier: clean
+- Proven red:
+  - clinician E2E with user-token staff reads ("Name unavailable" instead of "Lee, Donna")
+  - encounter parity with an empty names route
+  - allergy parity with the resolved flag ignored (allergen 02 leaked in)
+  - encounter parity against the seeded same-day visits before the fix
+  - allergy parity against the seeded allergies before the fix
+
+### BUGS-MITIGATIONS.md updates
+- Resolved: BM-016, BM-047, BM-048. Recorded: BM-049, BM-050 (out of scope). BM-028, BM-032 and BM-045 annotated. Gate 2 amended.
+
+### Open questions / follow-ups
+- ARC-05 deploy settings:
+  - the BFF needs `NAMES_CLIENT_ID`, the key file, and `DATE_DISPLAY_FORMAT` and `DISABLE_PRESCRIPTIONS` to match the site
+  - the app client needs `api:oemr user/patient.rs user/medication.rs user/allergy.rs` on top of its FHIR scopes
+  - OpenEMR needs `rest_system_scopes_api` on, and both clients enabled
+
 ## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-02 — Medication list end dates from the Standard REST API
 
 **Branch:** `dashboard-migration`

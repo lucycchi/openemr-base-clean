@@ -111,7 +111,7 @@ test('a failed settings load shows an error, never cards the site may have hidde
 // Medications card must say so rather than guess, while Prescriptions still shows from FHIR.
 test('medications show "Couldn\'t load" when the list end dates fail, prescriptions still show', async ({ page }) => {
     await logInThroughOpenEmr(page);
-    await page.route('**/api/medication-end-dates**', (route) =>
+    await page.route('**/api/list-dates?list=medication**', (route) =>
         route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"boom"}' }),
     );
 
@@ -121,4 +121,19 @@ test('medications show "Couldn\'t load" when the list end dates fail, prescripti
     await expect(medications).toHaveAttribute('data-state', 'error');
     await expect(medications).toContainText("Couldn't load medications");
     await expect(page.locator('[data-card="prescriptions"]')).toHaveAttribute('data-state', 'ready');
+});
+
+// BM-047: the allergy card needs each allergy's resolved flag and end date from the standard API.
+// If they cannot be read, it must say so rather than show FHIR's status, which can be wrong.
+test('allergies show "Couldn\'t load" when the allergy list dates fail', async ({ page }) => {
+    await logInThroughOpenEmr(page);
+    await page.route('**/api/list-dates?list=allergy**', (route) =>
+        route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"boom"}' }),
+    );
+
+    await page.goto(`/patient/${fixture('TP-TYPICAL').fhirId}`);
+
+    const card = page.locator('[data-card="allergies"]');
+    await expect(card).toHaveAttribute('data-state', 'error');
+    await expect(card).toContainText("Couldn't load allergies");
 });

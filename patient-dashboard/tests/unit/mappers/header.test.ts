@@ -52,4 +52,11 @@ describe('mapHeader', () => {
             status: 'Active',
         });
     });
+
+    it('dates follow the site date format, as oeFormatShortDate does on the old header', () => {
+        const us = { ...OPTIONS, dateFormat: 1 } as const;
+
+        expect(mapHeader(recorded('TP-TYPICAL'), us).dobLine).toBe('DOB: 03/14/1958 Age: 68');
+        expect(mapHeader(recorded('TP-DECEASED'), { ...OPTIONS, dateFormat: 2 }).status).toBe('Deceased (02/11/2025)');
+    });
 });

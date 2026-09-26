@@ -5,6 +5,7 @@ const valid = {
     hiddenCards: ['card_prescriptions'],
     ageDisplay: { format: 0, limitYears: 3 },
     encounterPageSize: 20,
+    dateDisplayFormat: 0,
 };
 
 describe('parseSiteConfig', () => {
@@ -23,6 +24,8 @@ describe('parseSiteConfig', () => {
             { ...valid, ageDisplay: { format: 0, limitYears: -1 } },
             { ...valid, encounterPageSize: -1 },
             { ...valid, encounterPageSize: 2.5 },
+            { ...valid, dateDisplayFormat: 3 },
+            { hiddenCards: [], ageDisplay: { format: 0, limitYears: 3 }, encounterPageSize: 20 },
             { hiddenCards: [], ageDisplay: { format: 0, limitYears: 3 } },
         ];
         for (const body of broken) {

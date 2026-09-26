@@ -16,7 +16,7 @@ export interface ApiClientOptions {
     onUnauthenticated?: () => void;
     /** Proxy prefix on the BFF. */
     basePath?: string;
-    /** Prefix of the BFF's own JSON routes (for example /api/medication-end-dates). */
+    /** Prefix of the BFF's own JSON routes (for example /api/list-dates). */
     bffPath?: string;
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { FhirResource, Organization, Practitioner, RelatedPerson } from 'fhir/r4';
+import type { FhirResource, RelatedPerson } from 'fhir/r4';
 import { assertBelongsTo } from '../api/client';
 import type { ApiClient } from '../api/client';
 import { displayName } from '../mappers/people';
@@ -10,16 +10,48 @@ interface Loaded<V> {
     state: LoadState<V>;
 }
 
-/** Reads one person or facility for a name; any failure leaves it unnamed rather than failing the card. */
-async function readName(client: ApiClient, patientId: string, reference: string): Promise<string | undefined> {
-    const result = await client.getResource<Practitioner | RelatedPerson | Organization>(reference);
+/** A related person is read with the user's own token, and must belong to the patient. */
+async function readRelatedPerson(client: ApiClient, patientId: string, reference: string): Promise<string | undefined> {
+    const result = await client.getResource<RelatedPerson>(reference);
     if (!result.ok || `${result.value.resourceType}/${result.value.id ?? ''}` !== reference) {
         return undefined;
     }
-    if (result.value.resourceType === 'RelatedPerson' && result.value.patient.reference !== `Patient/${patientId}`) {
+    if (result.value.resourceType !== 'RelatedPerson' || result.value.patient.reference !== `Patient/${patientId}`) {
         return undefined;
     }
     return displayName(result.value);
+}
+
+const STAFF = /^(Practitioner|Organization)\//;
+const BATCH = 50;
+
+/**
+ * Staff and facility names come from the BFF's server-only lookup, because OpenEMR's API lets only
+ * administrators read Practitioner and Organization (Fable review F1). A failed lookup leaves them
+ * unnamed; only names for the references asked for are kept.
+ */
+async function readStaffNames(client: ApiClient, references: readonly string[]): Promise<Map<string, string>> {
+    const names = new Map<string, string>();
+    for (let start = 0; start < references.length; start += BATCH) {
+        const batch = references.slice(start, start + BATCH);
+        const result = await client.getJson(
+            `display-names?${batch.map((ref) => `ref=${encodeURIComponent(ref)}`).join('&')}`,
+        );
+        const found =
+            result.ok && typeof result.value === 'object' && result.value !== null
+                ? (result.value as { names?: unknown }).names
+                : undefined;
+        if (typeof found !== 'object' || found === null) {
+            continue;
+        }
+        for (const ref of batch) {
+            const name = (found as Record<string, unknown>)[ref];
+            if (typeof name === 'string' && name !== '') {
+                names.set(ref, name);
+            }
+        }
+    }
+    return names;
 }
 
 /**
@@ -50,10 +82,14 @@ export function useBundleWithNames<R extends FhirResource, V>(
                     state = { status: 'error', error: owned.error };
                 } else {
                     const wanted = references(result.value);
-                    const found = await Promise.all(wanted.map((reference) => readName(client, patientId, reference)));
-                    const names = new Map<string, string>();
-                    wanted.forEach((reference, index) => {
-                        const name = found[index];
+                    const staff = wanted.filter((reference) => STAFF.test(reference));
+                    const related = wanted.filter((reference) => reference.startsWith('RelatedPerson/'));
+                    const [names, relatedNames] = await Promise.all([
+                        staff.length === 0 ? new Map<string, string>() : readStaffNames(client, staff),
+                        Promise.all(related.map((reference) => readRelatedPerson(client, patientId, reference))),
+                    ]);
+                    related.forEach((reference, index) => {
+                        const name = relatedNames[index];
                         if (name !== undefined) {
                             names.set(reference, name);
                         }

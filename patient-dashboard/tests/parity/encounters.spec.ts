@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import type { Bundle, Encounter } from 'fhir/r4';
 import { fixture } from '../support/fixtures';
 import type { FixtureKey } from '../support/fixtures';
 import { logInThroughOpenEmr } from '../support/login';
@@ -25,13 +26,36 @@ async function newVisits(page: Page): Promise<OldVisit[]> {
     }));
 }
 
-function expectSameVisits(shown: OldVisit[], old: OldVisit[], label: string): void {
+/** date|reason of every visit FHIR sends with a primary performer, whose provider must therefore be named. */
+async function visitsWithProvider(page: Page, fhirId: string): Promise<Set<string>> {
+    const res = await page.request.get(`/api/fhir/Encounter?patient=${fhirId}`);
+    const bundle = (await res.json()) as Bundle<Encounter>;
+    return new Set(
+        (bundle.entry ?? [])
+            .map((entry) => entry.resource)
+            .filter((encounter) =>
+                (encounter?.participant ?? []).some((p) =>
+                    p.type?.some((t) => t.coding?.some((c) => c.code === 'PPRF')),
+                ),
+            )
+            .map(
+                (encounter) =>
+                    `${encounter?.period?.start?.slice(0, 10) ?? ''}|${encounter?.reasonCode?.[0]?.text ?? ''}`,
+            ),
+    );
+}
+
+function expectSameVisits(shown: OldVisit[], old: OldVisit[], named: Set<string>, label: string): void {
     expect(
         shown.map(({ date, reason }) => ({ date, reason })),
         label,
     ).toEqual(old.map(({ date, reason }) => ({ date, reason })));
     shown.forEach((visit, index) => {
-        expect([old[index]?.provider, 'Name unavailable'], `${label} visit ${index}`).toContain(visit.provider);
+        // "Name unavailable" only where FHIR sends no primary performer (BM-032); otherwise the name must match.
+        const allowed = named.has(`${visit.date}|${visit.reason}`)
+            ? [old[index]?.provider]
+            : [old[index]?.provider, 'Name unavailable'];
+        expect(allowed, `${label} visit ${index}`).toContain(visit.provider);
     });
 }
 
@@ -51,7 +75,8 @@ test('encounter history matches the old Visit History page for every fixture, wi
         const card = await readNewCard(page, 'encounter-history');
         expect(card.state, key).toBe('ready');
         expect(card.patientId, key).toBe(patient.fhirId);
-        expectSameVisits(await newVisits(page), oldPage, `${key} first page`);
+        const named = await visitsWithProvider(page, patient.fhirId);
+        expectSameVisits(await newVisits(page), oldPage, named, `${key} first page`);
 
         const showAll = page.locator('[data-card="encounter-history"]').getByRole('button', { name: /^Show all/ });
         if ((await showAll.count()) > 0) {
@@ -59,6 +84,7 @@ test('encounter history matches the old Visit History page for every fixture, wi
             expectSameVisits(
                 await newVisits(page),
                 await readOldVisitHistory(oldSession, patient.pid, 0),
+                named,
                 `${key} all`,
             );
         }

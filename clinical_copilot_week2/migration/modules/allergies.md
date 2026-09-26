@@ -81,3 +81,7 @@ Observed on the old dashboard (`tmp/dash_text.php`, 2026-09-26):
 - BM-014: the template comment promises severe allergies first, but nothing sorts them (`allergies.html.twig:7-8`).
 - BM-015: an allergy without a severity renders as "Title ()" (`allergies.html.twig:45`).
 - BM-016: an allergy with a future end date shows on the old card, but FHIR marks it inactive (`demographics.php:1111-1113` vs `FhirAllergyIntoleranceService.php:117-121`).
+
+## 8. Update after the Fable parity review (2026-09-26)
+
+FHIR's clinicalStatus is wrong both ways: an allergy marked Resolved with no end date is `active` (BM-047), and an allergy with a future end date is `inactive` (BM-016). By user decision the card reads each allergy's `enddate` and `outcome` from the Standard REST API (`GET /api/patient/:puuid/allergy`, through the BFF route `/api/list-dates?list=allergy`) and applies the old `filterActiveIssues` rule. The allergy row uuid equals the FHIR AllergyIntolerance id. That endpoint answers a bad patient id with HTTP 200, validation errors and an empty list, which the BFF treats as a failure.

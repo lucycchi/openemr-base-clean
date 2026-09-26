@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { CareTeam, FhirResource, Practitioner, RelatedPerson } from 'fhir/r4';
 import type { ApiClient, Result } from '../../../web/src/api/client';
+import { displayName } from '../../../web/src/mappers/people';
 import { useCareTeam } from '../../../web/src/hooks/useCareTeam';
 
 const team = (patient: string): CareTeam => ({
@@ -18,9 +19,27 @@ function fakeClient(
     bundle: Result<FhirResource[]>,
     reads: Record<string, Result<FhirResource>>,
     requested: string[] = [],
+    { namesFail = false, extraNames = {} }: { namesFail?: boolean; extraNames?: Record<string, string> } = {},
 ): ApiClient {
     return {
-        getJson: async () => ({ ok: false, error: { kind: 'network' } }),
+        // The BFF's /api/display-names, answered from the same test data (Fable review F1).
+        getJson: async (path: string) => {
+            requested.push(path);
+            if (namesFail) {
+                return { ok: false, error: { kind: 'http', status: 502 } };
+            }
+            const names: Record<string, string> = { ...extraNames };
+            for (const ref of new URLSearchParams(path.split('?')[1]).getAll('ref')) {
+                const read = reads[ref];
+                if (
+                    read?.ok &&
+                    (read.value.resourceType === 'Practitioner' || read.value.resourceType === 'Organization')
+                ) {
+                    names[ref] = displayName(read.value);
+                }
+            }
+            return { ok: true, value: { names } };
+        },
         getBundle: async <T extends FhirResource>(path: string) => {
             requested.push(path);
             return bundle as Result<T[]>;
@@ -55,7 +74,8 @@ describe('useCareTeam', () => {
             'Stone, Fred',
             'martha mom',
         ]);
-        expect(requested).toEqual(['CareTeam?patient=p1', 'Practitioner/u1', 'RelatedPerson/r1']);
+        // Staff names come from the server-only lookup, never a user read of Practitioner (Fable review F1).
+        expect(requested).toEqual(['CareTeam?patient=p1', 'display-names?ref=Practitioner%2Fu1', 'RelatedPerson/r1']);
     });
 
     it('a failed member read shows "Name unavailable", not a card error (BM-028)', async () => {
@@ -119,6 +139,33 @@ describe('useCareTeam', () => {
         expect(result.current.status === 'ready' && result.current.data[0]?.members.map((m) => m.facility)).toEqual([
             'Great Clinic',
         ]);
-        expect(requested).toEqual(['CareTeam?patient=p1', 'Practitioner/u1', 'Organization/o1']);
+        expect(requested).toEqual(['CareTeam?patient=p1', 'display-names?ref=Practitioner%2Fu1&ref=Organization%2Fo1']);
+    });
+
+    it('if the names lookup fails, staff show "Name unavailable" and the card still loads', async () => {
+        const client = fakeClient(
+            { ok: true, value: [team('p1')] },
+            { 'Practitioner/u1': { ok: true, value: fred }, 'RelatedPerson/r1': { ok: true, value: martha('p1') } },
+            [],
+            { namesFail: true },
+        );
+        const { result } = renderHook(() => useCareTeam(client, 'p1'));
+
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.status === 'ready' && result.current.data[0]?.members.map((m) => m.name)).toEqual([
+            'Name unavailable',
+            'martha mom',
+        ]);
+    });
+
+    it('a name for a reference nobody asked for is ignored', async () => {
+        const client = fakeClient({ ok: true, value: [team('p1')] }, {}, [], {
+            extraNames: { 'Practitioner/u1': 'Stone, Fred', 'Practitioner/intruder': 'Someone Else' },
+        });
+        const { result } = renderHook(() => useCareTeam(client, 'p1'));
+
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.status === 'ready' && result.current.data[0]?.members[0]?.name).toBe('Stone, Fred');
+        expect(JSON.stringify(result.current)).not.toContain('Someone Else');
     });
 });

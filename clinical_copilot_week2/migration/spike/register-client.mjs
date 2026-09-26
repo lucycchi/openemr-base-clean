@@ -1,8 +1,27 @@
 // Throwaway spike: registers one OAuth client and saves its id (and secret,
 // for confidential clients) to .env.local, which is gitignored.
-// Usage: NODE_EXTRA_CA_CERTS=dev-cert.pem node register-client.mjs <public|bff|app|seed> [--replace]
+// Usage: NODE_EXTRA_CA_CERTS=dev-cert.pem node register-client.mjs <public|bff|app|seed|names> [--replace]
 // `app` is the patient-dashboard BFF's own client (redirect http://localhost:5180/auth/callback).
+// `names` is the BFF's server-only system client for staff and facility names (Fable review F1). It
+// authenticates with a signed JWT: the RSA key is created in patient-dashboard/certs/ (gitignored) if
+// missing, and only its public half is registered.
+import { createHash, createPublicKey, generateKeyPairSync } from 'node:crypto';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { readEnv, writeEnv, fetchText, OEMR_BASE } from './lib.mjs';
+
+const NAMES_KEY_FILE = new URL('../../../patient-dashboard/certs/names-client-key.pem', import.meta.url);
+
+/** Same key id as the BFF's publicJwks (server/systemToken.ts): the RFC 7638 thumbprint. */
+function namesJwks() {
+  if (!existsSync(NAMES_KEY_FILE)) {
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    writeFileSync(NAMES_KEY_FILE, privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
+    console.log('created patient-dashboard/certs/names-client-key.pem');
+  }
+  const jwk = createPublicKey(readFileSync(NAMES_KEY_FILE, 'utf8')).export({ format: 'jwk' });
+  const kid = createHash('sha256').update(JSON.stringify({ e: jwk.e, kty: jwk.kty, n: jwk.n })).digest('base64url');
+  return { keys: [{ kty: jwk.kty, n: jwk.n, e: jwk.e, kid, alg: 'RS384', use: 'sig' }] };
+}
 
 const READ = ['Patient', 'AllergyIntolerance', 'Condition', 'MedicationRequest', 'CareTeam', 'Practitioner',
   'Organization', 'RelatedPerson', 'Encounter', 'Observation', 'Immunization', 'DocumentReference', 'DiagnosticReport'];
@@ -21,10 +40,17 @@ const KINDS = {
   app: {
     type: 'private',
     redirect: 'http://localhost:5180/auth/callback',
-    // api:oemr, patient.rs and medication.rs: the standard API is read for the medication list's end
-    // dates only, which FHIR does not send (BM-044, user decision 2026-09-26).
+    // api:oemr, patient.rs, medication.rs and allergy.rs: the standard API is read for the medication
+    // and allergy lists' end dates and outcome only, which FHIR does not send correctly (BM-044, BM-047;
+    // user decisions 2026-09-26).
     scope: ['openid', 'fhirUser', 'offline_access', 'api:fhir', ...READ.map((r) => `user/${r}.rs`),
-      'api:oemr', 'user/patient.rs', 'user/medication.rs'],
+      'api:oemr', 'user/patient.rs', 'user/medication.rs', 'user/allergy.rs'],
+  },
+  names: {
+    type: 'private',
+    redirect: 'http://localhost:5180/unused',
+    scope: ['system/Practitioner.rs', 'system/Organization.rs'],
+    jwks: true,
   },
   seed: {
     type: 'private',
@@ -37,7 +63,7 @@ const KINDS = {
 const kind = process.argv[2];
 const spec = KINDS[kind];
 if (!spec) {
-  console.error('usage: register-client.mjs <public|bff|app|seed> [--replace]');
+  console.error('usage: register-client.mjs <public|bff|app|seed|names> [--replace]');
   process.exit(2);
 }
 const prefix = kind.toUpperCase();
@@ -52,6 +78,7 @@ const body = {
   client_name: `Patient Dashboard Spike (${kind})`,
   redirect_uris: [spec.redirect],
   scope: spec.scope.join(' '),
+  ...(spec.jwks ? { jwks: namesJwks(), token_endpoint_auth_method: 'private_key_jwt', grant_types: ['client_credentials'] } : {}),
 };
 
 let res;

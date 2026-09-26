@@ -1,4 +1,6 @@
 import type { AllergyIntolerance } from 'fhir/r4';
+import { isCurrentListRow } from '../api/listDates';
+import type { ListDates } from '../api/listDates';
 import { narrativeText, realCodingDisplay } from './narrative';
 
 /** One row of the allergies card. See modules/allergies.md and the Gate 2 decisions. */
@@ -42,8 +44,22 @@ function isActive(allergy: AllergyIntolerance): boolean {
 }
 
 /** Active allergies in API order (the old card does not sort; BM-014), inactive ones hidden (BM-016). */
-export function mapAllergies(resources: readonly AllergyIntolerance[]): AllergyView[] {
-    return resources.filter(isActive).map((allergy) => ({
+/**
+ * Maps allergies for the card. With the standard API's list dates, the old card's rule decides
+ * (hide resolved or past-ended, keep future-ended), because FHIR's clinicalStatus is wrong both ways
+ * (BM-016, BM-047). Without a list row for an allergy, only FHIR-active ones are shown. Entry order
+ * is kept (BM-014). `today` is the local date, YYYY-MM-DD.
+ */
+export function mapAllergies(
+    resources: readonly AllergyIntolerance[],
+    listDates: ReadonlyMap<string, ListDates> = new Map(),
+    today = '',
+): AllergyView[] {
+    const isShown = (allergy: AllergyIntolerance): boolean => {
+        const row = listDates.get(allergy.id ?? '');
+        return row === undefined ? isActive(allergy) : isCurrentListRow(row, today);
+    };
+    return resources.filter(isShown).map((allergy) => ({
         id: allergy.id ?? '',
         name: allergyName(allergy),
         reaction: reactionText(allergy),

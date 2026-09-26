@@ -24,6 +24,7 @@ describe('app configuration', () => {
             hiddenCards: ['card_prescriptions'],
             ageDisplay: { format: 0, limitYears: 3 },
             encounterPageSize: 20,
+            dateDisplayFormat: 0,
         });
     });
 
@@ -36,6 +37,7 @@ describe('app configuration', () => {
             hiddenCards: [],
             ageDisplay: { format: 0, limitYears: 3 },
             encounterPageSize: 20,
+            dateDisplayFormat: 0,
         });
     });
 
@@ -62,5 +64,26 @@ describe('app configuration', () => {
                 /ENCOUNTER_PAGE_SIZE/,
             );
         }
+    });
+
+    it('reads the site date format (the date_display_format global): 0, 1 or 2', () => {
+        expect(loadAppConfig(join(tmpdir(), 'none.json'), { DATE_DISPLAY_FORMAT: '1' }).dateDisplayFormat).toBe(1);
+        expect(() => loadAppConfig(join(tmpdir(), 'none.json'), { DATE_DISPLAY_FORMAT: '3' })).toThrow(
+            /DATE_DISPLAY_FORMAT/,
+        );
+    });
+
+    it('DISABLE_PRESCRIPTIONS hides the Prescriptions card, as the disable_prescriptions global does', () => {
+        expect(loadAppConfig(join(tmpdir(), 'none.json'), { DISABLE_PRESCRIPTIONS: '1' }).hiddenCards).toEqual([
+            'card_prescriptions',
+        ]);
+        expect(
+            loadAppConfig(configFile('{ "hiddenCards": ["card_prescriptions"] }'), { DISABLE_PRESCRIPTIONS: '1' })
+                .hiddenCards,
+        ).toEqual(['card_prescriptions']);
+        expect(loadAppConfig(join(tmpdir(), 'none.json'), { DISABLE_PRESCRIPTIONS: '0' }).hiddenCards).toEqual([]);
+        expect(() => loadAppConfig(join(tmpdir(), 'none.json'), { DISABLE_PRESCRIPTIONS: 'yes' })).toThrow(
+            /DISABLE_PRESCRIPTIONS/,
+        );
     });
 });

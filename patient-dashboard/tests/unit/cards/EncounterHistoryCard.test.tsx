@@ -88,4 +88,20 @@ describe('EncounterHistoryCard', () => {
         );
         expect(screen.getByText("Couldn't load encounters")).toBeTruthy();
     });
+
+    it('visit dates follow the site date format', () => {
+        const { container } = render(
+            <EncounterHistoryCard
+                patientId="p1"
+                pageSize={20}
+                dateFormat={2}
+                state={{
+                    status: 'ready',
+                    data: [{ id: 'e', date: '2026-08-14', reason: 'Diabetes review', provider: 'Lee, Donna' }],
+                }}
+            />,
+        );
+
+        expect(container.querySelector('[data-field="date"]')?.textContent).toBe('14/08/2026');
+    });
 });

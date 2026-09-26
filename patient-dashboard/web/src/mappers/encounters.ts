@@ -42,8 +42,9 @@ export function providerReferences(encounters: readonly Encounter[]): string[] {
 
 /**
  * Maps encounters newest first by full start date and time, as the old Visit History page sorts
- * (BM-034). FHIR returns them oldest first; ties keep the reverse of the API order (the old page's
- * id descending), and an encounter with no start goes last. Only the displayed date drops the time.
+ * (BM-034). Ties keep the API order: FHIR sorts by eid descending (EncounterService.php:322),
+ * which is the old page's id descending. An encounter with no start goes last. Only the displayed
+ * date drops the time.
  * The date is kept as written: OpenEMR sends the stored local date with a +00:00 offset, so
  * converting it to the browser's zone would move a midnight visit to the day before.
  */
@@ -77,7 +78,7 @@ export function mapEncounters(encounters: readonly Encounter[], names: ReadonlyM
                 if (b.start === undefined) return -1;
                 return b.start - a.start;
             }
-            return b.index - a.index;
+            return a.index - b.index;
         })
         .map(({ view }) => view);
 }

@@ -128,6 +128,26 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Resolves:** BM-044 (user decision 2026-09-26: option 3, read the end date from the Standard REST API); records BM-046
 **Touches:** `server/medicationEndDates.ts`, `web/src/api/`, `web/src/hooks/useMedicationCards.ts`, `web/src/mappers/medications.ts`, `spike/register-client.mjs`
 
+#### Slice 03-05-03 — Fixes from the Fable parity review
+- [x] Tests first, watched failing:
+  - encounter parity went red on the seeded same-day visits
+  - allergy parity went red on the seeded resolved and future-ended allergies
+  - the clinician E2E went red with user-token name reads
+  - every new unit test was red first
+- [x] Implement:
+  - server-only names client (`server/systemToken.ts`, `/api/display-names`) (BM-048)
+  - allergy list dates from the Standard REST API (`/api/list-dates?list=allergy`) (BM-016, BM-047)
+  - same-day visit order
+  - dead refresh token logs out
+  - site date format
+  - `DISABLE_PRESCRIPTIONS`
+  - problem merge key includes codes
+  - proxy requires a patient on searches
+  - encounter parity requires resolvable names
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
+**Resolves:** BM-016, BM-047, BM-048; records BM-049 and BM-050
+**Touches:** `server/`, `web/src/`, `tests/`, `spike/register-client.mjs`, `fixtures/seed-parity-gaps.php`
+
 ## Definition of Done for this arc
 - [x] All slices ticked; every BM row listed above struck through
 - [x] DEV-LOG has an arc-completion entry

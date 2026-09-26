@@ -113,4 +113,15 @@ describe('mapProblems', () => {
 
         expect(mapProblems([concern])).toEqual([]);
     });
+
+    it('visit copies with the same name but different diagnosis codes are different problems', () => {
+        const visit = (id: string, code: string) =>
+            condition({
+                id,
+                code: { text: 'Fracture', coding: [{ system: 'http://hl7.org/fhir/sid/icd-10-cm', code }] },
+                category: [{ coding: [{ code: 'encounter-diagnosis' }] }],
+            });
+
+        expect(mapProblems([visit('a', 'S52.501A'), visit('b', 'S82.001A')])).toHaveLength(2);
+    });
 });

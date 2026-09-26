@@ -58,7 +58,13 @@ export function fhirProxyRoutes(deps: FhirProxyDeps): Hono {
         }
 
         const session = store.get(getCookie(c, SESSION_COOKIE));
-        const tokens = session === undefined ? undefined : await ensureFreshToken(session, oauth, now);
+        let tokens;
+        try {
+            tokens = session === undefined ? undefined : await ensureFreshToken(session, oauth, now);
+        } catch (error) {
+            console.error('Token refresh failed', { error: (error as Error).name });
+            return c.json({ error: 'OpenEMR did not respond' }, 502);
+        }
         if (tokens === undefined) {
             return c.json({ error: 'Not logged in' }, 401);
         }
@@ -66,6 +72,12 @@ export function fhirProxyRoutes(deps: FhirProxyDeps): Hono {
         const query = new URLSearchParams(url.search);
         for (const name of STRIPPED_PARAMS) {
             query.delete(name);
+        }
+        // A search (no id) must be scoped to one patient, except the picker's Patient?name= search:
+        // the old page only ever showed one patient's records (Fable review F10).
+        const isSearch = match?.[2] === undefined;
+        if (isSearch && resource !== 'Patient' && (query.get('patient') ?? '').trim() === '') {
+            return c.json({ error: 'A search must name one patient' }, 400);
         }
         const search = query.toString();
         const upstreamUrl = `${fhirBase}/${path}${search === '' ? '' : `?${search}`}`;

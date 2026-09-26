@@ -9,6 +9,10 @@ export interface BffConfig {
     sessionTtlMs: number;
     port: number;
     host: string;
+    /** The server-only client that reads staff and facility names (Fable review F1). */
+    namesClientId: string;
+    /** PEM file holding that client's private key; never committed. */
+    namesKeyFile: string;
 }
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -37,5 +41,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): BffConfig {
         sessionTtlMs: ttlMinutes * 60_000,
         port: Number(env.BFF_PORT ?? 5180),
         host: env.BFF_HOST ?? '127.0.0.1',
+        namesClientId: required(env, 'NAMES_CLIENT_ID'),
+        namesKeyFile: env.NAMES_KEY_FILE ?? 'certs/names-client-key.pem',
     };
 }

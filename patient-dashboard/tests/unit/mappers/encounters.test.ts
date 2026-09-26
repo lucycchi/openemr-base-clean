@@ -59,9 +59,17 @@ describe('mapEncounters', () => {
         const rows = mapEncounters([bare, ...recorded('TP-HISTORY')], new Map());
 
         expect(rows.map((e) => [e.date, e.reason])).toEqual([
+            ['2024-10-26', 'Same-day follow-up'],
             ['2024-10-26', 'Cough and fever'],
             ['', ''],
         ]);
+    });
+
+    it("visits with the same date keep the API order, which is the old page's id descending", () => {
+        // FHIR sorts by eid descending (EncounterService.php:322); the old page by date, then id descending.
+        const reasons = mapEncounters(recorded('TP-HISTORY'), new Map()).map((e) => e.reason);
+
+        expect(reasons).toEqual(['Same-day follow-up', 'Cough and fever']);
     });
 });
 

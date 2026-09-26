@@ -1,6 +1,8 @@
 import type { Patient } from 'fhir/r4';
 import { ageAtDeath, ageDisplay } from './age';
 import type { AgeSettings } from './age';
+import { formatShortDate } from './dates';
+import type { DateDisplayFormat } from './dates';
 
 /** What the header shows. See modules/header.md and the Gate 2 header decision. */
 export interface HeaderView {
@@ -19,6 +21,8 @@ export interface HeaderOptions {
     /** Today's local date, YYYY-MM-DD (injected for testability). */
     asOf: string;
     age: AgeSettings;
+    /** The site date format for DOB and date of death (default 0, Y-m-d). */
+    dateFormat?: DateDisplayFormat;
 }
 
 const SEX_LABELS: Record<string, string> = {
@@ -45,12 +49,14 @@ export function mapHeader(patient: Patient, options: HeaderOptions): HeaderView 
     const deathDate = patient.deceasedDateTime?.slice(0, 10);
     const birthDate = patient.birthDate;
 
+    const shown = (date: string) => formatShortDate(date, options.dateFormat ?? 0);
+
     let dobLine = 'DOB: not recorded';
     if (birthDate !== undefined) {
         dobLine =
             deathDate === undefined
-                ? `DOB: ${birthDate} Age: ${ageDisplay(birthDate, options.asOf, options.age)}`
-                : `DOB: ${birthDate} Age at death: ${ageAtDeath(birthDate, deathDate)}`;
+                ? `DOB: ${shown(birthDate)} Age: ${ageDisplay(birthDate, options.asOf, options.age)}`
+                : `DOB: ${shown(birthDate)} Age at death: ${ageAtDeath(birthDate, deathDate)}`;
     }
 
     return {
@@ -59,6 +65,6 @@ export function mapHeader(patient: Patient, options: HeaderOptions): HeaderView 
         mrn: medicalRecordNumber(patient),
         dobLine,
         sex: SEX_LABELS[patient.gender ?? 'unknown'] ?? 'Unknown',
-        status: deathDate === undefined ? 'Active' : `Deceased (${deathDate})`,
+        status: deathDate === undefined ? 'Active' : `Deceased (${shown(deathDate)})`,
     };
 }

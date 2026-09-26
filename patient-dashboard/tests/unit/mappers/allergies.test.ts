@@ -19,7 +19,37 @@ function allergy(overrides: Partial<AllergyIntolerance>): AllergyIntolerance {
     };
 }
 
+// TP-LONG's first three allergy rows as the standard API returns them (spike/api-get.mjs, 2026-09-26).
+// FHIR calls allergen 02 active although it is marked resolved (BM-047), and allergen 03 inactive
+// although it runs to 2027-12-31 (BM-016).
+const TODAY = '2026-09-26';
+const LONG_LIST = new Map([
+    ['a2d6832d-1338-4065-b95a-303f0b805f04', { enddate: null, outcome: 0 }],
+    ['a2d6832d-6331-4119-9115-66945ff551c9', { enddate: null, outcome: 1 }],
+    ['a2d6832d-b5b6-45bc-8b07-99b2fa01e454', { enddate: '2027-12-31 00:00:00', outcome: 0 }],
+]);
+const firstThree = (
+    key: string,
+    dates: ReadonlyMap<string, { enddate: string | null; outcome: number }>,
+    today: string,
+) =>
+    mapAllergies(recorded(key), dates, today)
+        .map((a) => a.name)
+        .filter((name) => /allergen 0[1-3]$/.test(name));
+
 describe('mapAllergies', () => {
+    it('an allergy marked resolved is hidden, although FHIR says active (BM-047)', () => {
+        expect(firstThree('TP-LONG', LONG_LIST, TODAY)).not.toContain('Long-list allergen 02');
+    });
+
+    it('an allergy with a future end date is shown, although FHIR says inactive (BM-016)', () => {
+        expect(firstThree('TP-LONG', LONG_LIST, TODAY)).toEqual(['Long-list allergen 01', 'Long-list allergen 03']);
+    });
+
+    it('an allergy whose end date has passed is hidden', () => {
+        expect(firstThree('TP-LONG', LONG_LIST, '2028-01-01')).toEqual(['Long-list allergen 01']);
+    });
+
     it('TP-TYPICAL: Penicillin (Low risk, reaction Hives) and Peanuts, in entry order', () => {
         expect(mapAllergies(recorded('TP-TYPICAL'))).toEqual([
             {
@@ -69,7 +99,7 @@ describe('mapAllergies', () => {
         ]);
     });
 
-    it('inactive entries are hidden (BM-016)', () => {
+    it('without list dates, inactive entries are hidden', () => {
         expect(mapAllergies(recorded('TP-HISTORY'))).toEqual([]);
     });
 
@@ -78,10 +108,11 @@ describe('mapAllergies', () => {
     });
 
     it('entry order is kept (BM-014)', () => {
-        const names = mapAllergies(recorded('TP-LONG')).map((a) => a.name);
-        expect(names).toHaveLength(25);
+        // Allergen 02 is resolved, so 24 of the 25 remain, still in entry order.
+        const names = mapAllergies(recorded('TP-LONG'), LONG_LIST, TODAY).map((a) => a.name);
+        expect(names).toHaveLength(24);
         expect(names[0]).toBe('Long-list allergen 01');
-        expect(names[24]).toBe('Long-list allergen 25');
+        expect(names[23]).toBe('Long-list allergen 25');
     });
 
     it('an allergy with no name anywhere is "Unnamed allergy"', () => {

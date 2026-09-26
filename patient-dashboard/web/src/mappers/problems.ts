@@ -49,8 +49,10 @@ function rank(condition: Condition): number {
 
 /**
  * A problem linked to a visit is left out of the problem-list-item search and returned once per
- * linked visit as encounter-diagnosis (BM-043), so those copies are merged by name and onset. A
- * problem-list entry is never merged: it cannot also have visit copies.
+ * linked visit as encounter-diagnosis (BM-043), so those copies are merged by name, onset and
+ * diagnosis codes. Nothing in a visit copy identifies its problem row, so two separate problems with
+ * the same name, onset and codes would show once. A problem-list entry is never merged: it cannot
+ * also have visit copies.
  */
 function mergeVisitCopies(conditions: readonly Condition[]): Condition[] {
     const merged: Condition[] = [];
@@ -60,7 +62,10 @@ function mergeVisitCopies(conditions: readonly Condition[]): Condition[] {
             merged.push(condition);
             continue;
         }
-        const key = `${problemName(condition)}|${condition.onsetDateTime ?? ''}`;
+        const codes = (condition.code?.coding ?? [])
+            .map((coding) => `${coding.system ?? ''}#${coding.code ?? ''}`)
+            .sort();
+        const key = `${problemName(condition)}|${condition.onsetDateTime ?? ''}|${codes.join(',')}`;
         const at = byKey.get(key);
         const kept = at === undefined ? undefined : merged[at];
         if (at === undefined || kept === undefined) {

@@ -71,7 +71,7 @@ Observed on the old dashboard (`tmp/dash_text.php`, 2026-09-26):
 |---|---|---|---|---|
 | Patient name | Patient.name[use=official].given + family | matches | TP-TYPICAL: given [Tessa], family Typical; TP-ESCAPING: given [Zoë], family O'Brien-Núñez | the new app must render it as text |
 | MRN | Patient.identifier[type.coding.code=PT].value | matches | TP-TYPICAL: PT=36, pubpid 36; TP-DECEASED: PT=40 | the identifier system is v2-0203 |
-| Date of birth | Patient.birthDate | matches | TP-TYPICAL: 1958-03-14 | the new app formats it with the site date format (`date_display_format`), which is not in FHIR |
+| Date of birth | Patient.birthDate | matches | TP-TYPICAL: 1958-03-14 | the new app formats it with the site date format, mirrored as `DATE_DISPLAY_FORMAT` (0, 1 or 2) because `date_display_format` is not in FHIR; added 2026-09-26 after the Fable review found it was always Y-m-d |
 | Age | computed from Patient.birthDate | differs | TP-TYPICAL: old "Age: 68", FHIR birthDate only | the new app must copy `getPatientAge` (months under 2 years) and honour `age_display_format` and `age_display_limit` (BM-007) |
 | Age at death | computed from Patient.birthDate and Patient.deceasedDateTime | differs | TP-DECEASED: old "Age at death: 93", FHIR deceasedDateTime 2025-11-02T00:00:00+00:00 | computed client-side (BM-007) |
 | Sex (not shown in old header) | Patient.gender, US Core birthsex extension | not available | TP-TYPICAL: gender female, birthsex F; patient_data.sex Female | new field required by the challenge; FHIR has it |

@@ -39,7 +39,7 @@ function setup(upstream: Upstream) {
         const answer = upstream[url] ?? { status: 404, body: {} };
         return new Response(answer.raw ?? JSON.stringify(answer.body), { status: answer.status });
     }) as typeof fetch;
-    const app = createApp({ medicationEndDates: { store, oauth, now, apiBase: API_BASE, fetchImpl } });
+    const app = createApp({ listDates: { store, oauth, now, apiBase: API_BASE, fetchImpl } });
     const session = store.create();
     session.tokens = { accessToken: 'server-side-token', expiresAt: now() + 3_600_000 };
     return { app, calls, cookie: `pd_sid=${session.id}` };
@@ -50,15 +50,16 @@ const happy: Upstream = {
     [`${API_BASE}/patient/36/medication`]: { status: 200, body: medicationRows },
 };
 
-describe('medication end dates (standard API, BM-044)', () => {
+describe('list dates from the standard API (BM-044, BM-047)', () => {
     it('maps the patient uuid to its pid, reads the medication list, and returns only uuid, end date and outcome', async () => {
         const { app, calls, cookie } = setup(happy);
 
-        const res = await app.request(`/api/medication-end-dates?patient=${TYPICAL}`, { headers: { cookie } });
+        const res = await app.request(`/api/list-dates?list=medication&patient=${TYPICAL}`, { headers: { cookie } });
 
         expect(res.status).toBe(200);
         expect(await res.json()).toEqual({
             patient: TYPICAL,
+            list: 'medication',
             entries: [
                 {
                     uuid: 'a2d6832a-bf83-4fd5-a6da-ee15b8d4283a',
@@ -82,10 +83,10 @@ describe('medication end dates (standard API, BM-044)', () => {
         };
         const { app, cookie } = setup(empty);
 
-        const res = await app.request(`/api/medication-end-dates?patient=${TYPICAL}`, { headers: { cookie } });
+        const res = await app.request(`/api/list-dates?list=medication&patient=${TYPICAL}`, { headers: { cookie } });
 
         expect(res.status).toBe(200);
-        expect(await res.json()).toEqual({ patient: TYPICAL, entries: [] });
+        expect(await res.json()).toEqual({ patient: TYPICAL, list: 'medication', entries: [] });
     });
 
     it('a 404 that carries a body is still a failure, not an empty list', async () => {
@@ -95,7 +96,7 @@ describe('medication end dates (standard API, BM-044)', () => {
         };
         const { app, cookie } = setup(routeMissing);
 
-        const res = await app.request(`/api/medication-end-dates?patient=${TYPICAL}`, { headers: { cookie } });
+        const res = await app.request(`/api/list-dates?list=medication&patient=${TYPICAL}`, { headers: { cookie } });
 
         expect(res.status).toBe(502);
     });
@@ -103,7 +104,7 @@ describe('medication end dates (standard API, BM-044)', () => {
     it('returns 401 without a logged-in session', async () => {
         const { app, calls } = setup(happy);
 
-        const res = await app.request(`/api/medication-end-dates?patient=${TYPICAL}`);
+        const res = await app.request(`/api/list-dates?list=medication&patient=${TYPICAL}`);
 
         expect(res.status).toBe(401);
         expect(calls).toHaveLength(0);
@@ -113,7 +114,7 @@ describe('medication end dates (standard API, BM-044)', () => {
         const { app, calls, cookie } = setup(happy);
 
         for (const bad of ['', '36', '../36/medication', `${TYPICAL}/x`]) {
-            const res = await app.request(`/api/medication-end-dates?patient=${encodeURIComponent(bad)}`, {
+            const res = await app.request(`/api/list-dates?list=medication&patient=${encodeURIComponent(bad)}`, {
                 headers: { cookie },
             });
             expect(res.status, bad).toBe(400);
@@ -132,7 +133,9 @@ describe('medication end dates (standard API, BM-044)', () => {
         };
         for (const upstream of [wrongPatient, wrongRows]) {
             const { app, cookie } = setup(upstream);
-            const res = await app.request(`/api/medication-end-dates?patient=${TYPICAL}`, { headers: { cookie } });
+            const res = await app.request(`/api/list-dates?list=medication&patient=${TYPICAL}`, {
+                headers: { cookie },
+            });
             expect(res.status).toBe(502);
         }
     });
@@ -145,8 +148,82 @@ describe('medication end dates (standard API, BM-044)', () => {
         };
         for (const upstream of [refused, notAList]) {
             const { app, cookie } = setup(upstream);
-            const res = await app.request(`/api/medication-end-dates?patient=${TYPICAL}`, { headers: { cookie } });
+            const res = await app.request(`/api/list-dates?list=medication&patient=${TYPICAL}`, {
+                headers: { cookie },
+            });
             expect(res.status).toBe(502);
         }
+    });
+
+    it('allergies: reads the patient uuid directly and returns uuid, end date and outcome', async () => {
+        const allergies: Upstream = {
+            [`${API_BASE}/patient/${TYPICAL}/allergy`]: {
+                status: 200,
+                body: {
+                    validationErrors: [],
+                    internalErrors: [],
+                    data: [
+                        {
+                            uuid: 'a2d68325-cf44-4bb9-96c7-afad3ab1129d',
+                            puuid: TYPICAL,
+                            title: 'Penicillin',
+                            enddate: null,
+                            outcome: 0,
+                            comments: 'not for the dashboard',
+                        },
+                    ],
+                },
+            },
+        };
+        const { app, calls, cookie } = setup(allergies);
+
+        const res = await app.request(`/api/list-dates?list=allergy&patient=${TYPICAL}`, { headers: { cookie } });
+
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({
+            patient: TYPICAL,
+            list: 'allergy',
+            entries: [{ uuid: 'a2d68325-cf44-4bb9-96c7-afad3ab1129d', enddate: null, outcome: 0 }],
+        });
+        expect(calls.map((call) => call.url)).toEqual([`${API_BASE}/patient/${TYPICAL}/allergy`]);
+    });
+
+    it('allergies: a row for another patient, or an answer with validation errors, is a failure', async () => {
+        const wrongRow: Upstream = {
+            [`${API_BASE}/patient/${TYPICAL}/allergy`]: {
+                status: 200,
+                body: {
+                    validationErrors: [],
+                    internalErrors: [],
+                    data: [{ uuid: 'u', puuid: 'other', enddate: null, outcome: 0 }],
+                },
+            },
+        };
+        // OpenEMR answers a bad patient id with HTTP 200, validation errors and an empty list.
+        const invalid: Upstream = {
+            [`${API_BASE}/patient/${TYPICAL}/allergy`]: {
+                status: 200,
+                body: {
+                    validationErrors: { uuid: { 'invalid or nonexisting value': 'value' } },
+                    internalErrors: [],
+                    data: [],
+                },
+            },
+        };
+        for (const upstream of [wrongRow, invalid]) {
+            const { app, cookie } = setup(upstream);
+            const res = await app.request(`/api/list-dates?list=allergy&patient=${TYPICAL}`, { headers: { cookie } });
+            expect(res.status).toBe(502);
+        }
+    });
+
+    it('only the medication and allergy lists', async () => {
+        const { app, calls, cookie } = setup(happy);
+
+        for (const list of ['', 'medical_problem', 'surgery']) {
+            const res = await app.request(`/api/list-dates?list=${list}&patient=${TYPICAL}`, { headers: { cookie } });
+            expect(res.status, list).toBe(400);
+        }
+        expect(calls).toHaveLength(0);
     });
 });

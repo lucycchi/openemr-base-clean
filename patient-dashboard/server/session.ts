@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { OAuthError } from './oauth';
 import type { OAuthClient, TokenResponse } from './oauth';
 
 export interface Tokens {
@@ -107,7 +108,19 @@ export async function ensureFreshToken(
     if (tokens.refreshToken === undefined) {
         return tokens.expiresAt > now() ? tokens : undefined;
     }
-    const refreshed = tokensFrom(await oauth.refresh(tokens.refreshToken), now(), tokens);
+    let response;
+    try {
+        response = await oauth.refresh(tokens.refreshToken);
+    } catch (error) {
+        // OpenEMR refused the refresh token (revoked or expired): the session is logged out, so the
+        // proxy answers 401 and the browser returns to the login page. Anything else is an outage.
+        if (error instanceof OAuthError && (error.status === 400 || error.status === 401)) {
+            delete session.tokens;
+            return undefined;
+        }
+        throw error;
+    }
+    const refreshed = tokensFrom(response, now(), tokens);
     session.tokens = refreshed;
     return refreshed;
 }

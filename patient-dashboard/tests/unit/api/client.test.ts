@@ -97,10 +97,10 @@ describe('API client getJson (BFF routes outside the FHIR proxy)', () => {
             },
         });
 
-        const result = await client.getJson('medication-end-dates?patient=p1');
+        const result = await client.getJson('list-dates?list=medication&patient=p1');
 
         expect(result).toEqual({ ok: true, value: { patient: 'p1', entries: [] } });
-        expect(urls).toEqual(['/api/medication-end-dates?patient=p1']);
+        expect(urls).toEqual(['/api/list-dates?list=medication&patient=p1']);
     });
 
     it('a 401 triggers re-login and a 502 is an http LoadError', async () => {

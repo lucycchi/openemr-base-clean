@@ -14,7 +14,7 @@ interface Loaded {
 /** Loads and maps the header patient. A Patient whose id differs from the one asked for is a load error (BM-004). */
 export function usePatient(client: ApiClient, patientId: string, options: HeaderOptions): LoadState<HeaderView> {
     const [loaded, setLoaded] = useState<Loaded | undefined>(undefined);
-    const { asOf, age } = options;
+    const { asOf, age, dateFormat } = options;
 
     useEffect(() => {
         let cancelled = false;
@@ -31,14 +31,17 @@ export function usePatient(client: ApiClient, patientId: string, options: Header
                     error: { kind: 'wrong-patient', expected: patientId, found: result.value.id ?? '(none)' },
                 };
             } else {
-                state = { status: 'ready', data: mapHeader(result.value, { asOf, age }) };
+                state = {
+                    status: 'ready',
+                    data: mapHeader(result.value, { asOf, age, ...(dateFormat === undefined ? {} : { dateFormat }) }),
+                };
             }
             setLoaded({ forPatientId: patientId, state });
         });
         return () => {
             cancelled = true;
         };
-    }, [client, patientId, asOf, age]);
+    }, [client, patientId, asOf, age, dateFormat]);
 
     // Until the result for *this* patient arrives, report loading, so a patient switch can never
     // show the previous patient's header.

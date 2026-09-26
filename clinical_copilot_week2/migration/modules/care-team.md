@@ -88,3 +88,7 @@ Observed on the old dashboard (2026-09-26):
 - BM-030: an empty care team shows only table headers, with no message.
 - BM-037: the related person's since date, member status and note aren't in FHIR, and the old Remove header shows in view mode.
 - BM-031: an unrecorded related-person role is sent as SNOMED 407542009 informal caregiver, with no display (`FhirCareTeamService.php:424`).
+
+## 8. Update after the Fable parity review (2026-09-26)
+
+GET /fhir/Practitioner and /fhir/Organization need the admin/users ACL, so a non-admin user could read neither (BM-048). Names are now read by the BFF's server-only client through `/api/display-names`. Each facility FHIR adds as its own Organization participant is dropped from the member rows (BM-045).

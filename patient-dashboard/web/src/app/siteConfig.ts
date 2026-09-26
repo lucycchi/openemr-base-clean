@@ -1,4 +1,5 @@
 import type { AgeSettings } from '../mappers/age';
+import type { DateDisplayFormat } from '../mappers/dates';
 import { isCardKey } from './hiddenCards';
 import type { CardKey } from './hiddenCards';
 
@@ -7,6 +8,7 @@ export interface SiteConfig {
     hiddenCards: CardKey[];
     ageDisplay: AgeSettings;
     encounterPageSize: number;
+    dateDisplayFormat: DateDisplayFormat;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -47,5 +49,9 @@ export function parseSiteConfig(value: unknown): SiteConfig | undefined {
     if (encounterPageSize < 0) {
         return undefined;
     }
-    return { hiddenCards, ageDisplay, encounterPageSize };
+    const { dateDisplayFormat } = value;
+    if (dateDisplayFormat !== 0 && dateDisplayFormat !== 1 && dateDisplayFormat !== 2) {
+        return undefined;
+    }
+    return { hiddenCards, ageDisplay, encounterPageSize, dateDisplayFormat };
 }

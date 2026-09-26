@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../../../server/app';
 import { SessionStore } from '../../../server/session';
+import { OAuthError } from '../../../server/oauth';
 import type { OAuthClient } from '../../../server/oauth';
 
 const FHIR_BASE = 'https://oemr.test/apis/default/fhir';
@@ -11,13 +12,16 @@ interface Captured {
     authorization: string | null;
 }
 
-function setup() {
+function setup(
+    refresh: OAuthClient['refresh'] = async () => ({ access_token: 'unused', expires_in: 0 }),
+    expiresIn = 3_600_000,
+) {
     const now = () => 5_000_000;
     const store = new SessionStore({ ttlMs: 3_600_000, now });
     const oauth: OAuthClient = {
         authorizeUrl: () => 'unused',
         exchangeCode: async () => ({ access_token: 'unused', expires_in: 0 }),
-        refresh: async () => ({ access_token: 'unused', expires_in: 0 }),
+        refresh,
     };
     const calls: Captured[] = [];
     const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -30,7 +34,7 @@ function setup() {
     }) as typeof fetch;
     const app = createApp({ fhir: { store, oauth, now, fhirBase: FHIR_BASE, fetchImpl } });
     const session = store.create();
-    session.tokens = { accessToken: 'server-side-token', expiresAt: now() + 3_600_000 };
+    session.tokens = { accessToken: 'server-side-token', refreshToken: 'refresh', expiresAt: now() + expiresIn };
     const cookie = `pd_sid=${session.id}`;
     return { app, calls, cookie };
 }
@@ -113,5 +117,51 @@ describe('FHIR proxy', () => {
 
         expect(res.status).toBe(401);
         expect(calls).toHaveLength(0);
+    });
+
+    it('a refresh token OpenEMR rejects gives 401, so the browser goes back to the login page', async () => {
+        const { app, calls, cookie } = setup(async () => {
+            throw new OAuthError('Token endpoint returned HTTP 400', 400);
+        }, 1_000);
+
+        const res = await app.request('/api/fhir/AllergyIntolerance?patient=abc', { headers: { cookie } });
+
+        expect(res.status).toBe(401);
+        expect(calls).toHaveLength(0);
+    });
+
+    it('a token endpoint that cannot be reached gives 502, never 500', async () => {
+        const { app, cookie } = setup(async () => {
+            throw new TypeError('fetch failed');
+        }, 1_000);
+
+        const res = await app.request('/api/fhir/AllergyIntolerance?patient=abc', { headers: { cookie } });
+
+        expect(res.status).toBe(502);
+    });
+
+    it('a clinical search must name one patient, as the old page only ever showed one', async () => {
+        const { app, calls, cookie } = setup();
+
+        for (const path of [
+            'Encounter',
+            'Condition?code=44054006',
+            'MedicationRequest?patient=',
+            'CareTeam?status=active',
+        ]) {
+            const res = await app.request(`/api/fhir/${path}`, { headers: { cookie } });
+            expect(res.status, path).toBe(400);
+        }
+        expect(calls).toHaveLength(0);
+    });
+
+    it('the patient picker search and reads by id still pass', async () => {
+        const { app, calls, cookie } = setup();
+
+        for (const path of ['Patient?name=Tessa', 'Practitioner/a2c6137a', 'Condition?patient=abc']) {
+            const res = await app.request(`/api/fhir/${path}`, { headers: { cookie } });
+            expect(res.status, path).toBe(200);
+        }
+        expect(calls).toHaveLength(3);
     });
 });

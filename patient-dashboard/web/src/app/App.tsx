@@ -9,12 +9,12 @@ import { PrescriptionsCard } from '../cards/PrescriptionsCard';
 import { PatientHeader } from '../cards/PatientHeader';
 import { ProblemListCard } from '../cards/ProblemListCard';
 import { PatientPicker } from '../cards/PatientPicker';
+import { useAllergyCard } from '../hooks/useAllergyCard';
 import { useBundleCard } from '../hooks/useBundleCard';
 import { useCareTeam } from '../hooks/useCareTeam';
 import { useMedicationCards } from '../hooks/useMedicationCards';
 import { useEncounters } from '../hooks/useEncounters';
 import { usePatient } from '../hooks/usePatient';
-import { mapAllergies } from '../mappers/allergies';
 import { mapProblems } from '../mappers/problems';
 import { visibleCards } from './hiddenCards';
 import { parseSiteConfig } from './siteConfig';
@@ -37,8 +37,12 @@ function localToday(): string {
 
 function PatientView({ client, patientId, config }: { client: ApiClient; patientId: string; config: SiteConfig }) {
     const [asOf] = useState(localToday);
-    const header = usePatient(client, patientId, { asOf, age: config.ageDisplay });
-    const allergies = useBundleCard(client, patientId, 'AllergyIntolerance', mapAllergies);
+    const header = usePatient(client, patientId, {
+        asOf,
+        age: config.ageDisplay,
+        dateFormat: config.dateDisplayFormat,
+    });
+    const allergies = useAllergyCard(client, patientId, asOf);
     const problems = useBundleCard(client, patientId, 'Condition', mapProblems);
     const medicationCards = useMedicationCards(client, patientId, asOf);
     const careTeam = useCareTeam(client, patientId);
@@ -57,7 +61,12 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
             )}
             {shown.includes('card_care_team') && <CareTeamCard patientId={patientId} state={careTeam} />}
             {shown.includes('card_encounter_history') && (
-                <EncounterHistoryCard patientId={patientId} state={encounters} pageSize={config.encounterPageSize} />
+                <EncounterHistoryCard
+                    patientId={patientId}
+                    state={encounters}
+                    pageSize={config.encounterPageSize}
+                    dateFormat={config.dateDisplayFormat}
+                />
             )}
         </>
     );

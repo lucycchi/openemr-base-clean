@@ -1,5 +1,6 @@
 import type { MedicationRequest } from 'fhir/r4';
-import type { MedicationListDates } from '../api/medicationListDates';
+import { isCurrentListRow } from '../api/listDates';
+import type { ListDates } from '../api/listDates';
 import { realCodingDisplay } from './narrative';
 
 /** One row of the Medications or Prescriptions card. See modules/medications.md and prescriptions.md. */
@@ -55,15 +56,11 @@ function isCurrentOrder(request: MedicationRequest): boolean {
  */
 function isOnMedicationList(
     request: MedicationRequest,
-    listDates: ReadonlyMap<string, MedicationListDates>,
+    listDates: ReadonlyMap<string, ListDates>,
     today: string,
 ): boolean {
     const row = listDates.get(request.id ?? '');
-    if (row === undefined) {
-        return request.status === 'active';
-    }
-    const ends = row.enddate?.slice(0, 10) ?? '';
-    return row.outcome !== 1 && (ends === '' || ends > today);
+    return row === undefined ? request.status === 'active' : isCurrentListRow(row, today);
 }
 
 /**
@@ -76,7 +73,7 @@ function isOnMedicationList(
  */
 export function splitMedications(
     resources: readonly MedicationRequest[],
-    listDates: ReadonlyMap<string, MedicationListDates> = new Map(),
+    listDates: ReadonlyMap<string, ListDates> = new Map(),
     today = '',
 ): MedicationSplit {
     return {

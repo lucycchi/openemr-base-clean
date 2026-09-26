@@ -4,8 +4,10 @@ import { authRoutes } from './auth';
 import type { AuthDeps } from './auth';
 import { fhirProxyRoutes } from './fhirProxy';
 import type { FhirProxyDeps } from './fhirProxy';
-import { medicationEndDatesRoutes } from './medicationEndDates';
-import type { MedicationEndDatesDeps } from './medicationEndDates';
+import { displayNamesRoutes } from './displayNames';
+import type { DisplayNamesDeps } from './displayNames';
+import { listDatesRoutes } from './listDates';
+import type { ListDatesDeps } from './listDates';
 import type { AppConfig } from './appConfig';
 
 export interface AppOptions {
@@ -15,8 +17,10 @@ export interface AppOptions {
     auth?: AuthDeps;
     /** Allow-listed FHIR reads under /api/fhir. */
     fhir?: FhirProxyDeps;
-    /** Medication-list end dates from the standard API, under /api/medication-end-dates (BM-044). */
-    medicationEndDates?: MedicationEndDatesDeps;
+    /** Medication and allergy list dates from the standard API, under /api/list-dates (BM-044, BM-047). */
+    listDates?: ListDatesDeps;
+    /** Staff and facility names read with the BFF's system client, under /api/display-names (Fable F1). */
+    displayNames?: DisplayNamesDeps;
     /** Site settings for the SPA (hidden cards), served at /app-config. */
     appConfig?: AppConfig;
 }
@@ -39,8 +43,11 @@ export function createApp(options: AppOptions = {}): Hono {
     if (options.fhir !== undefined) {
         app.route('/api/fhir', fhirProxyRoutes(options.fhir));
     }
-    if (options.medicationEndDates !== undefined) {
-        app.route('/api/medication-end-dates', medicationEndDatesRoutes(options.medicationEndDates));
+    if (options.displayNames !== undefined) {
+        app.route('/api/display-names', displayNamesRoutes(options.displayNames));
+    }
+    if (options.listDates !== undefined) {
+        app.route('/api/list-dates', listDatesRoutes(options.listDates));
     }
 
     if (options.staticRoot !== undefined) {

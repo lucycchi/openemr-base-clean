@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { MedicationRequest } from 'fhir/r4';
 import type { ApiClient } from '../api/client';
-import { parseMedicationListDates } from '../api/medicationListDates';
-import type { MedicationListDates } from '../api/medicationListDates';
+import { parseListDates } from '../api/listDates';
+import type { ListDates, ListName } from '../api/listDates';
 import { splitMedications } from '../mappers/medications';
 import type { MedicationView } from '../mappers/medications';
 import type { LoadState } from './loadState';
@@ -15,22 +15,22 @@ export interface MedicationCards {
 
 interface LoadedDates {
     forPatientId: string;
-    state: LoadState<Map<string, MedicationListDates>>;
+    state: LoadState<Map<string, ListDates>>;
 }
 
 const keepAll = (resources: MedicationRequest[]): MedicationRequest[] => resources;
 
-/** The medication list's end dates from the standard API (BM-044), tagged by patient like every card hook. */
-function useListDates(client: ApiClient, patientId: string): LoadState<Map<string, MedicationListDates>> {
+/** A list's end dates and outcomes from the standard API (BM-044, BM-047), tagged by patient like every card hook. */
+export function useListDates(client: ApiClient, patientId: string, list: ListName): LoadState<Map<string, ListDates>> {
     const [loaded, setLoaded] = useState<LoadedDates | undefined>(undefined);
 
     useEffect(() => {
         let cancelled = false;
-        void client.getJson(`medication-end-dates?patient=${encodeURIComponent(patientId)}`).then((result) => {
+        void client.getJson(`list-dates?list=${list}&patient=${encodeURIComponent(patientId)}`).then((result) => {
             if (cancelled) {
                 return;
             }
-            const parsed = result.ok ? parseMedicationListDates(result.value, patientId) : result;
+            const parsed = result.ok ? parseListDates(result.value, patientId, list) : result;
             setLoaded({
                 forPatientId: patientId,
                 state: parsed.ok ? { status: 'ready', data: parsed.value } : { status: 'error', error: parsed.error },
@@ -39,7 +39,7 @@ function useListDates(client: ApiClient, patientId: string): LoadState<Map<strin
         return () => {
             cancelled = true;
         };
-    }, [client, patientId]);
+    }, [client, patientId, list]);
 
     return loaded !== undefined && loaded.forPatientId === patientId ? loaded.state : { status: 'loading' };
 }
@@ -51,7 +51,7 @@ function useListDates(client: ApiClient, patientId: string): LoadState<Map<strin
  */
 export function useMedicationCards(client: ApiClient, patientId: string, today: string): MedicationCards {
     const requests = useBundleCard(client, patientId, 'MedicationRequest', keepAll);
-    const dates = useListDates(client, patientId);
+    const dates = useListDates(client, patientId, 'medication');
 
     return useMemo((): MedicationCards => {
         if (requests.status !== 'ready') {
