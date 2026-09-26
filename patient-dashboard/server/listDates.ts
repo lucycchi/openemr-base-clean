@@ -6,7 +6,7 @@ import { ensureFreshToken } from './session';
 import type { SessionStore } from './session';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const LISTS = ['medication', 'allergy'] as const;
+const LISTS = ['medication', 'allergy', 'medical_problem'] as const;
 type ListName = (typeof LISTS)[number];
 const TIMEOUT_MS = 20_000;
 
@@ -25,6 +25,9 @@ export interface ListRowDates {
     enddate: string | null;
     /** 1 means resolved; the old cards hide those. */
     outcome: number;
+    /** Problems only: the card is built from this list, so it needs the title and start date (BM-051). */
+    title?: string;
+    begdate?: string | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -39,25 +42,36 @@ function isEmpty(value: unknown): boolean {
 }
 
 /** A row's dates, or undefined if it is malformed or does not belong to the patient. */
-function parseRow(value: unknown, belongs: (row: Record<string, unknown>) => boolean): ListRowDates | undefined {
+function parseRow(
+    value: unknown,
+    belongs: (row: Record<string, unknown>) => boolean,
+    withTitle = false,
+): ListRowDates | undefined {
     if (!isRecord(value) || !belongs(value) || typeof value.uuid !== 'string') {
         return undefined;
     }
-    const { uuid, enddate, outcome } = value;
+    const { uuid, enddate, outcome, title, begdate } = value;
     if ((enddate !== null && typeof enddate !== 'string') || typeof outcome !== 'number') {
         return undefined;
     }
-    return { uuid, enddate, outcome };
+    if (!withTitle) {
+        return { uuid, enddate, outcome };
+    }
+    if (typeof title !== 'string' || (begdate !== null && typeof begdate !== 'string')) {
+        return undefined;
+    }
+    return { uuid, enddate, outcome, title, begdate };
 }
 
 class Unavailable extends Error {}
 
 /**
- * GET /api/list-dates?list=medication|allergy&patient=<uuid>. FHIR sends neither list's end date
- * correctly: MedicationRequest calls every end-dated entry "completed" (BM-044) and
- * AllergyIntolerance calls a resolved allergy with no end date "active" (BM-047). For these two
- * lists only, this reads OpenEMR's Standard REST API (user decisions 2026-09-26) and returns uuid,
- * end date and outcome per row, nothing else. It fails with 502 unless every row is the patient's.
+ * GET /api/list-dates?list=medication|allergy|medical_problem&patient=<uuid>. FHIR gets these lists
+ * wrong: MedicationRequest calls every end-dated entry "completed" (BM-044), AllergyIntolerance calls a
+ * resolved allergy with no end date "active" (BM-047), and the problem list leaves out any problem
+ * without activity = 1 (BM-051). For these lists only, this reads OpenEMR's Standard REST API (user
+ * decisions 2026-09-26) and returns uuid, end date and outcome per row, plus title and start date
+ * for problems, nothing else. It fails with 502 unless every row is the patient's.
  */
 export function listDatesRoutes(deps: ListDatesDeps): Hono {
     const { store, oauth, now, apiBase } = deps;
@@ -115,20 +129,26 @@ export function listDatesRoutes(deps: ListDatesDeps): Hono {
             return rows.map((row) => parseRow(row, (r) => r.pid === pid) ?? throwUnavailable());
         };
 
-        const allergyRows = async (): Promise<ListRowDates[]> => {
-            const found = await get(`patient/${patient}/allergy`);
+        /** The allergy and problem lists: wrapped in data, keyed by patient uuid. */
+        const wrappedRows = async (path: string, withTitle: boolean): Promise<ListRowDates[]> => {
+            const found = await get(`patient/${patient}/${path}`);
             // A bad patient id comes back as HTTP 200 with validation errors and an empty list.
             if (!isRecord(found) || !isEmpty(found.validationErrors) || !isEmpty(found.internalErrors)) {
-                throw new Unavailable('allergy list has errors');
+                throw new Unavailable(`${path} list has errors`);
             }
             if (!Array.isArray(found.data)) {
-                throw new Unavailable('allergy list is not a list');
+                throw new Unavailable(`${path} list is not a list`);
             }
-            return found.data.map((row) => parseRow(row, (r) => r.puuid === patient) ?? throwUnavailable());
+            return found.data.map((row) => parseRow(row, (r) => r.puuid === patient, withTitle) ?? throwUnavailable());
         };
 
         try {
-            const entries = list === 'medication' ? await medicationRows() : await allergyRows();
+            const entries =
+                list === 'medication'
+                    ? await medicationRows()
+                    : list === 'allergy'
+                      ? await wrappedRows('allergy', false)
+                      : await wrappedRows('medical_problem', true);
             return c.json({ patient, list: list as ListName, entries }, 200, { 'cache-control': 'no-store' });
         } catch (error) {
             console.error('Standard API list request failed', { list, error: (error as Error).message });

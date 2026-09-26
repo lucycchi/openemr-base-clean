@@ -87,21 +87,24 @@ function roleText(roles: readonly CodeableConcept[] | undefined): string {
  * reference; every other member is kept and shown as "Name unavailable" (BM-028).
  */
 export function mapCareTeams(teams: readonly CareTeam[], names: ReadonlyMap<string, string>): CareTeamView[] {
-    return teams.map((team, teamIndex) => ({
-        id: team.id ?? String(teamIndex),
-        name: team.name?.trim() || 'Unnamed care team',
-        status: team.status === undefined ? '' : TEAM_STATUS[team.status],
-        members: (team.participant ?? []).filter(isMember).map((participant, index) => {
-            const reference = participant.member?.reference ?? '';
-            const resourceType = participant.member?.type ?? referenceType(reference);
-            return {
-                key: String(index),
-                type: MEMBER_TYPE[resourceType] ?? (resourceType || 'Unknown'),
-                name: names.get(reference) ?? NAME_UNAVAILABLE,
-                role: roleText(participant.role),
-                facility: facilityName(participant, names),
-                since: participant.period?.start?.slice(0, 10) ?? '',
-            };
-        }),
-    }));
+    // The old card leaves out teams marked entered-in-error (CareTeamService.php:581).
+    return teams
+        .filter((team) => team.status !== 'entered-in-error')
+        .map((team, teamIndex) => ({
+            id: team.id ?? String(teamIndex),
+            name: team.name?.trim() || 'Unnamed care team',
+            status: team.status === undefined ? '' : TEAM_STATUS[team.status],
+            members: (team.participant ?? []).filter(isMember).map((participant, index) => {
+                const reference = participant.member?.reference ?? '';
+                const resourceType = participant.member?.type ?? referenceType(reference);
+                return {
+                    key: String(index),
+                    type: MEMBER_TYPE[resourceType] ?? (resourceType || 'Unknown'),
+                    name: names.get(reference) ?? NAME_UNAVAILABLE,
+                    role: roleText(participant.role),
+                    facility: facilityName(participant, names),
+                    since: participant.period?.start?.slice(0, 10) ?? '',
+                };
+            }),
+        }));
 }

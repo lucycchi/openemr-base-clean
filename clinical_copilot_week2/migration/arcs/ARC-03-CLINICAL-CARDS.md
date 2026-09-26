@@ -148,6 +148,23 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Resolves:** BM-016, BM-047, BM-048; records BM-049 and BM-050
 **Touches:** `server/`, `web/src/`, `tests/`, `spike/register-client.mjs`, `fixtures/seed-parity-gaps.php`
 
+#### Slice 03-05-04 — Fixes from the Fable parity review 2
+- [x] Tests first, watched failing:
+  - problem parity went red on the seeded Fee Sheet problem
+  - header parity went red on the seeded middle name
+  - the concurrent-refresh, proxy-bypass, names-cache, name-outage and care-team tests were red first
+- [x] Implement:
+  - problem card from the Standard REST API problem list (BM-051)
+  - care-team note, entered-in-error teams hidden, status-coloured badge (BM-053)
+  - one token refresh per session
+  - a failed name lookup reads "Name couldn't be loaded"
+  - proxy allows one patient value, and no dot ids
+  - names cached for ten minutes
+  - stricter care-team, medication and header parity
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
+**Resolves:** BM-051, BM-052; records BM-053
+**Touches:** `server/`, `web/src/`, `tests/`, `spike/register-client.mjs`, `fixtures/seed-parity-gaps.php`
+
 ## Definition of Done for this arc
 - [x] All slices ticked; every BM row listed above struck through
 - [x] DEV-LOG has an arc-completion entry

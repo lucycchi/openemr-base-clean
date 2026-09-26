@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Bundle, MedicationRequest } from 'fhir/r4';
 import { fixture } from '../support/fixtures';
 import type { FixtureKey } from '../support/fixtures';
 import { logInThroughOpenEmr } from '../support/login';
@@ -42,10 +43,21 @@ test('medications match the old dashboard for every fixture, with the approved e
             newNames.filter((name) => !oldNames.includes(name)),
             key,
         ).toEqual([]);
-        // Nothing lost: every old entry is on the new Medications card or, when FHIR marks it as an
-        // order (BM-019, BM-020), on the new Prescriptions card.
+        // Nothing lost, and each entry on the card its FHIR intent says: an entry FHIR marks as an order
+        // (BM-019, BM-020) is on Prescriptions, every other old entry on Medications.
+        const bundle = (await (
+            await page.request.get(`/api/fhir/MedicationRequest?patient=${patient.fhirId}`)
+        ).json()) as Bundle<MedicationRequest>;
+        const orders = new Set(
+            (bundle.entry ?? [])
+                .map((entry) => entry.resource)
+                .filter((request) => request?.intent === 'order')
+                .map((request) => request?.medicationCodeableConcept?.text ?? ''),
+        );
         expect(
-            oldNames.filter((name) => !newNames.includes(name) && !prescriptionNames.includes(name)),
+            oldNames.filter((name) =>
+                orders.has(name) ? !prescriptionNames.includes(name) : !newNames.includes(name),
+            ),
             key,
         ).toEqual([]);
         expect(new Set(newNames).size, key).toBe(newNames.length);

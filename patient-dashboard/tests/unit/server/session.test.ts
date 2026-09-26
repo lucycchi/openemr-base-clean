@@ -25,6 +25,28 @@ function oauthRefreshing(refresh: OAuthClient['refresh']): OAuthClient {
 }
 
 describe('session tokens', () => {
+    it('concurrent requests share one refresh, because OpenEMR revokes a refresh token on first use', async () => {
+        const now = () => 10_000_000;
+        const store = new SessionStore({ ttlMs: 3_600_000, now });
+        const session = store.create();
+        session.tokens = { accessToken: 'old', refreshToken: 'once', expiresAt: now() + 1_000 };
+        let used = 0;
+        const oauth = oauthRefreshing(async (refreshToken) => {
+            used += 1;
+            if (refreshToken !== 'once' || used > 1) {
+                throw new OAuthError('Token endpoint returned HTTP 400', 400);
+            }
+            await new Promise((resolve) => setTimeout(resolve, 5));
+            return { access_token: 'new', refresh_token: 'next', expires_in: 3600 };
+        });
+
+        const results = await Promise.all(Array.from({ length: 9 }, () => ensureFreshToken(session, oauth, now)));
+
+        expect(used).toBe(1);
+        expect(results.map((tokens) => tokens?.accessToken)).toEqual(Array(9).fill('new'));
+        expect(session.tokens?.refreshToken).toBe('next');
+    });
+
     it('a refresh token OpenEMR rejects logs the session out, so the user is sent to log in again', async () => {
         const now = () => 10_000_000;
         const store = new SessionStore({ ttlMs: 3_600_000, now });

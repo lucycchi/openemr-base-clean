@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FhirResource, RelatedPerson } from 'fhir/r4';
 import { assertBelongsTo } from '../api/client';
 import type { ApiClient } from '../api/client';
-import { displayName } from '../mappers/people';
+import { displayName, NAME_NOT_LOADED } from '../mappers/people';
 import type { LoadState } from './loadState';
 
 interface Loaded<V> {
@@ -27,8 +27,9 @@ const BATCH = 50;
 
 /**
  * Staff and facility names come from the BFF's server-only lookup, because OpenEMR's API lets only
- * administrators read Practitioner and Organization (Fable review F1). A failed lookup leaves them
- * unnamed; only names for the references asked for are kept.
+ * administrators read Practitioner and Organization (Fable review F1). If the lookup fails, every
+ * reference in that batch reads "Name couldn't be loaded", so an outage never looks like a person
+ * with no record. Only names for the references asked for are kept.
  */
 async function readStaffNames(client: ApiClient, references: readonly string[]): Promise<Map<string, string>> {
     const names = new Map<string, string>();
@@ -42,6 +43,7 @@ async function readStaffNames(client: ApiClient, references: readonly string[]):
                 ? (result.value as { names?: unknown }).names
                 : undefined;
         if (typeof found !== 'object' || found === null) {
+            batch.forEach((ref) => names.set(ref, NAME_NOT_LOADED));
             continue;
         }
         for (const ref of batch) {

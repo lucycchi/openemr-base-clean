@@ -73,6 +73,15 @@ describe('mapCareTeams', () => {
         ]);
     });
 
+    it('a team marked entered-in-error is not shown, as the old card leaves it out', () => {
+        const teams: CareTeam[] = [
+            { resourceType: 'CareTeam', id: 'ok', name: 'Kept', status: 'active' },
+            { resourceType: 'CareTeam', id: 'bad', name: 'Mistake', status: 'entered-in-error' },
+        ];
+
+        expect(mapCareTeams(teams, new Map()).map((team) => team.name)).toEqual(['Kept']);
+    });
+
     it('TP-EMPTY has no teams', () => {
         expect(mapCareTeams(recorded('TP-EMPTY'), new Map())).toEqual([]);
     });

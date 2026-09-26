@@ -26,8 +26,9 @@ const upstream: Upstream = {
     },
 };
 
-function setup(options: { loggedIn?: boolean; systemToken?: () => Promise<string> } = {}) {
-    const now = () => 5_000_000;
+function setup(options: { loggedIn?: boolean; systemToken?: () => Promise<string>; clock?: { now: number } } = {}) {
+    const clock = options.clock ?? { now: 5_000_000 };
+    const now = () => clock.now;
     const store = new SessionStore({ ttlMs: 3_600_000, now });
     const oauth: OAuthClient = {
         authorizeUrl: () => 'unused',
@@ -123,5 +124,20 @@ describe('display names (server-only lookup, Fable review F1)', () => {
         const res = await app.request(`/api/display-names?${query(DONNA)}`, { headers: { cookie } });
 
         expect(res.status).toBe(502);
+    });
+
+    it('caches names, found or not, for ten minutes, so repeated card loads do not re-read OpenEMR', async () => {
+        const clock = { now: 5_000_000 };
+        const { app, calls, cookie } = setup({ clock });
+        const ask = () => app.request(`/api/display-names?${query(DONNA, FRED)}`, { headers: { cookie } });
+
+        await ask();
+        clock.now += 9 * 60_000;
+        expect(await (await ask()).json()).toEqual({ names: { [DONNA]: 'Lee, Donna' } });
+        expect(calls).toHaveLength(2);
+
+        clock.now += 2 * 60_000;
+        await ask();
+        expect(calls).toHaveLength(4);
     });
 });

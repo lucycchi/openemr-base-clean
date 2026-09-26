@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Bundle, CareTeam } from 'fhir/r4';
 import { fixture } from '../support/fixtures';
 import type { FixtureKey } from '../support/fixtures';
 import { logInThroughOpenEmr } from '../support/login';
@@ -42,9 +43,35 @@ test('care team matches the old dashboard for every fixture, with the approved e
             members.map(({ type, role, facility }) => ({ type, role, facility })),
             key,
         ).toEqual(old.members.map(({ type, role, facility }) => ({ type, role, facility })));
+        // "Name unavailable" only for a member the names lookup genuinely cannot name (no NPI, BM-028, or
+        // a related person); a member it can name must match the old card.
+        const bundle = (await (
+            await page.request.get(`/api/fhir/CareTeam?patient=${patient.fhirId}`)
+        ).json()) as Bundle<CareTeam>;
+        const refs = (bundle.entry ?? [])
+            .flatMap((entry) => entry.resource?.participant ?? [])
+            .map((participant) => participant.member?.reference ?? '')
+            .filter((ref) => ref.startsWith('Practitioner/') || ref.startsWith('RelatedPerson/'));
+        const lookup = refs.filter((ref) => ref.startsWith('Practitioner/'));
+        const named =
+            lookup.length === 0
+                ? {}
+                : (
+                      (await (
+                          await page.request.get(
+                              `/api/display-names?${lookup.map((r) => `ref=${encodeURIComponent(r)}`).join('&')}`,
+                          )
+                      ).json()) as {
+                          names: Record<string, string>;
+                      }
+                  ).names;
+        const resolvable = new Set(
+            refs.map((ref, index) => (named[ref] !== undefined ? index : -1)).filter((i) => i >= 0),
+        );
         members.forEach((member, index) => {
             const was = old.members[index];
-            expect([was?.member, 'Name unavailable'], `${key} member ${index}`).toContain(member.name);
+            const allowed = resolvable.has(index) ? [was?.member] : [was?.member, 'Name unavailable'];
+            expect(allowed, `${key} member ${index}`).toContain(member.name);
             if (member.since !== '') {
                 expect(member.since, `${key} member ${index}`).toBe(was?.since);
             }

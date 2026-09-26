@@ -217,13 +217,57 @@ describe('list dates from the standard API (BM-044, BM-047)', () => {
         }
     });
 
-    it('only the medication and allergy lists', async () => {
+    it('only the medication, allergy and problem lists', async () => {
         const { app, calls, cookie } = setup(happy);
 
-        for (const list of ['', 'medical_problem', 'surgery']) {
+        for (const list of ['', 'surgery', 'dental']) {
             const res = await app.request(`/api/list-dates?list=${list}&patient=${TYPICAL}`, { headers: { cookie } });
             expect(res.status, list).toBe(400);
         }
         expect(calls).toHaveLength(0);
+    });
+
+    it('problems: the whole problem list from the standard API, with title and start date (BM-051)', async () => {
+        const problems: Upstream = {
+            [`${API_BASE}/patient/${TYPICAL}/medical_problem`]: {
+                status: 200,
+                body: {
+                    validationErrors: [],
+                    internalErrors: [],
+                    data: [
+                        {
+                            uuid: 'a2d77a53-0fde-4f39-acb0-3d2726ac0c3f',
+                            puuid: TYPICAL,
+                            title: 'Fee sheet problem',
+                            begdate: '2024-10-26 00:00:00',
+                            enddate: null,
+                            outcome: 0,
+                            activity: null,
+                            comments: 'not for the dashboard',
+                        },
+                    ],
+                },
+            },
+        };
+        const { app, cookie } = setup(problems);
+
+        const res = await app.request(`/api/list-dates?list=medical_problem&patient=${TYPICAL}`, {
+            headers: { cookie },
+        });
+
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({
+            patient: TYPICAL,
+            list: 'medical_problem',
+            entries: [
+                {
+                    uuid: 'a2d77a53-0fde-4f39-acb0-3d2726ac0c3f',
+                    enddate: null,
+                    outcome: 0,
+                    title: 'Fee sheet problem',
+                    begdate: '2024-10-26 00:00:00',
+                },
+            ],
+        });
     });
 });

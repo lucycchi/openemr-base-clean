@@ -1,6 +1,14 @@
 import type { LoadState } from '../hooks/loadState';
 import type { CareTeamView } from '../mappers/careTeam';
 
+/** Badge colour by team status; the old card's badge was always green. */
+const BADGE: Record<string, string> = {
+    Active: 'badge-success',
+    Proposed: 'badge-info',
+    Suspended: 'badge-warning',
+    Inactive: 'badge-secondary',
+};
+
 /**
  * The patient's care teams. Member status, note and the old Remove column are left out, and Since
  * is blank when FHIR has no period (BM-037).
@@ -29,7 +37,7 @@ export function CareTeamCard({ patientId, state }: { patientId: string; state: L
                     <div key={team.id}>
                         <h4 data-item="team">
                             <span data-field="name">{team.name}</span>{' '}
-                            <span data-field="status" className="badge badge-success">
+                            <span data-field="status" className={`badge ${BADGE[team.status] ?? 'badge-secondary'}`}>
                                 {team.status}
                             </span>
                         </h4>
@@ -61,6 +69,12 @@ export function CareTeamCard({ patientId, state }: { patientId: string; state: L
                         )}
                     </div>
                 ))
+            )}
+            {state.data.length > 0 && (
+                <p className="small text-muted">
+                    OpenEMR's API does not say whether a member was removed from the team. Check the care team in
+                    OpenEMR before relying on it.
+                </p>
             )}
         </section>
     );

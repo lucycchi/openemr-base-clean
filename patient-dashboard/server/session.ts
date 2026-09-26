@@ -93,6 +93,33 @@ export function tokensFrom(response: TokenResponse, now: number, previous?: Toke
  * Returns a usable access token for the session, refreshing it first when it expires within
  * REFRESH_WINDOW_MS. Returns undefined when the session can no longer call the API.
  */
+/** One refresh at a time per session: OpenEMR revokes a refresh token on first use (Fable review 2). */
+const refreshing = new WeakMap<Session, Promise<Tokens | undefined>>();
+
+async function refreshSession(
+    session: Session,
+    oauth: OAuthClient,
+    now: () => number,
+    tokens: Tokens,
+    refreshToken: string,
+): Promise<Tokens | undefined> {
+    let response;
+    try {
+        response = await oauth.refresh(refreshToken);
+    } catch (error) {
+        // OpenEMR refused the refresh token (revoked or expired): the session is logged out, so the
+        // proxy answers 401 and the browser returns to the login page. Anything else is an outage.
+        if (error instanceof OAuthError && (error.status === 400 || error.status === 401)) {
+            delete session.tokens;
+            return undefined;
+        }
+        throw error;
+    }
+    const refreshed = tokensFrom(response, now(), tokens);
+    session.tokens = refreshed;
+    return refreshed;
+}
+
 export async function ensureFreshToken(
     session: Session,
     oauth: OAuthClient,
@@ -108,19 +135,14 @@ export async function ensureFreshToken(
     if (tokens.refreshToken === undefined) {
         return tokens.expiresAt > now() ? tokens : undefined;
     }
-    let response;
-    try {
-        response = await oauth.refresh(tokens.refreshToken);
-    } catch (error) {
-        // OpenEMR refused the refresh token (revoked or expired): the session is logged out, so the
-        // proxy answers 401 and the browser returns to the login page. Anything else is an outage.
-        if (error instanceof OAuthError && (error.status === 400 || error.status === 401)) {
-            delete session.tokens;
-            return undefined;
-        }
-        throw error;
+    // Every card loads in parallel, so many requests reach this point together; they share one refresh.
+    const inFlight = refreshing.get(session);
+    if (inFlight !== undefined) {
+        return inFlight;
     }
-    const refreshed = tokensFrom(response, now(), tokens);
-    session.tokens = refreshed;
-    return refreshed;
+    const refresh = refreshSession(session, oauth, now, tokens, tokens.refreshToken).finally(() => {
+        refreshing.delete(session);
+    });
+    refreshing.set(session, refresh);
+    return refresh;
 }

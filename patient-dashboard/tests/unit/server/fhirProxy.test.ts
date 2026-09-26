@@ -164,4 +164,21 @@ describe('FHIR proxy', () => {
         }
         expect(calls).toHaveLength(3);
     });
+
+    it('the one-patient rule cannot be dodged with a second value, a list, or a dot id', async () => {
+        const { app, calls, cookie } = setup();
+
+        for (const path of [
+            'Condition?patient=abc&patient=def',
+            'Condition?patient=abc,def',
+            'Condition?patient=abc%2Cdef',
+            'Condition/.',
+            'Condition/..?patient=abc',
+            'Encounter/.hidden',
+        ]) {
+            const res = await app.request(`/api/fhir/${path}`, { headers: { cookie } });
+            expect([400, 404], path).toContain(res.status);
+        }
+        expect(calls).toHaveLength(0);
+    });
 });

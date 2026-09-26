@@ -24,8 +24,8 @@ export const ALLOWED_RESOURCES: ReadonlySet<string> = new Set([
  */
 const STRIPPED_PARAMS = ['_include', '_revinclude'];
 
-/** `Resource` or `Resource/id`, nothing else: no traversal, no _history or operations. */
-const PATH_PATTERN = /^([A-Z][A-Za-z]+)(?:\/([A-Za-z0-9.-]{1,64}))?$/;
+/** `Resource` or `Resource/id`, nothing else: no traversal (an id cannot start with a dot), no _history or operations. */
+const PATH_PATTERN = /^([A-Z][A-Za-z]+)(?:\/([A-Za-z0-9-][A-Za-z0-9.-]{0,63}))?$/;
 
 const TIMEOUT_MS = 20_000;
 
@@ -75,8 +75,15 @@ export function fhirProxyRoutes(deps: FhirProxyDeps): Hono {
         }
         // A search (no id) must be scoped to one patient, except the picker's Patient?name= search:
         // the old page only ever showed one patient's records (Fable review F10).
+        // Exactly one patient value, and not a list: FHIR accepts patient=a,b and PHP reads the last of
+        // several values.
         const isSearch = match?.[2] === undefined;
-        if (isSearch && resource !== 'Patient' && (query.get('patient') ?? '').trim() === '') {
+        const patients = query.getAll('patient');
+        const onePatient = patients.length === 1 && /^[A-Za-z0-9-][A-Za-z0-9.-]{0,63}$/.test(patients[0] ?? '');
+        if (isSearch && resource !== 'Patient' && !onePatient) {
+            return c.json({ error: 'A search must name one patient' }, 400);
+        }
+        if (patients.length > 1 || (patients.length === 1 && !onePatient)) {
             return c.json({ error: 'A search must name one patient' }, 400);
         }
         const search = query.toString();

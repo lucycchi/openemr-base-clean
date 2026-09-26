@@ -72,3 +72,8 @@ Observed on the old dashboard (2026-09-26):
 - BM-018: FHIR returns problems in insertion order; the old card sorts by begdate ascending (`PatientIssuesService.php:211`).
 - BM-012 (shared with Allergies): "None" versus "Nothing Recorded" is inferred from `lists_touch` (`medical_problems.html.twig:6-15`).
 - BM-013 (shared with Allergies): the Edit button's `auth` is hard-coded true (`demographics.php:1153`).
+
+## 8. Update after the Fable parity review 2 (2026-09-26)
+
+FHIR's problem-list search requires `lists.activity = 1`, which Fee Sheet problems lack, so an unlinked Fee Sheet problem was missing (BM-051). By user decision the card is now built from the Standard REST API problem list (`GET /api/patient/:puuid/medical_problem`, via `/api/list-dates?list=medical_problem`), which is the old card's own source: each row is keyed by its uuid (a problem linked to two visits is returned twice with the same uuid), filtered by the old `filterActiveIssues` rule and sorted by begdate. FHIR Condition is no longer read for this card, so BM-017 and BM-043 are superseded.
+

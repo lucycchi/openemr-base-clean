@@ -142,7 +142,7 @@ describe('useCareTeam', () => {
         expect(requested).toEqual(['CareTeam?patient=p1', 'display-names?ref=Practitioner%2Fu1&ref=Organization%2Fo1']);
     });
 
-    it('if the names lookup fails, staff show "Name unavailable" and the card still loads', async () => {
+    it('if the names lookup fails, staff say so, distinct from "no record", and the card still loads', async () => {
         const client = fakeClient(
             { ok: true, value: [team('p1')] },
             { 'Practitioner/u1': { ok: true, value: fred }, 'RelatedPerson/r1': { ok: true, value: martha('p1') } },
@@ -153,7 +153,7 @@ describe('useCareTeam', () => {
 
         await waitFor(() => expect(result.current.status).toBe('ready'));
         expect(result.current.status === 'ready' && result.current.data[0]?.members.map((m) => m.name)).toEqual([
-            'Name unavailable',
+            "Name couldn't be loaded",
             'martha mom',
         ]);
     });

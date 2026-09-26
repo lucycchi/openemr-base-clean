@@ -81,7 +81,6 @@ test.describe('switching patients', () => {
     // show a load error and none of that data.
     for (const [card, resource, marker] of [
         ['allergies', 'AllergyIntolerance', 'Penicillin'],
-        ['problems', 'Condition', 'Essential hypertension'],
         ['medications', 'MedicationRequest', 'Metformin'],
         ['care-team', 'CareTeam', 'practitioner'],
         ['encounter-history', 'Encounter', 'Diabetes review'],
@@ -108,4 +107,24 @@ test.describe('switching patients', () => {
             await expect(element).not.toContainText(marker);
         });
     }
+
+    // The problem card reads the standard API's problem list (BM-051); its answer names the patient.
+    test('problems: a problem list for another patient is a load error, never shown (BM-004)', async ({ page }) => {
+        await logInThroughOpenEmr(page);
+        const isList = (url: URL) =>
+            url.pathname === '/api/list-dates' &&
+            url.searchParams.get('list') === 'medical_problem' &&
+            url.searchParams.get('patient') === TYPICAL.fhirId;
+        await page.route(isList, async (route) => {
+            const real = await route.fetch();
+            const body = (await real.json()) as { patient: string };
+            await route.fulfill({ response: real, body: JSON.stringify({ ...body, patient: HISTORY.fhirId }) });
+        });
+
+        await page.goto(`/patient/${TYPICAL.fhirId}`);
+
+        const element = page.locator('[data-card="problems"]');
+        await expect(element).toHaveAttribute('data-state', 'error');
+        await expect(element).not.toContainText('Essential hypertension');
+    });
 });

@@ -24,7 +24,7 @@ export function ProblemListCard({ patientId, state }: { patientId: string; state
                 <ul>
                     {state.data.map((problem) => (
                         <li key={problem.id} data-item="problem">
-                            {problem.label === '' ? problem.name : `${problem.name} (${problem.label})`}
+                            {problem.name}
                         </li>
                     ))}
                 </ul>

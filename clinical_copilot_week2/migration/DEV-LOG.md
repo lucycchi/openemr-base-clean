@@ -2,6 +2,52 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-04 — Fixes from the Fable parity review 2
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- A second Codex run hit the user's ChatGPT usage limit before writing any findings, so a fresh Fable agent reviewed instead. It found 2 P1 and 6 P2 issues, and confirmed every earlier fix holds. The P1s and the refresh race were checked against the OpenEMR source before any fix.
+- Problems (BM-051): FHIR's problem list requires `activity = 1`, which Fee Sheet problems lack.
+  - User decision: build the card from the Standard REST API problem list, the old card's own source.
+  - `/api/list-dates?list=medical_problem` returns uuid, end date, outcome, title and start date.
+  - `mapProblemList` keys rows by uuid, applies the old rule and sorts by begdate. `useProblemCard` wires it.
+  - The FHIR problem mapper, its merge heuristic and the FHIR problem fixtures were removed.
+  - Scope `user/medical_problem.rs` was added.
+- Care Team (BM-053): FHIR sends removed (inactive) members with no status, and no API exposes it. User decision: a visible note on the card. Teams marked entered-in-error are hidden and the badge colour follows the team status.
+- Refresh race: every card refreshed in parallel and OpenEMR revokes a refresh token on first use, so the losers logged the user out. `ensureFreshToken` now shares one in-flight refresh per session.
+- Names outage: a failed `/api/display-names` now marks those rows "Name couldn't be loaded", distinct from "Name unavailable" (no record).
+- Proxy: a search must carry exactly one `patient` value (no lists, no repeats); ids may not start with a dot.
+- `/api/display-names` caches names and 404s for ten minutes, and fetches only what is not cached.
+- Tests:
+  - care-team parity allows "Name unavailable" only for members the lookup cannot name
+  - medication parity requires each old entry on the card its FHIR intent says
+  - header parity approves the middle name (BM-052) and pins TP-LONG's full name
+  - the problems BM-004 E2E now rewrites the problem list's patient
+  - the problem error E2E blocks the problem list
+- Seeds: TP-HISTORY "Fee sheet problem" (inserted as the Fee Sheet does) and TP-LONG's middle name Quinn.
+
+### Decisions
+- Ruling: the problem card reads only the standard API list rather than merging it with FHIR. Visit-linked copies in FHIR carry the link's uuid, not the problem's, so a merge would need the name-and-onset heuristic again; the standard list is exactly the old card's source. Cost if wrong: the card no longer uses FHIR at all, one step further from FHIR-first than the user's "also read" wording.
+- Ruling: the middle name stays (BM-052), as an improvement recorded against the old bar.
+
+### Tests
+- Unit: 231 / 231 passing
+- Playwright: 32 / 32 passing (new: names outage E2E, problems BM-004 against the list)
+- Lint, typecheck and Prettier: clean
+- Proven red:
+  - problem parity on the Fee Sheet problem before the fix, and with the old rule removed (pneumonia leaked in)
+  - the problems BM-004 E2E with the parser's patient check off
+  - medication parity with every list medication moved to Prescriptions (it failed on Metformin and Lisinopril, which the old spec missed)
+  - header parity on the middle name before the exception
+
+### BUGS-MITIGATIONS.md updates
+- Added BM-051 (resolved), BM-052 (resolved), BM-053 (out of scope, mitigated by the note). BM-017, BM-037 and BM-043 annotated. Gate 2 amended.
+
+### Open questions / follow-ups
+- ARC-05 deploy: the app client needs `user/medical_problem.rs` too.
+
 ## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-03 — Fixes from the Fable parity review
 
 **Branch:** `dashboard-migration`

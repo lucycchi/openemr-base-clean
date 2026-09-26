@@ -13,6 +13,10 @@
  *    as "completed" while the old card, which keeps a future end date, still lists it (BM-044).
  *  - TP-HISTORY gets a second visit on 2024-10-26, "Same-day follow-up", so two visits share a date and
  *    the tie order can be compared with the old page (date desc, then id desc).
+ *  - TP-HISTORY gets a problem inserted the way the Fee Sheet does (fee_sheet_queries.php:72), with no
+ *    activity value, so FHIR's problem list leaves it out while the old card shows it (Fable review 2).
+ *  - TP-LONG gets the middle name Quinn: the old identity bar shows first and last name only, the new
+ *    header all given names (BM-052).
  *  - A non-admin dev user, tp-physician (password tp-physician-pass, dev stack only), in OpenEMR's
  *    default Physicians group, so tests can see what a clinician sees: the API lets only
  *    administrators read Practitioner and Organization (Fable review F1).
@@ -132,3 +136,21 @@ QueryUtils::sqlStatementThrowException(
     "UPDATE lists SET enddate = '2027-12-31 00:00:00' WHERE id = 1249 AND pid = 41 AND type = 'allergy'",
 );
 echo "allergies 1248 (resolved, no end date) and 1249 (ends 2027-12-31) on TP-LONG\n";
+
+$feeSheetProblems = QueryUtils::fetchSingleValue(
+    "SELECT COUNT(*) AS c FROM lists WHERE pid = ? AND type = 'medical_problem' AND title = 'Fee sheet problem'",
+    'c',
+    [HISTORY_PID],
+);
+if ((int) $feeSheetProblems === 0) {
+    // The Fee Sheet's own insert (interface/forms/fee_sheet/review/fee_sheet_queries.php:72): no activity.
+    QueryUtils::sqlInsert(
+        "INSERT INTO lists(date, begdate, type, occurrence, classification, pid, diagnosis, title, modifydate)"
+        . " VALUES (NOW(), '2024-10-26', 'medical_problem', 0, 0, ?, '', 'Fee sheet problem', NOW())",
+        [HISTORY_PID],
+    );
+}
+echo "TP-HISTORY: Fee Sheet problem with no activity\n";
+
+QueryUtils::sqlStatementThrowException("UPDATE patient_data SET mname = 'Quinn' WHERE pid = 41");
+echo "TP-LONG: middle name Quinn\n";

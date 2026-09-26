@@ -8,7 +8,7 @@ import { openOldSession, readOldCard, showOldPatient } from '../support/oldDashb
 // Compared (modules/problem-list.md, section 2): which problems are shown, in order (BM-018).
 // Approved exceptions, applied below:
 //   BM-012  the old "Nothing Recorded" / "None" become "None recorded"
-//   BM-017  problems FHIR calls resolved or recurring carry a label; the name is compared without it
+// The card reads the old card's own source, the standard API's problem list (BM-051), so nothing else differs.
 const FIXTURES: FixtureKey[] = ['TP-TYPICAL', 'TP-EMPTY', 'TP-HISTORY', 'TP-LONG'];
 const OLD_EMPTY = ['Nothing Recorded', 'None'];
 
@@ -25,7 +25,7 @@ test('problems match the old dashboard for every fixture, with the approved exce
 
         await page.goto(`/patient/${patient.fhirId}`);
         const card = await readNewCard(page, 'problems');
-        const newNames = card.rows.map((row) => row.text.replace(/ \((resolved per FHIR|recurrence)\)$/, ''));
+        const newNames = card.rows.map((row) => row.text);
 
         expect(card.state, key).toBe('ready');
         expect(card.patientId, key).toBe(patient.fhirId);

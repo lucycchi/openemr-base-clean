@@ -48,4 +48,27 @@ describe('parseListDates', () => {
             });
         }
     });
+
+    it('a problem row carries its title and start date, and must have a title', () => {
+        const row = { uuid: 'u', enddate: null, outcome: 0, title: 'Asthma', begdate: '2020-01-01 00:00:00' };
+        const result = parseListDates(
+            { patient: 'p1', list: 'medical_problem', entries: [row] },
+            'p1',
+            'medical_problem',
+        );
+
+        expect(result.ok && result.value.get('u')).toEqual({
+            enddate: null,
+            outcome: 0,
+            title: 'Asthma',
+            begdate: '2020-01-01 00:00:00',
+        });
+        expect(
+            parseListDates(
+                { patient: 'p1', list: 'medical_problem', entries: [{ ...row, title: undefined }] },
+                'p1',
+                'medical_problem',
+            ),
+        ).toEqual({ ok: false, error: { kind: 'invalid-response' } });
+    });
 });

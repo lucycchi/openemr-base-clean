@@ -12,6 +12,8 @@ import type { SystemTokenSource } from './systemToken';
 const NAMED_REFERENCE = /^(Practitioner|Organization)\/([A-Za-z0-9-][A-Za-z0-9.-]{0,63})$/;
 const MAX_REFERENCES = 50;
 const TIMEOUT_MS = 15_000;
+/** Names found, and 404s, are kept this long, so a busy dashboard does not re-read OpenEMR each load. */
+const CACHE_MS = 10 * 60_000;
 
 export interface DisplayNamesDeps {
     store: SessionStore;
@@ -41,6 +43,7 @@ export function displayNamesRoutes(deps: DisplayNamesDeps): Hono {
     const { store, oauth, now, fhirBase, systemToken } = deps;
     const fetchImpl = deps.fetchImpl ?? fetch;
     const routes = new Hono();
+    const cache = new Map<string, { name: string | undefined; expiresAt: number }>();
 
     routes.get('/', async (c) => {
         const refs = c.req.queries('ref') ?? [];
@@ -61,6 +64,23 @@ export function displayNamesRoutes(deps: DisplayNamesDeps): Hono {
             return c.json({ error: 'Not logged in' }, 401);
         }
 
+        const names: Record<string, string> = {};
+        const toRead: RegExpExecArray[] = [];
+        for (const match of parsed) {
+            const ref = match?.[0] ?? '';
+            const cached = cache.get(ref);
+            if (cached !== undefined && cached.expiresAt > now()) {
+                if (cached.name !== undefined) {
+                    names[ref] = cached.name;
+                }
+            } else if (match !== null) {
+                toRead.push(match);
+            }
+        }
+        if (toRead.length === 0) {
+            return c.json({ names }, 200, { 'cache-control': 'no-store' });
+        }
+
         let token: string;
         try {
             token = await systemToken.getToken();
@@ -69,22 +89,28 @@ export function displayNamesRoutes(deps: DisplayNamesDeps): Hono {
             return c.json({ error: 'Names are not available' }, 502, { 'cache-control': 'no-store' });
         }
 
-        const names: Record<string, string> = {};
-        for (const match of parsed) {
-            const [ref = '', type = '', id = ''] = match ?? [];
+        for (const match of toRead) {
+            const [ref = '', type = '', id = ''] = match;
             try {
                 const res = await fetchImpl(`${fhirBase}/${ref}`, {
                     method: 'GET',
                     headers: { Authorization: `Bearer ${token}`, Accept: 'application/fhir+json' },
                     signal: AbortSignal.timeout(TIMEOUT_MS),
                 });
+                if (res.status === 404) {
+                    // A user without an NPI (BM-028): the card shows "Name unavailable".
+                    cache.set(ref, { name: undefined, expiresAt: now() + CACHE_MS });
+                    continue;
+                }
                 if (!res.ok) {
-                    continue; // 404 for a user without an NPI (BM-028): the card shows "Name unavailable"
+                    continue;
                 }
                 const resource = (await res.json()) as unknown;
                 const name = isNamed(resource, type, id) ? displayName(resource) : NAME_UNAVAILABLE;
-                if (name !== NAME_UNAVAILABLE) {
-                    names[ref] = name;
+                const known = name === NAME_UNAVAILABLE ? undefined : name;
+                cache.set(ref, { name: known, expiresAt: now() + CACHE_MS });
+                if (known !== undefined) {
+                    names[ref] = known;
                 }
             } catch (error) {
                 console.error('Name read failed', { type, error: (error as Error).name });

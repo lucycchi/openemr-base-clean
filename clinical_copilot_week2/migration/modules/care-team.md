@@ -25,7 +25,7 @@ The template embeds the team as JSON (`existing_care_team`, plus user, related-p
 | Remove | column header shown even in view mode | edit-mode control |
 
 **Sort order:** the order of `existing_care_team` from CareTeamService. TP-TYPICAL shows the Provider first, then the Related Person.
-**Filtered out:** None observed; the team is shown whatever its status, with a status badge.
+**Filtered out:** members whose status is inactive or entered-in-error, and teams marked entered-in-error (`CareTeamService::getCareTeamData`, CareTeamService.php:563-581). The Remove action only sets a member inactive (:535-545). *Corrected 2026-09-26: the first audit said "None observed"; see BM-053.*
 **Empty state text:** None. With no team, the card shows only the table header row (Type, Member, Role, Facility, Since, Status, Note, Remove) and no message (BM-030).
 **Visibility rules:** hidden when `card_care_team` is in `hide_dashboard_cards` (demographics.php:1252) or `aclCheckCore('patients','demo')` fails (1271). The Edit button's `auth` is `aclCheckCore('patients','demo','','write')`.
 
@@ -92,3 +92,4 @@ Observed on the old dashboard (2026-09-26):
 ## 8. Update after the Fable parity review (2026-09-26)
 
 GET /fhir/Practitioner and /fhir/Organization need the admin/users ACL, so a non-admin user could read neither (BM-048). Names are now read by the BFF's server-only client through `/api/display-names`. Each facility FHIR adds as its own Organization participant is dropped from the member rows (BM-045).
+- Fable review 2 (2026-09-26): FHIR sends removed members with no status, so the card carries a note to check in OpenEMR (BM-053, user decision). Teams marked entered-in-error are hidden and the badge colour follows the team status.

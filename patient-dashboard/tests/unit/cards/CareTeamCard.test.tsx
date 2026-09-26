@@ -65,4 +65,23 @@ describe('CareTeamCard', () => {
         render(<CareTeamCard patientId="p1" state={{ status: 'error', error: { kind: 'network' } }} />);
         expect(screen.getByText("Couldn't load the care team")).toBeTruthy();
     });
+
+    it('says OpenEMR does not report removed members, so a clinician checks before relying on it', () => {
+        render(<CareTeamCard patientId="p1" state={{ status: 'ready', data: [typical] }} />);
+
+        expect(screen.getByText(/does not say whether a member was removed/)).toBeTruthy();
+    });
+
+    it('colours the team badge by status rather than always green', () => {
+        const { container } = render(
+            <CareTeamCard
+                patientId="p1"
+                state={{ status: 'ready', data: [typical, { ...typical, id: 't2', status: 'Inactive' }] }}
+            />,
+        );
+
+        const badges = Array.from(container.querySelectorAll('[data-field="status"]')).map((b) => b.className);
+        expect(badges[0]).toContain('badge-success');
+        expect(badges[1]).toContain('badge-secondary');
+    });
 });

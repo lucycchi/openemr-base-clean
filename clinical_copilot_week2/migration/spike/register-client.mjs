@@ -40,11 +40,11 @@ const KINDS = {
   app: {
     type: 'private',
     redirect: 'http://localhost:5180/auth/callback',
-    // api:oemr, patient.rs, medication.rs and allergy.rs: the standard API is read for the medication
-    // and allergy lists' end dates and outcome only, which FHIR does not send correctly (BM-044, BM-047;
+    // api:oemr, patient.rs, medication.rs, allergy.rs and medical_problem.rs: the standard API is read for the medication
+    // and allergy lists' end dates and outcome, and for the problem list itself, which FHIR does not send correctly (BM-044, BM-047, BM-051;
     // user decisions 2026-09-26).
     scope: ['openid', 'fhirUser', 'offline_access', 'api:fhir', ...READ.map((r) => `user/${r}.rs`),
-      'api:oemr', 'user/patient.rs', 'user/medication.rs', 'user/allergy.rs'],
+      'api:oemr', 'user/patient.rs', 'user/medication.rs', 'user/allergy.rs', 'user/medical_problem.rs'],
   },
   names: {
     type: 'private',

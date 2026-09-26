@@ -3,6 +3,9 @@ import type { HumanName, Organization, Practitioner, RelatedPerson } from 'fhir/
 /** Shown for a person or facility FHIR cannot name (BM-028, BM-032, BM-045). */
 export const NAME_UNAVAILABLE = 'Name unavailable';
 
+/** Shown when the staff-name lookup itself failed, so an outage never looks like "no record". */
+export const NAME_NOT_LOADED = "Name couldn't be loaded";
+
 /**
  * Relative references to the named types the BFF proxy serves, with a FHIR id that cannot be a
  * dot-segment. Anything else (absolute URLs, other types, traversal) is never fetched.

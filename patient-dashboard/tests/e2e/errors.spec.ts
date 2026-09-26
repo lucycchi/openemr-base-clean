@@ -30,7 +30,8 @@ test('allergies card shows "Couldn\'t load" on API failure', async ({ page }) =>
 
 test('problem list shows "Couldn\'t load" on API failure', async ({ page }) => {
     await logInThroughOpenEmr(page);
-    await page.route('**/api/fhir/Condition**', (route) =>
+    // The card reads the standard API's problem list through the BFF (BM-051).
+    await page.route('**/api/list-dates?list=medical_problem**', (route) =>
         route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"OpenEMR did not respond"}' }),
     );
 
@@ -136,4 +137,19 @@ test('allergies show "Couldn\'t load" when the allergy list dates fail', async (
     const card = page.locator('[data-card="allergies"]');
     await expect(card).toHaveAttribute('data-state', 'error');
     await expect(card).toContainText("Couldn't load allergies");
+});
+
+// Fable review 2: if the staff-name lookup itself fails, the card must say so, distinct from
+// "Name unavailable", which means OpenEMR has no readable record for that person.
+test('a failed staff-name lookup says "Name couldn\'t be loaded", never "Name unavailable"', async ({ page }) => {
+    await logInThroughOpenEmr(page);
+    await page.route('**/api/display-names**', (route) =>
+        route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"boom"}' }),
+    );
+
+    await page.goto(`/patient/${fixture('TP-TYPICAL').fhirId}`);
+
+    const visit = page.locator('[data-item="encounter"]', { hasText: 'Diabetes review' });
+    await expect(visit.locator('[data-field="provider"]')).toHaveText("Name couldn't be loaded");
+    await expect(page.locator('[data-card="care-team"]')).toHaveAttribute('data-state', 'ready');
 });

@@ -6,15 +6,15 @@ import { ProblemListCard } from '../../../web/src/cards/ProblemListCard';
 afterEach(cleanup);
 
 describe('ProblemListCard', () => {
-    it('lists problems, labelling the ones FHIR reports as resolved or recurring', () => {
+    it('lists each problem by title, as the old card does', () => {
         const { container } = render(
             <ProblemListCard
                 patientId="p1"
                 state={{
                     status: 'ready',
                     data: [
-                        { id: 'a', name: 'Type 2 diabetes mellitus', label: '' },
-                        { id: 'b', name: 'Hyperlipidaemia', label: 'resolved per FHIR' },
+                        { id: 'a', name: 'Type 2 diabetes mellitus' },
+                        { id: 'b', name: 'Hyperlipidaemia' },
                     ],
                 }}
             />,
@@ -23,7 +23,7 @@ describe('ProblemListCard', () => {
         expect(container.querySelector('[data-card="problems"]')?.getAttribute('data-patient-id')).toBe('p1');
         expect(Array.from(container.querySelectorAll('[data-item="problem"]')).map((row) => row.textContent)).toEqual([
             'Type 2 diabetes mellitus',
-            'Hyperlipidaemia (resolved per FHIR)',
+            'Hyperlipidaemia',
         ]);
     });
 

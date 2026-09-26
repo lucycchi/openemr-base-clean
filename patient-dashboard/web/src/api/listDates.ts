@@ -1,6 +1,6 @@
 import type { Result } from './client';
 
-export type ListName = 'medication' | 'allergy';
+export type ListName = 'medication' | 'allergy' | 'medical_problem';
 
 /** What the dashboard needs from one list row (server/listDates.ts). */
 export interface ListDates {
@@ -8,6 +8,9 @@ export interface ListDates {
     enddate: string | null;
     /** 1 means resolved. */
     outcome: number;
+    /** Problems only (the card is built from the list, BM-051). */
+    title?: string;
+    begdate?: string | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -35,11 +38,18 @@ export function parseListDates(body: unknown, patientId: string, list: ListName)
         if (!isRecord(entry) || typeof entry.uuid !== 'string' || typeof entry.outcome !== 'number') {
             return invalid;
         }
-        const { enddate } = entry;
+        const { enddate, title, begdate } = entry;
         if (enddate !== null && typeof enddate !== 'string') {
             return invalid;
         }
-        dates.set(entry.uuid, { enddate, outcome: entry.outcome });
+        if (list !== 'medical_problem') {
+            dates.set(entry.uuid, { enddate, outcome: entry.outcome });
+            continue;
+        }
+        if (typeof title !== 'string' || (begdate !== null && typeof begdate !== 'string')) {
+            return invalid;
+        }
+        dates.set(entry.uuid, { enddate, outcome: entry.outcome, title, begdate });
     }
     return { ok: true, value: dates };
 }

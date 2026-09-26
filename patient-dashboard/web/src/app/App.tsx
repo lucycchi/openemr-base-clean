@@ -10,12 +10,11 @@ import { PatientHeader } from '../cards/PatientHeader';
 import { ProblemListCard } from '../cards/ProblemListCard';
 import { PatientPicker } from '../cards/PatientPicker';
 import { useAllergyCard } from '../hooks/useAllergyCard';
-import { useBundleCard } from '../hooks/useBundleCard';
 import { useCareTeam } from '../hooks/useCareTeam';
 import { useMedicationCards } from '../hooks/useMedicationCards';
+import { useProblemCard } from '../hooks/useProblemCard';
 import { useEncounters } from '../hooks/useEncounters';
 import { usePatient } from '../hooks/usePatient';
-import { mapProblems } from '../mappers/problems';
 import { visibleCards } from './hiddenCards';
 import { parseSiteConfig } from './siteConfig';
 import type { SiteConfig } from './siteConfig';
@@ -43,7 +42,7 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
         dateFormat: config.dateDisplayFormat,
     });
     const allergies = useAllergyCard(client, patientId, asOf);
-    const problems = useBundleCard(client, patientId, 'Condition', mapProblems);
+    const problems = useProblemCard(client, patientId, asOf);
     const medicationCards = useMedicationCards(client, patientId, asOf);
     const careTeam = useCareTeam(client, patientId);
     const encounters = useEncounters(client, patientId);

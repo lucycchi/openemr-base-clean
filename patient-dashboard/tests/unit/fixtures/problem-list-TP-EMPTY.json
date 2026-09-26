@@ -1,0 +1,8 @@
+{
+  "validationErrors": [],
+  "internalErrors": [],
+  "data": [],
+  "links": {
+    "first": "https://localhost:9300/apis/default/api/patient/a2d68328-f292-4e4e-bea5-f589f5f04f56/medical_problem?site=default&_offset=0&_count=0"
+  }
+}
