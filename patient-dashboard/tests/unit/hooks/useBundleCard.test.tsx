@@ -8,6 +8,7 @@ import { useBundleCard } from '../../../web/src/hooks/useBundleCard';
 function clientReturning(result: Result<FhirResource[]>, paths: string[] = []): ApiClient {
     return {
         getResource: async () => ({ ok: false, error: { kind: 'network' } }),
+        getJson: async () => ({ ok: false, error: { kind: 'network' } }),
         getBundle: async <T extends FhirResource>(path: string) => {
             paths.push(path);
             return result as Result<T[]>;

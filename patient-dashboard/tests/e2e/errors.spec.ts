@@ -106,3 +106,19 @@ test('a failed settings load shows an error, never cards the site may have hidde
     await expect(page.getByRole('alert')).toContainText("Couldn't load the dashboard settings");
     await expect(page.locator('[data-card]')).toHaveCount(0);
 });
+
+// BM-044: the medication list needs its end dates from the standard API. If they cannot be read, the
+// Medications card must say so rather than guess, while Prescriptions still shows from FHIR.
+test('medications show "Couldn\'t load" when the list end dates fail, prescriptions still show', async ({ page }) => {
+    await logInThroughOpenEmr(page);
+    await page.route('**/api/medication-end-dates**', (route) =>
+        route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"boom"}' }),
+    );
+
+    await page.goto(`/patient/${fixture('TP-TYPICAL').fhirId}`);
+
+    const medications = page.locator('[data-card="medications"]');
+    await expect(medications).toHaveAttribute('data-state', 'error');
+    await expect(medications).toContainText("Couldn't load medications");
+    await expect(page.locator('[data-card="prescriptions"]')).toHaveAttribute('data-state', 'ready');
+});

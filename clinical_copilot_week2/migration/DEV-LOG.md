@@ -2,6 +2,47 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-02 — Medication list end dates from the Standard REST API
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- User decision (option 3): read the medication list's end dates from OpenEMR's Standard REST API, the one exception to FHIR only.
+- Test data: `seed-parity-gaps.php` gives Lisinopril (lists 1242) an end date of 2027-06-30. FHIR then calls it "completed", and medication parity failed on TP-TYPICAL before any code changed. TP-HISTORY's Amoxicillin (ended 2024-11-05) covers the past-end-date case.
+- `server/medicationEndDates.ts`, `GET /api/medication-end-dates?patient=<uuid>`:
+  - maps the uuid to OpenEMR's pid through `GET /api/patient/<uuid>`, then reads `GET /api/patient/<pid>/medication`
+  - returns only uuid, end date and outcome, and 502s unless the patient and every row belong to the requested patient
+  - rejects anything but a uuid with 400, before calling OpenEMR
+- OpenEMR answers an empty list with a bodyless 404 (BM-046). After the patient lookup succeeds, that is read as an empty list; a 404 with a body is still a failure.
+- Web:
+  - `getJson` on the API client
+  - `parseMedicationListDates` (a wrong patient or a malformed answer is an error, never an empty map)
+  - `useMedicationCards`, which gives each card its own state: Medications errors if the end dates fail, while Prescriptions falls back to FHIR
+- `splitMedications(resources, listDates, today)` applies the old `filterActiveIssues` rule to list rows: hide outcome 1 or an end date on or before today, keep a future one; FHIR status decides only when no list row matches. A list row marked Order keeps that rule on the Prescriptions card.
+- Scopes: `api:oemr user/patient.rs user/medication.rs` added to the app client in `spike/register-client.mjs`, on the dev database's existing client, and in the gitignored `.env`.
+- `spike/api-get.mjs`: an audit helper like `fhir-get.mjs`, for the Standard REST API.
+- `selectLoadState` removed (no longer used).
+- `PATIENT_DASHBOARD_MIGRATION.md`: corrected the lines the review made wrong (refills, end dates, visit-linked problems, facility, the medication data source, BM-042); the full ARC-05 rewrite is still to come.
+
+### Decisions
+- The old card compares the end date with the current time, so an entry ending today is hidden; the new rule compares dates (`ends > today`), which gives the same answer except for an end date with a time later today, which OpenEMR's date field does not store.
+- The route is narrow on purpose: one path and three fields, not a general standard-API proxy.
+
+### Tests
+- Unit: 186 / 186 passing (route 7, parser 3, client 2, mapper 6 new, hook 3)
+- Playwright: 29 / 29 passing (new: end-date failure E2E)
+- Lint, typecheck and Prettier: clean
+- Proven red:
+  - medication parity with the end date ignored (Amoxicillin leaked in on TP-HISTORY)
+  - the failure E2E with Prescriptions made to fail with the end dates
+
+### BUGS-MITIGATIONS.md updates
+- Resolved: BM-044. Added: BM-046 (out of scope). Gate 2 data-source decision amended.
+
+### Open questions / follow-ups
+- The droplet's client must be registered with the three extra scopes (ARC-05).
+
 ## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-01 — Fixes from the Codex parity review
 
 **Branch:** `dashboard-migration`

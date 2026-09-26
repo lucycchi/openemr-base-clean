@@ -117,9 +117,16 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 - [x] Tests first, watched failing (seeded data turned problems, prescriptions and care-team parity red; new unit and E2E tests red)
 - [x] Implement: visit-linked problems (BM-043); end-dated prescriptions and refills "Not available" (BM-044, BM-041); care-team facility names (BM-045); the Bootstrap stylesheet; encounter provider from the primary performer only and same-day order by time (the Arc 04 card); settings failure shows an error; parity and switch test gaps
 - [x] Gates green; DEV-LOG, arc file and BM rows updated
-**Open:** BM-044 for the Medications card waits on the user's decision (FHIR cannot tell a future end date from a past one).
+**Follow-up:** BM-044 for the Medications card was resolved in slice 03-05-02.
 **Resolves:** BM-041, BM-043, BM-045 (BM-042 recorded as a user decision)
 **Touches:** `web/src/`, `server/fhirProxy.ts`, `tests/`
+
+#### Slice 03-05-02 — Medication list end dates from the Standard REST API
+- [x] Tests first, watched failing (seeded Lisinopril end date turned medication parity red; route, parser, mapper and hook tests red)
+- [x] Implement: BFF route `/api/medication-end-dates` (patient uuid to pid, then the medication list; uuid, end date and outcome only; every row checked against the patient); `getJson` on the API client; `useMedicationCards`; the old filterActiveIssues rule for list rows on both medication cards; three extra scopes on the app client
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
+**Resolves:** BM-044 (user decision 2026-09-26: option 3, read the end date from the Standard REST API); records BM-046
+**Touches:** `server/medicationEndDates.ts`, `web/src/api/`, `web/src/hooks/useMedicationCards.ts`, `web/src/mappers/medications.ts`, `spike/register-client.mjs`
 
 ## Definition of Done for this arc
 - [x] All slices ticked; every BM row listed above struck through

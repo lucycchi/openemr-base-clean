@@ -9,6 +9,8 @@
  *  - Omeprazole (prescriptions 2480) gets a future end date and 2 refills, so FHIR reports it as
  *    "completed" with 0 refills while the old card shows it as active with 2.
  *  - Fred Stone's care-team membership (care_team_member 1) gets facility 3, Great Clinic.
+ *  - Lisinopril on TP-TYPICAL's medication list (lists 1242) ends 2027-06-30, so FHIR reports it
+ *    as "completed" while the old card, which keeps a future end date, still lists it (BM-044).
  *  - TP-LONG's "Long-list allergen 01" (lists 1247) becomes severe, so the old card highlights it
  *    and FHIR reports criticality high: no fixture had a high-risk allergy before.
  *
@@ -61,3 +63,9 @@ echo "care_team_member 1: facility 3\n";
 
 QueryUtils::sqlStatementThrowException("UPDATE lists SET severity_al = 'severe' WHERE id = 1247 AND pid = 41 AND type = 'allergy'");
 echo "allergy 1247 (TP-LONG): severity severe\n";
+
+QueryUtils::sqlStatementThrowException(
+    "UPDATE lists SET enddate = '2027-06-30 00:00:00' WHERE id = 1242 AND pid = ? AND type = 'medication'",
+    [TYPICAL_PID],
+);
+echo "medication 1242 (Lisinopril): end date 2027-06-30\n";

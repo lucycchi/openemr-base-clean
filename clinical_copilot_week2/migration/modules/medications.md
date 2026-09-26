@@ -80,3 +80,8 @@ VERDICT: no reliable FHIR field. Options for Gate 2:
 - BM-020: the UNION leaves out list rows linked to a prescription, so a linked medication appears on the old card with the list's dosage text but in FHIR only as the prescription (`PrescriptionService.php:260`).
 - BM-036: the old begdate order can't be reproduced from FHIR; the card keeps FHIR order (approved exception).
 - BM-012 and BM-013 (shared): "None" is inferred from lists_touch, and Edit `auth` is hard-coded true (`demographics.php:1175`).
+
+## 8. Update after the Codex parity review (2026-09-26)
+
+FHIR MedicationRequest does not carry the end date: an active entry with any end date, past or future, is sent as status `completed` (BM-044). By user decision the Medications card now reads each list entry's `enddate` and `outcome` from the Standard REST API (`GET /api/patient/:pid/medication`, after `GET /api/patient/:puuid` for the pid) through the BFF route `/api/medication-end-dates`, and applies the old `filterActiveIssues` rule exactly. The list-row uuid equals the FHIR MedicationRequest id, so the two are matched by id. An empty list comes back as a bodyless HTTP 404 (BM-046).
+

@@ -8,6 +8,7 @@ import { usePatient } from '../../../web/src/hooks/usePatient';
 function clientReturning(result: Result<FhirResource>): ApiClient {
     return {
         getResource: async <T extends FhirResource>() => result as Result<T>,
+        getJson: async () => ({ ok: false, error: { kind: 'network' } }),
         getBundle: async () => ({ ok: true, value: [] }),
     };
 }
@@ -62,6 +63,7 @@ describe('usePatient when the patient changes', () => {
                 }
                 return { ok: true, value: patients[id] } as Result<T>;
             },
+            getJson: async () => ({ ok: false, error: { kind: 'network' } }),
             getBundle: async () => ({ ok: true, value: [] }),
         };
         const { result, rerender } = renderHook(({ id }) => usePatient(client, id, OPTIONS), {

@@ -14,14 +14,14 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
 
 ## What was ported
 
-| Section | Old source | New data source (FHIR R4) | Parity status |
+| Section | Old source | New data source (FHIR R4 unless noted) | Parity status |
 |---|---|---|---|
 | Patient header | `interface/main/tabs/templates/patient_data_template.php` filled from `demographics.php:924`; age from `PatientService::getPatientAgeDisplay` | `Patient` (name, identifier type PT for MRN, birthDate, gender, deceasedDateTime) | Name, MRN and DOB match. Age is computed client-side with the same rules (BM-007). **Added:** sex and a status ("Deceased (date)" or "Active"), which the challenge requires but the old header never showed. |
 | Allergies | `demographics.php:1115-1134`, `allergies.html.twig` | `AllergyIntolerance` | The list and reactions match. Severity shows as FHIR risk level (BM-011). An empty list says "No allergies recorded" (BM-012). |
-| Problem List | `demographics.php:1140-1158`, `medical_problems.html.twig` | `Condition?category=problem-list-item` | Titles and completeness match. Status handling was changed for safety (BM-017). |
-| Medications | `demographics.php:1162-1180`, `medication.html.twig` | `MedicationRequest`, intent `plan` | Titles and dosage text match. The card split relies on intent (BM-019), and the old start-date order can't be reproduced from FHIR, so FHIR's order is kept (BM-036). |
-| Prescriptions | `demographics.php:1184-1247`, Smarty `general_fragment.html` via `C_Prescription` | `MedicationRequest`, intent `order` | Drug, quantity, refills and date added match. The dose detail is not in FHIR (BM-038). |
-| Care Team | `CareTeamViewCard`, `manage_care_team.html.twig` | `CareTeam`, then `Practitioner` and `RelatedPerson` by reference | Team name, status, member type and roles match. The related person's since date and each member's status and note aren't in FHIR (BM-037), and names that FHIR can't resolve show as "Name unavailable" (BM-028). |
+| Problem List | `demographics.php:1140-1158`, `medical_problems.html.twig` | `Condition` (problem-list-item and encounter-diagnosis, merged) | Titles and completeness match, including problems linked to a visit, which FHIR moves out of the problem list (BM-043). Status handling was changed for safety (BM-017). |
+| Medications | `demographics.php:1162-1180`, `medication.html.twig` | `MedicationRequest`, intent `plan`, plus each list entry's end date and outcome from the Standard REST API | Titles and dosage text match, and the old rule (hide resolved or past-ended entries, keep future-ended ones) is applied exactly, because FHIR does not send the end date (BM-044). The card split relies on intent (BM-019), and the old start-date order can't be reproduced from FHIR, so FHIR's order is kept (BM-036). |
+| Prescriptions | `demographics.php:1184-1247`, Smarty `general_fragment.html` via `C_Prescription` | `MedicationRequest`, intent `order` | Drug, quantity and date added match, including prescriptions with an end date, which FHIR calls completed (BM-044). Refills show "Not available", because FHIR always sends 0 (BM-041). The dose detail is not in FHIR (BM-038). |
+| Care Team | `CareTeamViewCard`, `manage_care_team.html.twig` | `CareTeam`, then `Practitioner`, `RelatedPerson` and `Organization` by reference | Team name, status, member type, roles and facility match (BM-045). The related person's since date and each member's status and note aren't in FHIR (BM-037), and names that FHIR can't resolve show as "Name unavailable" (BM-028). |
 | Encounter history (extra) | `interface/patient_file/history/encounters.php` (Visit History) | `Encounter`, then `Practitioner` | Date, reason and provider match. Billing, insurance, issue and forms columns are not ported (BM-039). |
 
 ## Why this framework
@@ -57,6 +57,9 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
   - *Uncoded allergy names and markup (BM-009, BM-010):* an uncoded allergy's name is only in the FHIR narrative, which OpenEMR builds without HTML escaping. I read it as text, never as HTML, so a name like `Latex <b>x</b>` displays as "Latex x".
   - *Names (BM-028, BM-032):* FHIR's Practitioner endpoint only serves users with an NPI, so care-team members and encounter providers without one show as "Name unavailable".
   - *Header status (BM-005):* `Patient.active` is always true, so status is derived from `deceasedDateTime` instead.
+  - *Refills (BM-041):* FHIR always sends 0 refills, so the column says "Not available" rather than a wrong number.
+  - *Medication end dates (BM-044):* FHIR sends "completed" for any end date, past or future, and never the date itself. For the medication list only, the BFF reads each entry's end date and outcome from OpenEMR's Standard REST API, which needs three extra scopes (`api:oemr`, `user/patient.rs`, `user/medication.rs`). That API answers an empty list with a bodyless 404 (BM-046).
+  - *Visit-linked problems (BM-043):* FHIR drops a problem from the problem list once it is linked to a visit, and returns it once per visit instead. The card reads both and merges the copies.
   - *The prescription dose detail and the encounter billing, insurance and forms columns* are not in FHIR and are not ported.
 - **The API has safety traps the client must guard against:**
   - an unsupported `_include` returns an empty Bundle instead of an error (BM-029)
@@ -67,6 +70,7 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
   - OpenEMR echoes any `Origin` into `Access-Control-Allow-Origin` (BM-002)
   - its preflight handling is unreachable (BM-001)
   - the FHIR Encounter search appears not to apply sensitivity restrictions that the old Visit History page enforces (BM-033, read from the code, not tested at runtime)
+  - the FHIR MedicationRequest route checks medication access, not the prescription permission the old card required, so prescriptions are visible to anyone who may see medications (BM-042; kept by decision, and a site can hide the card)
 
   These are documented for the OpenEMR maintainers.
 - **Operational cost:** a second process (the BFF) to deploy and monitor, a client secret to store, a session store, and an administrator step to enable the confidential client (it registers disabled).

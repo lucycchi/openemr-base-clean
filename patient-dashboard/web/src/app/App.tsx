@@ -11,11 +11,10 @@ import { ProblemListCard } from '../cards/ProblemListCard';
 import { PatientPicker } from '../cards/PatientPicker';
 import { useBundleCard } from '../hooks/useBundleCard';
 import { useCareTeam } from '../hooks/useCareTeam';
+import { useMedicationCards } from '../hooks/useMedicationCards';
 import { useEncounters } from '../hooks/useEncounters';
-import { selectLoadState } from '../hooks/loadState';
 import { usePatient } from '../hooks/usePatient';
 import { mapAllergies } from '../mappers/allergies';
-import { splitMedications } from '../mappers/medications';
 import { mapProblems } from '../mappers/problems';
 import { visibleCards } from './hiddenCards';
 import { parseSiteConfig } from './siteConfig';
@@ -41,7 +40,7 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
     const header = usePatient(client, patientId, { asOf, age: config.ageDisplay });
     const allergies = useBundleCard(client, patientId, 'AllergyIntolerance', mapAllergies);
     const problems = useBundleCard(client, patientId, 'Condition', mapProblems);
-    const medicationRequests = useBundleCard(client, patientId, 'MedicationRequest', splitMedications);
+    const medicationCards = useMedicationCards(client, patientId, asOf);
     const careTeam = useCareTeam(client, patientId);
     const encounters = useEncounters(client, patientId);
     const shown = visibleCards(config.hiddenCards);
@@ -51,16 +50,10 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
             {shown.includes('card_allergies') && <AllergiesCard patientId={patientId} state={allergies} />}
             {shown.includes('card_medicalproblems') && <ProblemListCard patientId={patientId} state={problems} />}
             {shown.includes('card_medication') && (
-                <MedicationsCard
-                    patientId={patientId}
-                    state={selectLoadState(medicationRequests, (split) => split.medications)}
-                />
+                <MedicationsCard patientId={patientId} state={medicationCards.medications} />
             )}
             {shown.includes('card_prescriptions') && (
-                <PrescriptionsCard
-                    patientId={patientId}
-                    state={selectLoadState(medicationRequests, (split) => split.prescriptions)}
-                />
+                <PrescriptionsCard patientId={patientId} state={medicationCards.prescriptions} />
             )}
             {shown.includes('card_care_team') && <CareTeamCard patientId={patientId} state={careTeam} />}
             {shown.includes('card_encounter_history') && (

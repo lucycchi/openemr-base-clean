@@ -12,9 +12,19 @@ function recorded(key: string): MedicationRequest[] {
     return (bundle.entry ?? []).flatMap((entry) => (entry.resource === undefined ? [] : [entry.resource]));
 }
 
+// TP-TYPICAL's medication list as the standard API returns it (spike/api-get.mjs, 2026-09-26). FHIR
+// sends Lisinopril as "completed" because it has an end date, 2027-06-30 (BM-044).
+const TODAY = '2026-09-26';
+const TYPICAL_LIST = new Map([
+    ['a2d6832a-be78-4354-b0ac-9d7b893d0ac4', { enddate: null, outcome: 0 }],
+    ['a2d6832a-bf83-4fd5-a6da-ee15b8d4283a', { enddate: '2027-06-30 00:00:00', outcome: 0 }],
+    ['a2d6832a-bf88-4788-80d8-b1b81dc02cc2', { enddate: null, outcome: 0 }],
+]);
+const LISINOPRIL = 'a2d6832a-bf83-4fd5-a6da-ee15b8d4283a';
+
 describe('splitMedications', () => {
     it('plan goes to Medications, order goes to Prescriptions (BM-019)', () => {
-        const { medications, prescriptions } = splitMedications(recorded('TP-TYPICAL'));
+        const { medications, prescriptions } = splitMedications(recorded('TP-TYPICAL'), TYPICAL_LIST, TODAY);
 
         expect(medications.map((m) => m.name)).toEqual(['Metformin 500 mg', 'Lisinopril 10 mg']);
         expect(prescriptions.map((m) => m.name)).toEqual(['Amlodipine 5 mg', 'Omeprazole 20 mg', 'Atorvastatin 20 mg']);
@@ -62,5 +72,50 @@ describe('splitMedications', () => {
 
         expect(names).toHaveLength(60);
         expect(names[0]).toBe('Long-list medication 01');
+    });
+
+    it('a list medication with a future end date stays on the list, as on the old card (BM-044)', () => {
+        const names = splitMedications(recorded('TP-TYPICAL'), TYPICAL_LIST, TODAY).medications.map((m) => m.name);
+
+        expect(names).toContain('Lisinopril 10 mg');
+    });
+
+    it('a list medication whose end date has passed is hidden', () => {
+        const names = splitMedications(recorded('TP-TYPICAL'), TYPICAL_LIST, '2027-07-01').medications.map(
+            (m) => m.name,
+        );
+
+        expect(names).toEqual(['Metformin 500 mg']);
+    });
+
+    it('a list medication ending today is hidden, as the old card compares the end date with now', () => {
+        const names = splitMedications(recorded('TP-TYPICAL'), TYPICAL_LIST, '2027-06-30').medications.map(
+            (m) => m.name,
+        );
+
+        expect(names).not.toContain('Lisinopril 10 mg');
+    });
+
+    it('a list medication marked resolved is hidden, whatever FHIR says', () => {
+        const resolved = new Map(TYPICAL_LIST).set(LISINOPRIL, { enddate: null, outcome: 1 });
+        const names = splitMedications(recorded('TP-TYPICAL'), resolved, TODAY).medications.map((m) => m.name);
+
+        expect(names).not.toContain('Lisinopril 10 mg');
+    });
+
+    it('without list dates, only FHIR-active entries are shown', () => {
+        const names = splitMedications(recorded('TP-TYPICAL')).medications.map((m) => m.name);
+
+        expect(names).toEqual(['Metformin 500 mg']);
+    });
+
+    it('a list entry marked Order follows the list rule on the Prescriptions card too (BM-019, BM-044)', () => {
+        const ended = new Map(TYPICAL_LIST).set('a2d6832a-bf88-4788-80d8-b1b81dc02cc2', {
+            enddate: '2025-01-01 00:00:00',
+            outcome: 0,
+        });
+        const names = splitMedications(recorded('TP-TYPICAL'), ended, TODAY).prescriptions.map((m) => m.name);
+
+        expect(names).toEqual(['Amlodipine 5 mg', 'Omeprazole 20 mg']);
     });
 });

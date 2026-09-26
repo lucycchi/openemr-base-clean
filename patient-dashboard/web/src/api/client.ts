@@ -16,12 +16,18 @@ export interface ApiClientOptions {
     onUnauthenticated?: () => void;
     /** Proxy prefix on the BFF. */
     basePath?: string;
+    /** Prefix of the BFF's own JSON routes (for example /api/medication-end-dates). */
+    bffPath?: string;
 }
 
 export interface ApiClient {
     getResource<T extends FhirResource>(path: string): Promise<Result<T>>;
     getBundle<T extends FhirResource>(path: string): Promise<Result<T[]>>;
+    /** A BFF JSON route under /api that is not a FHIR read; the caller parses the body. */
+    getJson(path: string): Promise<Result<unknown>>;
 }
+
+const FHIR_JSON = 'application/fhir+json';
 
 function defaultRelogin(): void {
     globalThis.location?.assign('/auth/login');
@@ -32,13 +38,14 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
     const fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init));
     const onUnauthenticated = options.onUnauthenticated ?? defaultRelogin;
     const basePath = options.basePath ?? '/api/fhir';
+    const bffPath = options.bffPath ?? '/api';
 
-    async function getJson(path: string): Promise<Result<unknown>> {
+    async function getJsonAt(url: string, accept: string): Promise<Result<unknown>> {
         let res: Response;
         try {
-            res = await fetchImpl(`${basePath}/${path}`, {
+            res = await fetchImpl(url, {
                 credentials: 'same-origin',
-                headers: { Accept: 'application/fhir+json' },
+                headers: { Accept: accept },
             });
         } catch {
             return { ok: false, error: { kind: 'network' } };
@@ -63,7 +70,7 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
 
     return {
         async getResource<T extends FhirResource>(path: string): Promise<Result<T>> {
-            const result = await getJson(path);
+            const result = await getJsonAt(`${basePath}/${path}`, FHIR_JSON);
             if (!result.ok) {
                 return result;
             }
@@ -74,7 +81,7 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
         },
 
         async getBundle<T extends FhirResource>(path: string): Promise<Result<T[]>> {
-            const result = await getJson(path);
+            const result = await getJsonAt(`${basePath}/${path}`, FHIR_JSON);
             if (!result.ok) {
                 return result;
             }
@@ -86,6 +93,10 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
                 .map((entry) => entry.resource)
                 .filter((resource): resource is T => resource !== undefined);
             return { ok: true, value: resources };
+        },
+
+        getJson(path: string): Promise<Result<unknown>> {
+            return getJsonAt(`${bffPath}/${path}`, 'application/json');
         },
     };
 }

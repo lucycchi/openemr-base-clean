@@ -18,6 +18,7 @@ const HUGO: Patient = {
 function searchingClient(paths: string[], result: Result<Patient[]>): ApiClient {
     return {
         getResource: async () => ({ ok: false, error: { kind: 'network' } }),
+        getJson: async () => ({ ok: false, error: { kind: 'network' } }),
         getBundle: async <T extends FhirResource>(path: string) => {
             paths.push(path);
             return result as Result<T[]>;

@@ -87,6 +87,38 @@ describe('API client', () => {
     });
 });
 
+describe('API client getJson (BFF routes outside the FHIR proxy)', () => {
+    it('reads /api/<path> and returns the parsed body', async () => {
+        const urls: string[] = [];
+        const client = createApiClient({
+            fetchImpl: async (input) => {
+                urls.push(String(input));
+                return jsonResponse({ patient: 'p1', entries: [] });
+            },
+        });
+
+        const result = await client.getJson('medication-end-dates?patient=p1');
+
+        expect(result).toEqual({ ok: true, value: { patient: 'p1', entries: [] } });
+        expect(urls).toEqual(['/api/medication-end-dates?patient=p1']);
+    });
+
+    it('a 401 triggers re-login and a 502 is an http LoadError', async () => {
+        let relogins = 0;
+        const unauthorised = createApiClient({
+            fetchImpl: async () => jsonResponse({}, 401),
+            onUnauthenticated: () => {
+                relogins += 1;
+            },
+        });
+        const failing = createApiClient({ fetchImpl: async () => jsonResponse({}, 502) });
+
+        expect(await unauthorised.getJson('x')).toEqual({ ok: false, error: { kind: 'unauthenticated' } });
+        expect(relogins).toBe(1);
+        expect(await failing.getJson('x')).toEqual({ ok: false, error: { kind: 'http', status: 502 } });
+    });
+});
+
 describe('assertBelongsTo', () => {
     it('accepts resources that all reference the header patient', () => {
         expect(assertBelongsTo('p1', [allergyFor('p1'), allergyFor('p1')])).toEqual({ ok: true, value: undefined });

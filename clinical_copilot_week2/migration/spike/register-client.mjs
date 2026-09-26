@@ -21,7 +21,10 @@ const KINDS = {
   app: {
     type: 'private',
     redirect: 'http://localhost:5180/auth/callback',
-    scope: ['openid', 'fhirUser', 'offline_access', 'api:fhir', ...READ.map((r) => `user/${r}.rs`)],
+    // api:oemr, patient.rs and medication.rs: the standard API is read for the medication list's end
+    // dates only, which FHIR does not send (BM-044, user decision 2026-09-26).
+    scope: ['openid', 'fhirUser', 'offline_access', 'api:fhir', ...READ.map((r) => `user/${r}.rs`),
+      'api:oemr', 'user/patient.rs', 'user/medication.rs'],
   },
   seed: {
     type: 'private',

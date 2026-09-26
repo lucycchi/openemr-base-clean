@@ -20,6 +20,7 @@ function fakeClient(
     requested: string[] = [],
 ): ApiClient {
     return {
+        getJson: async () => ({ ok: false, error: { kind: 'network' } }),
         getBundle: async <T extends FhirResource>(path: string) => {
             requested.push(path);
             return bundle as Result<T[]>;

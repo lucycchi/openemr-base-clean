@@ -4,6 +4,8 @@ import { authRoutes } from './auth';
 import type { AuthDeps } from './auth';
 import { fhirProxyRoutes } from './fhirProxy';
 import type { FhirProxyDeps } from './fhirProxy';
+import { medicationEndDatesRoutes } from './medicationEndDates';
+import type { MedicationEndDatesDeps } from './medicationEndDates';
 import type { AppConfig } from './appConfig';
 
 export interface AppOptions {
@@ -13,6 +15,8 @@ export interface AppOptions {
     auth?: AuthDeps;
     /** Allow-listed FHIR reads under /api/fhir. */
     fhir?: FhirProxyDeps;
+    /** Medication-list end dates from the standard API, under /api/medication-end-dates (BM-044). */
+    medicationEndDates?: MedicationEndDatesDeps;
     /** Site settings for the SPA (hidden cards), served at /app-config. */
     appConfig?: AppConfig;
 }
@@ -34,6 +38,9 @@ export function createApp(options: AppOptions = {}): Hono {
 
     if (options.fhir !== undefined) {
         app.route('/api/fhir', fhirProxyRoutes(options.fhir));
+    }
+    if (options.medicationEndDates !== undefined) {
+        app.route('/api/medication-end-dates', medicationEndDatesRoutes(options.medicationEndDates));
     }
 
     if (options.staticRoot !== undefined) {
