@@ -4,6 +4,7 @@ import { SessionStore } from '../../../server/session';
 import type { OAuthClient } from '../../../server/oauth';
 
 const API_BASE = 'https://oemr.test/apis/default/api';
+const FHIR_BASE = 'https://oemr.test/apis/default/fhir';
 const TYPICAL = 'a2d68325-7821-4a53-aa27-816ce437150f';
 
 // Shapes recorded from the dev stack with spike/api-get.mjs: the patient read is wrapped in "data";
@@ -39,7 +40,7 @@ function setup(upstream: Upstream) {
         const answer = upstream[url] ?? { status: 404, body: {} };
         return new Response(answer.raw ?? JSON.stringify(answer.body), { status: answer.status });
     }) as typeof fetch;
-    const app = createApp({ listDates: { store, oauth, now, apiBase: API_BASE, fetchImpl } });
+    const app = createApp({ listDates: { store, oauth, now, apiBase: API_BASE, fhirBase: FHIR_BASE, fetchImpl } });
     const session = store.create();
     session.tokens = { accessToken: 'server-side-token', expiresAt: now() + 3_600_000 };
     return { app, calls, cookie: `pd_sid=${session.id}` };
@@ -229,6 +230,7 @@ describe('list dates from the standard API (BM-044, BM-047)', () => {
 
     it('problems: the whole problem list from the standard API, with title and start date (BM-051)', async () => {
         const problems: Upstream = {
+            [`${FHIR_BASE}/Condition?patient=${TYPICAL}&_count=1`]: { status: 200, body: { resourceType: 'Bundle' } },
             [`${API_BASE}/patient/${TYPICAL}/medical_problem`]: {
                 status: 200,
                 body: {
@@ -269,5 +271,25 @@ describe('list dates from the standard API (BM-044, BM-047)', () => {
                 },
             ],
         });
+    });
+
+    it("problems need the old card's permission (patients/med, as FHIR Condition checks), not only encounters/notes", async () => {
+        // The standard problem list checks encounters/notes (routes:221); the old card and FHIR Condition
+        // check patients/med (Codex review 3). Without it the route refuses before reading the list.
+        const refused: Upstream = {
+            [`${FHIR_BASE}/Condition?patient=${TYPICAL}&_count=1`]: { status: 403, body: {} },
+            [`${API_BASE}/patient/${TYPICAL}/medical_problem`]: {
+                status: 200,
+                body: { validationErrors: [], internalErrors: [], data: [] },
+            },
+        };
+        const { app, calls, cookie } = setup(refused);
+
+        const res = await app.request(`/api/list-dates?list=medical_problem&patient=${TYPICAL}`, {
+            headers: { cookie },
+        });
+
+        expect(res.status).toBe(403);
+        expect(calls.map((call) => call.url)).toEqual([`${FHIR_BASE}/Condition?patient=${TYPICAL}&_count=1`]);
     });
 });

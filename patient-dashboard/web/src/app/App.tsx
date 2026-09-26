@@ -34,19 +34,32 @@ function localToday(): string {
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+/** The local date and time, "YYYY-MM-DD HH:MM:SS", for the list rules' end-date comparison. */
+function localNow(): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${localToday()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+
 function PatientView({ client, patientId, config }: { client: ApiClient; patientId: string; config: SiteConfig }) {
     const [asOf] = useState(localToday);
+    const [asOfTime] = useState(localNow);
     const header = usePatient(client, patientId, {
         asOf,
         age: config.ageDisplay,
         dateFormat: config.dateDisplayFormat,
     });
-    const allergies = useAllergyCard(client, patientId, asOf);
-    const problems = useProblemCard(client, patientId, asOf);
-    const medicationCards = useMedicationCards(client, patientId, asOf);
+    const allergies = useAllergyCard(client, patientId, asOfTime);
+    const problems = useProblemCard(client, patientId, asOfTime);
+    const medicationCards = useMedicationCards(client, patientId, asOfTime);
     const careTeam = useCareTeam(client, patientId);
     const encounters = useEncounters(client, patientId);
     const shown = visibleCards(config.hiddenCards);
+    // As old demographics.php exits before any card when the patient cannot be shown, no clinical card
+    // appears until the header has loaded and matched this patient (usePatient checks the id; Codex review 3).
+    if (header.status !== 'ready') {
+        return <PatientHeader state={header} />;
+    }
     return (
         <>
             <PatientHeader state={header} />

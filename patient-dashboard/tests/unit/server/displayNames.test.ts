@@ -68,7 +68,7 @@ describe('display names (server-only lookup, Fable review F1)', () => {
         const res = await app.request(`/api/display-names?${query(DONNA, CLINIC, FRED)}`, { headers: { cookie } });
 
         expect(res.status).toBe(200);
-        expect(await res.json()).toEqual({ names: { [DONNA]: 'Lee, Donna', [CLINIC]: 'Great Clinic' } });
+        expect(await res.json()).toEqual({ names: { [DONNA]: 'Lee, Donna', [CLINIC]: 'Great Clinic' }, failed: [] });
         expect(calls.map((call) => call.url)).toEqual([
             `${FHIR_BASE}/${DONNA}`,
             `${FHIR_BASE}/${CLINIC}`,
@@ -111,7 +111,7 @@ describe('display names (server-only lookup, Fable review F1)', () => {
 
         const res = await app.request(`/api/display-names?${query('Practitioner/other')}`, { headers: { cookie } });
 
-        expect(await res.json()).toEqual({ names: {} });
+        expect(await res.json()).toEqual({ names: {}, failed: [] });
     });
 
     it('if the system token cannot be had, 502, so the cards show "Name unavailable" rather than fail', async () => {
@@ -133,11 +133,24 @@ describe('display names (server-only lookup, Fable review F1)', () => {
 
         await ask();
         clock.now += 9 * 60_000;
-        expect(await (await ask()).json()).toEqual({ names: { [DONNA]: 'Lee, Donna' } });
+        expect(await (await ask()).json()).toEqual({ names: { [DONNA]: 'Lee, Donna' }, failed: [] });
         expect(calls).toHaveLength(2);
 
         clock.now += 2 * 60_000;
         await ask();
         expect(calls).toHaveLength(4);
+    });
+
+    it('a read OpenEMR fails (not a 404) is reported as failed and not cached, so the card says so (Codex review 3)', async () => {
+        const clock = { now: 5_000_000 };
+        const broken = 'Practitioner/broken-1';
+        upstream[`${FHIR_BASE}/${broken}`] = { status: 503, body: {} };
+        const { app, calls, cookie } = setup({ clock });
+
+        const first = await app.request(`/api/display-names?${query(broken)}`, { headers: { cookie } });
+        await app.request(`/api/display-names?${query(broken)}`, { headers: { cookie } });
+
+        expect(await first.json()).toEqual({ names: {}, failed: [broken] });
+        expect(calls).toHaveLength(2);
     });
 });

@@ -50,17 +50,17 @@ function isCurrentOrder(request: MedicationRequest): boolean {
 /**
  * The old medication card's rule (filterActiveIssues, demographics.php:1111-1113): hide an entry
  * marked resolved or whose end date has passed. FHIR cannot apply it, because it sends "completed"
- * for past and future end dates alike (BM-044), so the list row from the standard API decides. The
- * old card compares the end date with now, so an entry ending today is already hidden. Without a
- * list row, only FHIR-active entries are shown.
+ * for past and future end dates alike (BM-044), so the list row from the standard API decides
+ * (isCurrentListRow compares the stored end date and time with now). Without a list row, only
+ * FHIR-active entries are shown.
  */
 function isOnMedicationList(
     request: MedicationRequest,
     listDates: ReadonlyMap<string, ListDates>,
-    today: string,
+    now: string,
 ): boolean {
     const row = listDates.get(request.id ?? '');
-    return row === undefined ? request.status === 'active' : isCurrentListRow(row, today);
+    return row === undefined ? request.status === 'active' : isCurrentListRow(row, now);
 }
 
 /**
@@ -69,16 +69,16 @@ function isOnMedicationList(
  * Prescriptions and everything else to Medications. Medications follow the old list rule using the
  * standard API's list dates (see isOnMedicationList); Prescriptions show active and completed
  * orders (see isCurrentOrder). Medications keep the API order (the old begdate order is not in
- * FHIR; BM-036); prescriptions are newest first. `today` is the local date, YYYY-MM-DD.
+ * FHIR; BM-036); prescriptions are newest first. `now` is the local date and time, "YYYY-MM-DD HH:MM:SS".
  */
 export function splitMedications(
     resources: readonly MedicationRequest[],
     listDates: ReadonlyMap<string, ListDates> = new Map(),
-    today = '',
+    now = '',
 ): MedicationSplit {
     return {
         medications: resources
-            .filter((request) => request.intent !== 'order' && isOnMedicationList(request, listDates, today))
+            .filter((request) => request.intent !== 'order' && isOnMedicationList(request, listDates, now))
             .map(toView),
         prescriptions: resources
             .filter(
@@ -86,7 +86,7 @@ export function splitMedications(
                     request.intent === 'order' &&
                     // A list row marked Order (BM-019) keeps the list rule; a prescription keeps the Rx rule.
                     (listDates.has(request.id ?? '')
-                        ? isOnMedicationList(request, listDates, today)
+                        ? isOnMedicationList(request, listDates, now)
                         : isCurrentOrder(request)),
             )
             .map(toView)

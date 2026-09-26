@@ -2,6 +2,43 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-05 — Fixes from the Codex parity review 3
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- After the user upgraded their ChatGPT plan, a fresh Codex run completed: 5 P1 and 2 P2 findings. All five P1s were checked against the OpenEMR source before any fix.
+- Proxy (BM-054): OpenEMR's rewrite appends the query and PHP keeps the last `_REWRITE_COMMAND`, so a forwarded one could reach any API route. The proxy now forwards only `patient` and `name`; any other parameter is a 400.
+- End dates: the old rule compares the stored end date and time with now, and add_edit_issue.php stores a time. `isCurrentListRow(row, now)` now compares full local timestamps, and the patient view passes the local date and time fixed at mount.
+- Medications: without list dates, both cards show a load error; the Prescriptions fallback could show a finished list entry marked Order as current.
+- Problems (BM-055): the standard problem list checks encounters/notes, while the old card checks patients/med. `/api/list-dates?list=medical_problem` now first requires the user's one-row FHIR Condition search (patients/med) to succeed, and answers 403 otherwise.
+- Header: no clinical card renders until the header is ready, which also means the patient id matched, as old demographics.php exits when the patient cannot be shown.
+- Names: `/api/display-names` returns `failed` for references OpenEMR answered with an error (not 404), uncached, and the cards mark them "Name couldn't be loaded".
+- Tests:
+  - care-team parity compares Since wherever FHIR has a period
+  - encounter parity requires "Show all" when the old page has more visits than a page
+  - medication parity compares dosage text
+  - the switch test delays every `/api/` read, not only FHIR
+  - the reader self-test compares the name part
+- Seed: Metformin dosage text through a lists_medication row, because the dosage check was vacuous (no Medications-card entry had dosage text).
+
+### Decisions
+- Ruling: both medication cards fail together without list dates, rather than Prescriptions falling back to FHIR, because FHIR cannot tell a finished list entry marked Order from a prescription. Cost if wrong: Prescriptions is unavailable during a standard-API outage although most of its rows came from FHIR.
+- Ruling (BM-055 residual): a user with patients/med but not encounters/notes gets a load error on the problem card where the old card showed it. Granting both matches the old behaviour.
+
+### Tests
+- Unit: 236 / 236 passing
+- Playwright: 33 / 33 passing (new: header-gating E2E)
+- Lint, typecheck and Prettier: clean
+- Proven red: every new unit test and the header-gating E2E before the fix; dosage parity with dosages blanked (after seeding, it failed on Metformin).
+
+### BUGS-MITIGATIONS.md updates
+- Added and resolved BM-054, BM-055. BM-044, BM-047 and BM-051 annotated.
+
+### Open questions / follow-ups
+- None beyond the ARC-05 deploy settings already listed.
+
 ## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-04 — Fixes from the Fable parity review 2
 
 **Branch:** `dashboard-migration`

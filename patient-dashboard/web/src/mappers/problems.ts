@@ -13,11 +13,11 @@ export interface ProblemView {
  * visit-linked problem into one copy per visit (BM-043); see BM-051. The rows are keyed by the
  * problem's own uuid, so a problem the API repeats per linked visit appears once. The old card's rule
  * applies (hide resolved or past-ended), then oldest start date first with a missing start first, as
- * ORDER BY begdate (BM-018). `today` is the local date, YYYY-MM-DD.
+ * ORDER BY begdate (BM-018). `now` is the local date and time, "YYYY-MM-DD HH:MM:SS".
  */
-export function mapProblemList(rows: ReadonlyMap<string, ListDates>, today: string): ProblemView[] {
+export function mapProblemList(rows: ReadonlyMap<string, ListDates>, now: string): ProblemView[] {
     return [...rows]
-        .filter(([, row]) => isCurrentListRow(row, today))
+        .filter(([, row]) => isCurrentListRow(row, now))
         .map(([id, row], index) => ({ id, row, index }))
         .sort((a, b) => {
             const startA = a.row.begdate ?? '';

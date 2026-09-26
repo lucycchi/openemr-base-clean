@@ -54,12 +54,18 @@ export function parseListDates(body: unknown, patientId: string, list: ListName)
     return { ok: true, value: dates };
 }
 
+/** A stored date or datetime as "YYYY-MM-DD HH:MM:SS"; a bare date means midnight. */
+function asDateTime(value: string): string {
+    return value.length === 10 ? `${value} 00:00:00` : value.slice(0, 19).replace('T', ' ');
+}
+
 /**
  * The old cards' rule for a list row (filterActiveIssues, demographics.php:1111-1113): hide it when
- * marked resolved or when its end date has passed. The old card compares the end date with now, so a
- * row ending today is already hidden. `today` is the local date, YYYY-MM-DD.
+ * marked resolved or when its end has passed. The end is stored with a time of day
+ * (add_edit_issue.php:218) and compared with now, so a row ending tonight still shows this afternoon.
+ * `now` is the local date and time, "YYYY-MM-DD HH:MM:SS".
  */
-export function isCurrentListRow(row: ListDates, today: string): boolean {
-    const ends = row.enddate?.slice(0, 10) ?? '';
-    return row.outcome !== 1 && (ends === '' || ends > today);
+export function isCurrentListRow(row: ListDates, now: string): boolean {
+    const ends = row.enddate === null || row.enddate === '' ? '' : asDateTime(row.enddate);
+    return row.outcome !== 1 && (ends === '' || ends > asDateTime(now));
 }

@@ -28,7 +28,8 @@ test.describe('switching patients', () => {
         expect(TYPICAL_MARKERS.filter((marker) => !before.includes(marker))).toEqual([]);
 
         // Slow down every read for the next patient so any stale frame would be visible.
-        await page.route('**/api/fhir/**', async (route) => {
+        // Every BFF read, FHIR and the standard-API lists alike (Codex review 3).
+        await page.route('**/api/**', async (route) => {
             if (route.request().url().includes(HISTORY.fhirId)) {
                 await new Promise((resolve) => setTimeout(resolve, 800));
             }

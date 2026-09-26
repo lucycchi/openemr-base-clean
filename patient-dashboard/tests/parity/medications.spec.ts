@@ -61,6 +61,12 @@ test('medications match the old dashboard for every fixture, with the approved e
             key,
         ).toEqual([]);
         expect(new Set(newNames).size, key).toBe(newNames.length);
+        // Dosage text matches the old card's for every entry on the new Medications card.
+        const oldDosage = new Map(old.parts.map((parts) => [parts[0] ?? '', parts[1] ?? '']));
+        card.rows.forEach((row) => {
+            const name = row.fields.name ?? '';
+            expect(row.fields.dosage ?? '', `${key} ${name} dosage`).toBe(oldDosage.get(name) ?? '');
+        });
         if (oldNames.length === 0) {
             expect(card.empty, key).toBe('None recorded');
         }

@@ -48,16 +48,16 @@ function isActive(allergy: AllergyIntolerance): boolean {
  * Maps allergies for the card. With the standard API's list dates, the old card's rule decides
  * (hide resolved or past-ended, keep future-ended), because FHIR's clinicalStatus is wrong both ways
  * (BM-016, BM-047). Without a list row for an allergy, only FHIR-active ones are shown. Entry order
- * is kept (BM-014). `today` is the local date, YYYY-MM-DD.
+ * is kept (BM-014). `now` is the local date and time, "YYYY-MM-DD HH:MM:SS".
  */
 export function mapAllergies(
     resources: readonly AllergyIntolerance[],
     listDates: ReadonlyMap<string, ListDates> = new Map(),
-    today = '',
+    now = '',
 ): AllergyView[] {
     const isShown = (allergy: AllergyIntolerance): boolean => {
         const row = listDates.get(allergy.id ?? '');
-        return row === undefined ? isActive(allergy) : isCurrentListRow(row, today);
+        return row === undefined ? isActive(allergy) : isCurrentListRow(row, now);
     };
     return resources.filter(isShown).map((allergy) => ({
         id: allergy.id ?? '',

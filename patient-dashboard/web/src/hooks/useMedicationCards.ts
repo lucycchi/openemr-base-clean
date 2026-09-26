@@ -45,11 +45,10 @@ export function useListDates(client: ApiClient, patientId: string, list: ListNam
 }
 
 /**
- * Both medication cards from one MedicationRequest search plus the list end dates. Medications need
- * the end dates, so they show an error if those fail. Prescriptions only use them for list rows
- * marked Order, so they fall back to the FHIR rule instead of failing with them.
+ * Both medication cards from one MedicationRequest search plus the list end dates. Both need the end
+ * dates, so both show a load error if those fail rather than guess.
  */
-export function useMedicationCards(client: ApiClient, patientId: string, today: string): MedicationCards {
+export function useMedicationCards(client: ApiClient, patientId: string, now: string): MedicationCards {
     const requests = useBundleCard(client, patientId, 'MedicationRequest', keepAll);
     const dates = useListDates(client, patientId, 'medication');
 
@@ -57,19 +56,15 @@ export function useMedicationCards(client: ApiClient, patientId: string, today: 
         if (requests.status !== 'ready') {
             return { medications: requests, prescriptions: requests };
         }
-        if (dates.status === 'loading') {
+        // Without the list dates neither card is safe: FHIR cannot tell a finished list entry marked
+        // Order from a current prescription (Codex review 3), so both wait, and both fail together.
+        if (dates.status !== 'ready') {
             return { medications: dates, prescriptions: dates };
         }
-        if (dates.status === 'error') {
-            return {
-                medications: dates,
-                prescriptions: { status: 'ready', data: splitMedications(requests.data).prescriptions },
-            };
-        }
-        const split = splitMedications(requests.data, dates.data, today);
+        const split = splitMedications(requests.data, dates.data, now);
         return {
             medications: { status: 'ready', data: split.medications },
             prescriptions: { status: 'ready', data: split.prescriptions },
         };
-    }, [requests, dates, today]);
+    }, [requests, dates, now]);
 }

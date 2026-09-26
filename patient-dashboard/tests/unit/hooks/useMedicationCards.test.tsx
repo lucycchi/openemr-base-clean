@@ -51,11 +51,11 @@ describe('useMedicationCards', () => {
         );
     });
 
-    it('if the end dates cannot be loaded, Medications errors but Prescriptions still shows', async () => {
+    it('if the end dates cannot be loaded, both cards error: a finished list entry marked Order would look current (Codex review 3)', async () => {
         const client = fakeClient({ ok: false, error: { kind: 'http', status: 502 } }); // created once: a new client per render would refetch forever
         const { result } = renderHook(() => useMedicationCards(client, TYPICAL, '2026-09-26'));
 
-        await waitFor(() => expect(result.current.prescriptions.status).toBe('ready'));
+        await waitFor(() => expect(result.current.prescriptions.status).toBe('error'));
         await waitFor(() => expect(result.current.medications.status).toBe('error'));
     });
 

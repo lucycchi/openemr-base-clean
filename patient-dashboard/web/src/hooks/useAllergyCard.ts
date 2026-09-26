@@ -14,7 +14,7 @@ const keepAll = (resources: AllergyIntolerance[]): AllergyIntolerance[] => resou
  * from the standard API, because FHIR's clinicalStatus is wrong both ways (BM-016, BM-047). If the
  * dates cannot be read the card shows a load error: guessing could hide an active allergy.
  */
-export function useAllergyCard(client: ApiClient, patientId: string, today: string): LoadState<AllergyView[]> {
+export function useAllergyCard(client: ApiClient, patientId: string, now: string): LoadState<AllergyView[]> {
     const allergies = useBundleCard(client, patientId, 'AllergyIntolerance', keepAll);
     const dates = useListDates(client, patientId, 'allergy');
 
@@ -25,6 +25,6 @@ export function useAllergyCard(client: ApiClient, patientId: string, today: stri
         if (dates.status !== 'ready') {
             return dates;
         }
-        return { status: 'ready', data: mapAllergies(allergies.data, dates.data, today) };
-    }, [allergies, dates, today]);
+        return { status: 'ready', data: mapAllergies(allergies.data, dates.data, now) };
+    }, [allergies, dates, now]);
 }

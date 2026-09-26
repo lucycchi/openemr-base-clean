@@ -65,6 +65,8 @@ export function displayNamesRoutes(deps: DisplayNamesDeps): Hono {
         }
 
         const names: Record<string, string> = {};
+        // References OpenEMR failed to answer (not a 404): the card says "Name couldn't be loaded".
+        const failed: string[] = [];
         const toRead: RegExpExecArray[] = [];
         for (const match of parsed) {
             const ref = match?.[0] ?? '';
@@ -78,7 +80,7 @@ export function displayNamesRoutes(deps: DisplayNamesDeps): Hono {
             }
         }
         if (toRead.length === 0) {
-            return c.json({ names }, 200, { 'cache-control': 'no-store' });
+            return c.json({ names, failed }, 200, { 'cache-control': 'no-store' });
         }
 
         let token: string;
@@ -103,6 +105,7 @@ export function displayNamesRoutes(deps: DisplayNamesDeps): Hono {
                     continue;
                 }
                 if (!res.ok) {
+                    failed.push(ref);
                     continue;
                 }
                 const resource = (await res.json()) as unknown;
@@ -114,9 +117,10 @@ export function displayNamesRoutes(deps: DisplayNamesDeps): Hono {
                 }
             } catch (error) {
                 console.error('Name read failed', { type, error: (error as Error).name });
+                failed.push(ref);
             }
         }
-        return c.json({ names }, 200, { 'cache-control': 'no-store' });
+        return c.json({ names, failed }, 200, { 'cache-control': 'no-store' });
     });
 
     return routes;

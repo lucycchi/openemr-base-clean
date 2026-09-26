@@ -17,6 +17,8 @@
  *    activity value, so FHIR's problem list leaves it out while the old card shows it (Fable review 2).
  *  - TP-LONG gets the middle name Quinn: the old identity bar shows first and last name only, the new
  *    header all given names (BM-052).
+ *  - Metformin on TP-TYPICAL's medication list (lists 1241) gets dosage text, so the dosage parity
+ *    check has something to compare on the Medications card (Codex review 3).
  *  - A non-admin dev user, tp-physician (password tp-physician-pass, dev stack only), in OpenEMR's
  *    default Physicians group, so tests can see what a clinician sees: the API lets only
  *    administrators read Practitioner and Organization (Fable review F1).
@@ -154,3 +156,9 @@ echo "TP-HISTORY: Fee Sheet problem with no activity\n";
 
 QueryUtils::sqlStatementThrowException("UPDATE patient_data SET mname = 'Quinn' WHERE pid = 41");
 echo "TP-LONG: middle name Quinn\n";
+
+$metforminDosage = QueryUtils::fetchSingleValue('SELECT COUNT(*) AS c FROM lists_medication WHERE list_id = 1241', 'c');
+if ((int) $metforminDosage === 0) {
+    QueryUtils::sqlInsert("INSERT INTO lists_medication (list_id, drug_dosage_instructions) VALUES (1241, '1 tablet twice daily')");
+}
+echo "Metformin (lists 1241): dosage 1 tablet twice daily\n";

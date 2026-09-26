@@ -35,7 +35,13 @@ const app = createApp({
     appConfig,
     auth: { store, oauth, now, secureCookie: config.secureCookie },
     fhir: { store, oauth, now, fhirBase: `${config.oemrBase}/apis/default/fhir` },
-    listDates: { store, oauth, now, apiBase: `${config.oemrBase}/apis/default/api` },
+    listDates: {
+        store,
+        oauth,
+        now,
+        apiBase: `${config.oemrBase}/apis/default/api`,
+        fhirBase: `${config.oemrBase}/apis/default/fhir`,
+    },
     displayNames: { store, oauth, now, fhirBase: `${config.oemrBase}/apis/default/fhir`, systemToken },
 });
 

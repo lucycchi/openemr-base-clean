@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseListDates } from '../../../web/src/api/listDates';
+import { isCurrentListRow, parseListDates } from '../../../web/src/api/listDates';
 
 const LISINOPRIL = 'a2d6832a-bf83-4fd5-a6da-ee15b8d4283a';
 
@@ -70,5 +70,16 @@ describe('parseListDates', () => {
                 'medical_problem',
             ),
         ).toEqual({ ok: false, error: { kind: 'invalid-response' } });
+    });
+
+    it('compares the end date and time with now, as the old card does (Codex review 3)', () => {
+        // add_edit_issue.php stores the end with a time (DateTimeToYYYYMMDDHHMMSS).
+        const endsTonight = { enddate: '2026-09-26 23:00:00', outcome: 0 };
+        const endedThisMorning = { enddate: '2026-09-26 08:00:00', outcome: 0 };
+
+        expect(isCurrentListRow(endsTonight, '2026-09-26 12:00:00')).toBe(true);
+        expect(isCurrentListRow(endedThisMorning, '2026-09-26 12:00:00')).toBe(false);
+        expect(isCurrentListRow({ enddate: '2026-09-27', outcome: 0 }, '2026-09-26 12:00:00')).toBe(true);
+        expect(isCurrentListRow({ enddate: null, outcome: 1 }, '2026-09-26 12:00:00')).toBe(false);
     });
 });

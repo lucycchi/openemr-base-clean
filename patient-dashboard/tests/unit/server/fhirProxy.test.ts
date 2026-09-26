@@ -181,4 +181,22 @@ describe('FHIR proxy', () => {
         }
         expect(calls).toHaveLength(0);
     });
+
+    it('only the query parameters the app uses are forwarded; _REWRITE_COMMAND cannot re-route the request', async () => {
+        // OpenEMR's apis/.htaccess appends the query (QSA) and PHP takes the last _REWRITE_COMMAND, so a
+        // forwarded one would dispatch to any API route (Codex review 3).
+        const { app, calls, cookie } = setup();
+
+        for (const path of [
+            'Patient?_REWRITE_COMMAND=default/api/patient',
+            'Condition?patient=abc&_REWRITE_COMMAND=default/api/patient',
+            'Encounter?patient=abc&_count=1000',
+            'Patient/abc?_format=xml',
+            'Encounter?patient=abc&date=gt2020',
+        ]) {
+            const res = await app.request(`/api/fhir/${path}`, { headers: { cookie } });
+            expect(res.status, path).toBe(400);
+        }
+        expect(calls).toHaveLength(0);
+    });
 });

@@ -109,8 +109,9 @@ test('a failed settings load shows an error, never cards the site may have hidde
 });
 
 // BM-044: the medication list needs its end dates from the standard API. If they cannot be read, the
-// Medications card must say so rather than guess, while Prescriptions still shows from FHIR.
-test('medications show "Couldn\'t load" when the list end dates fail, prescriptions still show', async ({ page }) => {
+// medication cards must say so rather than guess: without them a finished list entry marked Order
+// would look like a current prescription (Codex review 3).
+test('both medication cards show "Couldn\'t load" when the list end dates fail', async ({ page }) => {
     await logInThroughOpenEmr(page);
     await page.route('**/api/list-dates?list=medication**', (route) =>
         route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"boom"}' }),
@@ -121,7 +122,7 @@ test('medications show "Couldn\'t load" when the list end dates fail, prescripti
     const medications = page.locator('[data-card="medications"]');
     await expect(medications).toHaveAttribute('data-state', 'error');
     await expect(medications).toContainText("Couldn't load medications");
-    await expect(page.locator('[data-card="prescriptions"]')).toHaveAttribute('data-state', 'ready');
+    await expect(page.locator('[data-card="prescriptions"]')).toHaveAttribute('data-state', 'error');
 });
 
 // BM-047: the allergy card needs each allergy's resolved flag and end date from the standard API.
@@ -152,4 +153,20 @@ test('a failed staff-name lookup says "Name couldn\'t be loaded", never "Name un
     const visit = page.locator('[data-item="encounter"]', { hasText: 'Diabetes review' });
     await expect(visit.locator('[data-field="provider"]')).toHaveText("Name couldn't be loaded");
     await expect(page.locator('[data-card="care-team"]')).toHaveAttribute('data-state', 'ready');
+});
+
+// Old demographics.php exits before any card when the patient cannot be shown (line 1058). The new
+// app must never show clinical cards next to a missing identity header (Codex review 3).
+test('no clinical card is shown until the patient header has loaded', async ({ page }) => {
+    await logInThroughOpenEmr(page);
+    const typical = fixture('TP-TYPICAL').fhirId;
+    await page.route(`**/api/fhir/Patient/${typical}`, (route) =>
+        route.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"forbidden"}' }),
+    );
+
+    await page.goto(`/patient/${typical}`);
+
+    await expect(page.locator('[data-card="header"]')).toHaveAttribute('data-state', 'error');
+    await page.waitForTimeout(1500); // give every other card time to load, were it going to
+    await expect(page.locator('[data-card]:not([data-card="header"])')).toHaveCount(0);
 });

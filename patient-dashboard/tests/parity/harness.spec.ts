@@ -18,7 +18,8 @@ test.describe('old dashboard reader', () => {
 
         const card = await readOldCard(old, 'medication_ps_expand');
 
-        expect(card.items).toContain('Metformin 500 mg');
+        // Each row is name then dosage (Metformin has seeded dosage text), so compare the name part.
+        expect(card.parts.map((parts) => parts[0])).toContain('Metformin 500 mg');
         expect(card.items).toHaveLength(4);
         await old.context().close();
     });

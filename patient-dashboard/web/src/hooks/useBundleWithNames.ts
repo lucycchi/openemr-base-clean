@@ -46,10 +46,13 @@ async function readStaffNames(client: ApiClient, references: readonly string[]):
             batch.forEach((ref) => names.set(ref, NAME_NOT_LOADED));
             continue;
         }
+        const failed = (result.ok ? (result.value as { failed?: unknown }).failed : undefined) ?? [];
         for (const ref of batch) {
             const name = (found as Record<string, unknown>)[ref];
             if (typeof name === 'string' && name !== '') {
                 names.set(ref, name);
+            } else if (Array.isArray(failed) && failed.includes(ref)) {
+                names.set(ref, NAME_NOT_LOADED);
             }
         }
     }

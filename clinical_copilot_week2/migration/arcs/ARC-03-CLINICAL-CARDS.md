@@ -165,6 +165,28 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Resolves:** BM-051, BM-052; records BM-053
 **Touches:** `server/`, `web/src/`, `tests/`, `spike/register-client.mjs`, `fixtures/seed-parity-gaps.php`
 
+#### Slice 03-05-05 — Fixes from the Codex parity review 3
+- [x] Tests first, watched failing:
+  - proxy query allow-list
+  - end date and time compared with now
+  - both medication cards failing together
+  - the problem list permission gate
+  - no cards without a loaded header
+  - failed name reads reported
+  - dosage parity: vacuous until Metformin's dosage was seeded, then red with dosages blanked
+- [x] Implement:
+  - proxy forwards only `patient` and `name` (BM-054)
+  - `isCurrentListRow` compares date and time
+  - both medication cards fail without list dates
+  - problem list gated on the user's FHIR Condition access (BM-055)
+  - clinical cards wait for the header
+  - `/api/display-names` returns `failed`
+  - Since, "Show all" and dosage parity checks
+  - switch test delays every `/api/` read
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
+**Resolves:** BM-054, BM-055; annotates BM-044, BM-047, BM-051
+**Touches:** `server/`, `web/src/`, `tests/`, `fixtures/seed-parity-gaps.php`
+
 ## Definition of Done for this arc
 - [x] All slices ticked; every BM row listed above struck through
 - [x] DEV-LOG has an arc-completion entry

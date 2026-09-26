@@ -79,6 +79,9 @@ test('encounter history matches the old Visit History page for every fixture, wi
         expectSameVisits(await newVisits(page), oldPage, named, `${key} first page`);
 
         const showAll = page.locator('[data-card="encounter-history"]').getByRole('button', { name: /^Show all/ });
+        // When the old page has more visits than its first page, "Show all" must be there to reach them.
+        const oldEvery = await readOldVisitHistory(oldSession, patient.pid, 0);
+        expect(await showAll.count(), `${key} Show all`).toBe(oldEvery.length > oldPage.length ? 1 : 0);
         if ((await showAll.count()) > 0) {
             await showAll.click();
             expectSameVisits(

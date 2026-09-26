@@ -1,6 +1,6 @@
 {
   "meta": {
-    "lastUpdated": "2026-09-26T21:05:17"
+    "lastUpdated": "2026-09-26T23:45:19"
   },
   "resourceType": "Bundle",
   "type": "collection",
@@ -139,6 +139,11 @@
           "type": "Patient"
         },
         "authoredOn": "2026-09-26T11:27:51+00:00",
+        "dosageInstruction": [
+          {
+            "text": "1 tablet twice daily"
+          }
+        ],
         "dispenseRequest": {
           "numberOfRepeatsAllowed": 0
         }

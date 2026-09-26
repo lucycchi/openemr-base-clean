@@ -48,10 +48,11 @@ test('care team matches the old dashboard for every fixture, with the approved e
         const bundle = (await (
             await page.request.get(`/api/fhir/CareTeam?patient=${patient.fhirId}`)
         ).json()) as Bundle<CareTeam>;
-        const refs = (bundle.entry ?? [])
+        const people = (bundle.entry ?? [])
             .flatMap((entry) => entry.resource?.participant ?? [])
-            .map((participant) => participant.member?.reference ?? '')
-            .filter((ref) => ref.startsWith('Practitioner/') || ref.startsWith('RelatedPerson/'));
+            .filter((participant) => /^(Practitioner|RelatedPerson)\//.test(participant.member?.reference ?? ''));
+        const refs = people.map((participant) => participant.member?.reference ?? '');
+        const periods = people.map((participant) => participant.period?.start);
         const lookup = refs.filter((ref) => ref.startsWith('Practitioner/'));
         const named =
             lookup.length === 0
@@ -72,7 +73,8 @@ test('care team matches the old dashboard for every fixture, with the approved e
             const was = old.members[index];
             const allowed = resolvable.has(index) ? [was?.member] : [was?.member, 'Name unavailable'];
             expect(allowed, `${key} member ${index}`).toContain(member.name);
-            if (member.since !== '') {
+            // Since may be blank only where FHIR has no period for that member (BM-037).
+            if (periods[index] !== undefined) {
                 expect(member.since, `${key} member ${index}`).toBe(was?.since);
             }
         });

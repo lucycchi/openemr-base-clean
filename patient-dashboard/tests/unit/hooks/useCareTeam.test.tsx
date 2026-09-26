@@ -19,7 +19,11 @@ function fakeClient(
     bundle: Result<FhirResource[]>,
     reads: Record<string, Result<FhirResource>>,
     requested: string[] = [],
-    { namesFail = false, extraNames = {} }: { namesFail?: boolean; extraNames?: Record<string, string> } = {},
+    {
+        namesFail = false,
+        extraNames = {},
+        failRefs = [],
+    }: { namesFail?: boolean; extraNames?: Record<string, string>; failRefs?: string[] } = {},
 ): ApiClient {
     return {
         // The BFF's /api/display-names, answered from the same test data (Fable review F1).
@@ -28,6 +32,9 @@ function fakeClient(
             if (namesFail) {
                 return { ok: false, error: { kind: 'http', status: 502 } };
             }
+            const failed = new URLSearchParams(path.split('?')[1])
+                .getAll('ref')
+                .filter((ref) => failRefs.includes(ref));
             const names: Record<string, string> = { ...extraNames };
             for (const ref of new URLSearchParams(path.split('?')[1]).getAll('ref')) {
                 const read = reads[ref];
@@ -38,7 +45,7 @@ function fakeClient(
                     names[ref] = displayName(read.value);
                 }
             }
-            return { ok: true, value: { names } };
+            return { ok: true, value: { names, failed } };
         },
         getBundle: async <T extends FhirResource>(path: string) => {
             requested.push(path);
@@ -167,5 +174,15 @@ describe('useCareTeam', () => {
         await waitFor(() => expect(result.current.status).toBe('ready'));
         expect(result.current.status === 'ready' && result.current.data[0]?.members[0]?.name).toBe('Stone, Fred');
         expect(JSON.stringify(result.current)).not.toContain('Someone Else');
+    });
+
+    it('a reference the lookup reports as failed reads "Name couldn\'t be loaded"', async () => {
+        const client = fakeClient({ ok: true, value: [team('p1')] }, {}, [], { failRefs: ['Practitioner/u1'] });
+        const { result } = renderHook(() => useCareTeam(client, 'p1'));
+
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.status === 'ready' && result.current.data[0]?.members[0]?.name).toBe(
+            "Name couldn't be loaded",
+        );
     });
 });

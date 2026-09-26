@@ -24,6 +24,13 @@ export const ALLOWED_RESOURCES: ReadonlySet<string> = new Set([
  */
 const STRIPPED_PARAMS = ['_include', '_revinclude'];
 
+/**
+ * The only query parameters the app sends. Anything else is refused: OpenEMR's apis/.htaccess appends
+ * the query (QSA) and PHP takes the last _REWRITE_COMMAND, so a forwarded one would dispatch the
+ * request to any API route, past this allow-list (Codex review 3).
+ */
+const ALLOWED_PARAMS: ReadonlySet<string> = new Set(['patient', 'name']);
+
 /** `Resource` or `Resource/id`, nothing else: no traversal (an id cannot start with a dot), no _history or operations. */
 const PATH_PATTERN = /^([A-Z][A-Za-z]+)(?:\/([A-Za-z0-9-][A-Za-z0-9.-]{0,63}))?$/;
 
@@ -72,6 +79,9 @@ export function fhirProxyRoutes(deps: FhirProxyDeps): Hono {
         const query = new URLSearchParams(url.search);
         for (const name of STRIPPED_PARAMS) {
             query.delete(name);
+        }
+        if ([...query.keys()].some((name) => !ALLOWED_PARAMS.has(name))) {
+            return c.json({ error: 'Query parameter not available through the dashboard' }, 400);
         }
         // A search (no id) must be scoped to one patient, except the picker's Patient?name= search:
         // the old page only ever showed one patient's records (Fable review F10).

@@ -16,6 +16,8 @@ export interface ListDatesDeps {
     now: () => number;
     /** OpenEMR's Standard REST API base, for example https://localhost:9300/apis/default/api */
     apiBase: string;
+    /** OpenEMR's FHIR base, used to check the problem list's permission (patients/med). */
+    fhirBase: string;
     fetchImpl?: typeof fetch;
 }
 
@@ -64,6 +66,7 @@ function parseRow(
 }
 
 class Unavailable extends Error {}
+class Forbidden extends Error {}
 
 /**
  * GET /api/list-dates?list=medication|allergy|medical_problem&patient=<uuid>. FHIR gets these lists
@@ -74,7 +77,7 @@ class Unavailable extends Error {}
  * for problems, nothing else. It fails with 502 unless every row is the patient's.
  */
 export function listDatesRoutes(deps: ListDatesDeps): Hono {
-    const { store, oauth, now, apiBase } = deps;
+    const { store, oauth, now, apiBase, fhirBase } = deps;
     const fetchImpl = deps.fetchImpl ?? fetch;
     const routes = new Hono();
 
@@ -142,15 +145,38 @@ export function listDatesRoutes(deps: ListDatesDeps): Hono {
             return found.data.map((row) => parseRow(row, (r) => r.puuid === patient, withTitle) ?? throwUnavailable());
         };
 
+        /**
+         * The standard problem list checks encounters/notes (routes:221), but the old card checks the
+         * issue ACL, patients/med (demographics.php:1096), which is what FHIR Condition checks. So the
+         * user must be allowed a one-row Condition search for the patient first (Codex review 3).
+         */
+        const problemRows = async (): Promise<ListRowDates[]> => {
+            const gate = await fetchImpl(`${fhirBase}/Condition?patient=${patient}&_count=1`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/fhir+json' },
+                signal: AbortSignal.timeout(TIMEOUT_MS),
+            });
+            if (gate.status === 401 || gate.status === 403) {
+                throw new Forbidden('no patients/med access');
+            }
+            if (!gate.ok) {
+                throw new Unavailable(`problem permission check returned HTTP ${gate.status}`);
+            }
+            return wrappedRows('medical_problem', true);
+        };
+
         try {
             const entries =
                 list === 'medication'
                     ? await medicationRows()
                     : list === 'allergy'
                       ? await wrappedRows('allergy', false)
-                      : await wrappedRows('medical_problem', true);
+                      : await problemRows();
             return c.json({ patient, list: list as ListName, entries }, 200, { 'cache-control': 'no-store' });
         } catch (error) {
+            if (error instanceof Forbidden) {
+                return c.json({ error: 'Not permitted to see this list' }, 403, { 'cache-control': 'no-store' });
+            }
             console.error('Standard API list request failed', { list, error: (error as Error).message });
             return c.json({ error: 'OpenEMR did not return the list' }, 502, { 'cache-control': 'no-store' });
         }
