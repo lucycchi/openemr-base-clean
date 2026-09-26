@@ -94,5 +94,6 @@ Observed on the old page (2026-09-26, `encounter_page_size` = 20, clinical view)
 - BM-032: a provider without an NPI is dropped from Encounter.participant, so the new card can't name that provider.
 - BM-033: the old page hides the reason of sensitivity-restricted encounters, but the FHIR search has no sensitivity filter (code-read, not runtime-verified).
 - BM-034: FHIR returns encounters oldest first in one Bundle; the old page lists newest first, 20 per page.
+- BM-039: the Issue, Forms, Billing, Insurance and document rows aren't in FHIR Encounter, so they aren't ported.
 - BM-035: the empty state reads "1-0 of 0" (encounters.php:470).
 - BM-028 and BM-008 (shared): participant names need extra reads, and the squad restriction has no FHIR equivalent.

@@ -27,6 +27,9 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 - BM-028 — care-team names unresolvable ("Name unavailable")
 - BM-030 — empty care team shows bare headers ("No care team recorded")
 - BM-031 — default role code 407542009 (shown as blank)
+- BM-036 — medication order not reproducible from FHIR (FHIR order kept; prescriptions by authoredOn descending)
+- BM-037 — care-team since date, status and note not in FHIR (approved exception)
+- BM-038 — prescription Details not in FHIR (approved exception)
 
 ## Stories
 
@@ -69,25 +72,26 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 
 #### Slice 03-03-01 — Shared medication mapper and Medications card
 - [ ] Tests first, watched failing
-- [ ] Implement `mappers/medications.ts` (split on intent; status active; dosageInstruction text; sort by authoredOn ascending) and `cards/MedicationsCard.tsx` with the caveat note
+- [ ] Implement `mappers/medications.ts` (split on intent; status active; dosageInstruction text; Medications keep FHIR response order; Prescriptions sorted by authoredOn descending) and `cards/MedicationsCard.tsx` with the caveat note
 - [ ] Gates green; DEV-LOG, arc file and BM rows updated
 **Acceptance tests:**
 - `tests/unit/mappers/medications.test.ts :: plan goes to Medications, order goes to Prescriptions (BM-019)`
 - `tests/unit/mappers/medications.test.ts :: linked Amlodipine appears once, under Prescriptions (BM-020)`
-- `tests/unit/mappers/medications.test.ts :: TP-LONG shows 60 in order (BM-018)`
-- `tests/parity/medications.spec.ts :: all fixtures, exceptions BM-019 BM-020`
-**Resolves:** BM-019, BM-020
+- `tests/unit/mappers/medications.test.ts :: TP-LONG shows all 60 in FHIR order (BM-036)`
+- `tests/parity/medications.spec.ts :: all fixtures, compares the set of entries not their order, exceptions BM-012 BM-019 BM-020 BM-036`
+**Resolves:** BM-019, BM-020, BM-036
 **Touches:** `web/src/`
 
 #### Slice 03-03-02 — Prescriptions card
 - [ ] Tests first, watched failing
-- [ ] Implement `cards/PrescriptionsCard.tsx`: drug, quantity, refills, "Added" (authoredOn, local date); "No active prescriptions" when none are active
+- [ ] Implement `cards/PrescriptionsCard.tsx`: drug, details (dosageInstruction text or blank), quantity, refills, "Added" (authoredOn, local date); sorted by authoredOn descending; "No active prescriptions" when none are active
 - [ ] Gates green; DEV-LOG, arc file and BM rows updated
 **Acceptance tests:**
 - `tests/unit/cards/PrescriptionsCard.test.tsx :: column label is "Added" (BM-023)`
 - `tests/unit/cards/PrescriptionsCard.test.tsx :: all-discontinued shows "No active prescriptions" (BM-024)`
-- `tests/parity/prescriptions.spec.ts :: all fixtures, exceptions BM-023 BM-024`
-**Resolves:** BM-023, BM-024
+- `tests/unit/cards/PrescriptionsCard.test.tsx :: Details is blank when dosageInstruction has no text (BM-038)`
+- `tests/parity/prescriptions.spec.ts :: all fixtures, exceptions BM-023 BM-024 BM-038`
+**Resolves:** BM-023, BM-024, BM-038
 **Touches:** `web/src/`
 
 ### Story 03-04 — Care Team
@@ -101,8 +105,9 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 - `tests/unit/mappers/careTeam.test.ts :: unresolved member shows "Name unavailable" and is kept (BM-028)`
 - `tests/unit/mappers/careTeam.test.ts :: bare 407542009 role shows blank (BM-031)`
 - `tests/unit/cards/CareTeamCard.test.tsx :: empty shows "No care team recorded" (BM-030)`
-- `tests/parity/careteam.spec.ts :: TP-TYPICAL and TP-EMPTY, exceptions BM-028 BM-030`
-**Resolves:** BM-028, BM-030, BM-031
+- `tests/unit/mappers/careTeam.test.ts :: since is shown only when participant.period.start exists (BM-037)`
+- `tests/parity/careteam.spec.ts :: TP-TYPICAL and TP-EMPTY, exceptions BM-028 BM-030 BM-037`
+**Resolves:** BM-028, BM-030, BM-031, BM-037
 **Touches:** `web/src/`
 
 ## Definition of Done for this arc

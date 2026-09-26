@@ -64,7 +64,7 @@ Observed on the old dashboard (2026-09-26):
 | Member name (related person) | RelatedPerson.name, via the reference | not available | TP-TYPICAL: GET RelatedPerson/a2d68932-… is HTTP 404; RelatedPerson?patient= returns 0 | (BM-028) |
 | Role | CareTeam.participant.role[].coding[].display | differs | TP-TYPICAL: provider "Nurse Practitioner" matches; related person has code 407542009 with no display where the old card shows blank | an unmatched role defaults to SNOMED 407542009 informal caregiver (FhirCareTeamService.php:424) (BM-031) |
 | Facility | CareTeam.participant.onBehalfOf | matches | TP-TYPICAL: no facility, absent in both | |
-| Since | CareTeam.participant.period.start | differs | TP-TYPICAL: provider 2026-09-26 present; related person period absent where the old card shows 2026-09-26 | the related-person since date is lost |
+| Since | CareTeam.participant.period.start | differs | TP-TYPICAL: provider 2026-09-26 present; related person period absent where the old card shows 2026-09-26 | the related-person since date is lost (BM-037) |
 | Member status and note | none | not available | TP-TYPICAL: both members Active on the old card; no per-member status or note in the participant | |
 | Participant names in one call | CareTeam?_include=CareTeam:participant | differs | TP-TYPICAL: returns HTTP 200 with 0 entries, dropping the CareTeam itself | never use _include (BM-029) |
 | Empty state wording | Bundle with 0 entries | differs | TP-EMPTY: FHIR 0 entries; old card shows only headers | the new card shows "No care team recorded" (BM-030) |
@@ -86,4 +86,5 @@ Observed on the old dashboard (2026-09-26):
 - BM-028: participant names can't be resolved: Practitioner only serves users with an NPI, and the RelatedPerson reference returns 404 (`PractitionerService.php:88-93`).
 - BM-029: `_include=CareTeam:participant` returns an empty Bundle instead of the CareTeam.
 - BM-030: an empty care team shows only table headers, with no message.
+- BM-037: the related person's since date, member status and note aren't in FHIR, and the old Remove header shows in view mode.
 - BM-031: an unrecorded related-person role is sent as SNOMED 407542009 informal caregiver, with no display (`FhirCareTeamService.php:424`).

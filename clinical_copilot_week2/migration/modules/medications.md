@@ -52,7 +52,7 @@ Observed on the old dashboard (2026-09-26, card collapsed, items read from the D
 | Linked list row | the prescription's MedicationRequest; the list row is excluded | differs | TP-TYPICAL: old card shows `Amlodipine 5 mg 1 in` (list row 1393); FHIR has one Amlodipine, from prescription 2481, with no dosage text | the UNION drops list rows linked to a prescription (BM-020) |
 | Card membership (list versus prescription) | none reliable: intent, category, dosageInstruction | not available | TP-TYPICAL: Atorvastatin (list) and Omeprazole (prescription) both have intent=order and category=outpatient | see the note below (BM-019) |
 | Active filter | MedicationRequest.status | matches | TP-HISTORY: Amoxicillin (list, ended) is completed and Lisinopril (prescription, discontinued) is stopped; old card shows nothing | the new app keeps status=active |
-| Sort order | none (FHIR returns prescriptions, then lists, in insertion order) | differs | TP-LONG: FHIR starts at medication 01, old card at medication 60 | sort by the list begdate, which FHIR only exposes as authoredOn (the record time) for list rows (BM-018) |
+| Sort order | none: MedicationRequest has no begdate; authoredOn is the record time (PrescriptionService.php:218, FhirMedicationRequestService.php:440-443) | not available | TP-LONG: old starts at medication 60; FHIR authoredOn ascending starts at 01, with same-second ties | approved exception: keep FHIR order and compare the set of entries, not their order (BM-036) |
 | Empty state wording | none | not available | TP-EMPTY: 0 entries; old "Nothing Recorded" | lists_touch is not in FHIR (BM-012) |
 | List completeness | Bundle.entry (all in one response, self link only) | differs | TP-TYPICAL: old card 4, FHIR 5 (3 list + 2 prescriptions, with Amlodipine once); TP-LONG: old 60, FHIR 60; TP-HISTORY: old 0, FHIR 2 inactive | the card's rows cannot be picked out of the FHIR response reliably (BM-019, BM-020) |
 
@@ -78,5 +78,5 @@ VERDICT: no reliable FHIR field. Options for Gate 2:
 
 - BM-019: no FHIR field separates a medication-list entry from a prescription (`PrescriptionService.php:212-215`, `FhirMedicationRequestService.php:498-504`).
 - BM-020: the UNION leaves out list rows linked to a prescription, so a linked medication appears on the old card with the list's dosage text but in FHIR only as the prescription (`PrescriptionService.php:260`).
-- BM-018 (shared): FHIR order differs from the old begdate sort.
+- BM-036: the old begdate order can't be reproduced from FHIR; the card keeps FHIR order (approved exception).
 - BM-012 and BM-013 (shared): "None" is inferred from lists_touch, and Edit `auth` is hard-coded true (`demographics.php:1175`).

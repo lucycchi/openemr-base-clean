@@ -11,7 +11,7 @@ Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.m
 - Auth spikes against the dev stack (`API-SPIKE.md`): the browser-only public client and the backend-for-frontend.
 - Seven synthetic test patients plus 34 encounters (`TEST-PATIENTS.md`, `fixtures/`).
 - Inventory of the old dashboard (`INVENTORY.md`), and seven field-level module audits (`modules/`).
-- Bug catalogue: 35 rows (`BUGS-MITIGATIONS.md`).
+- Bug catalogue: 39 rows (`BUGS-MITIGATIONS.md`). BM-036 to BM-039 were added after the final branch review, to record parity exceptions the audits had found but not catalogued.
 - Migration options (`MIGRATION-OPTIONS.md`), the graded defence (`PATIENT_DASHBOARD_MIGRATION.md`), this spec, and five arc files.
 
 ### Decisions
@@ -23,11 +23,11 @@ Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.m
 - Gate 4: the defence was approved, written in the first person.
 
 ### Tests
-- Document checkers: every module doc passes `check-module-doc.sh`; the catalogue passes `check-bugs.sh` (35 rows); the options, defence and test-patients docs pass `check-doc.sh`.
+- Document checkers: every module doc passes `check-module-doc.sh`; the catalogue passes `check-bugs.sh` (39 rows); the options, defence and test-patients docs pass `check-doc.sh`.
 - Spikes: A passed through the proxy and failed directly, as expected (CORS preflight 404). B passed.
 
 ### BUGS-MITIGATIONS.md updates
-- Catalogue created: BM-001 to BM-035. None resolved yet.
+- Catalogue created: BM-001 to BM-039. None resolved yet.
 
 ### Open questions / follow-ups
 - BM-033 (encounter sensitivity through FHIR) was read from the code only; test it with a restricted user if time allows.

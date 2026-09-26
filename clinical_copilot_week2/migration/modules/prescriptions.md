@@ -62,13 +62,13 @@ Observed on the old dashboard (2026-09-26, body text read from the DOM):
 | Field shown | FHIR resource.field | Status | Checked against | Notes |
 |---|---|---|---|---|
 | Drug | MedicationRequest.medicationCodeableConcept.text | matches | TP-TYPICAL: "Omeprazole 20 mg" | |
-| Details (size, unit, dose) | MedicationRequest.dosageInstruction | not available | TP-TYPICAL: old "1"; FHIR dosageInstruction has only timing "No specific dosing interval specified" | the dose "1" is not in the resource for these prescriptions |
+| Details (size, unit, dose) | MedicationRequest.dosageInstruction | not available | TP-TYPICAL: old "1"; FHIR dosageInstruction has only timing "No specific dosing interval specified" | the dose "1" is not in the resource for these prescriptions (BM-038) |
 | Qty | MedicationRequest.dispenseRequest.quantity.value | matches | TP-TYPICAL: 30 and 30 | |
 | Refills | MedicationRequest.dispenseRequest.numberOfRepeatsAllowed | matches | TP-TYPICAL: 0 and 0 | |
 | Filled (date added) | MedicationRequest.authoredOn | matches | TP-TYPICAL: Amlodipine 2026-09-26T11:58:36+00:00, old "2026-09-26 11:58:36" | the column label is misleading (BM-023); FHIR is UTC and the old card shows local time |
 | Card membership | none reliable | not available | see medications.md | depends on the BM-019 decision |
 | Active filter | MedicationRequest.status = active | matches | TP-HISTORY: Lisinopril (active=-1) is status=stopped; old card shows no row | |
-| Sort order | none (no date_modified in the resource) | differs | TP-TYPICAL: old Amlodipine then Omeprazole (date_modified desc); FHIR returns the same order here by insertion | sort by authoredOn descending as an approximation, documented |
+| Sort order | MedicationRequest.authoredOn | differs | TP-TYPICAL: old Amlodipine then Omeprazole (date_modified desc); authoredOn descending gives the same here | sort by authoredOn descending as an approximation of date_modified desc (BM-036) |
 | Empty state wording | Bundle with no active prescriptions | differs | TP-HISTORY: old shows an empty table, FHIR has 1 stopped entry; TP-EMPTY: old "None", FHIR 0 | the new card shows "No active prescriptions" in both cases (BM-024) |
 | List completeness | Bundle.entry filtered to prescriptions (see BM-019) | matches | TP-TYPICAL: old 2 rows, FHIR 2 order/outpatient prescriptions (Amlodipine, Omeprazole), plus Atorvastatin, a list row that now looks the same; TP-HISTORY: old 0, FHIR 0 active | exact only if the BM-019 decision separates list rows correctly |
 
@@ -90,4 +90,5 @@ Observed on the old dashboard (2026-09-26, body text read from the DOM):
 - BM-023: the column labelled "Filled" shows the date the prescription was added (`general_fragment.html:23, 35`).
 - BM-024: a patient whose prescriptions are all discontinued gets an empty table with no message (`general_fragment.html:12-13, 28`).
 - BM-025: the eRx "Current Medications" block in demographics.php can never render, because `$display_current_medications_below` is only set in stats.php (`demographics.php:1186-1210`).
+- BM-038: the Details column (size, unit, dose) isn't in FHIR for these prescriptions.
 - BM-019 and BM-020 (shared): list rows and prescriptions can't be separated in FHIR.

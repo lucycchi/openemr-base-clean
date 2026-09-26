@@ -124,7 +124,8 @@ Every slice ends with these gates green:
 1. **Unit (Vitest).** Each mapper is tested against recorded fixture JSON, captured from the dev stack with `spike/fhir-get.mjs`, covering missing fields, ordering and every Gate 2 decision. The API client is tested for 401 → re-login, network error → `LoadError`, and unexpected empty → `LoadError`. The BFF is tested for the proxy allow-list, `_include` stripping, and session handling.
 2. **Parity (Playwright, one spec per section).**
    - The test opens the old dashboard at **http://localhost:8300**, logs in, dismisses clinical-reminder alerts, opens the fixture patient, and reads each field listed in the module doc's section 2, including tooltips and the highlight class. It then does the same in the new app and compares **field by field**.
-   - Approved exceptions from Gate 2 and the catalogue are listed in the spec by BM id: BM-011, 012, 015, 017, 019, 020, 023, 024, 028, 030, 032, 035.
+   - **Each parity spec compares only the fields its module doc marks as ported**, with an explicit field list at the top of the spec. Fields the audits found unavailable in FHIR are not compared; they're listed as approved exceptions.
+   - Approved exceptions, by BM id: BM-011, 012, 015, 017, 019, 020, 023, 024, 028, 030, 032, 035, 036, 037, 038, 039. Each spec lists the ids that apply to its section (see the arc files).
    - Every section runs against `TP-TYPICAL`, `TP-EMPTY`, `TP-HISTORY`, `TP-LONG` and `TP-ESCAPING`, plus `TP-NKA` for allergies and `TP-DECEASED` for the header.
 3. **E2E (Playwright).**
    - login and logout
