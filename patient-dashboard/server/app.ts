@@ -4,6 +4,7 @@ import { authRoutes } from './auth';
 import type { AuthDeps } from './auth';
 import { fhirProxyRoutes } from './fhirProxy';
 import type { FhirProxyDeps } from './fhirProxy';
+import type { AppConfig } from './appConfig';
 
 export interface AppOptions {
     /** Directory holding the built SPA (index.html and assets). Omitted in unit tests. */
@@ -12,6 +13,8 @@ export interface AppOptions {
     auth?: AuthDeps;
     /** Allow-listed FHIR reads under /api/fhir. */
     fhir?: FhirProxyDeps;
+    /** Site settings for the SPA (hidden cards), served at /app-config. */
+    appConfig?: AppConfig;
 }
 
 /** Builds the BFF: health check, /auth routes, the /api/fhir proxy, and the built SPA with an index.html fallback. */
@@ -19,6 +22,11 @@ export function createApp(options: AppOptions = {}): Hono {
     const app = new Hono();
 
     app.get('/healthz', (c) => c.json({ ok: true }));
+
+    if (options.appConfig !== undefined) {
+        const appConfig = options.appConfig;
+        app.get('/app-config', (c) => c.json(appConfig));
+    }
 
     if (options.auth !== undefined) {
         app.route('/auth', authRoutes(options.auth));

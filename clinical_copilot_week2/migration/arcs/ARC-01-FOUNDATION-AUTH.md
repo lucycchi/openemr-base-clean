@@ -1,6 +1,6 @@
 # ARC-01 — Foundation and auth
 
-**Status:** in-progress
+**Status:** complete (BM-004 strike-through carried to slice 02-01-02)
 **Estimate:** 10 h
 
 ## Goal
@@ -82,13 +82,13 @@ The actual cards (ARC-02 to ARC-04) and the droplet deploy (ARC-05).
 **Touches:** `tests/support/`, `tests/parity/`
 
 #### Slice 01-04-02 — Hidden-cards configuration
-- [ ] Tests first, watched failing
-- [ ] Implement `config/hidden-cards.json` (keys match `hide_dashboard_cards`: card_allergies, card_medicalproblems, card_medication, card_prescriptions, card_care_team) read by the SPA shell
-- [ ] Gates green; DEV-LOG, arc file updated
+- [x] Tests first, watched failing
+- [x] Implement `config/hidden-cards.json` (keys match `hide_dashboard_cards`: card_allergies, card_medicalproblems, card_medication, card_prescriptions, card_care_team, plus the new card_encounter_history), loaded and validated by the BFF at start-up and served at `/app-config`; `visibleCards()` in the SPA
+- [x] Gates green; DEV-LOG, arc file updated
 **Acceptance tests:**
 - `tests/unit/app/hiddenCards.test.ts :: a key in hidden-cards.json removes that card`
 **Touches:** `config/`, `web/src/app/`
 
 ## Definition of Done for this arc
-- [ ] All slices ticked; BM-004 and BM-029 struck through
-- [ ] DEV-LOG has an arc-completion entry
+- [x] All slices ticked; BM-029 struck through; BM-004 carried to slice 02-01-02, where the guard is first used
+- [x] DEV-LOG has an arc-completion entry

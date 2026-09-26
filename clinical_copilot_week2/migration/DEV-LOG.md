@@ -2,6 +2,39 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 01 complete: Foundation and auth
+
+**Slices:** 6 (01-01-01, 01-02-01, 01-02-02, 01-03-01, 01-04-01, 01-04-02)  **BM rows resolved:** BM-029 (BM-004 carried to 02-01-02)
+
+### Retrospective
+- What worked: the spike code carried straight over into the BFF. Writing each test first and, where code had come first, proving the test by breaking the code caught nothing wrong but gave real confidence. The SPKI-pinned certificate works in Playwright's Chromium, and a real OpenEMR login runs in about 3 s.
+- What didn't: the host was missing `libnss3` (the user installed it). Two OAuth logins at the same moment made OpenEMR reject one token exchange, so the browser tests run serially.
+- Carried forward to Arc 02: BM-004's strike-through and the rejected-session E2E (they need the first data-fetching card), and `tests/support/newApp.ts`.
+
+## 2026-09-26 — Arc 01 / Story 01-04 / Slice 01-04-02 — Hidden-cards configuration
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `web/src/app/hiddenCards.ts`: `CARD_KEYS` (the five old `hide_dashboard_cards` keys plus `card_encounter_history`) and `visibleCards()`.
+- `server/appConfig.ts`: `loadAppConfig()` reads `config/hidden-cards.json` (or `HIDDEN_CARDS_FILE`). A missing file hides nothing, and an unknown key stops start-up. The BFF serves the result at `GET /app-config`, so a site can change it without rebuilding the SPA.
+
+### Decisions
+- The config is read at runtime by the BFF, not bundled at build time, so sites can edit it on the droplet.
+
+### Tests
+- Unit: 32 / 32 passing (6 new)
+- Playwright: 5 / 5 passing
+- Lint, typecheck and Prettier: clean
+- Seen failing first: both new test files, with the modules missing.
+
+### BUGS-MITIGATIONS.md updates
+- None.
+
+### Open questions / follow-ups
+- The cards (ARC-02 onwards) read `/app-config` through `visibleCards()`.
+
 ## 2026-09-26 — Arc 01 / Story 01-04 / Slice 01-04-01 — Parity harness (old dashboard reader)
 
 **Branch:** `dashboard-migration`
