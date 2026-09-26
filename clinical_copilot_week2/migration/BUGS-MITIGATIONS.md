@@ -16,8 +16,8 @@ The catalogue the rewrite works from, with one row per problem found in the audi
 |---|---|
 | Critical | 0 |
 | High | 10 |
-| Medium | 10 |
-| Low | 11 |
+| Medium | 12 |
+| Low | 13 |
 
 ## Catalogue
 
@@ -54,3 +54,7 @@ The catalogue the rewrite works from, with one row per problem found in the audi
 | BM-029 | High | safety | Care Team (FHIR) | `CareTeam?patient=…&_include=CareTeam:participant` returns HTTP 200 with an empty Bundle, dropping the CareTeam itself, so an unsupported parameter reads as "no care team" (TP-TYPICAL) | fix in the new app | Never send _include. The API client adds a contract test that the plain search for TP-TYPICAL returns 1 CareTeam, so a silent empty result fails CI. |
 | BM-030 | Low | presentation | Care Team | With no care team the card shows only the table header row and no message (templates/patient/card/manage_care_team.html.twig; TP-EMPTY) | fix in the new app | Show "No care team recorded"; approved parity exception pinned on TP-EMPTY. |
 | BM-031 | Low | correctness | Care Team (FHIR) | A related person with no recorded role is sent with SNOMED 407542009 (informal caregiver) and no display, while the old card shows a blank role (src/Services/FHIR/FhirCareTeamService.php:424; TP-TYPICAL martha mom) | fix in the new app | Show a role only when the coding has a display, and treat a bare 407542009 as not recorded, matching the old blank. |
+| BM-032 | Medium | correctness | Encounter history (FHIR) | An encounter whose provider has no NPI has no Encounter.participant at all, so the provider is silently dropped (src/Services/FHIR/FhirEncounterService.php:171-193; TP-TYPICAL 2026-03-02 Fred Stone, while the Donna Lee encounters with an NPI carry the participant) | fix in the new app | Show "Provider not recorded in FHIR" when participant is absent. Decided with BM-028 at Gate 2 whether to read provider names from the Standard API instead. |
+| BM-033 | Medium | security (unverified) | Encounter history (FHIR) | The Visit History page replaces an encounter's reason with "(No access)" when the user lacks its sensitivity or visit-category ACL (interface/patient_file/history/encounters.php:491-510), but EncounterService's search path has no sensitivity filter (the only sensitivity check is in the update path, src/Services/EncounterService.php:449-451), so FHIR may return restricted reasons; not runtime-tested because the admin user has every ACL | out of scope | - |
+| BM-034 | Low | presentation | Encounter history | The old page lists newest first, 20 per page (encounter_page_size), with Prev and Next; FHIR returns all encounters oldest first in one Bundle (interface/patient_file/history/encounters.php:296-330, 449; TP-LONG) | keep for parity | The mapper sorts by period.start descending. The card shows the 20 most recent (from encounter_page_size) with a "Show all" toggle, pinned by a TP-LONG unit test. |
+| BM-035 | Low | presentation | Encounter history | With no encounters the page shows "1-0 of 0" above an empty header (interface/patient_file/history/encounters.php:470; TP-EMPTY) | fix in the new app | Show "No encounters recorded"; approved parity exception pinned on TP-EMPTY. |

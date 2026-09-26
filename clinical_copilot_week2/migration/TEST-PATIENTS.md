@@ -72,6 +72,7 @@ The Standard API can't create these records. It ignores `reaction` and `severity
 - [x] TP-DECEASED: deceased date set through the Standard API (see above)
 - [x] TP-TYPICAL: problem occurrence set as the UI's Occurrence dropdown stores it: Hyperlipidaemia = 1 (First), Essential hypertension = 4 (Chronic/Recurrent) (Task 10, for BM-017)
 - [x] TP-TYPICAL: Atorvastatin list row given a `lists_medication` row (request_intent order, usage_category outpatient, drug_dosage_instructions "1 tablet at night"), the values the medication form stores (Task 11, for BM-019)
+- [x] Encounters (Task 15, `fixtures/seed-encounters.mjs`, ids in `fixtures/encounter-ids.json`): TP-TYPICAL 3 (2026-08-14 Diabetes review, Donna Lee; 2026-03-02 Blood pressure check, Fred Stone; 2025-11-20 Annual physical, Donna Lee), TP-HISTORY 1 (2024-10-26 Cough and fever), TP-LONG 30 monthly visits. Dev user Donna Lee (users.id 6) was given the test NPI 1234567893 so that one provider resolves through FHIR Practitioner.
 - [x] TP-NKA: `INSERT INTO lists_touch (pid, type, date) VALUES (38, 'allergy', NOW())`, the same row `setListTouch()` writes (Task 9)
 
 **How the prescriptions were added.** The prescription form could not be used by hand on the dev stack, for three reasons, all of which are Prescriptions audit findings:
