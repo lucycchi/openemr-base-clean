@@ -2,14 +2,14 @@
 
 ## Summary
 
-We are porting OpenEMR's patient dashboard (the identity header, the Allergies, Problem List, Medications, Prescriptions and Care Team cards, and an Encounter history section) from server-rendered PHP to a **React + TypeScript** single-page app, fed only by OpenEMR's FHIR R4 API. Login uses OAuth2/OpenID Connect through a small **Node backend-for-frontend (BFF)** that holds a confidential client, so tokens never reach the browser. We chose this pairing because two working spikes showed that a browser cannot call OpenEMR's FHIR API directly, and React gives typed, testable card components that map one-to-one onto the old Twig cards.
+I am porting OpenEMR's patient dashboard (the identity header, the Allergies, Problem List, Medications, Prescriptions and Care Team cards, and an Encounter history section) from server-rendered PHP to a **React + TypeScript** single-page app, fed only by OpenEMR's FHIR R4 API. Login uses OAuth2/OpenID Connect through a small **Node backend-for-frontend (BFF)** that holds a confidential client, so tokens never reach the browser. I chose this pairing because two working spikes showed that a browser cannot call OpenEMR's FHIR API directly, and React gives typed, testable card components that map one-to-one onto the old Twig cards.
 
 Supporting evidence, all in `clinical_copilot_week2/migration/`:
 - `API-SPIKE.md`: auth spikes and exact API behaviour
 - `INVENTORY.md`: what the old dashboard loads
 - `modules/*.md`: seven field-by-field audits
 - `BUGS-MITIGATIONS.md`: 35 catalogued problems and the Gate 2 decisions
-- `MIGRATION-OPTIONS.md`: the routes we compared
+- `MIGRATION-OPTIONS.md`: the routes I compared
 - `TEST-PATIENTS.md`: seven synthetic patients used for every comparison
 
 ## What was ported
@@ -26,10 +26,10 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
 
 ## Why this framework
 
-1. **The spikes decided the architecture before the framework.** OpenEMR answers every CORS preflight on FHIR routes with HTTP 404, because routes are dispatched before its CORS listener can respond (`RoutesExtensionListener` priority 40 vs `CORSListener` 25, BM-001). A browser page on another origin therefore cannot send an authenticated FHIR request, so any browser app needs a server in front of the API. The BFF spike passed every check (one login, two patients, refresh token, 401s where expected), so we made that server the BFF.
+1. **The spikes decided the architecture before the framework.** OpenEMR answers every CORS preflight on FHIR routes with HTTP 404, because routes are dispatched before its CORS listener can respond (`RoutesExtensionListener` priority 40 vs `CORSListener` 25, BM-001). A browser page on another origin therefore cannot send an authenticated FHIR request, so any browser app needs a server in front of the API. The BFF spike passed every check (one login, two patients, refresh token, 401s where expected), so I made that server the BFF.
 2. **The BFF also removes a patient-safety trap.** With a patient-bound browser token, asking for another patient returns HTTP 200 with an empty list, not an error (BM-004), so a patient switch could show "no allergies" for the wrong person. A user-scoped BFF returns the patient actually requested.
-3. **React + TypeScript matches the shape of the problem.** Each old card is a small, independent view over one resource type, which is exactly a React component. TypeScript with `@types/fhir` makes every FHIR field access type-checked. The audits found that most parity risk sits in the translation from FHIR to what the card shows, so we put that logic in pure mapper functions that are easy to unit-test.
-4. **It is fast to build and light to host.** Vite plus a small Node BFF runs as one container of tens of MB, which fits the 3.9 GB droplet already running OpenEMR, MariaDB and the Python Co-Pilot sidecar. We compared Angular (more boilerplate for six cards, and not a real upgrade from AngularJS), Vue (a close second) and Next.js (heavier, and server-rendered, which is harder to justify as a presentation-layer move). See `MIGRATION-OPTIONS.md`.
+3. **React + TypeScript matches the shape of the problem.** Each old card is a small, independent view over one resource type, which is exactly a React component. TypeScript with `@types/fhir` makes every FHIR field access type-checked. The audits found that most parity risk sits in the translation from FHIR to what the card shows, so I put that logic in pure mapper functions that are easy to unit-test.
+4. **It is fast to build and light to host.** Vite plus a small Node BFF runs as one container of tens of MB, which fits the 3.9 GB droplet already running OpenEMR, MariaDB and the Python Co-Pilot sidecar. I compared Angular (more boilerplate for six cards, and not a real upgrade from AngularJS), Vue (a close second) and Next.js (heavier, and server-rendered, which is harder to justify as a presentation-layer move). See `MIGRATION-OPTIONS.md`.
 
 ## What moving off PHP gained
 
@@ -51,10 +51,10 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
 ## Tradeoffs and costs
 
 - **FHIR is not a faithful view of OpenEMR's data, so parity is limited where FHIR is:**
-  - *Problem status (BM-017):* FHIR reports a problem whose occurrence is "First" as `resolved`. We show every problem that isn't `inactive` and label the resolved ones, so no active problem is hidden. The cost is that a few truly resolved problems may appear, clearly labelled.
-  - *Medications and Prescriptions (BM-019, BM-020):* FHIR merges the medication list and prescriptions into one `MedicationRequest` feed, and no field reliably says which is which. We split the two cards on `intent` (plan or order) and show a caveat: a list entry marked "Order" appears under Prescriptions. A medication linked to a prescription appears once, without the list's dosage text.
+  - *Problem status (BM-017):* FHIR reports a problem whose occurrence is "First" as `resolved`. I show every problem that isn't `inactive` and label the resolved ones, so no active problem is hidden. The cost is that a few truly resolved problems may appear, clearly labelled.
+  - *Medications and Prescriptions (BM-019, BM-020):* FHIR merges the medication list and prescriptions into one `MedicationRequest` feed, and no field reliably says which is which. I split the two cards on `intent` (plan or order) and show a caveat: a list entry marked "Order" appears under Prescriptions. A medication linked to a prescription appears once, without the list's dosage text.
   - *Allergy severity (BM-011):* eight severities collapse to FHIR's low or high risk, so "Moderate" becomes "Low risk". The high-risk highlight is kept.
-  - *Uncoded allergy names and markup (BM-009, BM-010):* an uncoded allergy's name is only in the FHIR narrative, which OpenEMR builds without HTML escaping. We read it as text, never as HTML, so a name like `Latex <b>x</b>` displays as "Latex x".
+  - *Uncoded allergy names and markup (BM-009, BM-010):* an uncoded allergy's name is only in the FHIR narrative, which OpenEMR builds without HTML escaping. I read it as text, never as HTML, so a name like `Latex <b>x</b>` displays as "Latex x".
   - *Names (BM-028, BM-032):* FHIR's Practitioner endpoint only serves users with an NPI, so care-team members and encounter providers without one show as "Name unavailable".
   - *Header status (BM-005):* `Patient.active` is always true, so status is derived from `deceasedDateTime` instead.
   - *The prescription dose detail and the encounter billing, insurance and forms columns* are not in FHIR and are not ported.
@@ -63,7 +63,7 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
   - a patient-bound token returns an empty Bundle for another patient (BM-004)
 
   The new app never uses `_include`, and it treats an unexpected empty result as a load error, not as "nothing recorded".
-- **Security observations in the API that we can't fix (the backend is out of scope):**
+- **Security observations in the API that I can't fix (the backend is out of scope):**
   - OpenEMR echoes any `Origin` into `Access-Control-Allow-Origin` (BM-002)
   - its preflight handling is unreachable (BM-001)
   - the FHIR Encounter search appears not to apply sensitivity restrictions that the old Visit History page enforces (BM-033, read from the code, not tested at runtime)
@@ -75,7 +75,7 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
 
 ## Parity evidence
 
-Parity is measured against the running old dashboard, not against our reading of its code:
+Parity is measured against the running old dashboard, not against my reading of its code:
 
 - **Fixtures:** seven synthetic patients (`TEST-PATIENTS.md`). They cover a typical chart, an empty chart, "no known allergies", ended history, a deceased patient, long lists (25 allergies, 60 problems, 60 medications, 30 encounters) and names with special characters.
 - **Field-level comparison:** each module audit records, for every field the user sees, the FHIR field it comes from, whether it matches, and the actual values observed for named fixtures in both systems. The old dashboard was read in a real browser through the dev stack's Selenium, and FHIR through the same OAuth client the app uses.
