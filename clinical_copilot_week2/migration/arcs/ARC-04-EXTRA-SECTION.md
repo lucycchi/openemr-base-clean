@@ -1,6 +1,6 @@
 # ARC-04 — Encounter history (extra section)
 
-**Status:** planned
+**Status:** complete
 **Estimate:** 4 h
 
 ## Goal
@@ -21,9 +21,9 @@ The billing, insurance, issue and forms columns, interleaved documents, and open
 **Acceptance:** TP-TYPICAL shows three encounters newest first (2026-08-14 Diabetes review, Lee, Donna; 2026-03-02 Blood pressure check, Name unavailable; 2025-11-20 Annual physical, Lee, Donna); TP-LONG shows 20, then 30 after "Show all"; TP-EMPTY shows "No encounters recorded".
 
 #### Slice 04-01-01 — Encounter mapper, hook and card
-- [ ] Tests first, watched failing
-- [ ] Implement `mappers/encounters.ts` (period.start descending; reasonCode text; provider name through Practitioner, or "Name unavailable"; page size from config, default 20) and `cards/EncounterHistoryCard.tsx`
-- [ ] Gates green; DEV-LOG, arc file and BM rows updated
+- [x] Tests first, watched failing
+- [x] Implement `mappers/encounters.ts` (period.start descending; reasonCode text; provider name through Practitioner, or "Name unavailable"; page size from config, default 20) and `cards/EncounterHistoryCard.tsx`
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
 **Acceptance tests:**
 - `tests/unit/mappers/encounters.test.ts :: newest first (BM-034)`
 - `tests/unit/mappers/encounters.test.ts :: missing participant shows "Name unavailable" (BM-032)`
@@ -34,5 +34,5 @@ The billing, insurance, issue and forms columns, interleaved documents, and open
 **Touches:** `web/src/`
 
 ## Definition of Done for this arc
-- [ ] Slice ticked; BM-032, BM-034, BM-035 and BM-039 struck through
-- [ ] DEV-LOG has an arc-completion entry
+- [x] Slice ticked; BM-032, BM-034, BM-035 and BM-039 struck through
+- [x] DEV-LOG has an arc-completion entry

@@ -157,3 +157,26 @@ export async function readOldCareTeam(page: Page): Promise<OldCareTeam> {
         return { team: name === '' ? null : { name, status }, members };
     });
 }
+
+export interface OldVisit {
+    date: string;
+    reason: string;
+    provider: string;
+}
+
+/**
+ * Reads the old Visit History page (interface/patient_file/history/encounters.php), the parity
+ * reference for the Encounter history card. Columns are Date, Issue, Reason/Form, Provider, Billing,
+ * Insurance. `pageSize` 0 asks for every encounter; omitted, the site's encounter_page_size applies.
+ */
+export async function readOldVisitHistory(page: Page, pid: number, pageSize?: number): Promise<OldVisit[]> {
+    const size = pageSize === undefined ? '' : `&pagesize=${pageSize}`;
+    await page.goto(`/interface/patient_file/history/encounters.php?pid=${pid}${size}`);
+    return page.evaluate(() => {
+        const clean = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
+        return Array.from(document.querySelectorAll('tr.encrow')).map((row) => {
+            const cells = Array.from(row.children).map((cell) => clean(cell.textContent));
+            return { date: cells[0] ?? '', reason: cells[2] ?? '', provider: cells[3] ?? '' };
+        });
+    });
+}

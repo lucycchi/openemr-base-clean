@@ -7,6 +7,8 @@ export interface AppConfig {
     hiddenCards: CardKey[];
     /** Mirrors OpenEMR's age_display_format and age_display_limit globals (defaults: 0 and 3). */
     ageDisplay: AgeSettings;
+    /** Mirrors OpenEMR's encounter_page_size global: visits shown before "Show all" (default 20; 0 shows all). */
+    encounterPageSize: number;
 }
 
 function ageSettingsFrom(env: NodeJS.ProcessEnv): AgeSettings {
@@ -21,14 +23,23 @@ function ageSettingsFrom(env: NodeJS.ProcessEnv): AgeSettings {
     return { format: format === '1' ? 1 : 0, limitYears };
 }
 
+function encounterPageSizeFrom(env: NodeJS.ProcessEnv): number {
+    const raw = env.ENCOUNTER_PAGE_SIZE ?? '20';
+    if (!/^\d+$/.test(raw)) {
+        throw new Error(`ENCOUNTER_PAGE_SIZE must be a whole number of 0 or more, got "${raw}"`);
+    }
+    return Number(raw);
+}
+
 /**
  * Reads the site's hidden-cards list (the new app's equivalent of `hide_dashboard_cards`, which
  * FHIR does not expose). A missing file hides nothing; an unknown key stops start-up.
  */
 export function loadAppConfig(path: string, env: NodeJS.ProcessEnv = process.env): AppConfig {
     const ageDisplay = ageSettingsFrom(env);
+    const encounterPageSize = encounterPageSizeFrom(env);
     if (!existsSync(path)) {
-        return { hiddenCards: [], ageDisplay };
+        return { hiddenCards: [], ageDisplay, encounterPageSize };
     }
     const parsed = JSON.parse(readFileSync(path, 'utf8')) as unknown;
     const list = (parsed as { hiddenCards?: unknown }).hiddenCards;
@@ -42,5 +53,5 @@ export function loadAppConfig(path: string, env: NodeJS.ProcessEnv = process.env
         }
         hiddenCards.push(key);
     }
-    return { hiddenCards, ageDisplay };
+    return { hiddenCards, ageDisplay, encounterPageSize };
 }

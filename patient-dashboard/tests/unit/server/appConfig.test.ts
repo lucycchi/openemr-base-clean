@@ -23,6 +23,7 @@ describe('app configuration', () => {
         expect(await res.json()).toEqual({
             hiddenCards: ['card_prescriptions'],
             ageDisplay: { format: 0, limitYears: 3 },
+            encounterPageSize: 20,
         });
     });
 
@@ -34,6 +35,7 @@ describe('app configuration', () => {
         expect(loadAppConfig(join(tmpdir(), 'does-not-exist', 'hidden-cards.json'))).toEqual({
             hiddenCards: [],
             ageDisplay: { format: 0, limitYears: 3 },
+            encounterPageSize: 20,
         });
     });
 
@@ -47,5 +49,18 @@ describe('app configuration', () => {
         expect(() => loadAppConfig(join(tmpdir(), 'none.json'), { AGE_DISPLAY_FORMAT: '2' })).toThrow(
             /AGE_DISPLAY_FORMAT/,
         );
+    });
+
+    it('reads the encounter page size (the encounter_page_size global) from the environment; 0 means all', () => {
+        expect(loadAppConfig(join(tmpdir(), 'none.json'), { ENCOUNTER_PAGE_SIZE: '50' }).encounterPageSize).toBe(50);
+        expect(loadAppConfig(join(tmpdir(), 'none.json'), { ENCOUNTER_PAGE_SIZE: '0' }).encounterPageSize).toBe(0);
+    });
+
+    it('rejects an encounter page size that is not a whole number of 0 or more', () => {
+        for (const bad of ['-1', '2.5', 'twenty', '']) {
+            expect(() => loadAppConfig(join(tmpdir(), 'none.json'), { ENCOUNTER_PAGE_SIZE: bad }), bad).toThrow(
+                /ENCOUNTER_PAGE_SIZE/,
+            );
+        }
     });
 });

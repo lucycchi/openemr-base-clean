@@ -1,0 +1,2416 @@
+{
+  "meta": {
+    "lastUpdated": "2026-09-26T20:03:38"
+  },
+  "resourceType": "Bundle",
+  "type": "collection",
+  "total": 30,
+  "link": [
+    {
+      "relation": "self",
+      "url": "https://localhost:9300/apis/default/fhir/Encounter"
+    }
+  ],
+  "entry": [
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996f-3315-44c3-b9a9-9171e54f231e",
+      "resource": {
+        "id": "a2d6996f-3315-44c3-b9a9-9171e54f231e",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:09+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996f-3315-44c3-b9a9-9171e54f231e",
+            "value": "a2d6996f-3315-44c3-b9a9-9171e54f231e"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2024-04-14T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2024-04-14T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 30"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996e-e158-44d7-a331-e50a95729e82",
+      "resource": {
+        "id": "a2d6996e-e158-44d7-a331-e50a95729e82",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:08+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996e-e158-44d7-a331-e50a95729e82",
+            "value": "a2d6996e-e158-44d7-a331-e50a95729e82"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2024-05-14T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2024-05-14T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 29"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996e-8fa1-4c8e-9e0e-aeb9de84deea",
+      "resource": {
+        "id": "a2d6996e-8fa1-4c8e-9e0e-aeb9de84deea",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:08+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996e-8fa1-4c8e-9e0e-aeb9de84deea",
+            "value": "a2d6996e-8fa1-4c8e-9e0e-aeb9de84deea"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2024-06-13T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2024-06-13T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 28"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996e-3c08-4dfe-b4d7-d953081a155d",
+      "resource": {
+        "id": "a2d6996e-3c08-4dfe-b4d7-d953081a155d",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:08+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996e-3c08-4dfe-b4d7-d953081a155d",
+            "value": "a2d6996e-3c08-4dfe-b4d7-d953081a155d"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2024-07-13T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2024-07-13T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 27"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996d-e689-4396-8a59-550f48aa7215",
+      "resource": {
+        "id": "a2d6996d-e689-4396-8a59-550f48aa7215",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:08+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996d-e689-4396-8a59-550f48aa7215",
+            "value": "a2d6996d-e689-4396-8a59-550f48aa7215"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2024-08-12T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2024-08-12T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 26"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996d-8f20-4e67-9f90-00736492f1db",
+      "resource": {
+        "id": "a2d6996d-8f20-4e67-9f90-00736492f1db",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:07+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996d-8f20-4e67-9f90-00736492f1db",
+            "value": "a2d6996d-8f20-4e67-9f90-00736492f1db"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2024-09-11T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2024-09-11T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 25"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996d-3c74-4c0f-b5de-b070e2a48755",
+      "resource": {
+        "id": "a2d6996d-3c74-4c0f-b5de-b070e2a48755",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:07+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996d-3c74-4c0f-b5de-b070e2a48755",
+            "value": "a2d6996d-3c74-4c0f-b5de-b070e2a48755"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2024-10-11T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2024-10-11T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 24"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996c-ea9f-4a6d-8051-baef40dc4227",
+      "resource": {
+        "id": "a2d6996c-ea9f-4a6d-8051-baef40dc4227",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:07+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996c-ea9f-4a6d-8051-baef40dc4227",
+            "value": "a2d6996c-ea9f-4a6d-8051-baef40dc4227"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2024-11-10T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2024-11-10T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 23"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996c-99d8-4d46-9023-b00305f5dec3",
+      "resource": {
+        "id": "a2d6996c-99d8-4d46-9023-b00305f5dec3",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:07+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996c-99d8-4d46-9023-b00305f5dec3",
+            "value": "a2d6996c-99d8-4d46-9023-b00305f5dec3"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2024-12-10T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2024-12-10T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 22"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996c-442f-4d9e-95cd-d28c59c2160f",
+      "resource": {
+        "id": "a2d6996c-442f-4d9e-95cd-d28c59c2160f",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:07+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996c-442f-4d9e-95cd-d28c59c2160f",
+            "value": "a2d6996c-442f-4d9e-95cd-d28c59c2160f"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-01-09T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-01-09T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 21"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996b-ed4e-4459-b6a9-3c8075e8675e",
+      "resource": {
+        "id": "a2d6996b-ed4e-4459-b6a9-3c8075e8675e",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:06+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996b-ed4e-4459-b6a9-3c8075e8675e",
+            "value": "a2d6996b-ed4e-4459-b6a9-3c8075e8675e"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-02-08T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-02-08T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 20"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996b-974b-4ccb-9e70-79806e506e3a",
+      "resource": {
+        "id": "a2d6996b-974b-4ccb-9e70-79806e506e3a",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:06+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996b-974b-4ccb-9e70-79806e506e3a",
+            "value": "a2d6996b-974b-4ccb-9e70-79806e506e3a"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-03-10T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-03-10T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 19"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996b-439c-4c00-90d3-8b1e8606b857",
+      "resource": {
+        "id": "a2d6996b-439c-4c00-90d3-8b1e8606b857",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:06+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996b-439c-4c00-90d3-8b1e8606b857",
+            "value": "a2d6996b-439c-4c00-90d3-8b1e8606b857"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-04-09T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-04-09T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 18"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996a-eff0-408d-91a1-32e3fae706b0",
+      "resource": {
+        "id": "a2d6996a-eff0-408d-91a1-32e3fae706b0",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:06+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996a-eff0-408d-91a1-32e3fae706b0",
+            "value": "a2d6996a-eff0-408d-91a1-32e3fae706b0"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-05-09T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-05-09T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 17"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996a-9ba3-450e-a5fd-53769494d81e",
+      "resource": {
+        "id": "a2d6996a-9ba3-450e-a5fd-53769494d81e",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:06+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996a-9ba3-450e-a5fd-53769494d81e",
+            "value": "a2d6996a-9ba3-450e-a5fd-53769494d81e"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-06-08T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-06-08T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 16"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d6996a-4772-439f-b20f-7113d334ea3b",
+      "resource": {
+        "id": "a2d6996a-4772-439f-b20f-7113d334ea3b",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:05+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d6996a-4772-439f-b20f-7113d334ea3b",
+            "value": "a2d6996a-4772-439f-b20f-7113d334ea3b"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-07-08T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-07-08T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 15"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69969-f78b-44bd-b752-a95548516c14",
+      "resource": {
+        "id": "a2d69969-f78b-44bd-b752-a95548516c14",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:05+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69969-f78b-44bd-b752-a95548516c14",
+            "value": "a2d69969-f78b-44bd-b752-a95548516c14"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-08-07T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-08-07T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 14"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69969-9cf9-4f46-81a5-b6fdfce71306",
+      "resource": {
+        "id": "a2d69969-9cf9-4f46-81a5-b6fdfce71306",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:05+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69969-9cf9-4f46-81a5-b6fdfce71306",
+            "value": "a2d69969-9cf9-4f46-81a5-b6fdfce71306"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-09-06T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-09-06T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 13"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69969-4d3a-4f14-815f-5fda31fefd8b",
+      "resource": {
+        "id": "a2d69969-4d3a-4f14-815f-5fda31fefd8b",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:05+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69969-4d3a-4f14-815f-5fda31fefd8b",
+            "value": "a2d69969-4d3a-4f14-815f-5fda31fefd8b"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-10-06T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-10-06T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 12"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69968-f660-4dca-ab33-ba128e0726a5",
+      "resource": {
+        "id": "a2d69968-f660-4dca-ab33-ba128e0726a5",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:04+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69968-f660-4dca-ab33-ba128e0726a5",
+            "value": "a2d69968-f660-4dca-ab33-ba128e0726a5"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-11-05T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-11-05T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 11"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69968-a1fc-44bf-ac9b-3992c71ca340",
+      "resource": {
+        "id": "a2d69968-a1fc-44bf-ac9b-3992c71ca340",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:04+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69968-a1fc-44bf-ac9b-3992c71ca340",
+            "value": "a2d69968-a1fc-44bf-ac9b-3992c71ca340"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2025-12-05T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2025-12-05T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 10"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69968-5107-4825-8a3c-caf2ddf07b6b",
+      "resource": {
+        "id": "a2d69968-5107-4825-8a3c-caf2ddf07b6b",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:04+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69968-5107-4825-8a3c-caf2ddf07b6b",
+            "value": "a2d69968-5107-4825-8a3c-caf2ddf07b6b"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2026-01-04T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2026-01-04T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 09"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69967-fed3-4c3c-8a01-10aed4527663",
+      "resource": {
+        "id": "a2d69967-fed3-4c3c-8a01-10aed4527663",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:04+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69967-fed3-4c3c-8a01-10aed4527663",
+            "value": "a2d69967-fed3-4c3c-8a01-10aed4527663"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2026-02-03T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2026-02-03T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 08"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69967-ac5f-416b-9e9e-29580365b5ee",
+      "resource": {
+        "id": "a2d69967-ac5f-416b-9e9e-29580365b5ee",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:04+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69967-ac5f-416b-9e9e-29580365b5ee",
+            "value": "a2d69967-ac5f-416b-9e9e-29580365b5ee"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2026-03-05T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2026-03-05T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 07"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69967-57a1-45a3-9766-f3f915c3a453",
+      "resource": {
+        "id": "a2d69967-57a1-45a3-9766-f3f915c3a453",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:03+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69967-57a1-45a3-9766-f3f915c3a453",
+            "value": "a2d69967-57a1-45a3-9766-f3f915c3a453"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2026-04-04T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2026-04-04T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 06"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69967-03aa-4f87-9056-c7543ef90c6a",
+      "resource": {
+        "id": "a2d69967-03aa-4f87-9056-c7543ef90c6a",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:03+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69967-03aa-4f87-9056-c7543ef90c6a",
+            "value": "a2d69967-03aa-4f87-9056-c7543ef90c6a"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2026-05-04T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2026-05-04T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 05"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69966-a75c-4645-b635-fb7ec96029e4",
+      "resource": {
+        "id": "a2d69966-a75c-4645-b635-fb7ec96029e4",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:03+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69966-a75c-4645-b635-fb7ec96029e4",
+            "value": "a2d69966-a75c-4645-b635-fb7ec96029e4"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2026-06-03T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2026-06-03T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 04"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69966-4dc1-4859-8761-e67f81475ea1",
+      "resource": {
+        "id": "a2d69966-4dc1-4859-8761-e67f81475ea1",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:03+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69966-4dc1-4859-8761-e67f81475ea1",
+            "value": "a2d69966-4dc1-4859-8761-e67f81475ea1"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2026-07-03T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2026-07-03T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 03"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69965-f607-4236-ad6e-375cf920d6cf",
+      "resource": {
+        "id": "a2d69965-f607-4236-ad6e-375cf920d6cf",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:02+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69965-f607-4236-ad6e-375cf920d6cf",
+            "value": "a2d69965-f607-4236-ad6e-375cf920d6cf"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2026-08-02T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2026-08-02T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 02"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Encounter/a2d69965-89aa-41c2-b9eb-cf866be7a487",
+      "resource": {
+        "id": "a2d69965-89aa-41c2-b9eb-cf866be7a487",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T12:30:02+00:00"
+        },
+        "resourceType": "Encounter",
+        "identifier": [
+          {
+            "system": "urn:uuid:a2d69965-89aa-41c2-b9eb-cf866be7a487",
+            "value": "a2d69965-89aa-41c2-b9eb-cf866be7a487"
+          }
+        ],
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185349003",
+                "display": "Encounter for check up (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "Primary Performer"
+                  }
+                ]
+              }
+            ],
+            "period": {
+              "start": "2026-09-01T00:00:00+00:00"
+            },
+            "individual": {
+              "reference": "Practitioner/a2c6137a-eabd-4143-9baa-b3c606366a5f",
+              "type": "Practitioner"
+            }
+          }
+        ],
+        "period": {
+          "start": "2026-09-01T00:00:00+00:00"
+        },
+        "reasonCode": [
+          {
+            "text": "Long-list visit 01"
+          }
+        ],
+        "location": [
+          {
+            "location": {
+              "reference": "Location/a2c6137a-f325-4771-89fe-55e0011897f0",
+              "type": "Location"
+            }
+          }
+        ],
+        "serviceProvider": {
+          "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+          "type": "Organization"
+        }
+      }
+    }
+  ]
+}

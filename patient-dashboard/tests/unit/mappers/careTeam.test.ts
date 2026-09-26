@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Bundle, CareTeam, Practitioner, RelatedPerson } from 'fhir/r4';
-import { mapCareTeams, memberReferences, personName } from '../../../web/src/mappers/careTeam';
+import { mapCareTeams, memberReferences } from '../../../web/src/mappers/careTeam';
+import { personName } from '../../../web/src/mappers/people';
 import { loadFixture } from '../fixtures/load';
 
 // CareTeam bundles recorded from the dev stack with spike/fhir-get.mjs. TP-TYPICAL has one team,

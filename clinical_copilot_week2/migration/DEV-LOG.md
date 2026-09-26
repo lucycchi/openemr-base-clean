@@ -2,6 +2,53 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 04 complete: Encounter history
+
+**Slices:** 1 (04-01-01)  **BM rows resolved:** BM-032, BM-034, BM-035, BM-039
+
+### Retrospective
+- What worked: reading the old Visit History page directly (its rows are `tr.encrow`, with `pagesize=0` for all) gave a real parity reference for a card that did not exist on the old dashboard. Pulling the member-name reads out of `useCareTeam` before starting meant the encounter hook is five lines.
+- What didn't: nothing blocked. The "Show all" comparison only runs when the button exists, so it got its own mutation to prove it is not silently skipped.
+- Carried forward to Arc 05: the settings the BFF reads (`AGE_DISPLAY_FORMAT`, `AGE_DISPLAY_LIMIT`, `ENCOUNTER_PAGE_SIZE`, `SESSION_TTL_MINUTES`, the OAuth client values) need listing in the deploy notes; the date-as-written rule (authoredOn, period.start) needs checking against the droplet's time zone.
+
+## 2026-09-26 — Arc 04 / Story 04-01 / Slice 04-01-01 — Encounter mapper, hook and card
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- Refactor first, with the suite green:
+  - `mappers/people.ts` holds `NAME_UNAVAILABLE`, `personName()` and the safe-reference check
+  - `hooks/useBundleWithNames.ts` holds the patient check plus one read per person, which `useCareTeam` now wraps
+- `web/src/mappers/encounters.ts`:
+  - `providerReferences()` lists each readable Practitioner once (the primary performer, else the first participant)
+  - `mapEncounters()` sorts newest first, with ties in reverse API order and a missing start last
+  - each row has the date as written, the reason text, and the provider or "Name unavailable"
+- `web/src/hooks/useEncounters.ts` (wraps `useBundleWithNames`).
+- `web/src/cards/EncounterHistoryCard.tsx`:
+  - Date, Reason and Provider columns
+  - the first `pageSize` rows with a "Show all N" / "Show the N most recent" toggle, and page size 0 shows all
+  - "No encounters recorded" and "Couldn't load encounters"
+- `server/appConfig.ts`: `ENCOUNTER_PAGE_SIZE` (the encounter_page_size global; default 20, 0 shows all, anything else stops start-up), served as `encounterPageSize` in `/app-config`.
+- `tests/support/oldDashboard.ts`: `readOldVisitHistory()` reads the old Visit History page.
+- Unit fixtures: Encounter bundles for TP-TYPICAL, TP-HISTORY, TP-LONG and TP-EMPTY, and Donna Lee's Practitioner.
+
+### Decisions
+- The date is the first ten characters of period.start. OpenEMR sends the stored local date with a +00:00 offset, so converting it to the browser's zone would move a midnight visit to the day before in any zone west of UTC.
+- The provider is the primary performer (PPRF) when there are several participants, since the old page shows one provider.
+
+### Tests
+- Unit: 151 / 151 passing (encounter mapper 7, hook 3, card 5, config 2 new and 2 updated)
+- Playwright: 22 / 22 passing, including encounter parity for four fixtures (the first page, then all 30 for TP-LONG) and the API-failure E2E
+- Lint, typecheck and Prettier: clean
+- Seen failing first: mapper, hook and card (modules missing), config (field missing), then parity and E2E (card not rendered). Parity proven red twice: flipping the sort failed on TP-TYPICAL's first page, and a "Show all" that revealed nothing failed on TP-LONG's full list.
+
+### BUGS-MITIGATIONS.md updates
+- Resolved: BM-032, BM-034, BM-035, BM-039.
+
+### Open questions / follow-ups
+- BM-033 (restricted reasons may be visible through FHIR) stays out of scope and unverified, as the audit recorded.
+
 ## 2026-09-26 — Arc 03 complete: Clinical cards
 
 **Slices:** 5 (03-01-01, 03-02-01, 03-03-01, 03-03-02, 03-04-01)  **BM rows resolved:** BM-009, BM-010, BM-011, BM-012, BM-013, BM-014, BM-015, BM-016, BM-017, BM-018, BM-019, BM-020, BM-023, BM-024, BM-028, BM-030, BM-031, BM-036, BM-037, BM-038

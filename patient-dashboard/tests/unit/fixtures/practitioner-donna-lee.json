@@ -1,0 +1,26 @@
+{
+  "id": "a2c6137a-eabd-4143-9baa-b3c606366a5f",
+  "meta": {
+    "versionId": "1",
+    "lastUpdated": "2026-09-26T12:30:01+00:00"
+  },
+  "resourceType": "Practitioner",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"> <p>Donna Lee</p></div>"
+  },
+  "identifier": [
+    {
+      "system": "http://hl7.org/fhir/sid/us-npi",
+      "value": "1234567893"
+    }
+  ],
+  "active": true,
+  "name": [
+    {
+      "use": "official",
+      "family": "Lee",
+      "given": ["Donna"]
+    }
+  ]
+}

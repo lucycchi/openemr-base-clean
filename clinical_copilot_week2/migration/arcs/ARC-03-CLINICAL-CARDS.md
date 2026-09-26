@@ -1,6 +1,6 @@
 # ARC-03 — Clinical cards
 
-**Status:** in-progress
+**Status:** complete
 **Estimate:** 14 h
 
 ## Goal
