@@ -1,10 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createApiClient } from '../api/client';
+import type { ApiClient } from '../api/client';
+import { PatientHeader } from '../cards/PatientHeader';
+import { usePatient } from '../hooks/usePatient';
+import type { AgeSettings } from '../mappers/age';
 
 type AuthState = 'checking' | 'signed-in' | 'signed-out';
 
-/** Application shell: session status, log in and log out. Cards are added by later slices. */
+interface SiteConfig {
+    hiddenCards: string[];
+    ageDisplay: AgeSettings;
+}
+
+/** The patient id in /patient/:fhirId, if any. */
+export function patientIdFromPath(pathname: string): string | undefined {
+    const match = /^\/patient\/([^/]+)\/?$/.exec(pathname);
+    return match?.[1] === undefined ? undefined : decodeURIComponent(match[1]);
+}
+
+/** Today's date in the browser's time zone, YYYY-MM-DD. */
+function localToday(): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+function PatientView({ client, patientId, config }: { client: ApiClient; patientId: string; config: SiteConfig }) {
+    const [asOf] = useState(localToday);
+    const header = usePatient(client, patientId, { asOf, age: config.ageDisplay });
+    return <PatientHeader state={header} />;
+}
+
+/** Application shell: session status, site config, and the patient view at /patient/:fhirId. */
 export function App() {
     const [auth, setAuth] = useState<AuthState>('checking');
+    const [config, setConfig] = useState<SiteConfig | undefined>(undefined);
+    const client = useMemo(() => createApiClient(), []);
+    const patientId = patientIdFromPath(globalThis.location.pathname);
 
     useEffect(() => {
         let cancelled = false;
@@ -25,6 +57,28 @@ export function App() {
         };
     }, []);
 
+    useEffect(() => {
+        if (auth !== 'signed-in') {
+            return;
+        }
+        let cancelled = false;
+        fetch('/app-config', { credentials: 'same-origin' })
+            .then((res) => res.json() as Promise<SiteConfig>)
+            .then((body) => {
+                if (!cancelled) {
+                    setConfig(body);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setConfig({ hiddenCards: [], ageDisplay: { format: 0, limitYears: 3 } });
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [auth]);
+
     async function logOut() {
         await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
         setAuth('signed-out');
@@ -35,9 +89,15 @@ export function App() {
             <h1>Patient Dashboard</h1>
             {auth === 'signed-out' && <a href="/auth/login">Log in with OpenEMR</a>}
             {auth === 'signed-in' && (
-                <button type="button" onClick={() => void logOut()}>
-                    Log out
-                </button>
+                <>
+                    <button type="button" onClick={() => void logOut()}>
+                        Log out
+                    </button>
+                    {patientId === undefined && <p>Choose a patient to open their dashboard.</p>}
+                    {patientId !== undefined && config !== undefined && (
+                        <PatientView key={patientId} client={client} patientId={patientId} config={config} />
+                    )}
+                </>
             )}
         </main>
     );

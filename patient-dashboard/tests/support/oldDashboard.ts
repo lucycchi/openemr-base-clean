@@ -22,7 +22,8 @@ export interface OldCard {
  * Logs in to the old dashboard in its own browser context (its session cookie must not mix with the
  * new app's) and opens the dashboard for one patient. Clinical-reminder alerts are accepted.
  */
-export async function openOldDashboard(browser: Browser, pid: number): Promise<Page> {
+/** Logs in to the old OpenEMR UI in its own browser context and returns the page on the tab frame (main.php). */
+export async function openOldSession(browser: Browser): Promise<Page> {
     const context = await browser.newContext({ baseURL: OLD_DASHBOARD_URL });
     const page = await context.newPage();
     page.on('dialog', (dialog) => void dialog.accept());
@@ -32,7 +33,15 @@ export async function openOldDashboard(browser: Browser, pid: number): Promise<P
     await page.locator('#clearPass').fill(OEMR_PASS);
     await page.locator('#login-button, button[type=submit]').first().click();
     await page.waitForURL(/interface\/main\/tabs\/main\.php/);
+    return page;
+}
 
+/**
+ * Logs in to the old dashboard in its own browser context (its session cookie must not mix with the
+ * new app's) and opens the dashboard for one patient. Clinical-reminder alerts are accepted.
+ */
+export async function openOldDashboard(browser: Browser, pid: number): Promise<Page> {
+    const page = await openOldSession(browser);
     await page.goto(`/interface/patient_file/summary/demographics.php?set_pid=${pid}`);
     await page.waitForLoadState('networkidle');
     return page;
@@ -61,4 +70,36 @@ export async function readOldCard(page: Page, cardId: string): Promise<OldCard> 
             bodyText: clean(body.textContent),
         };
     }, cardId);
+}
+
+export interface OldIdentityBar {
+    name: string;
+    mrn: string;
+    dobLine: string;
+}
+
+/**
+ * Reads the identity bar in the tab frame (patient_data_template.php) for one patient, using a page
+ * from openOldSession(). The bar is filled by demographics.php's setPatient() call, so the dashboard is
+ * opened inside the frame through left_nav.loadFrame (the page must stay on main.php as login left it,
+ * because reloading main.php without its token_main loses left_nav).
+ */
+export async function readOldIdentityBar(oldSession: Page, pid: number): Promise<OldIdentityBar> {
+    await oldSession.evaluate(
+        (patientPid) =>
+            (
+                window as unknown as { left_nav: { loadFrame: (a: string, b: string, c: string) => void } }
+            ).left_nav.loadFrame('dem1', 'pat', `patient_file/summary/demographics.php?set_pid=${patientPid}`),
+        pid,
+    );
+    const bar = oldSession.locator('#attendantData');
+    await bar.getByText(new RegExp(`\\(${pid}\\)`)).waitFor();
+    await bar.getByText(/DOB:/).waitFor();
+    const text = (await bar.innerText()).replace(/[ \t]+/g, ' ');
+
+    const match = /^\s*(.+?)\s*\((\S*)\)\s*\n\s*(DOB:[^\n]*?)\s*(?:\n|$)/.exec(text);
+    if (match === null) {
+        throw new Error(`Could not parse the old identity bar: ${JSON.stringify(text)}`);
+    }
+    return { name: match[1] ?? '', mrn: match[2] ?? '', dobLine: (match[3] ?? '').trim() };
 }

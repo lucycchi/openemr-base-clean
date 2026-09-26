@@ -2,6 +2,44 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 02 / Story 02-01 / Slice 02-01-02 — Header mapper, hook and card
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `web/src/mappers/header.ts`, `mapHeader(patient, {asOf, age})`:
+  - name from the official name
+  - MRN from the identifier with type PT
+  - "DOB: … Age: …" or "DOB: … Age at death: …", matching the old identity bar
+  - sex label from `gender`
+  - status "Deceased (date)" from `deceasedDateTime`, otherwise "Active"; `Patient.active` is never read
+  - an explicit fallback for every missing field
+- `web/src/hooks/usePatient.ts`: loads `Patient/{id}` through the API client. A Patient with a different id is a `wrong-patient` LoadError (BM-004). The result is tagged with its patient id, so a patient switch reports loading and never the previous patient.
+- `web/src/cards/PatientHeader.tsx`: fields tagged with `data-item` for the parity reader, and error and loading states with `data-state`.
+- `App.tsx`: `/patient/:fhirId` route, the API client created once, age settings from `/app-config` (the BFF now serves `ageDisplay` from `AGE_DISPLAY_FORMAT` and `AGE_DISPLAY_LIMIT`, defaults 0 and 3), and today's date taken once from the browser.
+- Test support: `tests/support/newApp.ts` (moved from 01-04-01). `oldDashboard.ts` gains `openOldSession()` and `readOldIdentityBar()`, which reads the tab frame's identity bar through `left_nav.loadFrame` without reloading main.php.
+- Unit fixtures: Patient resources for TP-TYPICAL, TP-DECEASED and TP-ESCAPING, recorded from the dev stack.
+
+### Decisions
+- Added jsdom 30 and Testing Library for component and hook tests (per-file `@vitest-environment jsdom`).
+- The hook test that first ran out of memory built a new client on every render. The app creates one client, and so do the tests now.
+- The react-hooks lint rule forbids a synchronous `setState` in an effect. Instead of resetting to "loading", the hook tags results by patient id, which is also the safer design.
+
+### Tests
+- Unit: 75 / 75 passing (mapper 5, hook 4, card 2, config 2 more, path 2)
+- Playwright: 7 / 7 passing, including header parity for all seven fixtures against the old identity bar, and the rejected-session E2E
+- Lint, typecheck and Prettier: clean
+- Seen failing first: mapper, hook, card and config tests (modules missing); header parity (reader first, then app). The rejected-session E2E and the patient-switch hook test were proven by breaking the code (the header rendered while signed out; the hook returning its last result), and header parity by changing the DOB wording.
+
+### BUGS-MITIGATIONS.md updates
+- BM-004: resolved (the hook rejects a Patient with another id; the API client's `assertBelongsTo` covers the clinical cards).
+- BM-005: resolved (status from deceasedDateTime; pinned on TP-DECEASED).
+
+### Open questions / follow-ups
+- `deceasedDateTime` is converted to UTC by OpenEMR (`getLocalDateAsUTC`), and the header takes the date part. That's correct on this UTC dev stack, but a server in a time zone ahead of UTC could shift the death date by one day. Check before the droplet deploy.
+- `date_display_format` is 0 (Y-m-d) here, and the header prints ISO dates. Other formats aren't ported.
+
 ## 2026-09-26 — Arc 02 / Story 02-01 / Slice 02-01-01 — Age rules
 
 **Branch:** `dashboard-migration`

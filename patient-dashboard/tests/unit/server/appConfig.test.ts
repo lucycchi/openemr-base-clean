@@ -20,7 +20,10 @@ describe('app configuration', () => {
         const res = await app.request('/app-config');
 
         expect(res.status).toBe(200);
-        expect(await res.json()).toEqual({ hiddenCards: ['card_prescriptions'] });
+        expect(await res.json()).toEqual({
+            hiddenCards: ['card_prescriptions'],
+            ageDisplay: { format: 0, limitYears: 3 },
+        });
     });
 
     it('fails fast on an unknown card key', () => {
@@ -28,6 +31,21 @@ describe('app configuration', () => {
     });
 
     it('treats a missing file as nothing hidden', () => {
-        expect(loadAppConfig(join(tmpdir(), 'does-not-exist', 'hidden-cards.json'))).toEqual({ hiddenCards: [] });
+        expect(loadAppConfig(join(tmpdir(), 'does-not-exist', 'hidden-cards.json'))).toEqual({
+            hiddenCards: [],
+            ageDisplay: { format: 0, limitYears: 3 },
+        });
+    });
+
+    it('reads the age display settings (the age_display_format and age_display_limit globals) from the environment', () => {
+        const config = loadAppConfig(join(tmpdir(), 'none.json'), { AGE_DISPLAY_FORMAT: '1', AGE_DISPLAY_LIMIT: '5' });
+
+        expect(config.ageDisplay).toEqual({ format: 1, limitYears: 5 });
+    });
+
+    it('rejects an age display format other than 0 or 1', () => {
+        expect(() => loadAppConfig(join(tmpdir(), 'none.json'), { AGE_DISPLAY_FORMAT: '2' })).toThrow(
+            /AGE_DISPLAY_FORMAT/,
+        );
     });
 });

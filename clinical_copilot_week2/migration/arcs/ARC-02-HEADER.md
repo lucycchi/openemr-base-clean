@@ -17,7 +17,7 @@ The photo, the encounter selector and the page-heading action buttons (not porte
 ## Stories
 
 ### Story 02-01 — The header shows who the patient is
-**Acceptance:** for every fixture, the header matches the old identity bar on name, MRN, DOB and age, and adds sex and status.
+**Acceptance:** for every fixture, the header matches the old identity bar on name, MRN, DOB and age, and adds sex and status. *(Done: slices 02-01-01 and 02-01-02; header parity passes for all seven fixtures.)*
 
 #### Slice 02-01-01 — Age rules
 - [x] Tests first, watched failing
@@ -33,10 +33,10 @@ The photo, the encounter selector and the page-heading action buttons (not porte
 **Touches:** `web/src/mappers/`
 
 #### Slice 02-01-02 — Header mapper, hook and card
-- [ ] Tests first, watched failing
-- [ ] Implement `mappers/header.ts` (name from official name, MRN from identifier type PT, sex from gender, status from deceasedDateTime, never Patient.active), plus `hooks/usePatient.ts` and `cards/PatientHeader.tsx`, rendering the name as text
-- [ ] Implement `tests/support/newApp.ts` (moved from slice 01-04-01): reads a new card by `data-card`, its `data-item` rows, tooltips, highlights and `data-state="error"`
-- [ ] Gates green; DEV-LOG, arc file, BM-005 updated
+- [x] Tests first, watched failing
+- [x] Implement `mappers/header.ts` (name from official name, MRN from identifier type PT, sex from gender, status from deceasedDateTime, never Patient.active), plus `hooks/usePatient.ts` and `cards/PatientHeader.tsx`, rendering the name as text
+- [x] Implement `tests/support/newApp.ts` (moved from slice 01-04-01): reads a new card by `data-card`, its `data-item` rows and `data-state`
+- [x] Gates green; DEV-LOG, arc file, BM-005 and BM-004 updated
 **Acceptance tests:**
 - `tests/unit/mappers/header.test.ts :: TP-DECEASED status is "Deceased (2025-11-02)" although Patient.active is true`
 - `tests/unit/mappers/header.test.ts :: TP-TYPICAL status is "Active"`
