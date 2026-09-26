@@ -47,6 +47,12 @@ export async function openOldDashboard(browser: Browser, pid: number): Promise<P
     return page;
 }
 
+/** Opens the old dashboard for another patient in an existing old session (from openOldSession). */
+export async function showOldPatient(oldSession: Page, pid: number): Promise<void> {
+    await oldSession.goto(`/interface/patient_file/summary/demographics.php?set_pid=${pid}`);
+    await oldSession.waitForLoadState('networkidle');
+}
+
 /** Reads one old dashboard card by the id of its collapsible body (for example allergy_ps_expand). */
 export async function readOldCard(page: Page, cardId: string): Promise<OldCard> {
     return page.evaluate((id) => {

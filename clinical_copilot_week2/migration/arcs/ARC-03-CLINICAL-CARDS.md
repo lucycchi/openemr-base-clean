@@ -1,6 +1,6 @@
 # ARC-03 — Clinical cards
 
-**Status:** planned
+**Status:** in-progress
 **Estimate:** 14 h
 
 ## Goal
@@ -37,9 +37,9 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Acceptance:** TP-TYPICAL shows Penicillin (Low risk, reaction Hives) and Peanuts; TP-NKA and TP-EMPTY show "No allergies recorded"; TP-HISTORY shows none; TP-LONG shows 25; TP-ESCAPING shows "Latex x".
 
 #### Slice 03-01-01 — Allergies card
-- [ ] Tests first, watched failing
-- [ ] Implement `mappers/allergies.ts` (name from coding display, else narrative textContent, else "Unnamed allergy"; clinicalStatus active only; criticality label; high highlighted; entry order), plus `hooks/useAllergies.ts` and `cards/AllergiesCard.tsx`
-- [ ] Gates green; DEV-LOG, arc file and BM rows updated
+- [x] Tests first, watched failing
+- [x] Implement `mappers/allergies.ts` (name from coding display, else narrative textContent, else "Unnamed allergy"; clinicalStatus active only; criticality label; high highlighted; entry order), a shared `hooks/useBundleCard.ts` instead of a per-card hook, and `cards/AllergiesCard.tsx`
+- [x] Gates green; DEV-LOG, arc file and BM rows updated (BM-012 and BM-013 are struck through after story 03-03, because they also cover the problem and medication cards)
 **Acceptance tests:**
 - `tests/unit/mappers/allergies.test.ts :: uncoded name comes from narrative text (BM-010)`
 - `tests/unit/mappers/allergies.test.ts :: narrative markup is text, never HTML (BM-009, TP-ESCAPING)`
@@ -47,7 +47,7 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 - `tests/unit/mappers/allergies.test.ts :: inactive entries are hidden (BM-016)`
 - `tests/unit/mappers/allergies.test.ts :: no brackets without a risk level (BM-015)`
 - `tests/unit/mappers/allergies.test.ts :: entry order is kept (BM-014)`
-- `tests/parity/allergies.spec.ts :: all fixtures, exceptions BM-011 BM-012 BM-015`
+- `tests/parity/allergies.spec.ts :: all fixtures, exceptions BM-009 BM-011 BM-012 BM-015`
 - `tests/e2e/errors.spec.ts :: allergies card shows "Couldn't load" on API failure`
 **Resolves:** BM-009, BM-010, BM-011, BM-012, BM-013, BM-014, BM-015, BM-016
 **Touches:** `web/src/mappers/`, `hooks/`, `cards/`, `tests/`

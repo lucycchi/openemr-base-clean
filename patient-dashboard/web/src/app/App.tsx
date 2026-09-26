@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createApiClient } from '../api/client';
 import type { ApiClient } from '../api/client';
+import { AllergiesCard } from '../cards/AllergiesCard';
 import { PatientHeader } from '../cards/PatientHeader';
 import { PatientPicker } from '../cards/PatientPicker';
+import { useBundleCard } from '../hooks/useBundleCard';
 import { usePatient } from '../hooks/usePatient';
+import { mapAllergies } from '../mappers/allergies';
+import { visibleCards } from './hiddenCards';
 import type { AgeSettings } from '../mappers/age';
 
 type AuthState = 'checking' | 'signed-in' | 'signed-out';
@@ -29,7 +33,14 @@ function localToday(): string {
 function PatientView({ client, patientId, config }: { client: ApiClient; patientId: string; config: SiteConfig }) {
     const [asOf] = useState(localToday);
     const header = usePatient(client, patientId, { asOf, age: config.ageDisplay });
-    return <PatientHeader state={header} />;
+    const allergies = useBundleCard(client, patientId, 'AllergyIntolerance', mapAllergies);
+    const shown = visibleCards(config.hiddenCards);
+    return (
+        <>
+            <PatientHeader state={header} />
+            {shown.includes('card_allergies') && <AllergiesCard patientId={patientId} state={allergies} />}
+        </>
+    );
 }
 
 /** Application shell: session status, site config, and the patient view at /patient/:fhirId. */

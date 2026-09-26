@@ -2,6 +2,40 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 / Story 03-01 / Slice 03-01-01 — Allergies card
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `web/src/mappers/narrative.ts`: `narrativeText()` parses a narrative div with DOMParser and reads `textContent`, never rendering it (BM-009). `realCodingDisplay()` skips OpenEMR's data-absent "Unknown" coding.
+- `web/src/mappers/allergies.ts`, `mapAllergies()`:
+  - name from a real coding display, else `code.text`, else the narrative, else "Unnamed allergy"
+  - reactions from the manifestations
+  - criticality labels "Low risk", "High risk" or "Unable to assess", with high highlighted
+  - active only
+  - API order kept
+- `web/src/hooks/useBundleCard.ts`: the shared card hook. It fetches `<Type>?patient=<id>`, runs `assertBelongsTo`, maps, and tags the result by patient. Every clinical card will use it.
+- `web/src/cards/AllergiesCard.tsx`: "Name (risk)" rows with a "Name Reaction: … - risk" tooltip, and the old highlight classes on high risk. "No allergies recorded" when empty, "Couldn't load allergies" on error, and `data-patient-id`.
+- Test support: `tests/unit/fixtures/load.ts` (under jsdom, `import.meta.url` is not a file URL); `newApp.ts` returns row tooltips, highlights, empty text and the card's patient id; `oldDashboard.ts` gains `showOldPatient()`.
+- Unit fixtures: AllergyIntolerance bundles for TP-TYPICAL, TP-HISTORY, TP-ESCAPING, TP-LONG and TP-EMPTY.
+
+### Decisions
+- One shared `useBundleCard` hook instead of a per-card hook, so the patient check and tag-by-patient safety are written once.
+- Parity compares names (in order) and reactions. The approved exceptions are applied explicitly in the spec: BM-009 markup, BM-011 risk wording, BM-012 empty wording, BM-015 brackets.
+
+### Tests
+- Unit: 92 / 92 passing (allergies mapper 9, shared hook 3, card 3)
+- Playwright: 11 / 11 passing, including allergy parity for six fixtures and the API-failure E2E
+- Lint, typecheck and Prettier: clean. Typecheck caught a `Coding` type mismatch under `exactOptionalPropertyTypes` that the Vite build and the tests had let through.
+- Seen failing first: mapper, hook, card, parity and E2E. Parity proven red by breaking the active filter (it failed on TP-HISTORY).
+
+### BUGS-MITIGATIONS.md updates
+- Resolved: BM-009, BM-010, BM-011, BM-014, BM-015, BM-016.
+
+### Open questions / follow-ups
+- None.
+
 ## 2026-09-26 — Arc 02 complete: Header
 
 **Slices:** 3 (02-01-01, 02-01-02, 02-02-01)  **BM rows resolved:** BM-004, BM-005, BM-007 (BM-040 added and handled)
