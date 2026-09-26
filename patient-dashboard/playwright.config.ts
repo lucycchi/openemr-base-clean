@@ -10,6 +10,9 @@ const BASE_URL = `http://localhost:${PORT}`;
 export default defineConfig({
     testDir: 'tests',
     fullyParallel: false,
+    // One worker: the browser tests share one OpenEMR dev stack and user, and two OAuth logins
+    // running at the same moment made OpenEMR reject one token exchange (HTTP 400).
+    workers: 1,
     retries: 0,
     reporter: [['list']],
     use: {

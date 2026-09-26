@@ -2,6 +2,38 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 01 / Story 01-02 / Slice 01-02-02 — Allow-listed FHIR proxy
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `server/fhirProxy.ts`, mounted at `/api/fhir/*`:
+  - GET only (anything else gets 405)
+  - paths must be `Resource` or `Resource/id` with an allow-listed type (Patient, AllergyIntolerance, Condition, MedicationRequest, CareTeam, Practitioner, RelatedPerson, Encounter), otherwise 400
+  - 401 without a logged-in session
+  - the token is refreshed through `ensureFreshToken`
+  - `_include` and `_revinclude` are stripped
+  - 20 s timeout, 502 on upstream failure
+  - `cache-control: no-store`
+- Test support: `tests/support/login.ts` (real OpenEMR login) and `tests/support/fixtures.ts` (fixture ids). `login.spec.ts` now uses the shared login helper.
+
+### Decisions
+- Dot-segment traversal (plain or `%2e`) is resolved by URL parsing before routing and lands outside `/api/fhir` (404). The test asserts "never forwarded, never 2xx" rather than a specific 400.
+- Playwright runs with one worker: two OAuth logins for the same dev user at the same moment made OpenEMR reject one token exchange (HTTP 400). Serial runs are stable (3 of 3).
+
+### Tests
+- Unit: 17 / 17 passing (the proxy adds 6)
+- E2E: 3 / 3 passing (smoke, login and logout, CareTeam contract)
+- Lint, typecheck and Prettier: clean
+- Seen failing first: all 6 proxy unit tests before `fhirProxy.ts` existed. The contract E2E was proven by turning stripping off: `_include` returned an empty Bundle (BM-029), so the test failed, then passed once stripping was restored.
+
+### BUGS-MITIGATIONS.md updates
+- BM-029 (`_include` empty Bundle): resolved by stripping `_include` and `_revinclude` in the proxy, with a contract test.
+
+### Open questions / follow-ups
+- None.
+
 ## 2026-09-26 — Arc 01 / Story 01-02 / Slice 01-02-01 — BFF login, callback, session and logout
 
 **Branch:** `dashboard-migration`

@@ -21,6 +21,7 @@ const oauth = createOAuthClient({
 const app = createApp({
     staticRoot: 'dist/web',
     auth: { store, oauth, now, secureCookie: config.secureCookie },
+    fhir: { store, oauth, now, fhirBase: `${config.oemrBase}/apis/default/fhir` },
 });
 
 serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {

@@ -29,7 +29,7 @@ The actual cards (ARC-02 to ARC-04) and the droplet deploy (ARC-05).
 **Touches:** `patient-dashboard/`
 
 ### Story 01-02 — A clinician can log in and out
-**Acceptance:** log in at OpenEMR, land on the dashboard shell, log out, and be asked to log in again. The browser never holds an access token.
+**Acceptance:** log in at OpenEMR, land on the dashboard shell, log out, and be asked to log in again. The browser never holds an access token. *(Done: slices 01-02-01 and 01-02-02.)*
 
 #### Slice 01-02-01 — BFF login, callback, session and logout
 - [x] Tests first, watched failing
@@ -43,9 +43,9 @@ The actual cards (ARC-02 to ARC-04) and the droplet deploy (ARC-05).
 **Touches:** `server/`, `tests/unit/server/`, `tests/e2e/`
 
 #### Slice 01-02-02 — Allow-listed FHIR proxy
-- [ ] Tests first, watched failing
-- [ ] Implement `server/fhirProxy.ts`: GET only; allow-list Patient, AllergyIntolerance, Condition, MedicationRequest, CareTeam, Practitioner, RelatedPerson, Encounter; strip `_include` and `_revinclude`; 401 when not logged in
-- [ ] Gates green; DEV-LOG, arc file, BM-029 updated
+- [x] Tests first, watched failing
+- [x] Implement `server/fhirProxy.ts`: GET only; allow-list Patient, AllergyIntolerance, Condition, MedicationRequest, CareTeam, Practitioner, RelatedPerson, Encounter; strip `_include` and `_revinclude`; 401 when not logged in
+- [x] Gates green; DEV-LOG, arc file, BM-029 updated
 **Acceptance tests:**
 - `tests/unit/server/fhirProxy.test.ts :: non-allow-listed resource returns 400`
 - `tests/unit/server/fhirProxy.test.ts :: _include is removed before forwarding`
