@@ -16,8 +16,8 @@ The catalogue the rewrite works from, with one row per problem found in the audi
 |---|---|
 | Critical | 0 |
 | High | 8 |
-| Medium | 6 |
-| Low | 6 |
+| Medium | 9 |
+| Low | 8 |
 
 ## Catalogue
 
@@ -43,3 +43,8 @@ The catalogue the rewrite works from, with one row per problem found in the audi
 | BM-018 | Low | presentation | Problem List; Medications | The old cards sort problems and medications by begdate ascending (src/Services/PatientIssuesService.php:211); FHIR returns insertion order (TP-LONG: old starts at problem 60 and medication 60, FHIR at 01) | keep for parity | The mapper sorts by onsetDateTime ascending with a missing onset first, matching MySQL ORDER BY begdate. A unit test pins the TP-LONG order. |
 | BM-019 | High | correctness | Medications; Prescriptions (FHIR) | No FHIR field separates a medication-list entry from a prescription: the SQL source_table is not serialised, and intent and category come from lists_medication for list rows, so a list entry marked Order and Outpatient is identical to a prescription (src/Services/PrescriptionService.php:152, 208, 212-215; src/Services/FHIR/FhirMedicationRequestService.php:498-504; proven on TP-TYPICAL Atorvastatin vs Omeprazole) | fix in the new app | Decided at Gate 2 between: the Standard API medication endpoint for the Medications card; one merged card labelled by intent; or two cards split on intent with the difference documented. |
 | BM-020 | Medium | correctness | Medications; Prescriptions (FHIR) | The UNION excludes list rows linked to a prescription (lists_medication.prescription_id IS NULL), so a linked medication shows on the old Medications card with the list's dosage text but appears in FHIR only as the prescription (src/Services/PrescriptionService.php:260; TP-TYPICAL Amlodipine "1 in") | fix in the new app | Follows the BM-019 decision. With FHIR only, show the prescription once and document that the list's dosage text is not shown; with the Standard API, the list row is available directly. |
+| BM-021 | Medium | correctness | Prescriptions | The prescription list's Add link is built as `{{ CONTROLLER }}?prescription&edit…` while CONTROLLER is already `controller.php?`, giving `controller.php??prescription…` and HTTP 400 "Missing or invalid 'controller' parameter" for every patient (library/classes/Controller.class.php:78, templates/prescription/general_list.html.twig:449; seen in the access log 2026-09-26) | out of scope | - |
+| BM-022 | Medium | correctness | Prescriptions | The prescription form's Save first calls `top.restoreSession()`, which exists only inside the main tab frame, so Save does nothing when the form is opened on its own; the Drug select2 also accepts only drug-list entries, so nothing can be chosen when that list is empty (templates/prescription/general_edit.html.twig:468-471, 188) | out of scope | - |
+| BM-023 | Low | presentation | Prescriptions | The column labelled "Filled" shows prescriptions.date_added, not a fill or dispense date (templates/prescription/general_fragment.html:23, 35) | fix in the new app | Label the column "Added" (from authoredOn); the parity test lists the label as an approved exception. |
+| BM-024 | Medium | presentation | Prescriptions | When every prescription is discontinued, the card shows an empty table with headers and no message, because "None" is only printed when there are no prescriptions at all (templates/prescription/general_fragment.html:12-13, 28; TP-HISTORY) | fix in the new app | Show "No active prescriptions" whenever no active entry remains. Approved parity exception, pinned on TP-HISTORY. |
+| BM-025 | Low | dead code | Prescriptions | The eRx "Current Medications" block can never render: `$display_current_medications_below` is only set in stats.php, a separate request, so it is undefined in demographics.php (interface/patient_file/summary/demographics.php:1186-1210, stats.php:136) | out of scope | - |
