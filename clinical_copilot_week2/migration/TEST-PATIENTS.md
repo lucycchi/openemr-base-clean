@@ -26,8 +26,9 @@ Refer to a patient by its key (for example `TP-TYPICAL`), not by name or pid.
 ## TP-NKA
 
 - **Nora NoKnownAllergies**, female, born 1975-11-23. pid 38, FHIR id `a2d68329-9e88-4db3-8e61-3e9ed9aab17d`.
-- **Seeded:** nothing yet. Task 9 (the allergies audit) finds how the old UI records "no known allergies" and adds it.
-- **Exercises:** "no known allergies" must look different from "nothing recorded".
+- **Seeded:** no allergies, plus a `lists_touch` row (pid 38, type allergy). The old UI writes that row whenever an allergy is saved (`add_edit_issue.php:279`), and the card shows "No Known Allergies" when the row exists and no active allergy remains. The row was inserted directly because the UI has no explicit "no known allergies" action.
+- **Observed:** the old card shows `No Known Allergies`; FHIR returns 0 entries, the same as TP-EMPTY (BM-012).
+- **Exercises:** "no known allergies" versus "nothing recorded".
 
 ## TP-HISTORY
 
@@ -69,6 +70,7 @@ The Standard API can't create these records. It ignores `reaction` and `severity
 - [x] TP-TYPICAL: care team "practitioner", status active, two members: user 5 as `nurse_practitioner`, and contact 2477, a related person (by the user in the UI)
 - [x] TP-HISTORY: prescription Lisinopril 5 mg (`prescriptions` id 2482), then discontinued (`active = -1`, `end_date` left NULL)
 - [x] TP-DECEASED: deceased date set through the Standard API (see above)
+- [x] TP-NKA: `INSERT INTO lists_touch (pid, type, date) VALUES (38, 'allergy', NOW())`, the same row `setListTouch()` writes (Task 9)
 
 **How the prescriptions were added.** The prescription form could not be used by hand on the dev stack, for three reasons, all of which are Prescriptions audit findings:
 1. The list's "Add" link builds `controller.php??prescription…`, with a double `?`, and fails with HTTP 400 (`library/classes/Controller.class.php:78` plus `templates/prescription/general_list.html.twig:449`).
