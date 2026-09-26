@@ -2,6 +2,33 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 02 / Story 02-01 / Slice 02-01-01 — Age rules
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `web/src/mappers/age.ts`:
+  - `ageDisplay(birthDate, asOf, {format, limitYears})`, a port of `PatientService::getPatientAge`, `getPatientAgeYMD` (with its fixed month lengths) and `getPatientAgeDisplay`
+  - `ageAtDeath(birthDate, deathDate)`, a port of `oeFormatAge`, format 0
+- Test oracle: `tmp/age_oracle.php` (gitignored) runs OpenEMR's own functions in the dev container, run as the apache user because OpenEMR refuses CLI scripts as root. Its output is saved as `tests/unit/mappers/age.oracle.json`, so the port is pinned to real PHP output.
+
+### Decisions
+- Living ages match OpenEMR exactly, including "8 month" and "24 month" (getPatientAge only switches to years above 24 months).
+- Age at death returns the intended "4 months" / "1 month" rather than OpenEMR's "4months" (new BM-040, approved exception). oeFormatAge switches to years at 24 months, which is kept.
+
+### Tests
+- Unit: 60 / 60 passing (age adds 28: 10 living oracle cases, 10 YMD oracle cases, named edge cases)
+- Lint, typecheck and Prettier: clean
+- Seen failing first: the age tests, with the module missing.
+
+### BUGS-MITIGATIONS.md updates
+- BM-007: resolved (age rules ported and pinned to OpenEMR output).
+- BM-040: new row (oeFormatAge spacing bug).
+
+### Open questions / follow-ups
+- The header mapper (02-01-02) reads `age_display_format` and `age_display_limit` from the BFF's `/app-config` (this stack: 0 and 3).
+
 ## 2026-09-26 — Arc 01 complete: Foundation and auth
 
 **Slices:** 6 (01-01-01, 01-02-01, 01-02-02, 01-03-01, 01-04-01, 01-04-02)  **BM rows resolved:** BM-029 (BM-004 carried to 02-01-02)

@@ -1,6 +1,6 @@
 # ARC-02 — Header
 
-**Status:** planned
+**Status:** in-progress
 **Estimate:** 5 h
 
 ## Goal
@@ -20,16 +20,16 @@ The photo, the encounter selector and the page-heading action buttons (not porte
 **Acceptance:** for every fixture, the header matches the old identity bar on name, MRN, DOB and age, and adds sex and status.
 
 #### Slice 02-01-01 — Age rules
-- [ ] Tests first, watched failing
-- [ ] Implement `web/src/mappers/age.ts`, a port of `PatientService::getPatientAge` and `getPatientAgeDisplay` (months under 2 years; `age_display_format` and `age_display_limit` from config)
-- [ ] Gates green; DEV-LOG, arc file, BM-007 updated
+- [x] Tests first, watched failing
+- [x] Implement `web/src/mappers/age.ts`, a port of `PatientService::getPatientAge` and `getPatientAgeDisplay` (months under 2 years; `age_display_format` and `age_display_limit` from config), plus `oeFormatAge` for age at death
+- [x] Gates green; DEV-LOG, arc file, BM-007 updated
 **Acceptance tests:**
 - `tests/unit/mappers/age.test.ts :: 68 for 1958-03-14 on 2026-09-26`
 - `tests/unit/mappers/age.test.ts :: months under 2 years`
 - `tests/unit/mappers/age.test.ts :: the day before a birthday`
 - `tests/unit/mappers/age.test.ts :: leap-day birthday`
 - `tests/unit/mappers/age.test.ts :: age at death 93 for TP-DECEASED`
-**Resolves:** BM-007
+**Resolves:** BM-007, BM-040
 **Touches:** `web/src/mappers/`
 
 #### Slice 02-01-02 — Header mapper, hook and card
