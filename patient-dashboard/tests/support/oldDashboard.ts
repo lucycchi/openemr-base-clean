@@ -9,6 +9,8 @@ const OEMR_PASS = process.env.OEMR_PASS ?? 'pass';
 export interface OldCard {
     /** Text of each list row (or table row), whitespace collapsed. Read even when the card is collapsed. */
     items: string[];
+    /** Each row's child elements' text (list-row spans or table cells), whitespace collapsed. */
+    parts: string[][];
     /** Tooltip text (title / data-original-title), whitespace collapsed. */
     tooltips: string[];
     /** Text of elements carrying the old highlight classes (for example bg-warning). */
@@ -66,6 +68,14 @@ export async function readOldCard(page: Page, cardId: string): Promise<OldCard> 
         const rows = listItems.length > 0 ? listItems : Array.from(body.querySelectorAll('tbody tr'));
         return {
             items: rows.map((row) => clean(row.textContent)).filter((text) => text !== ''),
+            parts: rows
+                .filter((row) => clean(row.textContent) !== '')
+                // A row with no child elements (the "Nothing Recorded" line) is one part: its own text.
+                .map((row) =>
+                    row.children.length === 0
+                        ? [clean(row.textContent)]
+                        : Array.from(row.children).map((child) => clean(child.textContent)),
+                ),
             tooltips: Array.from(card.querySelectorAll('[title],[data-original-title]'))
                 .map((node) => clean(node.getAttribute('data-original-title') ?? node.getAttribute('title')))
                 .filter((text) => text !== ''),

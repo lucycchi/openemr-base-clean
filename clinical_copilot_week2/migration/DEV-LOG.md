@@ -2,6 +2,36 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 / Story 03-03 / Slice 03-03-01 — Shared medication mapper and Medications card
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `web/src/mappers/medications.ts`, `splitMedications()`:
+  - keeps active MedicationRequests only
+  - intent `order` goes to Prescriptions (sorted by authoredOn, newest first) and everything else to Medications (API order)
+  - each row carries name, dosageInstruction text, quantity, refills and the "Added" date for the Prescriptions card in the next slice
+- `web/src/cards/MedicationsCard.tsx`: name and dosage per row, "None recorded" when empty, "Couldn't load medications" on error, and a visible note that entries marked as an order appear under Prescriptions.
+- The patient view makes one `MedicationRequest?patient=<id>` fetch through `useBundleCard`; `selectLoadState` (web/src/hooks/loadState.ts) hands each card its half.
+- Unit fixtures: MedicationRequest bundles for TP-TYPICAL, TP-HISTORY, TP-LONG and TP-EMPTY.
+- The old-dashboard reader now returns each row's child texts (`parts`); a row with no child elements, such as "Nothing Recorded", is one part holding its own text.
+
+### Decisions
+- Parity compares the set of names, not the order (BM-036). A name on the old list may be missing from the new card only if FHIR reports it with intent `order`, which covers BM-019 and BM-020.
+
+### Tests
+- Unit: 110 / 110 passing (medications mapper 6, card 3, selectLoadState 1)
+- Playwright: 15 / 15 passing, including medications parity for four fixtures and the API-failure E2E
+- Lint, typecheck and Prettier: clean
+- Seen failing first: mapper and card (modules missing), then parity and E2E (card not rendered). Parity proven red by sending intent-order entries to Medications (it failed on TP-TYPICAL with Omeprazole).
+
+### BUGS-MITIGATIONS.md updates
+- Resolved: BM-019, BM-020, BM-036.
+
+### Open questions / follow-ups
+- "Added" keeps authoredOn's local date and time as written; this assumes the server's stored time is the clinic's local time (check on the droplet).
+
 ## 2026-09-26 — Arc 03 / Story 03-02 / Slice 03-02-01 — Problem list card
 
 **Branch:** `dashboard-migration`

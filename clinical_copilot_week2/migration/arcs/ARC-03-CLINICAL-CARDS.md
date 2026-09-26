@@ -71,9 +71,9 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Acceptance:** one MedicationRequest fetch feeds both cards. Medications shows intent=plan, active entries (TP-TYPICAL: Metformin, Lisinopril). Prescriptions shows intent=order, active entries (TP-TYPICAL: Amlodipine, Omeprazole, and Atorvastatin, which is a list row marked Order), with a visible caveat note. TP-HISTORY shows "No active prescriptions".
 
 #### Slice 03-03-01 — Shared medication mapper and Medications card
-- [ ] Tests first, watched failing
-- [ ] Implement `mappers/medications.ts` (split on intent; status active; dosageInstruction text; Medications keep FHIR response order; Prescriptions sorted by authoredOn descending) and `cards/MedicationsCard.tsx` with the caveat note
-- [ ] Gates green; DEV-LOG, arc file and BM rows updated
+- [x] Tests first, watched failing
+- [x] Implement `mappers/medications.ts` (split on intent; status active; dosageInstruction text; Medications keep FHIR response order; Prescriptions sorted by authoredOn descending) and `cards/MedicationsCard.tsx` with the caveat note
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
 **Acceptance tests:**
 - `tests/unit/mappers/medications.test.ts :: plan goes to Medications, order goes to Prescriptions (BM-019)`
 - `tests/unit/mappers/medications.test.ts :: linked Amlodipine appears once, under Prescriptions (BM-020)`

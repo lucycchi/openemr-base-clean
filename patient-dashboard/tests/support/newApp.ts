@@ -5,6 +5,8 @@ export interface NewRow {
     text: string;
     title: string | null;
     highlight: boolean;
+    /** data-field name → text inside the row. */
+    fields: Record<string, string>;
 }
 
 export interface NewCard {
@@ -30,6 +32,12 @@ export async function readNewCard(page: Page, card: string): Promise<NewCard> {
             text: clean(node.textContent),
             title: node.getAttribute('title'),
             highlight: node.hasAttribute('data-highlight'),
+            fields: Object.fromEntries(
+                Array.from(node.querySelectorAll('[data-field]')).map((field) => [
+                    field.getAttribute('data-field') ?? '',
+                    clean(field.textContent),
+                ]),
+            ),
         }));
         const empty = element.querySelector('[data-empty]');
         return {
