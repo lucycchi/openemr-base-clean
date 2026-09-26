@@ -1,6 +1,7 @@
 // Throwaway spike: registers one OAuth client and saves its id (and secret,
 // for confidential clients) to .env.local, which is gitignored.
-// Usage: NODE_EXTRA_CA_CERTS=dev-cert.pem node register-client.mjs <public|bff|seed> [--replace]
+// Usage: NODE_EXTRA_CA_CERTS=dev-cert.pem node register-client.mjs <public|bff|app|seed> [--replace]
+// `app` is the patient-dashboard BFF's own client (redirect http://localhost:5180/auth/callback).
 import { readEnv, writeEnv, fetchText, OEMR_BASE } from './lib.mjs';
 
 const READ = ['Patient', 'AllergyIntolerance', 'Condition', 'MedicationRequest', 'CareTeam', 'Practitioner',
@@ -17,6 +18,11 @@ const KINDS = {
     redirect: 'http://localhost:5175/callback',
     scope: ['openid', 'fhirUser', 'offline_access', 'api:fhir', ...READ.map((r) => `user/${r}.rs`)],
   },
+  app: {
+    type: 'private',
+    redirect: 'http://localhost:5180/auth/callback',
+    scope: ['openid', 'fhirUser', 'offline_access', 'api:fhir', ...READ.map((r) => `user/${r}.rs`)],
+  },
   seed: {
     type: 'private',
     redirect: 'http://localhost:5176/unused',
@@ -28,7 +34,7 @@ const KINDS = {
 const kind = process.argv[2];
 const spec = KINDS[kind];
 if (!spec) {
-  console.error('usage: register-client.mjs <public|bff|seed> [--replace]');
+  console.error('usage: register-client.mjs <public|bff|app|seed> [--replace]');
   process.exit(2);
 }
 const prefix = kind.toUpperCase();

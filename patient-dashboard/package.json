@@ -9,9 +9,9 @@
   },
   "scripts": {
     "dev:web": "vite",
-    "dev:server": "tsx watch server/index.ts",
+    "dev:server": "NODE_EXTRA_CA_CERTS=${NODE_EXTRA_CA_CERTS:-certs/dev-cert.pem} node --env-file-if-exists=.env --import tsx --watch server/index.ts",
     "build": "vite build",
-    "start": "tsx server/index.ts",
+    "start": "NODE_EXTRA_CA_CERTS=${NODE_EXTRA_CA_CERTS:-certs/dev-cert.pem} node --env-file-if-exists=.env --import tsx server/index.ts",
     "test": "vitest run",
     "test:e2e": "playwright test --project=e2e",
     "test:parity": "playwright test --project=parity",

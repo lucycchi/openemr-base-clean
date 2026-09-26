@@ -32,9 +32,9 @@ The actual cards (ARC-02 to ARC-04) and the droplet deploy (ARC-05).
 **Acceptance:** log in at OpenEMR, land on the dashboard shell, log out, and be asked to log in again. The browser never holds an access token.
 
 #### Slice 01-02-01 — BFF login, callback, session and logout
-- [ ] Tests first, watched failing
-- [ ] Implement `server/auth.ts` and `server/session.ts` from `spike/bff/server.mjs`: PKCE, one-use state, HttpOnly SameSite=Lax cookie, refresh before expiry, logout clears the session
-- [ ] Gates green; DEV-LOG, arc file updated
+- [x] Tests first, watched failing
+- [x] Implement `server/auth.ts` and `server/session.ts` from `spike/bff/server.mjs`: PKCE, one-use state, HttpOnly SameSite=Lax cookie (Secure over HTTPS), refresh before expiry, idle session timeout with a sweep, POST-only logout that clears the session
+- [x] Gates green; DEV-LOG, arc file updated
 **Acceptance tests:**
 - `tests/unit/server/auth.test.ts :: callback rejects a reused or mismatched state`
 - `tests/unit/server/auth.test.ts :: token response is stored server-side and never sent to the browser`

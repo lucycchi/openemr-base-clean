@@ -1,11 +1,28 @@
 import { serve } from '@hono/node-server';
 import { createApp } from './app';
+import { loadConfig } from './config';
+import { createOAuthClient } from './oauth';
+import { SessionStore } from './session';
 
-const port = Number(process.env.BFF_PORT ?? 5180);
-const hostname = process.env.BFF_HOST ?? '127.0.0.1';
+const config = loadConfig(process.env);
+const now = () => Date.now();
 
-const app = createApp({ staticRoot: 'dist/web' });
+const store = new SessionStore({ ttlMs: config.sessionTtlMs, now });
+setInterval(() => store.sweep(), 60_000).unref();
 
-serve({ fetch: app.fetch, port, hostname }, (info) => {
-    console.log(`patient-dashboard BFF listening on http://${hostname}:${info.port}`);
+const oauth = createOAuthClient({
+    base: config.oemrBase,
+    clientId: config.clientId,
+    clientSecret: config.clientSecret,
+    scope: config.scope,
+    redirectUri: config.redirectUri,
+});
+
+const app = createApp({
+    staticRoot: 'dist/web',
+    auth: { store, oauth, now, secureCookie: config.secureCookie },
+});
+
+serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {
+    console.log(`patient-dashboard BFF listening on http://${config.host}:${info.port} (public ${config.publicUrl})`);
 });

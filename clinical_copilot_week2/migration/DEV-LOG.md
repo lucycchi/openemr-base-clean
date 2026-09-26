@@ -2,6 +2,35 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 01 / Story 01-02 / Slice 01-02-01 — BFF login, callback, session and logout
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `server/oauth.ts`: the OpenEMR token client (authorization code with PKCE, refresh; HTTP Basic client auth; 15 s timeout; validates the token response).
+- `server/session.ts`: in-memory `SessionStore` with random ids, a sliding idle timeout, `sweep()` for abandoned logins, and `ensureFreshToken()`, which refreshes within 60 s of expiry.
+- `server/auth.ts`: `GET /auth/login` (a new session per attempt, PKCE S256, `aud` set), `GET /auth/callback` (one-use state), `POST /auth/logout` (204, cookie cleared) and `GET /auth/me`. The cookie `pd_sid` is HttpOnly and SameSite=Lax, plus Secure when `PUBLIC_URL` is https.
+- `server/config.ts`: fails fast on missing environment. The app's own confidential client, "Patient Dashboard Spike (app)", is registered with redirect `http://localhost:5180/auth/callback` (the `app` kind added to `spike/register-client.mjs`) and enabled on the dev database. Its id and secret are in the gitignored `patient-dashboard/.env`, and the dev certificate is in the gitignored `patient-dashboard/certs/`.
+- SPA shell: "Log in with OpenEMR" when signed out, "Log out" when signed in.
+
+### Decisions
+- Included the final review's deferred point for this stage: Secure cookie over HTTPS, idle session timeout with a sweep, and POST-only logout.
+- A new session id for every login attempt, so an id set before login is never reused after it.
+- Playwright uses `http://localhost:5180` so the cookie host matches the OAuth redirect, and checks health on 127.0.0.1 because the BFF binds IPv4.
+
+### Tests
+- Unit: 11 / 11 passing (health 1, auth 5, session 5)
+- E2E: 2 / 2 passing, including a real OpenEMR login and logout through the consent page, with Chromium trusting only the dev certificate by SPKI hash
+- Lint, typecheck and Prettier: clean
+- Seen failing first: the unit tests on the missing modules. `sweep` and the login E2E were written alongside their code, so each was proven by breaking the code on purpose (a stubbed sweep, a no-op logout), watching the test fail, then restoring.
+
+### BUGS-MITIGATIONS.md updates
+- None (BM-029 and BM-004 are in slices 01-02-02 and 01-03-01).
+
+### Open questions / follow-ups
+- Sessions are in memory, so a BFF restart logs everyone out. That's acceptable for the demo; a shared store would be needed for more than one instance.
+
 ## 2026-09-26 — Arc 01 / Story 01-01 / Slice 01-01-01 — Scaffold patient-dashboard
 
 **Branch:** `dashboard-migration`
