@@ -71,7 +71,24 @@ Run on 2026-09-26 in the user's Chrome, from http://localhost:5174. The user log
 
 ## Spike B: backend-for-frontend
 
-{{FILL}}
+Run on 2026-09-26 in the user's Chrome, from http://localhost:5175. The user logged in as `admin` and approved every scope. The `bff` client had to be enabled by hand first (see Clients). There was no patient picker, because `user/` scopes don't bind a patient.
+
+**Verdict: works.** One login read two different patients, and the browser never held a token (only an HttpOnly `sid` cookie).
+
+| Where | Check | Result |
+|---|---|---|
+| page | TP-TYPICAL Patient read | ok, HTTP 200 |
+| page | TP-TYPICAL allergies belong to this patient | ok, 2 entries |
+| page | TP-HISTORY Patient read, same session | ok, HTTP 200 |
+| page | TP-HISTORY allergies belong to this patient | ok, 1 entry |
+| page | out-of-scope read (`Procedure`) refused | ok, HTTP 401 |
+| server | token endpoint | ok, HTTP 200 (client authenticated with HTTP Basic) |
+| server | every requested scope granted | FAIL, but harmless: as in Spike A, only `api:fhir` is missing from the granted list, and every resource scope and `offline_access` were granted |
+| server | bad token refused | ok, HTTP 401 |
+
+Token: `expires_in` 3600, and a refresh token was issued (`offline_access`), so a BFF can renew access without sending the user back to the login page.
+
+**What this means for Option B:** switching patients needs no new login, tokens stay on the server, and there's no CORS problem, because the browser only talks to its own origin. The costs are a second process to run, an admin step to enable the confidential client, and a session store.
 
 ## Error responses
 
@@ -86,4 +103,6 @@ The error-state tests in the build must match these exact responses.
 
 ## Blockers and decisions
 
+- 2026-09-26: Both spikes passed on everything that matters. The one failing check in each is the strict "every requested scope granted" string match: OpenEMR grants every resource scope but leaves `api:fhir` out of the reported list. This is recorded, not a blocker.
+- 2026-09-26: **BM-004 (safety):** with a patient-bound token (Option A), a request for another patient returns HTTP 200 with an empty Bundle. The new app must check that every resource belongs to the patient in the header, and must never treat an empty result for a different patient as "nothing recorded".
 - 2026-09-26: After Docker Desktop's WSL integration was switched on, the running `development-easy` containers had a stale source bind mount (OpenEMR saw 6 entries instead of the repo) and MySQL had been stopped for 14 hours. Fixed by recreating the stack with `docker compose up --detach --force-recreate --wait`, keeping the data volumes.
