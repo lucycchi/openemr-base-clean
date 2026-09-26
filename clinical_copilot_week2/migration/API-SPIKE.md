@@ -33,7 +33,18 @@ From `spike/check-config.mjs` (2026-09-26), which passed:
 
 ## Clients
 
-{{FILL}}
+All three were registered on 2026-09-26 with `spike/register-client.mjs`, and each got HTTP 200. IDs and secrets are kept only in `spike/.env.local`, which is gitignored.
+
+| Kind | application_type | Role given | Confidential | Enabled on registration | Requested scopes |
+|---|---|---|---|---|---|
+| public | public | patient | no | **yes** | `openid fhirUser api:fhir launch/patient` + `patient/<R>.rs` for Patient, AllergyIntolerance, Condition, MedicationRequest, CareTeam, Practitioner, Organization, RelatedPerson, Encounter, Observation, Immunization, DocumentReference, DiagnosticReport |
+| bff | private | user | yes | **no**, enabled by hand | `openid fhirUser offline_access api:fhir` + `user/<R>.rs` for the same 13 resources |
+| seed | private | user | yes | **no**, enabled by hand | `openid api:oemr api:fhir user/Patient.rs user/patient.crus user/allergy.cruds user/medical_problem.cruds user/medication.cruds user/encounter.crus user/vital.crus` |
+
+- **Fields returned for every kind:** `application_type`, `client_id`, `client_id_issued_at`, `client_name`, `client_role`, `client_secret`, `client_secret_expires_at`, `dsi_type`, `redirect_uris`, `registration_access_token`, `registration_client_uri`, `scope`. The public client's response includes a `client_secret` key, but no secret is stored for it.
+- **Every scope was accepted on the first attempt**, so none had to be removed.
+- **The approval rule behaved as the code says.** Confidential clients with `user/` scopes start disabled (`ScopeRepository::hasScopesThatRequireManualApproval`). The public client with `launch/patient`, but not `launch`, started enabled because `oauth_app_manual_approval` is 0.
+- **How they were enabled:** `bff` and `seed` were enabled with `UPDATE oauth_clients SET is_enabled=1` on the dev database, which is the same change the API Clients admin page makes.
 
 ## Spike A: browser-only public client
 
