@@ -156,11 +156,7 @@ Adapt it rather than copy it:
 
 The plan ends here. The build is carried out from `MIGRATION-SPEC.md`, with every slice written test-first: the parity test or unit test fails first, then the code makes it pass.
 
-Suggested split:
-- Build **Arc 1 (foundation and auth)** and **the header** inline with `superpowers:test-driven-development`. These slices have the most unknowns and set the patterns everything else copies, so the user should watch them closely.
-- Build **the remaining cards and the extra section** with `build-loop`. These are similar, independent slices, and each has a clear acceptance test (its parity test). They make no database schema changes, so none of build-loop's review pauses will be triggered.
-
-Write each slice's acceptance criteria so that either tool can use them without rewording.
+Build every arc inline with `superpowers:test-driven-development` (user decision, 2026-09-26). Write each slice's acceptance criteria as named tests so they can be used without rewording.
 
 ## Constraints that apply throughout
 

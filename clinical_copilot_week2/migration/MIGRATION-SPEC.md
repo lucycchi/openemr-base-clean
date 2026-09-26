@@ -155,6 +155,8 @@ Every slice ends with these gates green:
 
 ## The slice loop
 
+Every slice, in every arc, is built inline with `superpowers:test-driven-development` (user decision, 2026-09-26).
+
 1. **Pick** the next unticked slice in the current arc file. Read this spec, the arc file, the last three DEV-LOG entries, the module doc for the card, and the BM rows the slice lists.
 2. **Plan** in five to ten lines in a scratch note (not committed): goal, files, tests, BM rows.
 3. **Test first:** write the mapper unit tests and the parity spec for the slice's fields; run them and watch them fail.

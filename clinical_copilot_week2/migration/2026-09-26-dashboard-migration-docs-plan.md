@@ -2053,7 +2053,7 @@ git commit --trailer "Assisted-by: Claude Code" -m "docs: patient dashboard migr
 
 **Interfaces:**
 - Consumes: everything above.
-- Produces: slices numbered `NN-NN-NN`. Each slice has acceptance criteria written as named tests (unit, parity or E2E), so that `superpowers:test-driven-development` or `build-loop` can use them without rewording.
+- Produces: slices numbered `NN-NN-NN`. Each slice has acceptance criteria written as named tests (unit, parity or E2E), so that `superpowers:test-driven-development` can use them without rewording.
 
 - [ ] **Step 1: Read the reference**
 
@@ -2135,8 +2135,6 @@ git commit --trailer "Assisted-by: Claude Code" -m "docs(migration): migration s
 
 - [ ] **Step 1: Present the build plan**
 
-- ARC-01 and ARC-02 are built inline with `superpowers:test-driven-development`. They carry the most unknowns and set the patterns the other arcs copy, so the user should watch them closely.
-- ARC-03 and ARC-04 are built with `build-loop`. Each slice is a similar, independent vertical piece with a parity test as its acceptance test, and there are no database schema changes.
-- ARC-05 is done inline.
+- Every arc (ARC-01 to ARC-05) is built inline with `superpowers:test-driven-development`: for each slice, write its named acceptance tests, watch them fail, write the smallest code that passes, then run the full gates. (User decision, 2026-09-26: no `build-loop`.)
 
 Ask: "Shall I start ARC-01 slice 01-01 now?"
