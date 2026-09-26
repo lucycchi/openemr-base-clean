@@ -1,6 +1,6 @@
 # ARC-02 — Header
 
-**Status:** in-progress
+**Status:** complete
 **Estimate:** 5 h
 
 ## Goal
@@ -48,17 +48,17 @@ The photo, the encounter selector and the page-heading action buttons (not porte
 **Touches:** `web/src/mappers/`, `hooks/`, `cards/`
 
 ### Story 02-02 — Switching patients is safe
-**Acceptance:** after switching from TP-TYPICAL to TP-HISTORY, no card shows TP-TYPICAL data, even for a moment, and every resource on screen references the header patient.
+**Acceptance:** after switching from TP-TYPICAL to TP-HISTORY, no card shows TP-TYPICAL data, even for a moment, and every resource on screen references the header patient. *(Done: slice 02-02-01.)*
 
 #### Slice 02-02-01 — Patient switch
-- [ ] Tests first, watched failing
-- [ ] Implement a patient route (`/patient/:fhirId`) that resets all card state on change, plus a simple patient picker (FHIR `Patient` search by name)
-- [ ] Gates green; DEV-LOG, arc file updated
+- [x] Tests first, watched failing
+- [x] Implement a patient route (`/patient/:fhirId`) that resets all card state on change, plus a simple patient picker (FHIR `Patient` search by name)
+- [x] Gates green; DEV-LOG, arc file updated
 **Acceptance tests:**
 - `tests/e2e/switch.spec.ts :: switching patients clears every card before new data arrives`
 - `tests/e2e/switch.spec.ts :: every rendered resource references the header patient`
 **Touches:** `web/src/app/`, `tests/e2e/`
 
 ## Definition of Done for this arc
-- [ ] All slices ticked; BM-005 and BM-007 struck through
-- [ ] DEV-LOG has an arc-completion entry
+- [x] All slices ticked; BM-004, BM-005, BM-007 struck through (BM-040 recorded and handled)
+- [x] DEV-LOG has an arc-completion entry

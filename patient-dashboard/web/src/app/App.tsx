@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createApiClient } from '../api/client';
 import type { ApiClient } from '../api/client';
 import { PatientHeader } from '../cards/PatientHeader';
+import { PatientPicker } from '../cards/PatientPicker';
 import { usePatient } from '../hooks/usePatient';
 import type { AgeSettings } from '../mappers/age';
 
@@ -36,7 +37,20 @@ export function App() {
     const [auth, setAuth] = useState<AuthState>('checking');
     const [config, setConfig] = useState<SiteConfig | undefined>(undefined);
     const client = useMemo(() => createApiClient(), []);
-    const patientId = patientIdFromPath(globalThis.location.pathname);
+    const [pathname, setPathname] = useState(() => globalThis.location.pathname);
+    const patientId = patientIdFromPath(pathname);
+
+    useEffect(() => {
+        const onPopState = () => setPathname(globalThis.location.pathname);
+        globalThis.addEventListener('popstate', onPopState);
+        return () => globalThis.removeEventListener('popstate', onPopState);
+    }, []);
+
+    function openPatient(id: string) {
+        const next = `/patient/${encodeURIComponent(id)}`;
+        globalThis.history.pushState(null, '', next);
+        setPathname(next);
+    }
 
     useEffect(() => {
         let cancelled = false;
@@ -93,6 +107,7 @@ export function App() {
                     <button type="button" onClick={() => void logOut()}>
                         Log out
                     </button>
+                    <PatientPicker client={client} onSelect={openPatient} />
                     {patientId === undefined && <p>Choose a patient to open their dashboard.</p>}
                     {patientId !== undefined && config !== undefined && (
                         <PatientView key={patientId} client={client} patientId={patientId} config={config} />

@@ -19,7 +19,7 @@ export function PatientHeader({ state }: { state: LoadState<HeaderView> }) {
     }
     const header = state.data;
     return (
-        <section data-card="header" data-state="ready" aria-label="Patient">
+        <section data-card="header" data-state="ready" data-patient-id={header.id} aria-label="Patient">
             <h2>
                 <span data-item="name">{header.name}</span> <small data-item="mrn">({header.mrn})</small>
             </h2>

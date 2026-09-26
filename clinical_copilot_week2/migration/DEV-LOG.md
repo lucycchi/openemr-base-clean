@@ -2,6 +2,40 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 02 complete: Header
+
+**Slices:** 3 (02-01-01, 02-01-02, 02-02-01)  **BM rows resolved:** BM-004, BM-005, BM-007 (BM-040 added and handled)
+
+### Retrospective
+- What worked: pinning the age port to OpenEMR's own output (run in the container) instead of hand-written expectations, which found the "4months" bug. Header parity now runs against the real old identity bar for all seven fixtures.
+- What didn't: two tests passed before they could fail. The rejected-session E2E passed because no card existed yet, and the first switch test only recorded DOM mutations, so a stale header that never changed was invisible to it. Both were rewritten and proven by breaking the code on purpose. Lesson: prove every browser test red.
+- Carried forward to Arc 03: cards set `data-patient-id` and use `LoadState`, and `usePatient`'s tag-by-patient pattern is the template for every card hook.
+
+## 2026-09-26 — Arc 02 / Story 02-02 / Slice 02-02-01 — Patient switch
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `web/src/cards/PatientPicker.tsx`: searches `Patient?name=` through the proxy and lists matches as "Name (MRN) DOB: …". It says "No patients match" when nothing is found, and "Couldn't search for patients" when the search fails.
+- `App.tsx`: in-app navigation (`history.pushState` plus `popstate`), and `PatientView` keyed by patient id, so a switch remounts every card.
+- The header card carries `data-patient-id`, and every future card will too, so a test can check each card belongs to the header patient.
+
+### Decisions
+- The switch E2E samples every card's text on every animation frame from the moment of the click, rather than recording DOM mutations. The first version passed even with a deliberately unsafe hook, because a stale header that never changes produces no mutation.
+
+### Tests
+- Unit: 77 / 77 passing (picker 2)
+- Playwright: 9 / 9 passing, including both switch E2Es against the real OpenEMR name search
+- Lint, typecheck and Prettier: clean
+- Seen failing first: picker, header `data-patient-id` and both switch E2Es. Proven red on broken code: the switch E2E (remount key removed and the unsafe hook), and the owner E2E (a wrong `data-patient-id`).
+
+### BUGS-MITIGATIONS.md updates
+- None new (BM-004 was resolved in 02-01-02).
+
+### Open questions / follow-ups
+- None.
+
 ## 2026-09-26 — Arc 02 / Story 02-01 / Slice 02-01-02 — Header mapper, hook and card
 
 **Branch:** `dashboard-migration`

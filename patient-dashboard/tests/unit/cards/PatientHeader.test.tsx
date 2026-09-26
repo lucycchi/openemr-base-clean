@@ -24,6 +24,7 @@ describe('PatientHeader', () => {
         );
 
         expect(screen.getByText("Zoë O'Brien-Núñez")).toBeTruthy();
+        expect(container.querySelector('[data-card="header"]')?.getAttribute('data-patient-id')).toBe('p1');
         const items = Array.from(container.querySelectorAll('[data-card="header"] [data-item]')).map((node) => [
             node.getAttribute('data-item'),
             node.textContent,
