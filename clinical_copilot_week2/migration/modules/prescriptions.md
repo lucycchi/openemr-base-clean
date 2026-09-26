@@ -77,7 +77,7 @@ Observed on the old dashboard (2026-09-26, body text read from the DOM):
 | Global | Read or write | Effect on the card |
 |---|---|---|
 | disable_prescriptions | read (demographics.php:1098) | hides the card when on |
-| erx_enable | read (demographics.php:1186, 1223) | retitles to "Prescription History" and switches Edit to Add (eRx compose) |
+| erx_enable | read (demographics.php:1186, 1222) | retitles to "Prescription History" and switches Edit to Add (eRx compose) |
 | $display_current_medications_below | read (demographics.php:1186), never set in this request | makes the eRx current-medications block dead code (BM-025) |
 | hide_dashboard_cards (card_prescriptions) | read (demographics.php:1098) | hides the card |
 | user setting prescriptions_ps_expand | read and write | initial collapsed state |
