@@ -3,6 +3,7 @@ import { createApiClient } from '../api/client';
 import type { ApiClient } from '../api/client';
 import { AllergiesCard } from '../cards/AllergiesCard';
 import { MedicationsCard } from '../cards/MedicationsCard';
+import { PrescriptionsCard } from '../cards/PrescriptionsCard';
 import { PatientHeader } from '../cards/PatientHeader';
 import { ProblemListCard } from '../cards/ProblemListCard';
 import { PatientPicker } from '../cards/PatientPicker';
@@ -51,6 +52,12 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
                 <MedicationsCard
                     patientId={patientId}
                     state={selectLoadState(medicationRequests, (split) => split.medications)}
+                />
+            )}
+            {shown.includes('card_prescriptions') && (
+                <PrescriptionsCard
+                    patientId={patientId}
+                    state={selectLoadState(medicationRequests, (split) => split.prescriptions)}
                 />
             )}
         </>

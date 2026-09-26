@@ -83,9 +83,9 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Touches:** `web/src/`
 
 #### Slice 03-03-02 — Prescriptions card
-- [ ] Tests first, watched failing
-- [ ] Implement `cards/PrescriptionsCard.tsx`: drug, details (dosageInstruction text or blank), quantity, refills, "Added" (authoredOn, local date); sorted by authoredOn descending; "No active prescriptions" when none are active
-- [ ] Gates green; DEV-LOG, arc file and BM rows updated
+- [x] Tests first, watched failing
+- [x] Implement `cards/PrescriptionsCard.tsx`: drug, details (dosageInstruction text or blank), quantity, refills, "Added" (authoredOn, local date); sorted by authoredOn descending; "No active prescriptions" when none are active
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
 **Acceptance tests:**
 - `tests/unit/cards/PrescriptionsCard.test.tsx :: column label is "Added" (BM-023)`
 - `tests/unit/cards/PrescriptionsCard.test.tsx :: all-discontinued shows "No active prescriptions" (BM-024)`

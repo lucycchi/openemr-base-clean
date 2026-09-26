@@ -2,6 +2,35 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 / Story 03-03 / Slice 03-03-02 — Prescriptions card
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `web/src/cards/PrescriptionsCard.tsx`:
+  - a table with Drug, Details, Qty, Refills and Added, newest first (the sort comes from `splitMedications`)
+  - "No active prescriptions" when nothing active remains, including when every prescription is discontinued
+  - "Couldn't load prescriptions" on error, and the same list-versus-prescription note as the Medications card
+- The patient view gives the card the prescriptions half of the one MedicationRequest fetch.
+- `tests/e2e/readonly.spec.ts`: the four clinical cards have no edit or add controls (BM-013).
+
+### Decisions
+- Parity compares drug, quantity, refills and date added of every old row, in order. Extra new rows are allowed only when the name is on the old medication list (BM-019: TP-TYPICAL Atorvastatin). Details is not compared (BM-038).
+- BM-012 and BM-013 are struck through now that the allergy, problem and medication cards are all built, as the Story 03-01 note planned.
+
+### Tests
+- Unit: 115 / 115 passing (prescriptions card 5)
+- Playwright: 18 / 18 passing, including prescriptions parity for four fixtures, the API-failure E2E and the read-only E2E
+- Lint, typecheck and Prettier: clean
+- Seen failing first: card unit test (module missing), then parity and E2E (card not rendered). Parity proven red by reversing the prescription sort (it failed on TP-TYPICAL with Amlodipine and Omeprazole swapped). The read-only E2E was proven red with a temporary Edit button on the Prescriptions card.
+
+### BUGS-MITIGATIONS.md updates
+- Resolved: BM-012, BM-013, BM-023, BM-024, BM-038.
+
+### Open questions / follow-ups
+- None.
+
 ## 2026-09-26 — Arc 03 / Story 03-03 / Slice 03-03-01 — Shared medication mapper and Medications card
 
 **Branch:** `dashboard-migration`
