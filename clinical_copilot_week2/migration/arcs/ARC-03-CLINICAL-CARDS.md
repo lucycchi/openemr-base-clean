@@ -56,9 +56,9 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Acceptance:** TP-TYPICAL shows all three problems with Hyperlipidaemia labelled "resolved (per FHIR)" and hypertension "recurrence"; TP-LONG shows 60, starting with problem 60.
 
 #### Slice 03-02-01 — Problem list card
-- [ ] Tests first, watched failing
-- [ ] Implement `mappers/problems.ts` (category problem-list-item; exclude inactive only; label resolved and recurrence; sort by onset ascending, missing onset first), plus the hook and `cards/ProblemListCard.tsx`
-- [ ] Gates green; DEV-LOG, arc file and BM rows updated
+- [x] Tests first, watched failing
+- [x] Implement `mappers/problems.ts` (category problem-list-item; exclude inactive only; label resolved and recurrence; sort by onset ascending, missing onset first), the shared hook with `&category=problem-list-item`, and `cards/ProblemListCard.tsx`
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
 **Acceptance tests:**
 - `tests/unit/mappers/problems.test.ts :: resolved-per-FHIR problems are shown and labelled (BM-017)`
 - `tests/unit/mappers/problems.test.ts :: inactive problems are hidden (TP-HISTORY)`

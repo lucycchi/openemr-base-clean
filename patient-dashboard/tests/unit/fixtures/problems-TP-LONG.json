@@ -1,0 +1,3496 @@
+{
+  "meta": {
+    "lastUpdated": "2026-09-26T19:20:36"
+  },
+  "resourceType": "Bundle",
+  "type": "collection",
+  "total": 60,
+  "link": [
+    {
+      "relation": "self",
+      "url": "https://localhost:9300/apis/default/fhir/Condition"
+    }
+  ],
+  "entry": [
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68335-379c-4d63-9b46-93d1b25e41bc",
+      "resource": {
+        "id": "a2d68335-379c-4d63-9b46-93d1b25e41bc",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:00+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 01"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-03-10T00:00:00+00:00",
+        "recordedDate": "2026-03-10T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68335-8a87-4a7d-a35b-1a243db73ae8",
+      "resource": {
+        "id": "a2d68335-8a87-4a7d-a35b-1a243db73ae8",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:00+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 02"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-03-09T00:00:00+00:00",
+        "recordedDate": "2026-03-09T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68335-e533-43b3-8060-3d5c7b26414a",
+      "resource": {
+        "id": "a2d68335-e533-43b3-8060-3d5c7b26414a",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:00+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 03"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-03-08T00:00:00+00:00",
+        "recordedDate": "2026-03-08T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68336-5160-46ee-9e2b-83f61fffc2b9",
+      "resource": {
+        "id": "a2d68336-5160-46ee-9e2b-83f61fffc2b9",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:00+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 04"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-03-07T00:00:00+00:00",
+        "recordedDate": "2026-03-07T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68336-a41f-4266-a9d1-7328a61ec635",
+      "resource": {
+        "id": "a2d68336-a41f-4266-a9d1-7328a61ec635",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:00+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 05"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-03-06T00:00:00+00:00",
+        "recordedDate": "2026-03-06T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68336-f542-4a19-9996-c55256237b3c",
+      "resource": {
+        "id": "a2d68336-f542-4a19-9996-c55256237b3c",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:01+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 06"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-03-05T00:00:00+00:00",
+        "recordedDate": "2026-03-05T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68337-46c7-4360-b30a-f6fa61adc57e",
+      "resource": {
+        "id": "a2d68337-46c7-4360-b30a-f6fa61adc57e",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:01+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 07"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-03-04T00:00:00+00:00",
+        "recordedDate": "2026-03-04T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68337-99a2-4a36-9323-eedb4403ef3d",
+      "resource": {
+        "id": "a2d68337-99a2-4a36-9323-eedb4403ef3d",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:01+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 08"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-03-03T00:00:00+00:00",
+        "recordedDate": "2026-03-03T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68337-edef-496c-8bb1-02b822d21f40",
+      "resource": {
+        "id": "a2d68337-edef-496c-8bb1-02b822d21f40",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:01+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 09"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-03-02T00:00:00+00:00",
+        "recordedDate": "2026-03-02T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68338-40ca-45f2-9d21-b9575d155890",
+      "resource": {
+        "id": "a2d68338-40ca-45f2-9d21-b9575d155890",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:02+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 10"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-03-01T00:00:00+00:00",
+        "recordedDate": "2026-03-01T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68338-916b-4ef1-b5ce-b47213d28249",
+      "resource": {
+        "id": "a2d68338-916b-4ef1-b5ce-b47213d28249",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:02+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 11"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-28T00:00:00+00:00",
+        "recordedDate": "2026-02-28T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68338-e0fb-4377-9b35-fa94272d68d1",
+      "resource": {
+        "id": "a2d68338-e0fb-4377-9b35-fa94272d68d1",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:02+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 12"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-27T00:00:00+00:00",
+        "recordedDate": "2026-02-27T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68338-e647-4d98-82ec-ce756ac9997b",
+      "resource": {
+        "id": "a2d68338-e647-4d98-82ec-ce756ac9997b",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:02+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 13"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-26T00:00:00+00:00",
+        "recordedDate": "2026-02-26T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68339-3c9c-4715-a844-62b3146b8a85",
+      "resource": {
+        "id": "a2d68339-3c9c-4715-a844-62b3146b8a85",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:02+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 14"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-25T00:00:00+00:00",
+        "recordedDate": "2026-02-25T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68339-8aaa-440b-a8c9-7b9bb77dd7d2",
+      "resource": {
+        "id": "a2d68339-8aaa-440b-a8c9-7b9bb77dd7d2",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:02+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 15"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-24T00:00:00+00:00",
+        "recordedDate": "2026-02-24T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68339-db4e-48a6-a55e-e0fe68e2fb76",
+      "resource": {
+        "id": "a2d68339-db4e-48a6-a55e-e0fe68e2fb76",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:03+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 16"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-23T00:00:00+00:00",
+        "recordedDate": "2026-02-23T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833a-2934-43fe-91e1-d3dfe1eac47f",
+      "resource": {
+        "id": "a2d6833a-2934-43fe-91e1-d3dfe1eac47f",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:03+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 17"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-22T00:00:00+00:00",
+        "recordedDate": "2026-02-22T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833a-7651-4f43-843c-686fc1c3d8cb",
+      "resource": {
+        "id": "a2d6833a-7651-4f43-843c-686fc1c3d8cb",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:03+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 18"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-21T00:00:00+00:00",
+        "recordedDate": "2026-02-21T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833a-c5a3-40a1-b928-b38fba72e18a",
+      "resource": {
+        "id": "a2d6833a-c5a3-40a1-b928-b38fba72e18a",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:03+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 19"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-20T00:00:00+00:00",
+        "recordedDate": "2026-02-20T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833b-1b23-46e1-9b9f-f82a028f1ff1",
+      "resource": {
+        "id": "a2d6833b-1b23-46e1-9b9f-f82a028f1ff1",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:03+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 20"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-19T00:00:00+00:00",
+        "recordedDate": "2026-02-19T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833b-69c6-4876-8cba-5d225e7bd546",
+      "resource": {
+        "id": "a2d6833b-69c6-4876-8cba-5d225e7bd546",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:04+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 21"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-18T00:00:00+00:00",
+        "recordedDate": "2026-02-18T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833b-b6dd-4dc1-b526-5a89536fcba5",
+      "resource": {
+        "id": "a2d6833b-b6dd-4dc1-b526-5a89536fcba5",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:04+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 22"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-17T00:00:00+00:00",
+        "recordedDate": "2026-02-17T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833c-062d-461e-ba95-a89a9b0f4eef",
+      "resource": {
+        "id": "a2d6833c-062d-461e-ba95-a89a9b0f4eef",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:04+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 23"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-16T00:00:00+00:00",
+        "recordedDate": "2026-02-16T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833c-5f38-4310-94c9-1be2f0c721fa",
+      "resource": {
+        "id": "a2d6833c-5f38-4310-94c9-1be2f0c721fa",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:04+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 24"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-15T00:00:00+00:00",
+        "recordedDate": "2026-02-15T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833c-b027-46ad-90de-b9df954a553a",
+      "resource": {
+        "id": "a2d6833c-b027-46ad-90de-b9df954a553a",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:04+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 25"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-14T00:00:00+00:00",
+        "recordedDate": "2026-02-14T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833d-0007-44e7-ab28-92ee80170113",
+      "resource": {
+        "id": "a2d6833d-0007-44e7-ab28-92ee80170113",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:05+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 26"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-13T00:00:00+00:00",
+        "recordedDate": "2026-02-13T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833d-504f-49eb-9e8a-89e43105d6fc",
+      "resource": {
+        "id": "a2d6833d-504f-49eb-9e8a-89e43105d6fc",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:05+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 27"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-12T00:00:00+00:00",
+        "recordedDate": "2026-02-12T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833d-a418-4a50-b307-c27bee8acff5",
+      "resource": {
+        "id": "a2d6833d-a418-4a50-b307-c27bee8acff5",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:05+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 28"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-11T00:00:00+00:00",
+        "recordedDate": "2026-02-11T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833d-f474-4d74-95af-5293168259e4",
+      "resource": {
+        "id": "a2d6833d-f474-4d74-95af-5293168259e4",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:05+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 29"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-10T00:00:00+00:00",
+        "recordedDate": "2026-02-10T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833e-484e-4e71-961f-ba8b3c4860d1",
+      "resource": {
+        "id": "a2d6833e-484e-4e71-961f-ba8b3c4860d1",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:05+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 30"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-09T00:00:00+00:00",
+        "recordedDate": "2026-02-09T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833e-9671-42f7-a838-3d25d764772a",
+      "resource": {
+        "id": "a2d6833e-9671-42f7-a838-3d25d764772a",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:06+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 31"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-08T00:00:00+00:00",
+        "recordedDate": "2026-02-08T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833e-e5a6-44db-8a4a-708bce84ad98",
+      "resource": {
+        "id": "a2d6833e-e5a6-44db-8a4a-708bce84ad98",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:06+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 32"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-07T00:00:00+00:00",
+        "recordedDate": "2026-02-07T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833f-3db1-4b7a-af2a-907e0cac9dba",
+      "resource": {
+        "id": "a2d6833f-3db1-4b7a-af2a-907e0cac9dba",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:06+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 33"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-06T00:00:00+00:00",
+        "recordedDate": "2026-02-06T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833f-9fa3-478f-b9bf-1a3983e79300",
+      "resource": {
+        "id": "a2d6833f-9fa3-478f-b9bf-1a3983e79300",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:06+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 34"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-05T00:00:00+00:00",
+        "recordedDate": "2026-02-05T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d6833f-f932-4df8-a739-9175ba24b55c",
+      "resource": {
+        "id": "a2d6833f-f932-4df8-a739-9175ba24b55c",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:07+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 35"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-04T00:00:00+00:00",
+        "recordedDate": "2026-02-04T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68340-4e29-47e5-947f-94d9f1370403",
+      "resource": {
+        "id": "a2d68340-4e29-47e5-947f-94d9f1370403",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:07+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 36"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-03T00:00:00+00:00",
+        "recordedDate": "2026-02-03T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68340-a8c2-483a-b6a0-fa6c34ec4f91",
+      "resource": {
+        "id": "a2d68340-a8c2-483a-b6a0-fa6c34ec4f91",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:07+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 37"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-02T00:00:00+00:00",
+        "recordedDate": "2026-02-02T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68341-061a-4b5b-b736-0aa4bc9bb4b1",
+      "resource": {
+        "id": "a2d68341-061a-4b5b-b736-0aa4bc9bb4b1",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:07+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 38"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-02-01T00:00:00+00:00",
+        "recordedDate": "2026-02-01T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68341-61fd-40f8-afc9-909366090f6f",
+      "resource": {
+        "id": "a2d68341-61fd-40f8-afc9-909366090f6f",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:08+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 39"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-31T00:00:00+00:00",
+        "recordedDate": "2026-01-31T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68341-b8a7-40db-b635-672e4e44c510",
+      "resource": {
+        "id": "a2d68341-b8a7-40db-b635-672e4e44c510",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:08+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 40"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-30T00:00:00+00:00",
+        "recordedDate": "2026-01-30T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68342-0a9f-4d29-9734-72970feae777",
+      "resource": {
+        "id": "a2d68342-0a9f-4d29-9734-72970feae777",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:08+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 41"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-29T00:00:00+00:00",
+        "recordedDate": "2026-01-29T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68342-59c8-41e1-9eea-694293757746",
+      "resource": {
+        "id": "a2d68342-59c8-41e1-9eea-694293757746",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:08+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 42"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-28T00:00:00+00:00",
+        "recordedDate": "2026-01-28T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68342-b529-413c-9c2c-475e60683f69",
+      "resource": {
+        "id": "a2d68342-b529-413c-9c2c-475e60683f69",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:08+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 43"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-27T00:00:00+00:00",
+        "recordedDate": "2026-01-27T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68343-0912-494d-b838-985b4bda058e",
+      "resource": {
+        "id": "a2d68343-0912-494d-b838-985b4bda058e",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:09+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 44"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-26T00:00:00+00:00",
+        "recordedDate": "2026-01-26T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68343-6054-4a22-9aa6-46eb9af67f32",
+      "resource": {
+        "id": "a2d68343-6054-4a22-9aa6-46eb9af67f32",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:09+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 45"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-25T00:00:00+00:00",
+        "recordedDate": "2026-01-25T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68343-b25d-4d2b-9831-121f440b12c3",
+      "resource": {
+        "id": "a2d68343-b25d-4d2b-9831-121f440b12c3",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:09+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 46"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-24T00:00:00+00:00",
+        "recordedDate": "2026-01-24T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68344-0403-4d44-a0e2-1daf080ed2fb",
+      "resource": {
+        "id": "a2d68344-0403-4d44-a0e2-1daf080ed2fb",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:09+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 47"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-23T00:00:00+00:00",
+        "recordedDate": "2026-01-23T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68344-582c-4849-8c9e-6c0df18723e4",
+      "resource": {
+        "id": "a2d68344-582c-4849-8c9e-6c0df18723e4",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:09+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 48"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-22T00:00:00+00:00",
+        "recordedDate": "2026-01-22T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68344-ada9-4bd3-847f-525c67770f89",
+      "resource": {
+        "id": "a2d68344-ada9-4bd3-847f-525c67770f89",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:10+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 49"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-21T00:00:00+00:00",
+        "recordedDate": "2026-01-21T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68345-1c08-4cc0-8813-b09ec64cef95",
+      "resource": {
+        "id": "a2d68345-1c08-4cc0-8813-b09ec64cef95",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:10+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 50"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-20T00:00:00+00:00",
+        "recordedDate": "2026-01-20T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68345-7288-4209-93d9-6fdd605799e3",
+      "resource": {
+        "id": "a2d68345-7288-4209-93d9-6fdd605799e3",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:10+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 51"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-19T00:00:00+00:00",
+        "recordedDate": "2026-01-19T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68345-c090-4b7e-98ac-59514891503c",
+      "resource": {
+        "id": "a2d68345-c090-4b7e-98ac-59514891503c",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:10+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 52"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-18T00:00:00+00:00",
+        "recordedDate": "2026-01-18T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68346-1376-49fe-8ff8-7c67fb719378",
+      "resource": {
+        "id": "a2d68346-1376-49fe-8ff8-7c67fb719378",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:11+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 53"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-17T00:00:00+00:00",
+        "recordedDate": "2026-01-17T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68346-666f-42ff-961b-5cdb885976f6",
+      "resource": {
+        "id": "a2d68346-666f-42ff-961b-5cdb885976f6",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:11+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 54"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-16T00:00:00+00:00",
+        "recordedDate": "2026-01-16T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68346-b7e9-475d-91f1-1a094ebc14d8",
+      "resource": {
+        "id": "a2d68346-b7e9-475d-91f1-1a094ebc14d8",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:11+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 55"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-15T00:00:00+00:00",
+        "recordedDate": "2026-01-15T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68347-09ea-4f2a-ba71-a2981fed43ab",
+      "resource": {
+        "id": "a2d68347-09ea-4f2a-ba71-a2981fed43ab",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:11+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 56"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-14T00:00:00+00:00",
+        "recordedDate": "2026-01-14T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68347-59c1-4000-8e73-8b6a10f0df16",
+      "resource": {
+        "id": "a2d68347-59c1-4000-8e73-8b6a10f0df16",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:11+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 57"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-13T00:00:00+00:00",
+        "recordedDate": "2026-01-13T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68347-af34-49bf-8edb-9a111728e602",
+      "resource": {
+        "id": "a2d68347-af34-49bf-8edb-9a111728e602",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:12+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 58"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-12T00:00:00+00:00",
+        "recordedDate": "2026-01-12T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68348-034a-4f23-ad7a-cbb060640dc8",
+      "resource": {
+        "id": "a2d68348-034a-4f23-ad7a-cbb060640dc8",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:12+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 59"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-11T00:00:00+00:00",
+        "recordedDate": "2026-01-11T00:00:00+00:00"
+      }
+    },
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/Condition/a2d68348-5df3-4a4c-82f2-a484c6fbb425",
+      "resource": {
+        "id": "a2d68348-5df3-4a4c-82f2-a484c6fbb425",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:28:12+00:00",
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|3.1.1",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|7.0.0",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|8.0.0"
+          ]
+        },
+        "resourceType": "Condition",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "unconfirmed",
+              "display": "Unconfirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ],
+            "text": "Problem List Item"
+          }
+        ],
+        "code": {
+          "text": "Long-list problem 60"
+        },
+        "subject": {
+          "reference": "Patient/a2d6832c-b8b1-48cd-ab3b-127acc55cc85"
+        },
+        "onsetDateTime": "2026-01-10T00:00:00+00:00",
+        "recordedDate": "2026-01-10T00:00:00+00:00"
+      }
+    }
+  ]
+}

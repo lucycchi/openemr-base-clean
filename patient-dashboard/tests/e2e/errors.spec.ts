@@ -27,3 +27,16 @@ test('allergies card shows "Couldn\'t load" on API failure', async ({ page }) =>
     await expect(card).toContainText("Couldn't load allergies");
     await expect(card).not.toContainText('No allergies recorded');
 });
+
+test('problem list shows "Couldn\'t load" on API failure', async ({ page }) => {
+    await logInThroughOpenEmr(page);
+    await page.route('**/api/fhir/Condition**', (route) =>
+        route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"OpenEMR did not respond"}' }),
+    );
+
+    await page.goto(`/patient/${fixture('TP-TYPICAL').fhirId}`);
+
+    const card = page.locator('[data-card="problems"]');
+    await expect(card).toHaveAttribute('data-state', 'error');
+    await expect(card).toContainText("Couldn't load medical problems");
+});

@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "lastUpdated": "2026-09-26T19:20:37"
+  },
+  "resourceType": "Bundle",
+  "type": "collection",
+  "total": 0,
+  "link": [
+    {
+      "relation": "self",
+      "url": "https://localhost:9300/apis/default/fhir/Condition"
+    }
+  ]
+}

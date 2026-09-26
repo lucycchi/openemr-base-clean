@@ -3,10 +3,12 @@ import { createApiClient } from '../api/client';
 import type { ApiClient } from '../api/client';
 import { AllergiesCard } from '../cards/AllergiesCard';
 import { PatientHeader } from '../cards/PatientHeader';
+import { ProblemListCard } from '../cards/ProblemListCard';
 import { PatientPicker } from '../cards/PatientPicker';
 import { useBundleCard } from '../hooks/useBundleCard';
 import { usePatient } from '../hooks/usePatient';
 import { mapAllergies } from '../mappers/allergies';
+import { mapProblems } from '../mappers/problems';
 import { visibleCards } from './hiddenCards';
 import type { AgeSettings } from '../mappers/age';
 
@@ -34,11 +36,13 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
     const [asOf] = useState(localToday);
     const header = usePatient(client, patientId, { asOf, age: config.ageDisplay });
     const allergies = useBundleCard(client, patientId, 'AllergyIntolerance', mapAllergies);
+    const problems = useBundleCard(client, patientId, 'Condition', mapProblems, '&category=problem-list-item');
     const shown = visibleCards(config.hiddenCards);
     return (
         <>
             <PatientHeader state={header} />
             {shown.includes('card_allergies') && <AllergiesCard patientId={patientId} state={allergies} />}
+            {shown.includes('card_medicalproblems') && <ProblemListCard patientId={patientId} state={problems} />}
         </>
     );
 }

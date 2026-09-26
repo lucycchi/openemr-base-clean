@@ -2,6 +2,36 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 / Story 03-02 / Slice 03-02-01 — Problem list card
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `web/src/mappers/problems.ts`, `mapProblems()`:
+  - keeps every Condition whose clinicalStatus is not `inactive`
+  - labels `resolved` ("resolved per FHIR"), `recurrence`, `relapse` and `remission`
+  - sorts by onset ascending, with a missing onset first and ties in API order
+  - name from `code.text`, else a real coding display, else the narrative, else "Unnamed problem"
+- `web/src/cards/ProblemListCard.tsx`: titled "Medical Problems" as on the old dashboard. "None recorded" when empty, "Couldn't load medical problems" on error, and `data-patient-id`.
+- The patient view loads `Condition?patient=<id>&category=problem-list-item` through `useBundleCard`.
+- Unit fixtures: problem-list Condition bundles for TP-TYPICAL, TP-HISTORY, TP-LONG and TP-EMPTY.
+
+### Decisions
+- Parity compares names in order. The approved exceptions are BM-012 (empty wording) and BM-017 (the label is stripped before comparing). No fixture has `outcome = 1`, so the case where the new card shows a truly resolved problem the old one hides is covered only by the mapper test.
+
+### Tests
+- Unit: 100 / 100 passing (problems mapper 5, card 3)
+- Playwright: 13 / 13 passing, including problem parity for four fixtures (the 60-row order included) and the API-failure E2E
+- Lint, typecheck and Prettier: clean
+- Seen failing first: mapper and card (modules missing), then parity and E2E (card not rendered). Parity proven red by removing the sort (it failed on TP-LONG).
+
+### BUGS-MITIGATIONS.md updates
+- Resolved: BM-017, BM-018.
+
+### Open questions / follow-ups
+- None.
+
 ## 2026-09-26 — Arc 03 / Story 03-01 / Slice 03-01-01 — Allergies card
 
 **Branch:** `dashboard-migration`
