@@ -119,3 +119,41 @@ export async function readOldIdentityBar(oldSession: Page, pid: number): Promise
     }
     return { name: match[1] ?? '', mrn: match[2] ?? '', dobLine: (match[3] ?? '').trim() };
 }
+
+export interface OldCareTeam {
+    /** The team heading, or null when the patient has no team (the heading is blank). */
+    team: { name: string; status: string } | null;
+    members: { type: string; member: string; role: string; facility: string; since: string; status: string }[];
+}
+
+/**
+ * Reads the old Care Team card in view mode. Every cell also holds a hidden edit-mode control
+ * (a select listing every user and role), so only the `.viewOnly` elements are read.
+ */
+export async function readOldCareTeam(page: Page): Promise<OldCareTeam> {
+    return page.evaluate(() => {
+        const clean = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
+        const body = document.getElementById('careteam_ps_expand');
+        if (body === null) {
+            throw new Error('Old dashboard card #careteam_ps_expand not found');
+        }
+        const heading = body.querySelector('h5.viewOnly');
+        const badge = heading?.querySelector('.badge');
+        const status = clean(badge?.textContent);
+        const name = clean(heading?.textContent).replace(status, '').trim();
+        const members = Array.from(body.querySelectorAll('#care_team_table tbody tr')).map((row) => {
+            const [type, member, role, facility, since, memberStatus] = Array.from(row.children).map((cell) =>
+                clean(cell.querySelector('.viewOnly')?.textContent),
+            );
+            return {
+                type: type ?? '',
+                member: member ?? '',
+                role: role ?? '',
+                facility: facility ?? '',
+                since: since ?? '',
+                status: memberStatus ?? '',
+            };
+        });
+        return { team: name === '' ? null : { name, status }, members };
+    });
+}

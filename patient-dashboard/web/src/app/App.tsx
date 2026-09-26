@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { createApiClient } from '../api/client';
 import type { ApiClient } from '../api/client';
 import { AllergiesCard } from '../cards/AllergiesCard';
+import { CareTeamCard } from '../cards/CareTeamCard';
 import { MedicationsCard } from '../cards/MedicationsCard';
 import { PrescriptionsCard } from '../cards/PrescriptionsCard';
 import { PatientHeader } from '../cards/PatientHeader';
 import { ProblemListCard } from '../cards/ProblemListCard';
 import { PatientPicker } from '../cards/PatientPicker';
 import { useBundleCard } from '../hooks/useBundleCard';
+import { useCareTeam } from '../hooks/useCareTeam';
 import { selectLoadState } from '../hooks/loadState';
 import { usePatient } from '../hooks/usePatient';
 import { mapAllergies } from '../mappers/allergies';
@@ -42,6 +44,7 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
     const allergies = useBundleCard(client, patientId, 'AllergyIntolerance', mapAllergies);
     const problems = useBundleCard(client, patientId, 'Condition', mapProblems, '&category=problem-list-item');
     const medicationRequests = useBundleCard(client, patientId, 'MedicationRequest', splitMedications);
+    const careTeam = useCareTeam(client, patientId);
     const shown = visibleCards(config.hiddenCards);
     return (
         <>
@@ -60,6 +63,7 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
                     state={selectLoadState(medicationRequests, (split) => split.prescriptions)}
                 />
             )}
+            {shown.includes('card_care_team') && <CareTeamCard patientId={patientId} state={careTeam} />}
         </>
     );
 }

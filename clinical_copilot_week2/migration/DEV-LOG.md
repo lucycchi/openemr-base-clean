@@ -2,6 +2,50 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 complete: Clinical cards
+
+**Slices:** 5 (03-01-01, 03-02-01, 03-03-01, 03-03-02, 03-04-01)  **BM rows resolved:** BM-009, BM-010, BM-011, BM-012, BM-013, BM-014, BM-015, BM-016, BM-017, BM-018, BM-019, BM-020, BM-023, BM-024, BM-028, BM-030, BM-031, BM-036, BM-037, BM-038
+
+### Retrospective
+- What worked: one pattern for every card (pure mapper, a hook tagged by patient, a card with `data-*` hooks), recorded FHIR bundles as unit fixtures, and parity specs that name each approved exception by BM id. Every parity spec was proven red by breaking one rule on purpose.
+- What didn't: the generic old-card reader could not read two cards. Rows with no child elements lost their text ("Nothing Recorded"), and the Care Team card hides an edit-mode select with every user and role in each cell. The first was fixed in the reader; the second got its own reader that reads only `.viewOnly` text. Two mutation attempts also failed to apply (a comment inside an expression, and Prettier reflowing the target line), so a green run was not taken as proof until the mutation was confirmed in the file.
+- Carried forward to Arc 04: `useCareTeam` shows the pattern for a card that needs follow-up reads; the read-only E2E and the switch E2E pick up any new `data-card` automatically.
+
+## 2026-09-26 — Arc 03 / Story 03-04 / Slice 03-04-01 — Care Team card
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `web/src/mappers/careTeam.ts`:
+  - `memberReferences()` lists each Practitioner and RelatedPerson reference once, and only relative references with a safe FHIR id
+  - `personName()` gives "Last, First" for a provider as on the old card, and a related person as written
+  - `mapCareTeams()` gives team name, status, and each member's type, name, role, facility and since. An unread member is "Name unavailable"; a role with no display is blank.
+- `web/src/hooks/useCareTeam.ts`:
+  - loads `CareTeam?patient=<id>` and checks it belongs to the patient, then reads each member once
+  - a failed read, a read that returns a different resource, or a related person of another patient leaves the member unnamed but never fails the card
+- `web/src/cards/CareTeamCard.tsx`:
+  - each team heading with a status badge, then Type, Member, Role, Facility, Since
+  - "No care team recorded", "No members recorded" and "Couldn't load the care team"
+- `tests/support/oldDashboard.ts`: `readOldCareTeam()` reads only the old card's view-mode text.
+- Unit fixtures: CareTeam bundles for TP-TYPICAL and TP-EMPTY.
+
+### Decisions
+- Parity compares team name and status, and each member's type, role and facility, in order. The member name must be the old name or "Name unavailable" (BM-028), and Since is compared only where FHIR has it (BM-037).
+- On the dev stack every member read is HTTP 404, so the resolved-name path is covered only by unit tests.
+
+### Tests
+- Unit: 134 / 134 passing (care team mapper 10, hook 5, card 4)
+- Playwright: 20 / 20 passing, including care team parity for TP-TYPICAL and TP-EMPTY, the API-failure E2E, and the read-only E2E now covering the care team
+- Lint, typecheck and Prettier: clean
+- Seen failing first: all three unit files (modules missing), then parity, error and read-only E2E (card not rendered). Parity proven red by showing a bare role code (it failed on TP-TYPICAL with role "407542009").
+
+### BUGS-MITIGATIONS.md updates
+- Resolved: BM-028, BM-030, BM-031, BM-037.
+
+### Open questions / follow-ups
+- Each member costs one extra FHIR read. That is fine for the handful of members a team has, but worth noting in the defence.
+
 ## 2026-09-26 — Arc 03 / Story 03-03 / Slice 03-03-02 — Prescriptions card
 
 **Branch:** `dashboard-migration`

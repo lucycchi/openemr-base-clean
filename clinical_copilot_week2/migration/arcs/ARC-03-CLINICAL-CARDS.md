@@ -98,9 +98,9 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Acceptance:** TP-TYPICAL shows team "practitioner" (Active) with a Provider "Name unavailable" (Nurse Practitioner, since 2026-09-26) and a Related Person "Name unavailable"; TP-EMPTY shows "No care team recorded".
 
 #### Slice 03-04-01 — Care Team card
-- [ ] Tests first, watched failing
-- [ ] Implement `mappers/careTeam.ts` (resolve Practitioner and RelatedPerson references with one read each; a 404 becomes "Name unavailable"; blank role for a bare 407542009) and `cards/CareTeamCard.tsx`
-- [ ] Gates green; DEV-LOG, arc file and BM rows updated
+- [x] Tests first, watched failing
+- [x] Implement `mappers/careTeam.ts` (resolve Practitioner and RelatedPerson references with one read each; a 404 becomes "Name unavailable"; blank role for a bare 407542009) and `cards/CareTeamCard.tsx`
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
 **Acceptance tests:**
 - `tests/unit/mappers/careTeam.test.ts :: unresolved member shows "Name unavailable" and is kept (BM-028)`
 - `tests/unit/mappers/careTeam.test.ts :: bare 407542009 role shows blank (BM-031)`
@@ -111,5 +111,5 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Touches:** `web/src/`
 
 ## Definition of Done for this arc
-- [ ] All slices ticked; every BM row listed above struck through
-- [ ] DEV-LOG has an arc-completion entry
+- [x] All slices ticked; every BM row listed above struck through
+- [x] DEV-LOG has an arc-completion entry

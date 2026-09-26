@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "lastUpdated": "2026-09-26T19:47:14"
+  },
+  "resourceType": "Bundle",
+  "type": "collection",
+  "total": 1,
+  "link": [
+    {
+      "relation": "self",
+      "url": "https://localhost:9300/apis/default/fhir/CareTeam"
+    }
+  ],
+  "entry": [
+    {
+      "fullUrl": "https://localhost:9300/apis/default/fhir/CareTeam/a2d6887e-4d3d-45be-9c74-7378c5367105",
+      "resource": {
+        "id": "a2d6887e-4d3d-45be-9c74-7378c5367105",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-09-26T11:46:21+00:00",
+          "profile": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam"]
+        },
+        "resourceType": "CareTeam",
+        "status": "active",
+        "name": "practitioner",
+        "subject": {
+          "reference": "Patient/a2d68325-7821-4a53-aa27-816ce437150f",
+          "type": "Patient"
+        },
+        "participant": [
+          {
+            "role": [
+              {
+                "coding": [
+                  {
+                    "system": "http://snomed.info/sct",
+                    "code": "224571005",
+                    "display": "Nurse Practitioner"
+                  }
+                ]
+              }
+            ],
+            "member": {
+              "reference": "Practitioner/a2c6137a-eaba-455c-8e8b-16927c8a7a13",
+              "type": "Practitioner"
+            },
+            "period": {
+              "start": "2026-09-26"
+            }
+          },
+          {
+            "role": [
+              {
+                "coding": [
+                  {
+                    "system": "http://snomed.info/sct",
+                    "code": "407542009"
+                  }
+                ]
+              }
+            ],
+            "member": {
+              "reference": "RelatedPerson/a2d68932-2306-480a-8a60-b96fb5f5acb4",
+              "type": "RelatedPerson"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

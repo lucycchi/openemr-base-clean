@@ -8,7 +8,7 @@ test('clinical cards have no edit or add controls (BM-013)', async ({ page }) =>
     await logInThroughOpenEmr(page);
     await page.goto(`/patient/${fixture('TP-TYPICAL').fhirId}`);
 
-    for (const name of ['allergies', 'problems', 'medications', 'prescriptions']) {
+    for (const name of ['allergies', 'problems', 'medications', 'prescriptions', 'care-team']) {
         const card = page.locator(`[data-card="${name}"]`);
         await expect(card, name).toHaveAttribute('data-state', 'ready');
         await expect(card.getByRole('button'), name).toHaveCount(0);
