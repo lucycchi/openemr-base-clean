@@ -1,0 +1,78 @@
+# Test patients
+
+Synthetic patients on the `development-easy` dev stack, used by the audits and later by the parity tests. None of them is a real person. `fixtures/seed.mjs` created them on 2026-09-26 through the Standard REST API, using the `seed` client with the password grant. The ids come from `fixtures/fixture-ids.json`, and each FHIR id was checked by reading `Patient/<id>`: in OpenEMR the FHIR Patient id is the patient uuid.
+
+Refer to a patient by its key (for example `TP-TYPICAL`), not by name or pid.
+
+## TP-TYPICAL
+
+- **Tessa Typical**, female, born 1958-03-14. pid 36, FHIR id `a2d68325-7821-4a53-aa27-816ce437150f`.
+- **Seeded:**
+  - allergies: Penicillin and Peanuts, both active
+  - problems: Type 2 diabetes mellitus, Essential hypertension, Hyperlipidaemia, all active
+  - list medications: Metformin 500 mg, Lisinopril 10 mg, Atorvastatin 20 mg, all active
+- **Manual:**
+  - Penicillin reaction and severity
+  - two prescriptions, one of them linked to the medication list
+  - a care team of one practitioner and one related person
+- **Exercises:** the main parity path for every card; the linked list-medication case (Review Focus 3); mixed care-team participants.
+
+## TP-EMPTY
+
+- **Evan Empty**, male, born 1990-07-01. pid 37, FHIR id `a2d68328-f292-4e4e-bea5-f589f5f04f56`.
+- **Seeded:** nothing on any card.
+- **Exercises:** the exact empty-state wording of every card, and telling an empty card apart from a failed load (Review Focus 4).
+
+## TP-NKA
+
+- **Nora NoKnownAllergies**, female, born 1975-11-23. pid 38, FHIR id `a2d68329-9e88-4db3-8e61-3e9ed9aab17d`.
+- **Seeded:** nothing yet. Task 9 (the allergies audit) finds how the old UI records "no known allergies" and adds it.
+- **Exercises:** "no known allergies" must look different from "nothing recorded".
+
+## TP-HISTORY
+
+- **Hugo History**, male, born 1949-02-02. pid 39, FHIR id `a2d6832a-671e-4a74-a35e-9424da762ae7`.
+- **Seeded:**
+  - allergy: Sulfa drugs, ended (enddate set, `outcome` not set)
+  - problem: Community-acquired pneumonia, ended
+  - list medication: Amoxicillin 500 mg, ended
+- **Manual:** one prescription, then discontinued.
+- **Exercises:** what each card filters out, and how status is derived (Review Focus 2).
+
+## TP-DECEASED
+
+- **Dora Deceased**, female, born 1932-05-09. pid 40, FHIR id `a2d6832c-0d95-48a1-9f24-3a3e67443ef4`.
+- **Set through the Standard API** (`PUT /api/patient/:puuid`): `deceased_date` 2025-11-02 and `deceased_reason` "Synthetic test fixture".
+- **Observed:** FHIR returns `deceasedDateTime` 2025-11-02 **and** `active: true`, confirming Review Focus 2.
+- **Exercises:** the header's status field.
+
+## TP-LONG
+
+- **Lena LongLists**, female, born 1944-09-30. pid 41, FHIR id `a2d6832c-b8b1-48cd-ab3b-127acc55cc85`.
+- **Seeded:** 25 allergies, 60 problems and 60 list medications, all active, titled "Long-list … 01" and onwards.
+- **Exercises:** list completeness and any truncation in the old or new cards (Review Focus 3).
+
+## TP-ESCAPING
+
+- **Zoë O'Brien-Núñez**, female, born 1988-12-12. pid 42, FHIR id `a2d6835b-6830-4007-8ae9-3f8eb7e8f40a`.
+- **Seeded:** one allergy titled `Latex <b>x</b>`.
+- **Exercises:** the apostrophe, accents and HTML-like text must be shown as text, never rendered as markup.
+
+## Manual steps
+
+The Standard API can't create these records. It ignores `reaction` and `severity_al` on an allergy update, and has no prescription or care-team write endpoints. So they're done in the OpenEMR UI at https://localhost:9300.
+
+- [x] TP-TYPICAL: Penicillin reaction set to "Hives" and severity to "Moderate" (by the user in the UI; stored as `lists.reaction = hives`, `severity_al = moderate`)
+- [x] TP-TYPICAL: Amlodipine 5 mg added to the **medication list** by the user (`lists` id 1393). It's a list entry, not a prescription.
+- [x] TP-TYPICAL: active prescription Amlodipine 5 mg with "Add to Medication List" = Yes (`prescriptions` id 2481, `medication = 1`)
+- [x] TP-TYPICAL: active prescription Omeprazole 20 mg with "Add to Medication List" = No (`prescriptions` id 2480, `medication = 0`)
+- [x] TP-TYPICAL: care team "practitioner", status active, two members: user 5 as `nurse_practitioner`, and contact 2477, a related person (by the user in the UI)
+- [x] TP-HISTORY: prescription Lisinopril 5 mg (`prescriptions` id 2482), then discontinued (`active = -1`, `end_date` left NULL)
+- [x] TP-DECEASED: deceased date set through the Standard API (see above)
+
+**How the prescriptions were added.** The prescription form could not be used by hand on the dev stack, for three reasons, all of which are Prescriptions audit findings:
+1. The list's "Add" link builds `controller.php??prescription…`, with a double `?`, and fails with HTTP 400 (`library/classes/Controller.class.php:78` plus `templates/prescription/general_list.html.twig:449`).
+2. Save calls `top.restoreSession()`, which exists only inside the main tab frame (`general_edit.html.twig:468-471`).
+3. The Drug field is a select2 search over the drug list, and the dev database's list is empty, so no drug can be chosen.
+
+The prescriptions were therefore saved through that same form in the dev stack's Selenium browser (`tmp/seed_rx.php`, gitignored), which added the drug as an option and defined `restoreSession` before calling the form's own `submitfun()`. Everything else is OpenEMR's normal save path.
