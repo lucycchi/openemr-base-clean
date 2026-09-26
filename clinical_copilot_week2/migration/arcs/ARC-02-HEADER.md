@@ -35,6 +35,7 @@ The photo, the encounter selector and the page-heading action buttons (not porte
 #### Slice 02-01-02 — Header mapper, hook and card
 - [ ] Tests first, watched failing
 - [ ] Implement `mappers/header.ts` (name from official name, MRN from identifier type PT, sex from gender, status from deceasedDateTime, never Patient.active), plus `hooks/usePatient.ts` and `cards/PatientHeader.tsx`, rendering the name as text
+- [ ] Implement `tests/support/newApp.ts` (moved from slice 01-04-01): reads a new card by `data-card`, its `data-item` rows, tooltips, highlights and `data-state="error"`
 - [ ] Gates green; DEV-LOG, arc file, BM-005 updated
 **Acceptance tests:**
 - `tests/unit/mappers/header.test.ts :: TP-DECEASED status is "Deceased (2025-11-02)" although Patient.active is true`

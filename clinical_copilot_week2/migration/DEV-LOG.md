@@ -2,6 +2,30 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 01 / Story 01-04 / Slice 01-04-01 — Parity harness (old dashboard reader)
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `tests/support/oldDashboard.ts`: `openOldDashboard(browser, pid)` logs in to http://localhost:8300 in its own browser context (the OpenEMR and BFF cookies share the host `localhost`), accepts clinical-reminder alerts and opens the dashboard. `readOldCard(page, cardId)` returns items (list rows or table rows, collapsed cards included), tooltips, highlighted text, the collapsed flag and the body text, all with whitespace collapsed.
+
+### Decisions
+- `tests/support/newApp.ts` moves to slice 02-01-02: there is no new card to read yet, and writing it now would be code without a test.
+- Whitespace is collapsed in everything read, so the old "Peanuts Reaction:  -" compares as "Peanuts Reaction: -".
+
+### Tests
+- Parity: 2 / 2 passing (TP-TYPICAL allergies with tooltips; collapsed medications card with 4 items)
+- Full suite: unit 26 / 26, Playwright 5 / 5 (e2e 3, parity 2)
+- Lint, typecheck and Prettier: clean
+- Seen failing first: the harness spec, with `oldDashboard` missing.
+
+### BUGS-MITIGATIONS.md updates
+- None.
+
+### Open questions / follow-ups
+- None.
+
 ## 2026-09-26 — Arc 01 / Story 01-03 / Slice 01-03-01 — API client, LoadError and the patient check
 
 **Branch:** `dashboard-migration`

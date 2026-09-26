@@ -73,9 +73,9 @@ The actual cards (ARC-02 to ARC-04) and the droplet deploy (ARC-05).
 **Acceptance:** a Playwright helper returns the text, tooltip and highlight of any listed field from the old dashboard and from the new app, for any fixture key.
 
 #### Slice 01-04-01 — Parity harness and cert trust
-- [ ] Tests first, watched failing
-- [ ] Implement `tests/support/oldDashboard.ts`: login at http://localhost:8300, dismiss alerts, open by pid, read cards including collapsed ones. Also `newApp.ts`, `fixtures.ts` (reads `fixtures/*.json`) and `cert.ts` (SPKI hash for `--ignore-certificate-errors-spki-list`)
-- [ ] Gates green; DEV-LOG, arc file updated
+- [x] Tests first, watched failing
+- [x] Implement `tests/support/oldDashboard.ts`: login at http://localhost:8300, dismiss alerts, open by pid, read cards including collapsed ones. `fixtures.ts` and `cert.ts` landed in slices 01-02-01 and 01-02-02; `newApp.ts` moves to slice 02-01-02, the first card it can read.
+- [x] Gates green; DEV-LOG, arc file updated
 **Acceptance tests:**
 - `tests/parity/harness.spec.ts :: old dashboard reads TP-TYPICAL allergies as ["Penicillin (Moderate)", "Peanuts ()"]`
 - `tests/parity/harness.spec.ts :: collapsed medications card items are readable`
