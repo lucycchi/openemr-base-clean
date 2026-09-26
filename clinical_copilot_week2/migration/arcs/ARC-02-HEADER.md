@@ -12,6 +12,7 @@ The photo, the encounter selector and the page-heading action buttons (not porte
 ## BUGS-MITIGATIONS items resolved
 - BM-005 — Patient.active is always true (status comes from deceasedDateTime)
 - BM-007 — age computed server-side (ported rules in one pure function)
+- BM-004 — another patient's request returns an empty Bundle (the header hook uses `assertBelongsTo`, and this is the first card to fetch)
 
 ## Stories
 
@@ -40,7 +41,9 @@ The photo, the encounter selector and the page-heading action buttons (not porte
 - `tests/unit/mappers/header.test.ts :: TP-TYPICAL status is "Active"`
 - `tests/unit/mappers/header.test.ts :: TP-ESCAPING name renders O'Brien-Núñez as text`
 - `tests/parity/header.spec.ts :: name, MRN, DOB, age match the old identity bar for all fixtures`
-**Resolves:** BM-005
+- `tests/e2e/errors.spec.ts :: rejected session shows the login page, not empty cards` (moved from slice 01-03-01; 401 bodies from API-SPIKE.md)
+- `tests/unit/hooks/usePatient.test.ts :: a resource for another patient renders a load error (BM-004)`
+**Resolves:** BM-005, BM-004
 **Touches:** `web/src/mappers/`, `hooks/`, `cards/`
 
 ### Story 02-02 — Switching patients is safe

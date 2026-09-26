@@ -2,6 +2,34 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 01 / Story 01-03 / Slice 01-03-01 — API client, LoadError and the patient check
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- `web/src/api/client.ts`:
+  - `createApiClient()` with `getResource` and `getBundle`, returning `Result<T>`
+  - 401 calls `onUnauthenticated` (by default it goes to `/auth/login`)
+  - a thrown fetch becomes `network`, and any other non-2xx becomes `http` with its status
+  - a non-Bundle response or an OperationOutcome becomes `invalid-response`
+- `assertBelongsTo(patientId, resources)`: a mismatched or missing patient reference becomes a `wrong-patient` LoadError (BM-004 guard).
+
+### Decisions
+- Moved the E2E "rejected session shows the login page, not empty cards" to slice 02-01-02: no card fetches data before the header exists, so there's nothing to show empty yet. BM-004 is struck through there, when the guard is first used.
+- Reworded BM-004's mitigation for the chosen backend-for-frontend (a deferred minor from the final review).
+
+### Tests
+- Unit: 26 / 26 passing (the client adds 9)
+- Lint, typecheck and Prettier: clean
+- Seen failing first: the client tests, with the module missing.
+
+### BUGS-MITIGATIONS.md updates
+- BM-004: mitigation reworded; not yet struck through (see Decisions).
+
+### Open questions / follow-ups
+- None.
+
 ## 2026-09-26 — Arc 01 / Story 01-02 / Slice 01-02-02 — Allow-listed FHIR proxy
 
 **Branch:** `dashboard-migration`

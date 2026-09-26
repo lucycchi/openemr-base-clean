@@ -58,15 +58,15 @@ The actual cards (ARC-02 to ARC-04) and the droplet deploy (ARC-05).
 **Acceptance:** a failed or rejected request shows "Couldn't load <card>" with a retry option, never an empty-state message.
 
 #### Slice 01-03-01 — API client, LoadError and the patient check
-- [ ] Tests first, watched failing
-- [ ] Implement `web/src/api/client.ts`: `Result<T, LoadError>`; 401 sends the user to login; network or 5xx becomes a LoadError; `assertBelongsTo(patientId, resources)` turns a mismatch into a LoadError
-- [ ] Gates green; DEV-LOG, arc file, BM-004 updated
+- [x] Tests first, watched failing
+- [x] Implement `web/src/api/client.ts`: `Result<T, LoadError>`; 401 sends the user to login; network or 5xx becomes a LoadError; `assertBelongsTo(patientId, resources)` turns a mismatch into a LoadError
+- [x] Gates green; DEV-LOG, arc file updated. BM-004 is struck through in slice 02-01-02, when the first card uses the guard.
 **Acceptance tests:**
 - `tests/unit/api/client.test.ts :: 401 triggers re-login`
 - `tests/unit/api/client.test.ts :: fetch failure maps to LoadError`
 - `tests/unit/api/client.test.ts :: resource for another patient maps to LoadError (BM-004)`
-- `tests/e2e/errors.spec.ts :: rejected session shows the login page, not empty cards` (401 bodies from API-SPIKE.md)
-**Resolves:** BM-004
+- *(moved to slice 02-01-02, which has the first card that fetches data)* `tests/e2e/errors.spec.ts :: rejected session shows the login page, not empty cards`
+**Resolves:** BM-004 (guard; enforced from slice 02-01-02)
 **Touches:** `web/src/api/`
 
 ### Story 01-04 — Parity can be measured
