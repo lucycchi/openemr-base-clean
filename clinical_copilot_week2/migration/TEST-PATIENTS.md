@@ -70,6 +70,7 @@ The Standard API can't create these records. It ignores `reaction` and `severity
 - [x] TP-TYPICAL: care team "practitioner", status active, two members: user 5 as `nurse_practitioner`, and contact 2477, a related person (by the user in the UI)
 - [x] TP-HISTORY: prescription Lisinopril 5 mg (`prescriptions` id 2482), then discontinued (`active = -1`, `end_date` left NULL)
 - [x] TP-DECEASED: deceased date set through the Standard API (see above)
+- [x] TP-TYPICAL: problem occurrence set as the UI's Occurrence dropdown stores it: Hyperlipidaemia = 1 (First), Essential hypertension = 4 (Chronic/Recurrent) (Task 10, for BM-017)
 - [x] TP-NKA: `INSERT INTO lists_touch (pid, type, date) VALUES (38, 'allergy', NOW())`, the same row `setListTouch()` writes (Task 9)
 
 **How the prescriptions were added.** The prescription form could not be used by hand on the dev stack, for three reasons, all of which are Prescriptions audit findings:
