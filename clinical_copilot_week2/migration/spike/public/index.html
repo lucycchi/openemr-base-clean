@@ -1,0 +1,114 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Spike A: public client</title>
+<h1>Spike A: browser-only public client</h1>
+<p>Log in as admin, pick the patient <strong>Tessa Typical</strong>, and leave every permission ticked on the consent page.</p>
+<p><button id="start">Start login</button></p>
+<pre id="out"></pre>
+<script type="module">
+const cfg = await (await fetch('/config.json')).json();
+const AUD = `${cfg.base}/apis/default/fhir`;
+const ROUTES = { direct: AUD, proxied: `${location.origin}/apis/default/fhir` };
+const out = document.getElementById('out');
+const log = (line) => { out.textContent += line + '\n'; };
+const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+document.getElementById('start').onclick = async () => {
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const state = b64url(crypto.getRandomValues(new Uint8Array(16)));
+  sessionStorage.setItem('pkce', JSON.stringify({ verifier, state }));
+  const url = new URL(`${cfg.base}/oauth2/default/authorize`);
+  url.search = new URLSearchParams({
+    response_type: 'code', client_id: cfg.clientId, redirect_uri: `${location.origin}/callback`,
+    scope: cfg.scope, state, code_challenge: b64url(new Uint8Array(digest)), code_challenge_method: 'S256', aud: AUD,
+  }).toString();
+  location.assign(url);
+};
+
+// Browser fetch: a CORS rejection or an untrusted certificate shows up as a TypeError with no status.
+async function call(label, url, init = {}) {
+  try {
+    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(15000) });
+    const text = await res.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch { json = null; }
+    return { label, status: res.status, json, body: text.slice(0, 500) };
+  } catch (e) {
+    return { label, status: 0, json: null, body: `${e.name}: ${e.message}` };
+  }
+}
+
+if (location.pathname === '/callback') {
+  const params = new URLSearchParams(location.search);
+  const saved = JSON.parse(sessionStorage.getItem('pkce') ?? 'null');
+  sessionStorage.removeItem('pkce');
+  const checks = [];
+  const probes = [];
+  const check = (route, name, ok, detail = '') => {
+    checks.push({ route, name, ok: Boolean(ok), detail });
+    log(`${ok ? 'ok  ' : 'FAIL'} [${route}] ${name} ${detail}`);
+  };
+
+  if (params.get('error')) {
+    check('auth', 'authorization', false, `${params.get('error')}: ${params.get('error_description') ?? ''}`);
+  } else if (!saved || params.get('state') !== saved.state) {
+    check('auth', 'state', false, 'missing or mismatched state; was the callback reloaded or reused?');
+  } else if (!params.get('code')) {
+    check('auth', 'code', false, 'no code in the callback');
+  } else {
+    const tok = await call('token', `${cfg.base}/oauth2/default/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code', code: params.get('code'), redirect_uri: `${location.origin}/callback`,
+        client_id: cfg.clientId, code_verifier: saved.verifier,
+      }),
+    });
+    const t = tok.json ?? {};
+    const granted = (t.scope ?? '').split(' ');
+    check('auth', 'token endpoint answered the browser', tok.status === 200, `HTTP ${tok.status} ${tok.status === 0 ? tok.body : ''}`);
+    check('auth', 'access token issued', typeof t.access_token === 'string');
+    check('auth', 'patient context is Tessa Typical', t.patient === cfg.expectedPatientId, `patient=${t.patient}`);
+    check('auth', 'every requested scope granted', cfg.scope.split(' ').every((s) => granted.includes(s)), `granted: ${t.scope ?? ''}`);
+    probes.push({ route: 'auth', label: 'token', status: tok.status, body: `expires_in=${t.expires_in}; refresh_token=${typeof t.refresh_token === 'string'}; id_token=${typeof t.id_token === 'string'}` });
+
+    if (typeof t.access_token === 'string' && t.patient) {
+      const auth = { headers: { Authorization: `Bearer ${t.access_token}`, Accept: 'application/fhir+json' } };
+      const refersTo = (e, id) => (e.resource?.patient?.reference ?? '').endsWith(`Patient/${id}`);
+      for (const [route, fhir] of Object.entries(ROUTES)) {
+        const pat = await call('Patient', `${fhir}/Patient/${t.patient}`, auth);
+        check(route, 'Patient read', pat.status === 200 && pat.json?.resourceType === 'Patient' && pat.json?.id === t.patient, `HTTP ${pat.status} ${pat.status === 0 ? pat.body : ''}`);
+
+        const al = await call('AllergyIntolerance', `${fhir}/AllergyIntolerance?patient=${t.patient}`, auth);
+        const mine = al.json?.entry ?? [];
+        check(route, 'allergies belong to the launched patient', al.status === 200 && al.json?.resourceType === 'Bundle' && mine.length > 0
+          && mine.every((e) => e.resource?.resourceType === 'AllergyIntolerance' && refersTo(e, t.patient)), `HTTP ${al.status}, ${mine.length} entries`);
+
+        // Asking for another patient must never return that patient's data. The server is
+        // expected to substitute the launched patient instead (Review Focus 1); record which.
+        const other = await call('other patient', `${fhir}/AllergyIntolerance?patient=${cfg.otherPatientId}`, auth);
+        const otherEntries = other.json?.entry ?? [];
+        check(route, "another patient's data never returned", !otherEntries.some((e) => refersTo(e, cfg.otherPatientId)), `HTTP ${other.status}`);
+        const substituted = other.status === 200 && otherEntries.length > 0 && otherEntries.every((e) => refersTo(e, t.patient));
+        log(`note [${route}] other-patient request ${substituted ? 'silently returned the LAUNCHED patient\'s allergies' : 'did not return the launched patient\'s allergies'}`);
+
+        const oos = await call('out of scope', `${fhir}/Procedure?patient=${t.patient}`, auth);
+        check(route, 'out-of-scope read refused', oos.status === 401 || oos.status === 403, `HTTP ${oos.status}`);
+
+        const bad = await call('bad token', `${fhir}/Patient/${t.patient}`, { headers: { Authorization: 'Bearer not-a-real-token' } });
+        check(route, 'bad token refused', bad.status === 401, `HTTP ${bad.status}`);
+
+        for (const p of [pat, al, other, oos, bad]) probes.push({ route, label: p.label, status: p.status, body: p.body });
+        probes.push({ route, label: 'other patient substituted', status: other.status, body: String(substituted) });
+      }
+    }
+  }
+
+  const pass = checks.length > 0 && checks.filter((c) => c.route !== 'direct').every((c) => c.ok)
+    && checks.some((c) => c.route === 'proxied');
+  const directPass = checks.some((c) => c.route === 'direct') && checks.filter((c) => c.route === 'direct').every((c) => c.ok);
+  log(`${pass ? 'PASS' : 'FAIL'} (auth + proxied); direct: ${directPass ? 'PASS' : 'FAIL'}`);
+  await fetch('/results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pass, directPass, checks, probes }) });
+}
+</script>

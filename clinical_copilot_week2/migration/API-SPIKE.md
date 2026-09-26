@@ -48,7 +48,26 @@ All three were registered on 2026-09-26 with `spike/register-client.mjs`, and ea
 
 ## Spike A: browser-only public client
 
-{{FILL}}
+Run on 2026-09-26 in the user's Chrome, from http://localhost:5174. The user logged in as `admin`, picked Tessa Typical (`TP-TYPICAL`) in OpenEMR's patient picker, and approved every scope. The public client was already enabled and needed no admin step.
+
+**Verdict: the browser-only option works through a same-origin proxy and does not work directly.**
+
+| Route | Check | Result |
+|---|---|---|
+| auth | token endpoint answered the browser (form POST, direct to :9300) | ok, HTTP 200 |
+| auth | access token issued | ok, `expires_in` 3600, ID token issued, no refresh token (none requested) |
+| auth | patient context is Tessa Typical | ok, `patient` = `a2d68325-…` |
+| auth | every requested scope granted | FAIL, but harmless: every resource scope was granted and only `api:fhir` is missing from the granted list. The API calls below worked without it, so the check was stricter than it needed to be. |
+| direct | Patient read, allergies, other patient, out-of-scope, bad token | all `status 0`, `TypeError: Failed to fetch`. The browser blocked every direct FHIR call at the CORS preflight (see Discovery and CORS). |
+| proxied | Patient read | ok, HTTP 200, `resourceType` Patient, id matches |
+| proxied | allergies belong to the launched patient | ok, HTTP 200, 2 entries, both referencing Tessa |
+| proxied | another patient's data never returned | ok, no `TP-HISTORY` data came back |
+| proxied | out-of-scope read (`Procedure`) refused | ok, HTTP 401 |
+| proxied | bad token refused | ok, HTTP 401 |
+
+**Other-patient behaviour (safety observation).** `AllergyIntolerance?patient=<TP-HISTORY id>`, sent with Tessa's patient-bound token, returned **HTTP 200 with an empty Bundle** (`total: 0`). It was neither refused nor given Tessa's data. The route passes the bound patient to the service (`apis/routes/_rest_routes_fhir_r4_us_core_3_1_0.inc.php:75-77`), and the two patient filters together match nothing. An app that switches patients without a new launch would therefore show "no allergies" for the new patient, which is Review Focus 1 and 4 together. This becomes BM-004.
+
+**What this means for Option A:** a browser-only app needs a same-origin reverse proxy for `/apis/` in development (for example Vite `server.proxy`) and in deployment. The token endpoint can be called directly, and the patient picker works.
 
 ## Spike B: backend-for-frontend
 
@@ -56,7 +75,14 @@ All three were registered on 2026-09-26 with `spike/register-client.mjs`, and ea
 
 ## Error responses
 
-{{FILL}}
+The error-state tests in the build must match these exact responses.
+
+| Case | Status | Body |
+|---|---|---|
+| Out-of-scope read (`Procedure`, not granted), patient-bound token | 401 | `{"error":"An error occurred","message":"Unauthorized","code":0}` |
+| Bad or unknown bearer token | 401 | `{"error":"An error occurred","message":"The resource owner or authorization server denied the request.","code":0}` |
+| Another patient requested with a patient-bound token | 200 | an empty Bundle, `total: 0`. **Not an error:** the app must detect it itself (BM-004). |
+| CORS preflight to any FHIR route | 404 | `{"error":"An error occurred","message":"Route not found","code":0}` |
 
 ## Blockers and decisions
 
