@@ -103,6 +103,7 @@ The error-state tests in the build must match these exact responses.
 
 ## Blockers and decisions
 
+- 2026-09-26, **Gate 0 decision (user):** keep both auth options open, and compare them at Gate 3 together with the framework choice.
 - 2026-09-26: Both spikes passed on everything that matters. The one failing check in each is the strict "every requested scope granted" string match: OpenEMR grants every resource scope but leaves `api:fhir` out of the reported list. This is recorded, not a blocker.
 - 2026-09-26: **BM-004 (safety):** with a patient-bound token (Option A), a request for another patient returns HTTP 200 with an empty Bundle. The new app must check that every resource belongs to the patient in the header, and must never treat an empty result for a different patient as "nothing recorded".
 - 2026-09-26: After Docker Desktop's WSL integration was switched on, the running `development-easy` containers had a stale source bind mount (OpenEMR saw 6 entries instead of the repo) and MySQL had been stopped for 14 hours. Fixed by recreating the stack with `docker compose up --detach --force-recreate --wait`, keeping the data volumes.
