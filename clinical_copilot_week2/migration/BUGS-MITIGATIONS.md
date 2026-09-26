@@ -15,9 +15,9 @@ The catalogue the rewrite works from, with one row per problem found in the audi
 | Severity | Count |
 |---|---|
 | Critical | 0 |
-| High | 8 |
-| Medium | 9 |
-| Low | 8 |
+| High | 10 |
+| Medium | 10 |
+| Low | 11 |
 
 ## Catalogue
 
@@ -48,3 +48,9 @@ The catalogue the rewrite works from, with one row per problem found in the audi
 | BM-023 | Low | presentation | Prescriptions | The column labelled "Filled" shows prescriptions.date_added, not a fill or dispense date (templates/prescription/general_fragment.html:23, 35) | fix in the new app | Label the column "Added" (from authoredOn); the parity test lists the label as an approved exception. |
 | BM-024 | Medium | presentation | Prescriptions | When every prescription is discontinued, the card shows an empty table with headers and no message, because "None" is only printed when there are no prescriptions at all (templates/prescription/general_fragment.html:12-13, 28; TP-HISTORY) | fix in the new app | Show "No active prescriptions" whenever no active entry remains. Approved parity exception, pinned on TP-HISTORY. |
 | BM-025 | Low | dead code | Prescriptions | The eRx "Current Medications" block can never render: `$display_current_medications_below` is only set in stats.php, a separate request, so it is undefined in demographics.php (interface/patient_file/summary/demographics.php:1186-1210, stats.php:136) | out of scope | - |
+| BM-026 | Medium | missing permission check | Care Team | `CareTeamViewCard::handleFormSubmission` runs in the constructor and saves the care team after a CSRF check only, with no write ACL, before demographics.php checks the card's render ACL (src/Patient/Cards/CareTeamViewCard.php:124-145; interface/patient_file/summary/demographics.php:1253 vs 1271) | out of scope | - |
+| BM-027 | Low | correctness | Care Team | The Edit link is `javascript:void(0);` rendered with linkMethod html, so safe_href blocks the javascript: scheme and logs "safe_href(): blocked disallowed URL scheme" on every dashboard load (src/Patient/Cards/CareTeamViewCard.php:102; Apache error log 2026-09-26) | out of scope | - |
+| BM-028 | High | correctness | Care Team (FHIR) | CareTeam participants are bare references with no display, and they cannot be resolved: GET Practitioner/{id} is 404 for users without an NPI (src/Services/PractitionerService.php:88-93) and GET RelatedPerson/{id} is 404 for the related person (TP-TYPICAL: Fred Stone and martha mom both 404) | fix in the new app | Decided at Gate 2: show role, since and type with "Name unavailable" for unresolved members; or read names from the Standard API. Never drop a member because its name did not resolve. |
+| BM-029 | High | safety | Care Team (FHIR) | `CareTeam?patient=…&_include=CareTeam:participant` returns HTTP 200 with an empty Bundle, dropping the CareTeam itself, so an unsupported parameter reads as "no care team" (TP-TYPICAL) | fix in the new app | Never send _include. The API client adds a contract test that the plain search for TP-TYPICAL returns 1 CareTeam, so a silent empty result fails CI. |
+| BM-030 | Low | presentation | Care Team | With no care team the card shows only the table header row and no message (templates/patient/card/manage_care_team.html.twig; TP-EMPTY) | fix in the new app | Show "No care team recorded"; approved parity exception pinned on TP-EMPTY. |
+| BM-031 | Low | correctness | Care Team (FHIR) | A related person with no recorded role is sent with SNOMED 407542009 (informal caregiver) and no display, while the old card shows a blank role (src/Services/FHIR/FhirCareTeamService.php:424; TP-TYPICAL martha mom) | fix in the new app | Show a role only when the coding has a display, and treat a bare 407542009 as not recorded, matching the old blank. |
