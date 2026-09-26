@@ -28,7 +28,7 @@ describe('splitMedications', () => {
         expect(prescriptions.map((m) => m.name)).toContain('Amlodipine 5 mg');
     });
 
-    it('prescriptions carry quantity, refills, added date and dosage text', () => {
+    it('prescriptions carry quantity, added date and dosage text, but not refills (BM-041)', () => {
         const { prescriptions } = splitMedications(recorded('TP-TYPICAL'));
 
         expect(prescriptions[0]).toEqual({
@@ -36,10 +36,16 @@ describe('splitMedications', () => {
             name: 'Amlodipine 5 mg',
             dosage: '',
             quantity: '30',
-            refills: '0',
             added: '2026-09-26 11:58:36',
         });
         expect(prescriptions[2]?.dosage).toBe('1 tablet at night');
+    });
+
+    it('a prescription with an end date is still shown, although FHIR calls it completed (BM-044)', () => {
+        // TP-TYPICAL Omeprazole: active, end date 2027-03-31. The old card ignores the end date.
+        const { prescriptions } = splitMedications(recorded('TP-TYPICAL'));
+
+        expect(prescriptions.map((m) => m.name)).toContain('Omeprazole 20 mg');
     });
 
     it('prescriptions are sorted by date added, newest first', () => {

@@ -110,6 +110,17 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Resolves:** BM-028, BM-030, BM-031, BM-037
 **Touches:** `web/src/`
 
+### Story 03-05 — Parity review fixes (Codex, 2026-09-26)
+**Acceptance:** every finding of the Codex parity review is fixed test-first or recorded as a user decision; the seeded gaps (`fixtures/seed-parity-gaps.php`) fail parity before the fix and pass after.
+
+#### Slice 03-05-01 — Fixes from the Codex parity review
+- [x] Tests first, watched failing (seeded data turned problems, prescriptions and care-team parity red; new unit and E2E tests red)
+- [x] Implement: visit-linked problems (BM-043); end-dated prescriptions and refills "Not available" (BM-044, BM-041); care-team facility names (BM-045); the Bootstrap stylesheet; encounter provider from the primary performer only and same-day order by time (the Arc 04 card); settings failure shows an error; parity and switch test gaps
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
+**Open:** BM-044 for the Medications card waits on the user's decision (FHIR cannot tell a future end date from a past one).
+**Resolves:** BM-041, BM-043, BM-045 (BM-042 recorded as a user decision)
+**Touches:** `web/src/`, `server/fhirProxy.ts`, `tests/`
+
 ## Definition of Done for this arc
 - [x] All slices ticked; every BM row listed above struck through
 - [x] DEV-LOG has an arc-completion entry

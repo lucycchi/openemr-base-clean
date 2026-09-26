@@ -32,12 +32,54 @@ function problemName(condition: Condition): string {
     );
 }
 
+/** The problem list proper, plus problems OpenEMR moves out of it once they are linked to a visit. */
+const PROBLEM_CATEGORIES = new Set(['problem-list-item', 'encounter-diagnosis']);
+
+/** When visit copies of one problem disagree, the most current status wins. */
+const STATUS_RANK = ['active', 'recurrence', 'relapse', 'remission', 'resolved'];
+
+function category(condition: Condition): string {
+    return condition.category?.[0]?.coding?.[0]?.code ?? '';
+}
+
+function rank(condition: Condition): number {
+    const index = STATUS_RANK.indexOf(clinicalStatus(condition));
+    return index === -1 ? STATUS_RANK.length : index;
+}
+
+/**
+ * A problem linked to a visit is left out of the problem-list-item search and returned once per
+ * linked visit as encounter-diagnosis (BM-043), so those copies are merged by name and onset. A
+ * problem-list entry is never merged: it cannot also have visit copies.
+ */
+function mergeVisitCopies(conditions: readonly Condition[]): Condition[] {
+    const merged: Condition[] = [];
+    const byKey = new Map<string, number>();
+    for (const condition of conditions) {
+        if (category(condition) !== 'encounter-diagnosis') {
+            merged.push(condition);
+            continue;
+        }
+        const key = `${problemName(condition)}|${condition.onsetDateTime ?? ''}`;
+        const at = byKey.get(key);
+        const kept = at === undefined ? undefined : merged[at];
+        if (at === undefined || kept === undefined) {
+            byKey.set(key, merged.length);
+            merged.push(condition);
+        } else if (rank(condition) < rank(kept)) {
+            merged[at] = condition;
+        }
+    }
+    return merged;
+}
+
 /**
  * Every problem that has not ended (clinicalStatus other than inactive), oldest onset first with a
- * missing onset first, matching the old card's ORDER BY begdate (BM-018).
+ * missing onset first, matching the old card's ORDER BY begdate (BM-018). The search is
+ * Condition?patient= (every category); only problems are kept.
  */
 export function mapProblems(resources: readonly Condition[]): ProblemView[] {
-    return resources
+    return mergeVisitCopies(resources.filter((condition) => PROBLEM_CATEGORIES.has(category(condition))))
         .filter((condition) => clinicalStatus(condition) !== 'inactive')
         .map((condition, index) => ({ condition, index }))
         .sort((a, b) => {

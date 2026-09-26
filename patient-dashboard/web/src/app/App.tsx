@@ -18,15 +18,10 @@ import { mapAllergies } from '../mappers/allergies';
 import { splitMedications } from '../mappers/medications';
 import { mapProblems } from '../mappers/problems';
 import { visibleCards } from './hiddenCards';
-import type { AgeSettings } from '../mappers/age';
+import { parseSiteConfig } from './siteConfig';
+import type { SiteConfig } from './siteConfig';
 
 type AuthState = 'checking' | 'signed-in' | 'signed-out';
-
-interface SiteConfig {
-    hiddenCards: string[];
-    ageDisplay: AgeSettings;
-    encounterPageSize: number;
-}
 
 /** The patient id in /patient/:fhirId, if any. */
 export function patientIdFromPath(pathname: string): string | undefined {
@@ -45,7 +40,7 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
     const [asOf] = useState(localToday);
     const header = usePatient(client, patientId, { asOf, age: config.ageDisplay });
     const allergies = useBundleCard(client, patientId, 'AllergyIntolerance', mapAllergies);
-    const problems = useBundleCard(client, patientId, 'Condition', mapProblems, '&category=problem-list-item');
+    const problems = useBundleCard(client, patientId, 'Condition', mapProblems);
     const medicationRequests = useBundleCard(client, patientId, 'MedicationRequest', splitMedications);
     const careTeam = useCareTeam(client, patientId);
     const encounters = useEncounters(client, patientId);
@@ -78,7 +73,7 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
 /** Application shell: session status, site config, and the patient view at /patient/:fhirId. */
 export function App() {
     const [auth, setAuth] = useState<AuthState>('checking');
-    const [config, setConfig] = useState<SiteConfig | undefined>(undefined);
+    const [config, setConfig] = useState<SiteConfig | 'error' | undefined>(undefined);
     const client = useMemo(() => createApiClient(), []);
     const [pathname, setPathname] = useState(() => globalThis.location.pathname);
     const patientId = patientIdFromPath(pathname);
@@ -120,15 +115,11 @@ export function App() {
         }
         let cancelled = false;
         fetch('/app-config', { credentials: 'same-origin' })
-            .then((res) => res.json() as Promise<SiteConfig>)
-            .then((body) => {
+            .then(async (res) => (res.ok ? parseSiteConfig(await res.json()) : undefined))
+            .catch(() => undefined)
+            .then((parsed) => {
                 if (!cancelled) {
-                    setConfig(body);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    setConfig({ hiddenCards: [], ageDisplay: { format: 0, limitYears: 3 }, encounterPageSize: 20 });
+                    setConfig(parsed ?? 'error');
                 }
             });
         return () => {
@@ -152,7 +143,10 @@ export function App() {
                     </button>
                     <PatientPicker client={client} onSelect={openPatient} />
                     {patientId === undefined && <p>Choose a patient to open their dashboard.</p>}
-                    {patientId !== undefined && config !== undefined && (
+                    {config === 'error' && (
+                        <p role="alert">Couldn't load the dashboard settings. Reload the page to try again.</p>
+                    )}
+                    {patientId !== undefined && config !== undefined && config !== 'error' && (
                         <PatientView key={patientId} client={client} patientId={patientId} config={config} />
                     )}
                 </>

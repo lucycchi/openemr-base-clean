@@ -92,4 +92,32 @@ describe('useCareTeam', () => {
 
         await waitFor(() => expect(result.current).toEqual({ status: 'error', error: { kind: 'http', status: 502 } }));
     });
+
+    it("reads a member's facility once and shows its name (BM-045)", async () => {
+        const withFacility: CareTeam = {
+            ...team('p1'),
+            participant: [
+                { member: { reference: 'Practitioner/u1' }, onBehalfOf: { reference: 'Organization/o1' } },
+                { member: { reference: 'Organization/o1' } },
+            ],
+        };
+        const requested: string[] = [];
+        const client = fakeClient(
+            { ok: true, value: [withFacility] },
+            {
+                'Organization/o1': {
+                    ok: true,
+                    value: { resourceType: 'Organization', id: 'o1', name: 'Great Clinic' },
+                },
+            },
+            requested,
+        );
+        const { result } = renderHook(() => useCareTeam(client, 'p1'));
+
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.status === 'ready' && result.current.data[0]?.members.map((m) => m.facility)).toEqual([
+            'Great Clinic',
+        ]);
+        expect(requested).toEqual(['CareTeam?patient=p1', 'Practitioner/u1', 'Organization/o1']);
+    });
 });

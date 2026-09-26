@@ -5,15 +5,33 @@ import { logInThroughOpenEmr } from '../support/login';
 const TYPICAL = fixture('TP-TYPICAL');
 const HISTORY = fixture('TP-HISTORY');
 
+// Text that only TP-TYPICAL's cards contain, one per clinical card, so a stale card is caught by its
+// content rather than by attributes the app sets itself.
+const TYPICAL_MARKERS = [
+    'Tessa',
+    'Penicillin',
+    'Essential hypertension',
+    'Metformin',
+    'Amlodipine',
+    'practitioner',
+    'Diabetes review',
+];
+
 test.describe('switching patients', () => {
-    test('switching patients clears every card before new data arrives', async ({ page }) => {
+    test('switching patients never shows the previous patient in any card', async ({ page }) => {
         await logInThroughOpenEmr(page);
         await page.goto(`/patient/${TYPICAL.fhirId}`);
         await expect(page.locator('[data-card="header"] [data-item="name"]')).toHaveText('Tessa Typical');
+        await expect(page.locator('[data-card="encounter-history"][data-state="ready"]')).toBeVisible();
+        await expect(page.locator('[data-card="care-team"][data-state="ready"]')).toBeVisible();
+        const before = (await page.locator('[data-card]').allTextContents()).join(' | ');
+        expect(TYPICAL_MARKERS.filter((marker) => !before.includes(marker))).toEqual([]);
 
-        // Slow down the next patient's data so any stale frame would be visible.
-        await page.route(`**/api/fhir/Patient/${HISTORY.fhirId}`, async (route) => {
-            await new Promise((resolve) => setTimeout(resolve, 800));
+        // Slow down every read for the next patient so any stale frame would be visible.
+        await page.route('**/api/fhir/**', async (route) => {
+            if (route.request().url().includes(HISTORY.fhirId)) {
+                await new Promise((resolve) => setTimeout(resolve, 800));
+            }
             await route.continue();
         });
         // From the moment of the click (capture phase, before React handles it), sample every card's
@@ -50,24 +68,44 @@ test.describe('switching patients', () => {
         await page.getByRole('button', { name: /^Hugo History/ }).click();
 
         await expect(page.locator('[data-card="header"] [data-item="name"]')).toHaveText('Hugo History');
+        await expect(page.locator('[data-card="encounter-history"][data-state="ready"]')).toBeVisible();
         expect(page.url()).toContain(`/patient/${HISTORY.fhirId}`);
         const frames = await page.evaluate(() => (window as unknown as { __cardFrames: string[] }).__cardFrames);
         expect(frames.length).toBeGreaterThan(5); // the 800 ms delay spans many frames
-        expect(frames.filter((frame) => frame.includes('Tessa'))).toEqual([]);
+        const stale = frames.flatMap((frame) => TYPICAL_MARKERS.filter((marker) => frame.includes(marker)));
+        expect([...new Set(stale)]).toEqual([]);
     });
 
-    test('every rendered resource references the header patient', async ({ page }) => {
-        await logInThroughOpenEmr(page);
+    // BM-004: every card checks that each resource references the header patient. Each search is
+    // answered with TP-TYPICAL's real bundle rewritten to point at another patient; the card must
+    // show a load error and none of that data.
+    for (const [card, resource, marker] of [
+        ['allergies', 'AllergyIntolerance', 'Penicillin'],
+        ['problems', 'Condition', 'Essential hypertension'],
+        ['medications', 'MedicationRequest', 'Metformin'],
+        ['care-team', 'CareTeam', 'practitioner'],
+        ['encounter-history', 'Encounter', 'Diabetes review'],
+    ] as const) {
+        test(`${card}: a resource for another patient is a load error, never shown (BM-004)`, async ({ page }) => {
+            await logInThroughOpenEmr(page);
+            // A URL predicate, not a glob: "?" is a wildcard in Playwright globs.
+            const isSearch = (url: URL) =>
+                url.pathname === `/api/fhir/${resource}` && url.searchParams.get('patient') === TYPICAL.fhirId;
+            await page.route(isSearch, async (route) => {
+                const real = await route.fetch();
+                // Parse first: OpenEMR's JSON escapes slashes ("Patient\\/<id>"), so the raw text never matches.
+                const body = JSON.stringify(await real.json()).replaceAll(
+                    `Patient/${TYPICAL.fhirId}`,
+                    `Patient/${HISTORY.fhirId}`,
+                );
+                await route.fulfill({ response: real, body });
+            });
 
-        for (const patient of [TYPICAL, HISTORY]) {
-            await page.goto(`/patient/${patient.fhirId}`);
-            await expect(page.locator('[data-card="header"][data-state="ready"]')).toBeVisible();
+            await page.goto(`/patient/${TYPICAL.fhirId}`);
 
-            const owners = await page
-                .locator('[data-card][data-state="ready"]')
-                .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-patient-id')));
-            expect(owners.length).toBeGreaterThan(0);
-            expect(owners.every((owner) => owner === patient.fhirId)).toBe(true);
-        }
-    });
+            const element = page.locator(`[data-card="${card}"]`);
+            await expect(element).toHaveAttribute('data-state', 'error');
+            await expect(element).not.toContainText(marker);
+        });
+    }
 });

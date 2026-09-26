@@ -2,6 +2,50 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-01 — Fixes from the Codex parity review
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- Codex reviewed the port against the old code (6 P1, 5 P2; it rated six of seven sections worse). The four biggest claims were checked against the OpenEMR source before any fix.
+- Test data first: `fixtures/seed-parity-gaps.php` seeds each gap on synthetic patients. Problems, prescriptions and care-team parity then failed on TP-TYPICAL, and the highlight E2E failed on TP-LONG, before any code changed.
+- Problems (BM-043): search `Condition?patient=` with no category, keep problem-list-item and encounter-diagnosis, merge visit copies by name and onset (most current status wins), never merge a problem-list entry.
+- Prescriptions:
+  - completed orders are shown, because OpenEMR sends "completed" for any end date and the old card ignores the end date (BM-044)
+  - Refills say "Not available", because FHIR always sends 0 (BM-041)
+  - the refills field left `MedicationView`
+- Care Team (BM-045): Organization added to the proxy allow-list and to the shared name reads (`isReadableNameReference`, `displayName`); facility names shown, "Name unavailable" if unreadable, and FHIR's extra Organization participants dropped.
+- Styling: Bootstrap 4.6.2 (OpenEMR's version) imported in `main.tsx`; the app had no stylesheet, so the high-risk highlight and every other class were invisible.
+- Encounters: provider from the primary performer (PPRF) only, never a referrer; sort by full start time, ties in reverse API order.
+- Settings: `parseSiteConfig` validates `/app-config`; a failed or malformed load shows "Couldn't load the dashboard settings" and no cards, instead of every card.
+- Tests:
+  - medications parity now requires every old list entry to be on the new Medications or Prescriptions card
+  - the switch test looks for TP-TYPICAL's clinical text on every frame (not only the name), and all of the next patient's reads are delayed
+  - a new BM-004 E2E feeds each card a real bundle rewritten to another patient and requires a load error
+
+### Decisions
+- User decisions (2026-09-26): refills "Not available"; prescription permissions stay as OpenEMR's API enforces them (BM-042); a medication with a future end date must not be treated as finished.
+- Ruling: the Medications card still shows active list entries only. FHIR sends "completed" for past and future end dates alike and never the date itself, so a future end date cannot be honoured through FHIR alone. BM-044 stays open for the user's decision. Cost if wrong: a list medication with a future end date is missing from the card until then.
+- OpenEMR's JSON escapes slashes (`Patient\/<id>`), so the BM-004 E2E parses the bundle before rewriting it; a text replace silently changed nothing.
+
+### Tests
+- Unit: 166 / 166 passing
+- Playwright: 28 / 28 passing (new: highlight, settings failure, five wrong-patient cards; switch test rewritten)
+- Lint, typecheck and Prettier: clean
+- Proven red:
+  - problems, prescriptions and care team by the seeded data
+  - lost-drug parity by dropping Atorvastatin from Prescriptions
+  - the highlight E2E without the stylesheet
+  - the BM-004 E2E with the patient check disabled (all five failed)
+  - the switch test with the remount removed and a stale hook (it caught Penicillin, Essential hypertension, Metformin and Amlodipine)
+
+### BUGS-MITIGATIONS.md updates
+- Added BM-041 to BM-045. Resolved: BM-041, BM-043, BM-045. BM-042 recorded as out of scope by user decision. BM-044 open for the Medications card.
+
+### Open questions / follow-ups
+- BM-044, Medications card: show list entries FHIR calls "completed" (risking finished courses), keep hiding them, or read the end date from another source (the user ruled out non-FHIR sources at Gate 2).
+
 ## 2026-09-26 — Arc 04 complete: Encounter history
 
 **Slices:** 1 (04-01-01)  **BM rows resolved:** BM-032, BM-034, BM-035, BM-039

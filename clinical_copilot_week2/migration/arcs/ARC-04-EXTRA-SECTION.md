@@ -33,6 +33,8 @@ The billing, insurance, issue and forms columns, interleaved documents, and open
 **Resolves:** BM-032, BM-034, BM-035, BM-039
 **Touches:** `web/src/`
 
+**Follow-up (2026-09-26):** the Codex parity review found that the provider fell back to any participant and that same-day visits were sorted by date only. Both were fixed test-first in slice 03-05-01.
+
 ## Definition of Done for this arc
 - [x] Slice ticked; BM-032, BM-034, BM-035 and BM-039 struck through
 - [x] DEV-LOG has an arc-completion entry

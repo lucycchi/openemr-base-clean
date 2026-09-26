@@ -1,6 +1,6 @@
 {
   "meta": {
-    "lastUpdated": "2026-09-26T19:24:52"
+    "lastUpdated": "2026-09-26T20:38:00"
   },
   "resourceType": "Bundle",
   "type": "collection",
@@ -69,7 +69,7 @@
           "lastUpdated": "2026-09-26T11:58:32+00:00"
         },
         "resourceType": "MedicationRequest",
-        "status": "active",
+        "status": "completed",
         "intent": "order",
         "category": [
           {

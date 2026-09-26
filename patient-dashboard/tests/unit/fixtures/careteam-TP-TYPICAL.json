@@ -1,6 +1,6 @@
 {
   "meta": {
-    "lastUpdated": "2026-09-26T19:47:14"
+    "lastUpdated": "2026-09-26T20:38:01"
   },
   "resourceType": "Bundle",
   "type": "collection",
@@ -45,8 +45,29 @@
               "reference": "Practitioner/a2c6137a-eaba-455c-8e8b-16927c8a7a13",
               "type": "Practitioner"
             },
+            "onBehalfOf": {
+              "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+              "type": "Organization"
+            },
             "period": {
               "start": "2026-09-26"
+            }
+          },
+          {
+            "role": [
+              {
+                "coding": [
+                  {
+                    "system": "http://snomed.info/sct",
+                    "code": "43741000",
+                    "display": "Healthcare facility"
+                  }
+                ]
+              }
+            ],
+            "member": {
+              "reference": "Organization/a2c61356-e5b0-4763-89bc-be5c28166216",
+              "type": "Organization"
             }
           },
           {

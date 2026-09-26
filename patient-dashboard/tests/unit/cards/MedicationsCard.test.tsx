@@ -5,7 +5,7 @@ import { MedicationsCard } from '../../../web/src/cards/MedicationsCard';
 
 afterEach(cleanup);
 
-const row = (id: string, name: string, dosage = '') => ({ id, name, dosage, quantity: '', refills: '', added: '' });
+const row = (id: string, name: string, dosage = '') => ({ id, name, dosage, quantity: '', added: '' });
 
 describe('MedicationsCard', () => {
     it('lists each medication with its dosage, and notes how the split works (BM-019)', () => {

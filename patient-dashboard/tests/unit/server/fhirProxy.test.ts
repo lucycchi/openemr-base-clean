@@ -48,6 +48,17 @@ describe('FHIR proxy', () => {
         expect(await res.text()).not.toContain('server-side-token');
     });
 
+    it('forwards an Organization read, for care-team facility names (BM-045)', async () => {
+        const { app, calls, cookie } = setup();
+
+        const res = await app.request('/api/fhir/Organization/a2c61356-e5b0-4763-89bc-be5c28166216', {
+            headers: { cookie },
+        });
+
+        expect(res.status).toBe(200);
+        expect(calls[0]?.url).toBe(`${FHIR_BASE}/Organization/a2c61356-e5b0-4763-89bc-be5c28166216`);
+    });
+
     it('non-allow-listed resource returns 400', async () => {
         const { app, calls, cookie } = setup();
 

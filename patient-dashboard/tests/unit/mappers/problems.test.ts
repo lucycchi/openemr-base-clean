@@ -4,14 +4,21 @@ import type { Bundle, Condition } from 'fhir/r4';
 import { mapProblems } from '../../../web/src/mappers/problems';
 import { loadFixture } from '../fixtures/load';
 
-// Condition?category=problem-list-item bundles recorded from the dev stack with spike/fhir-get.mjs.
+// Condition?patient= bundles (every category) recorded from the dev stack with spike/fhir-get.mjs.
+// TP-TYPICAL's Type 2 diabetes is linked to two visits, so FHIR leaves it out of problem-list-item
+// and returns it twice as encounter-diagnosis (BM-043).
 function recorded(key: string): Condition[] {
     const bundle = loadFixture<Bundle<Condition>>(`problems-${key}.json`);
     return (bundle.entry ?? []).flatMap((entry) => (entry.resource === undefined ? [] : [entry.resource]));
 }
 
 function condition(overrides: Partial<Condition>): Condition {
-    return { resourceType: 'Condition', subject: { reference: 'Patient/p1' }, ...overrides };
+    return {
+        resourceType: 'Condition',
+        subject: { reference: 'Patient/p1' },
+        category: [{ coding: [{ code: 'problem-list-item' }] }],
+        ...overrides,
+    };
 }
 
 describe('mapProblems', () => {
@@ -57,5 +64,53 @@ describe('mapProblems', () => {
             'Asthma',
             'Unnamed problem',
         ]);
+    });
+
+    it('a problem linked to visits appears once, from its encounter-diagnosis entries (BM-043)', () => {
+        const names = mapProblems(recorded('TP-TYPICAL')).map((p) => p.name);
+
+        expect(names.filter((name) => name === 'Type 2 diabetes mellitus')).toHaveLength(1);
+    });
+
+    it('merged visit copies keep the most current status', () => {
+        const visit = (id: string, status: string) =>
+            condition({
+                id,
+                code: { text: 'Asthma' },
+                onsetDateTime: '2020-01-01T00:00:00+00:00',
+                category: [{ coding: [{ code: 'encounter-diagnosis' }] }],
+                clinicalStatus: { coding: [{ code: status }] },
+            });
+
+        expect(mapProblems([visit('a', 'resolved'), visit('b', 'active')]).map((p) => [p.name, p.label])).toEqual([
+            ['Asthma', ''],
+        ]);
+    });
+
+    it('a problem-list entry is never merged with a visit entry of the same name', () => {
+        const listed = condition({
+            id: 'l',
+            code: { text: 'Asthma' },
+            onsetDateTime: '2020-01-01T00:00:00+00:00',
+            category: [{ coding: [{ code: 'problem-list-item' }] }],
+        });
+        const visit = condition({
+            id: 'v',
+            code: { text: 'Asthma' },
+            onsetDateTime: '2020-01-01T00:00:00+00:00',
+            category: [{ coding: [{ code: 'encounter-diagnosis' }] }],
+        });
+
+        expect(mapProblems([listed, visit])).toHaveLength(2);
+    });
+
+    it('health concerns are not problems', () => {
+        const concern = condition({
+            id: 'h',
+            code: { text: 'Worried about falls' },
+            category: [{ coding: [{ code: 'health-concern' }] }],
+        });
+
+        expect(mapProblems([concern])).toEqual([]);
     });
 });

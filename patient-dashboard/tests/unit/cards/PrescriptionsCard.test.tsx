@@ -11,7 +11,6 @@ const omeprazole: MedicationView = {
     name: 'Omeprazole 20 mg',
     dosage: '',
     quantity: '30',
-    refills: '0',
     added: '2026-09-26 11:58:32',
 };
 
@@ -31,7 +30,7 @@ describe('PrescriptionsCard', () => {
             'Omeprazole 20 mg',
             '1 tablet daily',
             '30',
-            '0',
+            'Not available',
             '2026-09-26 11:58:32',
         ]);
         expect(screen.getByText(/marked as an order appear under Prescriptions/)).toBeTruthy();

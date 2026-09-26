@@ -4,6 +4,7 @@ import type { MedicationView } from '../mappers/medications';
 /**
  * Active prescriptions, newest first. "Added" is the date the prescription was entered; the old card
  * labelled it "Filled" (BM-023). Details is dosageInstruction text, blank when FHIR has none (BM-038).
+ * Refills say "Not available": OpenEMR's FHIR query never reads the refills column and always sends 0 (BM-041).
  */
 export function PrescriptionsCard({ patientId, state }: { patientId: string; state: LoadState<MedicationView[]> }) {
     if (state.status !== 'ready') {
@@ -41,7 +42,9 @@ export function PrescriptionsCard({ patientId, state }: { patientId: string; sta
                                 <td data-field="drug">{prescription.name}</td>
                                 <td data-field="details">{prescription.dosage}</td>
                                 <td data-field="quantity">{prescription.quantity}</td>
-                                <td data-field="refills">{prescription.refills}</td>
+                                <td data-field="refills" className="text-muted">
+                                    Not available
+                                </td>
                                 <td data-field="added">{prescription.added}</td>
                             </tr>
                         ))}

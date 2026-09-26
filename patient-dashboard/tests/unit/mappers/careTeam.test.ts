@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { Bundle, CareTeam, Practitioner, RelatedPerson } from 'fhir/r4';
+import type { Bundle, CareTeam, Organization, Practitioner, RelatedPerson } from 'fhir/r4';
 import { mapCareTeams, memberReferences } from '../../../web/src/mappers/careTeam';
-import { personName } from '../../../web/src/mappers/people';
+import { displayName } from '../../../web/src/mappers/people';
 import { loadFixture } from '../fixtures/load';
 
 // CareTeam bundles recorded from the dev stack with spike/fhir-get.mjs. TP-TYPICAL has one team,
-// "practitioner", with Fred Stone (Practitioner, Nurse Practitioner, since 2026-09-26) and martha mom
-// (RelatedPerson, bare SNOMED 407542009, no period). Both member reads are HTTP 404 (BM-028).
+// "practitioner", with Fred Stone (Practitioner, Nurse Practitioner, since 2026-09-26, facility Great
+// Clinic) and martha mom (RelatedPerson, bare SNOMED 407542009, no period). Both member reads are
+// HTTP 404 (BM-028). FHIR also lists Great Clinic itself as a third participant (BM-045).
 function recorded(key: string): CareTeam[] {
     const bundle = loadFixture<Bundle<CareTeam>>(`careteam-${key}.json`);
     return (bundle.entry ?? []).flatMap((entry) => (entry.resource === undefined ? [] : [entry.resource]));
@@ -14,6 +15,7 @@ function recorded(key: string): CareTeam[] {
 
 const PROVIDER = 'Practitioner/a2c6137a-eaba-455c-8e8b-16927c8a7a13';
 const RELATED = 'RelatedPerson/a2d68932-2306-480a-8a60-b96fb5f5acb4';
+const CLINIC = 'Organization/a2c61356-e5b0-4763-89bc-be5c28166216';
 
 describe('mapCareTeams', () => {
     it('unresolved member shows "Name unavailable" and is kept (BM-028)', () => {
@@ -45,6 +47,24 @@ describe('mapCareTeams', () => {
         expect(team?.members.map((m) => m.since)).toEqual(['2026-09-26', '']);
     });
 
+    it('the facility FHIR lists as its own participant is not a member row (BM-045)', () => {
+        const [team] = mapCareTeams(recorded('TP-TYPICAL'), new Map());
+
+        expect(team?.members.map((m) => m.type)).toEqual(['Provider', 'Related Person']);
+    });
+
+    it("a member's facility is read from its Organization (BM-045)", () => {
+        const [team] = mapCareTeams(recorded('TP-TYPICAL'), new Map([[CLINIC, 'Great Clinic']]));
+
+        expect(team?.members.map((m) => m.facility)).toEqual(['Great Clinic', '']);
+    });
+
+    it('a facility that cannot be read shows "Name unavailable", never blank', () => {
+        const [team] = mapCareTeams(recorded('TP-TYPICAL'), new Map());
+
+        expect(team?.members[0]?.facility).toBe('Name unavailable');
+    });
+
     it('a participant with no member reference is still shown', () => {
         const team: CareTeam = { resourceType: 'CareTeam', id: 't', participant: [{ role: [{ text: 'Chaplain' }] }] };
 
@@ -59,10 +79,10 @@ describe('mapCareTeams', () => {
 });
 
 describe('memberReferences', () => {
-    it('lists each readable member once', () => {
+    it('lists each readable member and facility once', () => {
         const teams = [...recorded('TP-TYPICAL'), ...recorded('TP-TYPICAL')];
 
-        expect(memberReferences(teams)).toEqual([PROVIDER, RELATED]);
+        expect(memberReferences(teams)).toEqual([PROVIDER, CLINIC, RELATED]);
     });
 
     it('never returns a reference the proxy should not be asked for', () => {
@@ -81,13 +101,13 @@ describe('memberReferences', () => {
     });
 });
 
-describe('personName', () => {
+describe('displayName', () => {
     it('formats a provider as "Last, First" like the old card', () => {
         const practitioner: Practitioner = {
             resourceType: 'Practitioner',
             name: [{ family: 'Stone', given: ['Fred'] }],
         };
-        expect(personName(practitioner)).toBe('Stone, Fred');
+        expect(displayName(practitioner)).toBe('Stone, Fred');
     });
 
     it('formats a related person as written, preferring name.text', () => {
@@ -96,8 +116,13 @@ describe('personName', () => {
             patient: { reference: 'Patient/p1' },
             name,
         });
-        expect(personName(person([{ text: 'martha mom', family: 'mom', given: ['martha'] }]))).toBe('martha mom');
-        expect(personName(person([{ family: 'mom', given: ['martha'] }]))).toBe('martha mom');
-        expect(personName(person([]))).toBe('Name unavailable');
+        expect(displayName(person([{ text: 'martha mom', family: 'mom', given: ['martha'] }]))).toBe('martha mom');
+        expect(displayName(person([{ family: 'mom', given: ['martha'] }]))).toBe('martha mom');
+        expect(displayName(person([]))).toBe('Name unavailable');
+    });
+
+    it('an organization reads as its name', () => {
+        expect(displayName(loadFixture<Organization>('organization-great-clinic.json'))).toBe('Great Clinic');
+        expect(displayName({ resourceType: 'Organization' })).toBe('Name unavailable');
     });
 });

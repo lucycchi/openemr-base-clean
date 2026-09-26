@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import type { Bundle, MedicationRequest } from 'fhir/r4';
 import { fixture } from '../support/fixtures';
 import type { FixtureKey } from '../support/fixtures';
 import { logInThroughOpenEmr } from '../support/login';
@@ -33,14 +32,8 @@ test('medications match the old dashboard for every fixture, with the approved e
         const card = await readNewCard(page, 'medications');
         const newNames = card.rows.map((row) => row.fields.name ?? '');
 
-        const res = await page.request.get(`/api/fhir/MedicationRequest?patient=${patient.fhirId}`);
-        const bundle = (await res.json()) as Bundle<MedicationRequest>;
-        const orders = new Set(
-            (bundle.entry ?? [])
-                .map((entry) => entry.resource)
-                .filter((request) => request?.intent === 'order')
-                .map((request) => request?.medicationCodeableConcept?.text ?? ''),
-        );
+        // A moved entry (BM-019, BM-020) must land on the Prescriptions card, not disappear from both.
+        const prescriptionNames = (await readNewCard(page, 'prescriptions')).rows.map((row) => row.fields.drug ?? '');
 
         expect(card.state, key).toBe('ready');
         expect(card.patientId, key).toBe(patient.fhirId);
@@ -49,9 +42,10 @@ test('medications match the old dashboard for every fixture, with the approved e
             newNames.filter((name) => !oldNames.includes(name)),
             key,
         ).toEqual([]);
-        // Nothing lost except the BM-019 / BM-020 moves to Prescriptions.
+        // Nothing lost: every old entry is on the new Medications card or, when FHIR marks it as an
+        // order (BM-019, BM-020), on the new Prescriptions card.
         expect(
-            oldNames.filter((name) => !newNames.includes(name) && !orders.has(name)),
+            oldNames.filter((name) => !newNames.includes(name) && !prescriptionNames.includes(name)),
             key,
         ).toEqual([]);
         expect(new Set(newNames).size, key).toBe(newNames.length);

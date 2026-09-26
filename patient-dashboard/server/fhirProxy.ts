@@ -12,6 +12,7 @@ export const ALLOWED_RESOURCES: ReadonlySet<string> = new Set([
     'Condition',
     'MedicationRequest',
     'CareTeam',
+    'Organization',
     'Practitioner',
     'RelatedPerson',
     'Encounter',

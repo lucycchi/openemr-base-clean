@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import type { FhirResource, Practitioner, RelatedPerson } from 'fhir/r4';
+import type { FhirResource, Organization, Practitioner, RelatedPerson } from 'fhir/r4';
 import { assertBelongsTo } from '../api/client';
 import type { ApiClient } from '../api/client';
-import { personName } from '../mappers/people';
+import { displayName } from '../mappers/people';
 import type { LoadState } from './loadState';
 
 interface Loaded<V> {
@@ -10,16 +10,16 @@ interface Loaded<V> {
     state: LoadState<V>;
 }
 
-/** Reads one person for a name; any failure leaves them unnamed rather than failing the card. */
+/** Reads one person or facility for a name; any failure leaves it unnamed rather than failing the card. */
 async function readName(client: ApiClient, patientId: string, reference: string): Promise<string | undefined> {
-    const result = await client.getResource<Practitioner | RelatedPerson>(reference);
+    const result = await client.getResource<Practitioner | RelatedPerson | Organization>(reference);
     if (!result.ok || `${result.value.resourceType}/${result.value.id ?? ''}` !== reference) {
         return undefined;
     }
     if (result.value.resourceType === 'RelatedPerson' && result.value.patient.reference !== `Patient/${patientId}`) {
         return undefined;
     }
-    return personName(result.value);
+    return displayName(result.value);
 }
 
 /**

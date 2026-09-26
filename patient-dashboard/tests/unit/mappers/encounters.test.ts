@@ -65,6 +65,39 @@ describe('mapEncounters', () => {
     });
 });
 
+describe('mapEncounters provider and ordering', () => {
+    const visit = (id: string, start: string, participant?: Encounter['participant']): Encounter => ({
+        resourceType: 'Encounter',
+        id,
+        status: 'finished',
+        class: { code: 'AMB' },
+        period: { start },
+        reasonCode: [{ text: id }],
+        ...(participant === undefined ? {} : { participant }),
+    });
+
+    it('only the primary performer is the provider; a referrer is never shown in its place (BM-032)', () => {
+        const referredOnly = visit('referred', '2026-01-01T09:00:00+00:00', [
+            {
+                type: [{ coding: [{ code: 'REF', display: 'referrer' }] }],
+                individual: { reference: 'Practitioner/ref1' },
+            },
+        ]);
+        const names = new Map([['Practitioner/ref1', 'Referrer, Rita']]);
+
+        expect(mapEncounters([referredOnly], names)[0]?.provider).toBe('Name unavailable');
+        expect(providerReferences([referredOnly])).toEqual([]);
+    });
+
+    it('same-day visits are ordered by time, latest first, as the old page sorts by date and time', () => {
+        const morning = visit('morning', '2026-05-05T08:00:00+00:00');
+        const evening = visit('evening', '2026-05-05T18:30:00+00:00');
+
+        expect(mapEncounters([evening, morning], new Map()).map((e) => e.reason)).toEqual(['evening', 'morning']);
+        expect(mapEncounters([morning, evening], new Map()).map((e) => e.reason)).toEqual(['evening', 'morning']);
+    });
+});
+
 describe('providerReferences', () => {
     it('lists each provider once, and only readable Practitioner references', () => {
         const odd: Encounter = {

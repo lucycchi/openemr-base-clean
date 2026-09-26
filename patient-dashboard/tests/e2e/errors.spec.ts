@@ -92,3 +92,17 @@ test('encounter history shows "Couldn\'t load" on API failure', async ({ page })
     await expect(card).toHaveAttribute('data-state', 'error');
     await expect(card).toContainText("Couldn't load encounters");
 });
+
+// Old demographics.php always applies the site's hidden cards. If the settings cannot be loaded the
+// new app must not guess: it shows an error and no cards, rather than every card.
+test('a failed settings load shows an error, never cards the site may have hidden', async ({ page }) => {
+    await logInThroughOpenEmr(page);
+    await page.route('**/app-config', (route) =>
+        route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"boom"}' }),
+    );
+
+    await page.goto(`/patient/${fixture('TP-TYPICAL').fhirId}`);
+
+    await expect(page.getByRole('alert')).toContainText("Couldn't load the dashboard settings");
+    await expect(page.locator('[data-card]')).toHaveCount(0);
+});
