@@ -1,6 +1,6 @@
 # ARC-01 — Foundation and auth
 
-**Status:** planned
+**Status:** in-progress
 **Estimate:** 10 h
 
 ## Goal
@@ -19,10 +19,10 @@ The actual cards (ARC-02 to ARC-04) and the droplet deploy (ARC-05).
 **Acceptance:** `npm run dev` serves the SPA through the BFF, and `npm test`, `npm run lint` and `npm run typecheck` are clean.
 
 #### Slice 01-01-01 — Scaffold patient-dashboard
-- [ ] Tests first (named below), watched failing
-- [ ] Implement: Vite React-TS app under `web/`, Hono server under `server/`, Vitest, Playwright, ESLint, Prettier, strict tsconfig
-- [ ] Gates green
-- [ ] DEV-LOG, arc file updated
+- [x] Tests first (named below), watched failing
+- [x] Implement: Vite React-TS app under `web/`, Hono server under `server/`, Vitest, Playwright, ESLint, Prettier, strict tsconfig
+- [x] Gates green
+- [x] DEV-LOG, arc file updated
 **Acceptance tests:**
 - `tests/unit/server/health.test.ts :: GET /healthz returns 200 {"ok":true}`
 - `tests/e2e/smoke.spec.ts :: the SPA shell loads from the BFF origin`

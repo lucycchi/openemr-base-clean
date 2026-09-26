@@ -2,6 +2,33 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 01 / Story 01-01 / Slice 01-01-01 — Scaffold patient-dashboard
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- Created `patient-dashboard/`: React 19 + TypeScript SPA under `web/` (Vite 8), Hono BFF under `server/` (`createApp()` in `server/app.ts`, entry `server/index.ts` on 127.0.0.1:5180), Vitest, Playwright, ESLint (typescript-eslint strict and react-hooks) and Prettier.
+- The BFF serves `GET /healthz` and the built SPA from `dist/web`, with an index.html fallback for client routes. The Vite dev server (port 5181) proxies `/auth` and `/api` to the BFF.
+
+### Decisions
+- TypeScript `~6.0.3`: typescript-eslint 8.70 supports TypeScript below 6.1, and TypeScript 7 is the new native compiler.
+- Playwright pinned to 1.62.1, which matches the Chromium build already cached on the host (revision 1234).
+- Formatting follows the repo's `.editorconfig` (4-space indentation).
+
+### Tests
+- Unit: 1 / 1 passing (`tests/unit/server/health.test.ts`)
+- E2E: 1 / 1 passing (`tests/e2e/smoke.spec.ts`)
+- Lint, typecheck and Prettier: clean
+- Both tests were seen failing first: missing `server/app`, and the build could not resolve `web/index.html`.
+
+### BUGS-MITIGATIONS.md updates
+- None.
+
+### Open questions / follow-ups
+- The host needed `libnss3` for Playwright's Chromium; the user installed it on 2026-09-26.
+- npm 11 did not run esbuild's postinstall script; `tsx` and Vite work without it.
+
 ## 2026-09-26 — Planning phase complete (Tasks 0–18 of the docs plan)
 
 **Branch:** `dashboard-migration`
