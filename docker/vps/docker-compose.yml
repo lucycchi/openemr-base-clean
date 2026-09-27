@@ -92,6 +92,8 @@ services:
       # Week 2 sidecar (extraction, retrieval, supervisor); compose service name below.
       COPILOT_SIDECAR_URL: http://copilot-sidecar:8000
       COHERE_API_KEY: ${COHERE_API_KEY:-}
+      # Written by docker/vps/deploy.sh; /health reports it.
+      COPILOT_DEPLOYED_COMMIT: ${COPILOT_DEPLOYED_COMMIT:-}
       OPENEMR_SETTING_site_addr_oath: https://${DOMAIN:?set in .env}
       OPENEMR_SETTING_rest_api: 1
       OPENEMR_SETTING_rest_fhir_api: 1

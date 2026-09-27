@@ -57,6 +57,7 @@ ssh "$DEPLOY_SSH" "set -e
     cd $DEPLOY_DIR
     grep -q '^FLEX_REPOSITORY=.*labs.gauntletai.com' .env || { echo 'FLEX_REPOSITORY in .env does not point at GitLab'; exit 1; }
     grep -q '^FLEX_REPOSITORY_BRANCH=$DEPLOY_BRANCH' .env || { sed -i '/^FLEX_REPOSITORY_BRANCH=/d' .env; echo 'FLEX_REPOSITORY_BRANCH=$DEPLOY_BRANCH' >> .env; echo 'set FLEX_REPOSITORY_BRANCH=$DEPLOY_BRANCH in .env'; }
+    sed -i '/^COPILOT_DEPLOYED_COMMIT=/d' .env; echo 'COPILOT_DEPLOYED_COMMIT=$remote_sha' >> .env
     docker compose build --quiet copilot-sidecar
     docker compose up -d --force-recreate openemr copilot-sidecar
     docker compose ps --format '{{.Name}} {{.Status}}'"

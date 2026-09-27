@@ -7,7 +7,8 @@
   "properties": {
     "status": { "const": "ok" },
     "service": { "const": "clinical-copilot" },
-    "time": { "type": "string", "format": "date-time", "description": "Server time, ISO 8601 UTC." }
+    "time": { "type": "string", "format": "date-time", "description": "Server time, ISO 8601 UTC." },
+    "commit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{7,40}$", "description": "The deployed commit (docker/vps/deploy.sh sets COPILOT_DEPLOYED_COMMIT); null when unknown, as on a local stack." }
   },
   "required": ["status", "service", "time"],
   "additionalProperties": false

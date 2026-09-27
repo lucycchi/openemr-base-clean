@@ -12,7 +12,12 @@
 
 declare(strict_types=1);
 
+use OpenEMR\Modules\ClinicalCopilot\Ops\DeployedCommit;
+
 // Liveness only: proves PHP is serving this module. Dependencies are ready.php.
+// No OpenEMR bootstrap here, so the module class is loaded directly.
+require_once __DIR__ . '/../src/Ops/DeployedCommit.php';
+
 header("Content-Type: application/json");
 header("Cache-Control: no-store");
-echo json_encode(["status" => "ok", "service" => "clinical-copilot", "time" => gmdate("c")], JSON_THROW_ON_ERROR);
+echo json_encode(["status" => "ok", "service" => "clinical-copilot", "time" => gmdate("c"), "commit" => DeployedCommit::fromEnvironment()], JSON_THROW_ON_ERROR);

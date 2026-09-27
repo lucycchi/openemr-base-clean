@@ -34,7 +34,7 @@ care physicians.
 
 **Branch:** `dashboard-migration` holds Week 1, Week 2 and the patient dashboard port; everything below assumes it. It is GitLab's default branch, so a plain `git clone` lands on it.
 
-**Deployed:** https://146-190-139-37.sslip.io (login `admin`; demo data). Health: [/health](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php) · [/ready](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php). Patients with an uploaded lab PDF to try the click-to-source highlight on: [clinical_copilot_week2/README.md](clinical_copilot_week2/README.md#seeing-click-to-source-on-the-deployed-instance)
+**Deployed:** https://146-190-139-37.sslip.io (login `admin`; demo data). Health: [/health](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php) (its `commit` field names the deployed commit) · [/ready](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php). Patients with an uploaded lab PDF to try the click-to-source highlight on: [clinical_copilot_week2/README.md](clinical_copilot_week2/README.md#seeing-click-to-source-on-the-deployed-instance)
 
 | Document | Purpose |
 |---|---|
