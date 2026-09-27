@@ -103,7 +103,7 @@ def _value(rng: random.Random, analyte: str) -> tuple[str, str]:
     return (f"{v:g}" if v != int(v) else str(int(v)), flag)
 
 
-def lab_layout1(out: Path, seed: int = 7) -> None:
+def lab_layout1(out: Path, seed: int = 7, patient: str = PATIENT, dob: str = DOB, stem: str = "lab-layout1") -> None:
     """The baseline lab report and its scanned twin.
 
     Five US-letter pages, four analytes per page, six columns including a
@@ -118,11 +118,15 @@ def lab_layout1(out: Path, seed: int = 7) -> None:
     The scan shares the same truth, because the content is identical; only
     the way the words reach the parser differs. That is the point: the eval
     cases show whether OCR loses anything the text layer keeps.
+
+    `patient`, `dob` (YYYY-MM-DD) and `stem` print the same report for a
+    named seed patient under another file name, for demos: the values are
+    identical, only the identity lines differ.
     """
     rng = random.Random(seed)
     # `fitz.open()` with no file creates an empty in-memory PDF to draw into.
     doc = fitz.open()
-    truth = {"doc_type": "lab_pdf", "patient_name_on_report": PATIENT, "collection_date": "2026-09-15", "reported_date": "2026-09-16", "lab_name": "Synthetic Labs Inc", "results": []}
+    truth = {"doc_type": "lab_pdf", "patient_name_on_report": patient, "collection_date": "2026-09-15", "reported_date": "2026-09-16", "lab_name": "Synthetic Labs Inc", "results": []}
     per_page = 4
     for page_no in range(5):
         # 612 x 792 points is US letter. Each page repeats the lab header,
@@ -131,7 +135,7 @@ def lab_layout1(out: Path, seed: int = 7) -> None:
         y = 60
         p.insert_text((50, y), "SYNTHETIC LABS INC", fontsize=13); y += 16
         p.insert_text((50, y), "Fixture for evals; fictional patient, not a real report", fontsize=8); y += 18
-        p.insert_text((50, y), f"Patient: {PATIENT}    DOB: {DOB}    Collected: 2026-09-15    Reported: 2026-09-16", fontsize=9); y += 14
+        p.insert_text((50, y), f"Patient: {patient}    DOB: {dob}    Collected: 2026-09-15    Reported: 2026-09-16", fontsize=9); y += 14
         p.insert_text((50, y), f"Page {page_no + 1} of 5", fontsize=9); y += 24
         # Column headings. These exact words matter: anchor.py recognises a
         # header row by them ("Result" marks the result column, "Previous" a
@@ -154,8 +158,8 @@ def lab_layout1(out: Path, seed: int = 7) -> None:
             truth["results"].append({"analyte": analyte, "value": value, "unit": unit, "reference_range": ref, "abnormal_flag": flag or None, "page": page_no + 1, "row_text": f"{analyte} {value} {flag} {unit} {ref} {prev}".replace("  ", " ")})
             y += 18
     # garbage=4 and deflate=True compact the file; they do not change the content.
-    doc.save(out / "lab-layout1.pdf", garbage=4, deflate=True)
-    (out / "lab-layout1.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
+    doc.save(out / f"{stem}.pdf", garbage=4, deflate=True)
+    (out / f"{stem}.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
 
     # The scanned twin: render each finished page to a 150 dpi bitmap, JPEG
     # compress it at moderate quality (a real office scanner's output), and
@@ -166,8 +170,8 @@ def lab_layout1(out: Path, seed: int = 7) -> None:
         pix = pg.get_pixmap(dpi=150)
         np_ = scan.new_page(width=612, height=792)
         np_.insert_image(np_.rect, stream=pix.tobytes("jpeg", jpg_quality=70), rotate=0)
-    scan.save(out / "lab-layout1-scan.pdf", garbage=4, deflate=True)
-    (out / "lab-layout1-scan.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
+    scan.save(out / f"{stem}-scan.pdf", garbage=4, deflate=True)
+    (out / f"{stem}-scan.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
 
 
 def lab_layout2(out: Path) -> None:
@@ -297,7 +301,7 @@ def intake_full(out: Path) -> None:
     (out / "intake-full-scan.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
 
 
-def medication_list(out: Path) -> None:
+def medication_list(out: Path, patient: str = PATIENT, dob: str = DOB, stem: str = "medication-list") -> None:
     """An outside medication list (PRD extension X3): the medication profile
     a pharmacy prints for a patient. A table of drug, strength, directions
     and date last filled, under a header with the patient name and the date
@@ -311,13 +315,17 @@ def medication_list(out: Path) -> None:
     doses; the model is told not to extract it. One strength has a digit
     pattern a careless reading could swap ("500 mg" and "50 mcg" are both on
     the page), which the anchor eval case uses as its swapped value.
+
+    `patient`, `dob` (YYYY-MM-DD) and `stem` print the same list for a named
+    seed patient under another file name, for demos.
     """
     doc = fitz.open()
     p = doc.new_page(width=612, height=792)
     y = 50
     p.insert_text((50, y), "OAK STREET PHARMACY  -  PATIENT MEDICATION PROFILE", fontsize=12); y += 14
     p.insert_text((50, y), "Fixture for evals; fictional patient, invented prescriptions", fontsize=8); y += 22
-    p.insert_text((50, y), f"Patient: {PATIENT}          DOB: 01/01/1970          Printed: 09/10/2026", fontsize=10); y += 24
+    us_dob = f"{dob[5:7]}/{dob[8:10]}/{dob[0:4]}"  # printed month first, as a US pharmacy does
+    p.insert_text((50, y), f"Patient: {patient}          DOB: {us_dob}          Printed: 09/10/2026", fontsize=10); y += 24
     meds = [
         ("atorvastatin", "40 mg", "1 tablet at bedtime", "08/28/2026"),
         ("metformin ER", "500 mg", "2 tablets with supper", "09/02/2026"),
@@ -333,14 +341,14 @@ def medication_list(out: Path) -> None:
         y += 18
     y += 20
     p.insert_text((50, y), "Pharmacist: ______________________", fontsize=10)
-    doc.save(out / "medication-list.pdf", garbage=4, deflate=True)
+    doc.save(out / f"{stem}.pdf", garbage=4, deflate=True)
     # The truth file mirrors the medication-list contract: the printed
     # patient name and list date, then each medication with its page.
     truth = {
-        "doc_type": "medication_list", "patient_name_on_list": PATIENT, "list_date": "2026-09-10",
+        "doc_type": "medication_list", "patient_name_on_list": patient, "list_date": "2026-09-10",
         "medications": [{"name": n, "dose": d, "frequency": f, "page": 1} for n, d, f, _ in meds],
     }
-    (out / "medication-list.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
+    (out / f"{stem}.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
 
 
 def malformed(out: Path) -> None:
