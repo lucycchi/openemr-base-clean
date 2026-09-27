@@ -6,6 +6,7 @@
  */
 import type { LoadState } from '../hooks/loadState';
 import { CardFrame } from './CardFrame';
+import { EditInOpenEmr, EditInOpenEmrNote } from './EditInOpenEmr';
 import type { ProblemView } from '../mappers/problems';
 
 /** The problem list ("Medical Problems" on the old dashboard). */
@@ -13,7 +14,13 @@ export function ProblemListCard({ patientId, state }: { patientId: string; state
     if (state.status !== 'ready') {
         // Still loading or failed: the heading and a loading or error message (`a ? b : c` chooses).
         return (
-            <CardFrame card="problems" title="Medical Problems" state={state.status} patientId={patientId}>
+            <CardFrame
+                card="problems"
+                title="Medical Problems"
+                state={state.status}
+                patientId={patientId}
+                actions={<EditInOpenEmr patientId={patientId} />}
+            >
                 {state.status === 'loading' ? (
                     <p aria-busy="true">Loading medical problems…</p>
                 ) : (
@@ -23,7 +30,13 @@ export function ProblemListCard({ patientId, state }: { patientId: string; state
         );
     }
     return (
-        <CardFrame card="problems" title="Medical Problems" state="ready" patientId={patientId}>
+        <CardFrame
+            card="problems"
+            title="Medical Problems"
+            state="ready"
+            patientId={patientId}
+            actions={<EditInOpenEmr patientId={patientId} />}
+        >
             {/* No problems: say none are recorded. Otherwise one list item per problem, in the given order. */}
             {state.data.length === 0 ? (
                 <p data-empty>None recorded</p>
@@ -37,6 +50,7 @@ export function ProblemListCard({ patientId, state }: { patientId: string; state
                     ))}
                 </ul>
             )}
+            <EditInOpenEmrNote />
         </CardFrame>
     );
 }

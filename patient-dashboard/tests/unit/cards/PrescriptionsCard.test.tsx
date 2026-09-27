@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PrescriptionsCard } from '../../../web/src/cards/PrescriptionsCard';
 import type { MedicationView } from '../../../web/src/mappers/medications';
+import type { WriteOutcome } from '../../../web/src/api/prescriptionWrites';
+import type { LoadState } from '../../../web/src/hooks/loadState';
 
 afterEach(cleanup);
 
@@ -70,5 +72,82 @@ describe('PrescriptionsCard', () => {
     it('a load error says so', () => {
         render(<PrescriptionsCard patientId="p1" state={{ status: 'error', error: { kind: 'network' } }} />);
         expect(screen.getByText("Couldn't load prescriptions")).toBeTruthy();
+    });
+    const editing = () => ({
+        prescriberDefault: 'Donna Lee',
+        today: '2026-09-27',
+        nowText: () => '2026-09-27 12:00:00',
+        add: vi.fn(async (): Promise<WriteOutcome> => ({ kind: 'saved' })),
+        change: vi.fn(async (): Promise<WriteOutcome> => ({ kind: 'saved' })),
+        discontinue: vi.fn(async (): Promise<WriteOutcome> => ({ kind: 'saved' })),
+    });
+    const oneRow: LoadState<MedicationView[]> = { status: 'ready', data: [{ ...omeprazole, dosage: '1 daily' }] };
+
+    it('offers Add in the title bar, and Change and Discontinue on each row, when editing is allowed', () => {
+        render(<PrescriptionsCard patientId="p1" state={oneRow} editing={editing()} />);
+        expect(screen.getByRole('button', { name: 'Add prescription' })).toBeTruthy();
+        expect(screen.getByRole('button', { name: `Change ${omeprazole.name}` })).toBeTruthy();
+        expect(screen.getByRole('button', { name: `Discontinue ${omeprazole.name}` })).toBeTruthy();
+    });
+
+    it('asks before discontinuing, and only discontinues on Yes', async () => {
+        const e = editing();
+        render(<PrescriptionsCard patientId="p1" state={oneRow} editing={e} />);
+        fireEvent.click(screen.getByRole('button', { name: `Discontinue ${omeprazole.name}` }));
+        expect(screen.getByRole('alertdialog').textContent).toContain(`Discontinue ${omeprazole.name}?`);
+        fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+        expect(e.discontinue).not.toHaveBeenCalled();
+        expect(screen.queryByRole('alertdialog')).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: `Discontinue ${omeprazole.name}` }));
+        fireEvent.click(screen.getByRole('button', { name: 'Yes, discontinue' }));
+        await waitFor(() => expect(e.discontinue).toHaveBeenCalledWith(omeprazole.id));
+    });
+
+    it('opens Change with the row filled in and sends the change for that row', async () => {
+        const e = editing();
+        render(<PrescriptionsCard patientId="p1" state={oneRow} editing={e} />);
+        fireEvent.click(screen.getByRole('button', { name: `Change ${omeprazole.name}` }));
+        expect((screen.getByLabelText('Drug') as HTMLInputElement).value).toBe(omeprazole.name);
+        expect((screen.getByLabelText('Directions') as HTMLInputElement).value).toBe('1 daily');
+        expect((screen.getByLabelText('Quantity') as HTMLInputElement).value).toBe('30');
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() =>
+            expect(e.change).toHaveBeenCalledWith(omeprazole.id, expect.objectContaining({ drug: omeprazole.name })),
+        );
+    });
+
+    it('opens Add with an empty form and sends the new prescription', async () => {
+        const e = editing();
+        render(<PrescriptionsCard patientId="p1" state={oneRow} editing={e} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Add prescription' }));
+        expect((screen.getByLabelText('Drug') as HTMLInputElement).value).toBe('');
+        fireEvent.change(screen.getByLabelText('Drug'), { target: { value: 'Amoxicillin' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(e.add).toHaveBeenCalledWith(expect.objectContaining({ drug: 'Amoxicillin' })));
+        await waitFor(() => expect(screen.queryByLabelText('Drug')).toBeNull());
+    });
+
+    it('says so above the list when a change saved the new prescription but kept the old one', async () => {
+        const e = editing();
+        e.change.mockResolvedValue({
+            kind: 'partly-saved',
+            message: 'The new prescription was saved, but the old one could not be discontinued.',
+        });
+        render(<PrescriptionsCard patientId="p1" state={oneRow} editing={e} />);
+        fireEvent.click(screen.getByRole('button', { name: `Change ${omeprazole.name}` }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        expect((await screen.findByRole('alert')).textContent).toContain('could not be discontinued');
+        expect(screen.queryByLabelText('Drug')).toBeNull();
+    });
+
+    it('offers Add on an empty card too', () => {
+        render(<PrescriptionsCard patientId="p1" state={{ status: 'ready', data: [] }} editing={editing()} />);
+        expect(screen.getByRole('button', { name: 'Add prescription' })).toBeTruthy();
+    });
+
+    it('stays read-only with no editing prop, so nothing changes for other callers', () => {
+        render(<PrescriptionsCard patientId="p1" state={oneRow} />);
+        expect(screen.queryByRole('button', { name: 'Add prescription' })).toBeNull();
+        expect(screen.queryByRole('button', { name: /^Change / })).toBeNull();
     });
 });

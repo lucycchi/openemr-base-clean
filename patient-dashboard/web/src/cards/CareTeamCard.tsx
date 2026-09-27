@@ -6,6 +6,7 @@
  */
 import type { LoadState } from '../hooks/loadState';
 import { CardFrame } from './CardFrame';
+import { EditInOpenEmr, EditInOpenEmrNote } from './EditInOpenEmr';
 import type { CareTeamView } from '../mappers/careTeam';
 
 /**
@@ -27,7 +28,13 @@ export function CareTeamCard({ patientId, state }: { patientId: string; state: L
     if (state.status !== 'ready') {
         // Still loading or failed: the heading and a loading or error message (`a ? b : c` chooses).
         return (
-            <CardFrame card="care-team" title="Care Team" state={state.status} patientId={patientId}>
+            <CardFrame
+                card="care-team"
+                title="Care Team"
+                state={state.status}
+                patientId={patientId}
+                actions={<EditInOpenEmr patientId={patientId} />}
+            >
                 {state.status === 'loading' ? (
                     <p aria-busy="true">Loading the care team…</p>
                 ) : (
@@ -37,7 +44,13 @@ export function CareTeamCard({ patientId, state }: { patientId: string; state: L
         );
     }
     return (
-        <CardFrame card="care-team" title="Care Team" state="ready" patientId={patientId}>
+        <CardFrame
+            card="care-team"
+            title="Care Team"
+            state="ready"
+            patientId={patientId}
+            actions={<EditInOpenEmr patientId={patientId} />}
+        >
             {state.data.length === 0 ? (
                 // The old card showed a bare header row (BM-030).
                 <p data-empty>No care team recorded</p>
@@ -89,6 +102,7 @@ export function CareTeamCard({ patientId, state }: { patientId: string; state: L
                     OpenEMR before relying on it.
                 </p>
             )}
+            <EditInOpenEmrNote />
         </CardFrame>
     );
 }

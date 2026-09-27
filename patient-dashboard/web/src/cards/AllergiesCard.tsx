@@ -13,6 +13,7 @@
  */
 import type { LoadState } from '../hooks/loadState';
 import { CardFrame } from './CardFrame';
+import { EditInOpenEmr, EditInOpenEmrNote } from './EditInOpenEmr';
 import type { AllergyView } from '../mappers/allergies';
 
 /**
@@ -23,7 +24,13 @@ export function AllergiesCard({ patientId, state }: { patientId: string; state: 
     if (state.status !== 'ready') {
         // Still loading or failed: show the heading and a loading or error message, never an empty list.
         return (
-            <CardFrame card="allergies" title="Allergies" state={state.status} patientId={patientId}>
+            <CardFrame
+                card="allergies"
+                title="Allergies"
+                state={state.status}
+                patientId={patientId}
+                actions={<EditInOpenEmr patientId={patientId} />}
+            >
                 {/* `a ? b : c` chooses: the loading line while loading, otherwise the error line. */}
                 {state.status === 'loading' ? (
                     <p aria-busy="true">Loading allergies…</p>
@@ -34,7 +41,13 @@ export function AllergiesCard({ patientId, state }: { patientId: string; state: 
         );
     }
     return (
-        <CardFrame card="allergies" title="Allergies" state="ready" patientId={patientId}>
+        <CardFrame
+            card="allergies"
+            title="Allergies"
+            state="ready"
+            patientId={patientId}
+            actions={<EditInOpenEmr patientId={patientId} />}
+        >
             {/* No rows: say none are recorded. Otherwise draw one list item per allergy, in the given order. */}
             {state.data.length === 0 ? (
                 <p data-empty>No allergies recorded</p>
@@ -72,6 +85,7 @@ export function AllergiesCard({ patientId, state }: { patientId: string; state: 
                     ))}
                 </ul>
             )}
+            <EditInOpenEmrNote />
         </CardFrame>
     );
 }

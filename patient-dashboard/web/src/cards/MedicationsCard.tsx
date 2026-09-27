@@ -6,6 +6,7 @@
  */
 import type { LoadState } from '../hooks/loadState';
 import { CardFrame } from './CardFrame';
+import { EditInOpenEmr, EditInOpenEmrNote } from './EditInOpenEmr';
 import type { MedicationView } from '../mappers/medications';
 
 /** The medication list: every current entry on the old card, from the Standard REST API list (BM-019). */
@@ -13,7 +14,13 @@ export function MedicationsCard({ patientId, state }: { patientId: string; state
     if (state.status !== 'ready') {
         // Still loading or failed: the heading and a loading or error message (`a ? b : c` chooses).
         return (
-            <CardFrame card="medications" title="Medications" state={state.status} patientId={patientId}>
+            <CardFrame
+                card="medications"
+                title="Medications"
+                state={state.status}
+                patientId={patientId}
+                actions={<EditInOpenEmr patientId={patientId} />}
+            >
                 {state.status === 'loading' ? (
                     <p aria-busy="true">Loading medications…</p>
                 ) : (
@@ -23,7 +30,13 @@ export function MedicationsCard({ patientId, state }: { patientId: string; state
         );
     }
     return (
-        <CardFrame card="medications" title="Medications" state="ready" patientId={patientId}>
+        <CardFrame
+            card="medications"
+            title="Medications"
+            state="ready"
+            patientId={patientId}
+            actions={<EditInOpenEmr patientId={patientId} />}
+        >
             {state.data.length === 0 ? (
                 <p data-empty>None recorded</p>
             ) : (
@@ -44,6 +57,7 @@ export function MedicationsCard({ patientId, state }: { patientId: string; state
                     ))}
                 </ul>
             )}
+            <EditInOpenEmrNote />
         </CardFrame>
     );
 }

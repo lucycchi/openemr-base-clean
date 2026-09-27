@@ -3,17 +3,62 @@
  * mappers/medications.ts (the "prescriptions" half of splitMedications, newest first), or a note that
  * they are still loading or failed. Out: a table with one row per prescription (drug, details,
  * quantity, refills, date added). The markup looks like HTML; see AllergiesCard.tsx for a reading guide.
+ *
+ * When `editing` is given (ARC-06), the card also lets the clinician:
+ * - Add a prescription (the button in the title bar, where the old card has its pencil)
+ * - Change one: the form opens filled in with that row; saving adds the corrected prescription and
+ *   discontinues the old one, because OpenEMR's API cannot update a prescription
+ * - Discontinue one, after an "are you sure?" question. OpenEMR marks it inactive, as unticking "active"
+ *   on the old form does; nothing is deleted.
+ * Without `editing` the card is read-only, as before.
  */
+import { useState } from 'react';
 import type { LoadState } from '../hooks/loadState';
+import type { PrescriptionForm, WriteOutcome } from '../api/prescriptionWrites';
 import { CardFrame } from './CardFrame';
+import { PrescriptionFormPanel } from './PrescriptionForm';
 import type { MedicationView } from '../mappers/medications';
+
+/** What the card needs to edit prescriptions; each write answers with an outcome the card shows. */
+export interface PrescriptionEditing {
+    /** The signed-in user's name, the form's starting prescriber ('' when unknown). */
+    prescriberDefault: string;
+    /** Today as YYYY-MM-DD. */
+    today: string;
+    /** The local date and time as "YYYY-MM-DD HH:MM:SS". */
+    nowText: () => string;
+    add: (form: PrescriptionForm) => Promise<WriteOutcome>;
+    change: (rxId: string, form: PrescriptionForm) => Promise<WriteOutcome>;
+    discontinue: (rxId: string) => Promise<WriteOutcome>;
+}
+
+/** What the card is showing: the list, the Add or Change form, or the Discontinue question for one row. */
+type Mode =
+    | { kind: 'list' }
+    | { kind: 'add' }
+    | { kind: 'change'; row: MedicationView }
+    | { kind: 'confirm'; row: MedicationView };
 
 /**
  * Active prescriptions, newest first. "Added" is the date the prescription was entered; the old card
  * labelled it "Filled" (BM-023). Details is dosageInstruction text, blank when FHIR has none (BM-038).
  * Refills say "Not available": OpenEMR's FHIR query never reads the refills column and always sends 0 (BM-041).
  */
-export function PrescriptionsCard({ patientId, state }: { patientId: string; state: LoadState<MedicationView[]> }) {
+export function PrescriptionsCard({
+    patientId,
+    state,
+    editing,
+}: {
+    patientId: string;
+    state: LoadState<MedicationView[]>;
+    editing?: PrescriptionEditing;
+}) {
+    const [mode, setMode] = useState<Mode>({ kind: 'list' });
+    // A message kept above the list after a write, e.g. a change that could not discontinue the old one.
+    const [notice, setNotice] = useState('');
+    // True while a Discontinue is on its way, so it cannot be sent twice.
+    const [discontinuing, setDiscontinuing] = useState(false);
+
     if (state.status !== 'ready') {
         // Still loading or failed: the heading and a loading or error message (`a ? b : c` chooses).
         return (
@@ -26,8 +71,90 @@ export function PrescriptionsCard({ patientId, state }: { patientId: string; sta
             </CardFrame>
         );
     }
+
+    /** Runs one write; on success (or partial success) goes back to the list, keeping any message to show. */
+    async function afterWrite(write: Promise<WriteOutcome>): Promise<WriteOutcome> {
+        const outcome = await write;
+        if (outcome.kind === 'saved' || outcome.kind === 'partly-saved') {
+            setNotice(outcome.kind === 'partly-saved' ? outcome.message : '');
+            setMode({ kind: 'list' });
+        }
+        return outcome;
+    }
+
+    async function confirmDiscontinue(row: MedicationView) {
+        if (editing === undefined || discontinuing) {
+            return;
+        }
+        setDiscontinuing(true);
+        const outcome = await editing.discontinue(row.id);
+        setDiscontinuing(false);
+        setMode({ kind: 'list' });
+        setNotice(outcome.kind === 'saved' ? '' : `${row.name} was not discontinued. Try again.`);
+    }
+
+    const addButton =
+        editing === undefined ? undefined : (
+            <button
+                type="button"
+                className="btn btn-link btn-sm p-0"
+                aria-label="Add prescription"
+                onClick={() => {
+                    setNotice('');
+                    setMode({ kind: 'add' });
+                }}
+            >
+                Add
+            </button>
+        );
+
     return (
-        <CardFrame card="prescriptions" title="Prescriptions" state="ready" patientId={patientId}>
+        <CardFrame card="prescriptions" title="Prescriptions" state="ready" patientId={patientId} actions={addButton}>
+            {notice !== '' && (
+                <p role="alert" className="text-danger small">
+                    {notice}
+                </p>
+            )}
+            {/* The Add or Change form opens above the list. */}
+            {editing !== undefined && (mode.kind === 'add' || mode.kind === 'change') && (
+                <PrescriptionFormPanel
+                    key={mode.kind === 'change' ? mode.row.id : 'add'}
+                    initial={
+                        mode.kind === 'change'
+                            ? { drug: mode.row.name, dosage: mode.row.dosage, quantity: mode.row.quantity }
+                            : {}
+                    }
+                    prescriberDefault={editing.prescriberDefault}
+                    today={editing.today}
+                    nowText={editing.nowText}
+                    onSave={(form) =>
+                        afterWrite(mode.kind === 'change' ? editing.change(mode.row.id, form) : editing.add(form))
+                    }
+                    onCancel={() => setMode({ kind: 'list' })}
+                />
+            )}
+            {/* The "are you sure?" question for Discontinue, in the card rather than a pop-up. */}
+            {editing !== undefined && mode.kind === 'confirm' && (
+                <div role="alertdialog" aria-label="Discontinue prescription" className="border rounded p-2 mb-2">
+                    <p className="mb-2">Discontinue {mode.row.name}?</p>
+                    <button
+                        type="button"
+                        className="btn btn-danger btn-sm mr-2"
+                        disabled={discontinuing}
+                        onClick={() => void confirmDiscontinue(mode.row)}
+                    >
+                        Yes, discontinue
+                    </button>
+                    <button
+                        type="button"
+                        className="btn btn-link btn-sm"
+                        disabled={discontinuing}
+                        onClick={() => setMode({ kind: 'list' })}
+                    >
+                        Keep it
+                    </button>
+                </div>
+            )}
             {state.data.length === 0 ? (
                 // Also shown when every prescription is discontinued; the old card showed an empty table (BM-024).
                 <p data-empty>No active prescriptions</p>
@@ -43,6 +170,11 @@ export function PrescriptionsCard({ patientId, state }: { patientId: string; sta
                                 <th scope="col">Qty</th>
                                 <th scope="col">Refills</th>
                                 <th scope="col">Added</th>
+                                {editing !== undefined && (
+                                    <th scope="col">
+                                        <span className="sr-only">Actions</span>
+                                    </th>
+                                )}
                             </tr>
                         </thead>
                         <tbody>
@@ -55,6 +187,32 @@ export function PrescriptionsCard({ patientId, state }: { patientId: string; sta
                                         Not available
                                     </td>
                                     <td data-field="added">{prescription.added}</td>
+                                    {editing !== undefined && (
+                                        <td className="text-nowrap">
+                                            <button
+                                                type="button"
+                                                className="btn btn-link btn-sm p-0 mr-2"
+                                                aria-label={`Change ${prescription.name}`}
+                                                onClick={() => {
+                                                    setNotice('');
+                                                    setMode({ kind: 'change', row: prescription });
+                                                }}
+                                            >
+                                                Change
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-link btn-sm p-0 text-danger"
+                                                aria-label={`Discontinue ${prescription.name}`}
+                                                onClick={() => {
+                                                    setNotice('');
+                                                    setMode({ kind: 'confirm', row: prescription });
+                                                }}
+                                            >
+                                                Discontinue
+                                            </button>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>

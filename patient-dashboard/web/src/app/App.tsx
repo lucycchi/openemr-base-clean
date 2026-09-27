@@ -12,6 +12,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { createApiClient } from '../api/client';
+import type { WriteClient } from '../api/client';
+import { addPrescription, discontinuePrescription, replacePrescription } from '../api/prescriptionWrites';
+import type { WriteOutcome } from '../api/prescriptionWrites';
+import type { PrescriptionEditing } from '../cards/PrescriptionsCard';
+import { prescriberNameFrom } from './prescriberName';
 import type { ApiClient } from '../api/client';
 import { AllergiesCard } from '../cards/AllergiesCard';
 import { CareTeamCard } from '../cards/CareTeamCard';
@@ -72,7 +77,18 @@ function localNow(): string {
  * data, or "Couldn't load" as its own answer arrives. A card OpenEMR refuses to this user (403) is left
  * out entirely, as on the old page. App gives PatientView a fresh start whenever the patient changes.
  */
-function PatientView({ client, patientId, config }: { client: ApiClient; patientId: string; config: SiteConfig }) {
+function PatientView({
+    client,
+    patientId,
+    config,
+    prescriber,
+}: {
+    client: ApiClient & WriteClient;
+    patientId: string;
+    config: SiteConfig;
+    /** The signed-in user's name, the prescription form's starting prescriber ('' when unknown). */
+    prescriber: string;
+}) {
     // `useState` is a value the page remembers between redraws. Here it captures today's date and the
     // current time once, when the patient is opened, so ages and "has this ended?" checks stay fixed
     // for the life of the view rather than changing with every redraw.
@@ -86,7 +102,26 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
     });
     const allergies = useAllergyCard(client, patientId, asOfTime);
     const problems = useProblemCard(client, patientId, asOfTime);
-    const medicationCards = useMedicationCards(client, patientId, asOfTime);
+    // Goes up by one after each prescription saved (ARC-06), so the medication cards ask again. The old
+    // list stays on screen until the new one arrives.
+    const [revision, setRevision] = useState(0);
+    const medicationCards = useMedicationCards(client, patientId, asOfTime, revision);
+    /** After a write: reload when something was saved, and hand the outcome back to the card to show. */
+    const reloadAfter = (outcome: WriteOutcome): WriteOutcome => {
+        if (outcome.kind === 'saved' || outcome.kind === 'partly-saved') {
+            setRevision((current) => current + 1);
+        }
+        return outcome;
+    };
+    // What the Prescriptions card needs to add, change and discontinue prescriptions for this patient.
+    const prescriptionEditing: PrescriptionEditing = {
+        prescriberDefault: prescriber,
+        today: localToday(),
+        nowText: localNow,
+        add: (form) => addPrescription(client, patientId, form).then(reloadAfter),
+        change: (rxId, form) => replacePrescription(client, patientId, rxId, form).then(reloadAfter),
+        discontinue: (rxId) => discontinuePrescription(client, patientId, rxId).then(reloadAfter),
+    };
     const careTeam = useCareTeam(client, patientId);
     const encounters = useEncounters(client, patientId);
     const shown = visibleCards(config.hiddenCards);
@@ -126,7 +161,11 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
             <div className="row no-gutters">
                 {shown.includes('card_prescriptions') && !forbidden(medicationCards.prescriptions) && (
                     <div className="col-12 p-1">
-                        <PrescriptionsCard patientId={patientId} state={medicationCards.prescriptions} />
+                        <PrescriptionsCard
+                            patientId={patientId}
+                            state={medicationCards.prescriptions}
+                            editing={prescriptionEditing}
+                        />
                     </div>
                 )}
                 {shown.includes('card_care_team') && !forbidden(careTeam) && (
@@ -158,6 +197,24 @@ export function App() {
     const [signedOutForIdle, setSignedOutForIdle] = useState(false);
     // `useMemo` with an empty list `[]` makes the API client once and reuses it on every redraw.
     const client = useMemo(() => createApiClient(), []);
+    // The signed-in user's id (from /auth/me) and their name, which starts the prescription form's
+    // Prescriber box (ARC-06). The name is looked up once through the BFF's names lookup; '' when unknown.
+    const [userId, setUserId] = useState<string | undefined>(undefined);
+    const [prescriber, setPrescriber] = useState('');
+    useEffect(() => {
+        if (userId === undefined) {
+            return;
+        }
+        let cancelled = false;
+        void client.getJson(`display-names?ref=${encodeURIComponent(`Practitioner/${userId}`)}`).then((result) => {
+            if (!cancelled && result.ok) {
+                setPrescriber(prescriberNameFrom(result.value, userId));
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [client, userId]);
     // The current web address path; the open patient's id is read from it.
     const [pathname, setPathname] = useState(() => globalThis.location.pathname);
     const patientId = patientIdFromPath(pathname);
@@ -184,10 +241,18 @@ export function App() {
     useEffect(() => {
         let cancelled = false;
         fetch('/auth/me', { credentials: 'same-origin' })
-            .then((res) => (res.ok ? (res.json() as Promise<{ authenticated: boolean }>) : { authenticated: false }))
-            .then((body) => {
+            .then((res) =>
+                res.ok
+                    ? (res.json() as Promise<{ authenticated: boolean; userId?: string }>)
+                    : { authenticated: false },
+            )
+            .then((body: { authenticated: boolean; userId?: string }) => {
                 if (!cancelled) {
                     setAuth(body.authenticated ? 'signed-in' : 'signed-out');
+                    // Who is signed in, for the prescription form's prescriber (ARC-06); absent when unknown.
+                    if (body.authenticated && typeof body.userId === 'string') {
+                        setUserId(body.userId);
+                    }
                 }
             })
             .catch(() => {
@@ -308,7 +373,13 @@ export function App() {
                         config !== 'error' &&
                         cardLayout !== 'loading' && (
                             <CardLayoutContext value={cardLayout}>
-                                <PatientView key={patientId} client={client} patientId={patientId} config={config} />
+                                <PatientView
+                                    key={patientId}
+                                    client={client}
+                                    patientId={patientId}
+                                    config={config}
+                                    prescriber={prescriber}
+                                />
                             </CardLayoutContext>
                         )}
                 </>
