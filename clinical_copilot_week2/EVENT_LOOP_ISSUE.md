@@ -1042,13 +1042,35 @@ What it shows:
    cost. The limit spent the run at the provider's edge, cutting and
    regrowing.
 
+**A run at 12 (interrupted).** Because the adaptive limit settled at 12
+in the run above, the same test was run once more with both limits at
+12. Another session's eval gate restarted the local sidecar 1 minute 45
+seconds into the 2-minute run (its sync step copies changed sidecar code
+into the container and restarts it), so k6's totals for that run are not
+usable. The sidecar's own counters up to the restart are, and they cover
+the whole load period:
+
+| 50 users, sidecar's counters | Limit 8 | Limit 12 (to the restart) | Limit 16 |
+|---|---|---|---|
+| Documents extracted | 130 | 121 | 148 |
+| Documents failed | **0** | **7** | **11** |
+| Calls throttled by OpenAI | 0 | 42 | 71 |
+| Lowest adaptive limit | 8 | 2 (twice) | 2 |
+
+At 12, OpenAI already throttled. Twice, a burst of 429s cut the limit
+from 12 to 2 within a few seconds, and it took about 20 seconds to climb
+back each time. So 12 extracted fewer documents than 8 and let 7 fail.
+
 **Decision: keep the defaults at 8.** For this account, 8 gives zero
 failed documents and zero throttling, and the "busy" answers it gives
-instead are honest and retried automatically. The adaptive limit is now
+instead are honest and retried automatically. The account's point of
+throttling lies between 8 and 12 calls in flight. The adaptive limit is
 proven as the safety net for when the quota is shared (PHP's calls, a
-busier day), rather than as a way to run above the account's limit. A
-value between, such as 12 (where the adaptive limit settled), may be the
-best balance; that is a further run, not done.
+busier day), not as a way to run above the account's limit.
+
+**One tuning note for the future:** halving on every throttling burst is
+aggressive for this account, since the dips to 2 cost throughput. A
+gentler cut (to 70 % instead of 50 %) could keep more of it. Not changed.
 
 Memory is not a concern at either setting on this evidence: the sidecar
 peaked at 313 MB both times, against the droplet's 768 MB limit.
@@ -1061,8 +1083,9 @@ peaked at 313 MB both times, against the droplet's 768 MB limit.
   stack. The droplet has 2 CPUs instead of 8 and a 768 MB sidecar memory
   limit, so its numbers will differ. The command is
   `tests/load/run-baselines.sh` with `STATS=ssh`, after deploying.
-- **A run with the limits at 12**, between the zero-throttling 8 and the
-  throttled 16 (section 12.4).
+- **A clean run with the limits at 12.** The one attempted was cut short
+  by another session's eval gate restarting the sidecar (section 12.4).
+  It was not repeated: its first 1 minute 45 seconds already showed throttling and failures.
 - **A mixed load test** (briefings, questions and extractions together),
   to see PHP's calls and extraction share the quota.
 - **A PHP controller test** for the "busy" message and `retry_after_s`.
@@ -1158,8 +1181,9 @@ Underneath that:
 - **A second real run with the limits doubled to 16** made OpenAI push
   back: 71 throttled calls. The adaptive limit cut itself as low as 2 and
   recovered to 12, and retries saved most calls. Throughput rose 17 %, but
-  11 documents failed after three throttled attempts, so the default
-  stays at 8, where nothing failed.
+  11 documents failed after three throttled attempts. At 12, OpenAI also
+  throttled and 7 documents failed. So the default stays at 8, where
+  nothing failed.
 - **Mock load tests** covered what the real runs did not trigger. Against
   a strict provider, adaptive limiting took failures from 138 to 0
   without any tuning. When clients gave up early, model calls wasted per
@@ -1208,7 +1232,7 @@ unless stated otherwise. "R1" is commit `5d7988c`, "R2" is `057832a`.
 | `public/assets/panel.js` | **R2:** bounded automatic retry on "busy" |
 | `tests/Tests/Isolated/Modules/ClinicalCopilot/SidecarClientTest.php` (repository root) | **R2:** `Retry-After` test |
 | `tests/load/copilot.js` (repository root) | **R2:** the extract scenario retries like the panel and reports busy answers |
-| `tests/load/results/20260926T-mock-*.json`, `20260927T-real-v2-*`, `20260927T-real-v2-cap16-*` (repository root) | Mock and real load-test results |
+| `tests/load/results/20260926T-mock-*.json`, `20260927T-real-v2-*`, `20260927T-real-v2-cap16-*`, `20260927T-real-v2-cap12-INTERRUPTED-*` (repository root) | Mock and real load-test results |
 
 The settings, with their defaults:
 
