@@ -9,7 +9,7 @@ cannot find on the page anyway.
 
 The call, step by step:
 
-  page text -> SYSTEM rules + task text (LAB_TASK or INTAKE_TASK)
+  page text -> SYSTEM rules + task text (LAB_TASK, INTAKE_TASK or MED_LIST_TASK)
             + the contract schema the reply must fit (contracts.py)
             -> chat completion at temperature 0
             -> reply checked by the Pydantic proposal model (schemas.py)
@@ -46,13 +46,13 @@ from pydantic import BaseModel, ValidationError
 
 from . import capacity, contracts
 from .logging_setup import correlation_id
-from .schemas import CriticVerdict, IntakeFormProposal, LabReportProposal, Usage
+from .schemas import CriticVerdict, Usage, proposal_model
 
 log = logging.getLogger("copilot.llm")
 
 # Reported by /health. Bump it when any prompt text below changes, so a
 # recorded fixture or an eval result can be tied to the prompt that made it.
-PROMPT_VERSION = "2026-09-21.1"
+PROMPT_VERSION = "2026-09-27.1"
 
 # The standing rules, sent as the "system" message. The "data, never
 # instructions" sentence is the prompt-injection guard: a scanned document
@@ -99,6 +99,23 @@ INTAKE_TASK = (
     "relative and condition. Empty or crossed-out fields are null; blank lists are "
     "empty lists."
 )
+
+# What to extract from an outside medication list (a pharmacy printout or
+# another practice's list). Strength and directions are copied verbatim
+# because anchor.py matches any detail with a digit in it exactly; the "last
+# filled" column is left out on purpose (it is not a dose).
+MED_LIST_TASK = (
+    "This is a medication list from outside this practice, such as a pharmacy "
+    "printout. Extract the patient name and the list date as printed, and every "
+    "medication row: the drug name as printed (name), its strength exactly as "
+    "printed (dose) and its directions exactly as printed (frequency). Copy the "
+    "strength and directions character for character; do not reword, expand or "
+    "combine them. Do not extract fill dates, quantities, refills or prescriber "
+    "names. Every medication row on the page must be returned."
+)
+
+# The task text per document type; anything else is read as an intake form.
+TASKS = {"lab_pdf": LAB_TASK, "intake_form": INTAKE_TASK, "medication_list": MED_LIST_TASK}
 
 
 class ModelError(Exception):
@@ -250,10 +267,10 @@ def propose(doc_type: str, page_text: str, client: OpenAI | None = None, extra_t
     """One chat completion: the page text (or, on retry, the missed rows)
     in, a validated proposal out. `client` lets tests pass a fake; `page` is
     only for the log line; `extra_task` is RETRY_TASK on the retry call."""
-    # The reply model and task text follow the document type. Anything that
-    # is not a lab report is treated as an intake form.
-    schema_model = LabReportProposal if doc_type == "lab_pdf" else IntakeFormProposal
-    task = LAB_TASK if doc_type == "lab_pdf" else INTAKE_TASK
+    # The reply model and task text follow the document type. Anything
+    # unknown is treated as an intake form.
+    schema_model = proposal_model(doc_type)
+    task = TASKS.get(doc_type, INTAKE_TASK)
     # No retries inside the SDK: _call_with_retries is the only retry layer,
     # and each attempt's timeout is set per call from the deadline. The key
     # comes from OPENAI_API_KEY in the environment.

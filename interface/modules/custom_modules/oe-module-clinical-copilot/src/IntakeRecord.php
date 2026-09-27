@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace OpenEMR\Modules\ClinicalCopilot;
 
 use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
+use OpenEMR\Modules\ClinicalCopilot\Documents\DocType;
 
 /**
  * A copilot_intake row read back for the fact assembler: the persisted
@@ -35,6 +36,10 @@ final readonly class IntakeRecord
         public ?string $detail,
         public \DateTimeImmutable $uploadedAt,
         public Citation $citation,
+        // Which kind of upload the entry came from, and (for a medication list) the
+        // date printed on it, so the wording never calls a pharmacy list an intake form.
+        public DocType $docType = DocType::IntakeForm,
+        public ?string $printedDate = null,
     ) {
     }
 
@@ -64,6 +69,9 @@ final readonly class IntakeRecord
      */
     public function describe(): string
     {
+        if ($this->docType === DocType::MedicationList) {
+            return $this->describeMedicationList();
+        }
         return match ($this->kind) {
             'chief_concern' => sprintf('Reason for visit on the intake form (%s): %s', $this->uploadedAt->format('Y-m-d'), $this->value),
             'medication' => sprintf('Patient lists %s%s on the intake form (%s)', $this->value, $this->detail !== null && $this->detail !== '' ? ' ' . $this->detail : '', $this->uploadedAt->format('Y-m-d')),
@@ -71,6 +79,22 @@ final readonly class IntakeRecord
             'family_history' => sprintf('Family history on the intake form: %s, %s', $this->detail ?? 'relative', $this->value),
             'demographics_mismatch' => sprintf('Intake form uploaded %s: %s', $this->uploadedAt->format('Y-m-d'), $this->value),
             'patient_mismatch' => sprintf('Lab report uploaded %s: %s', $this->uploadedAt->format('Y-m-d'), $this->value),
+            default => $this->value,
+        };
+    }
+
+    /**
+     * Wording for an entry read from an outside medication list. It names
+     * the list and the date printed on it (a months-old pharmacy printout
+     * must not read as current); an undated list says so and gives the
+     * upload date instead.
+     */
+    private function describeMedicationList(): string
+    {
+        $when = $this->printedDate !== null && $this->printedDate !== '' ? 'dated ' . $this->printedDate : 'undated, uploaded ' . $this->uploadedAt->format('Y-m-d');
+        return match ($this->kind) {
+            'medication' => sprintf('Outside medication list (%s) shows %s%s', $when, $this->value, $this->detail !== null && $this->detail !== '' ? ' ' . $this->detail : ''),
+            'patient_mismatch' => sprintf('Medication list uploaded %s: %s', $this->uploadedAt->format('Y-m-d'), $this->value),
             default => $this->value,
         };
     }

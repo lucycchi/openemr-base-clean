@@ -25,6 +25,7 @@ use DateTimeImmutable;
 use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Modules\ClinicalCopilot\Documents\BBox;
 use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
+use OpenEMR\Modules\ClinicalCopilot\Documents\DocType;
 
 /**
  * The real ChartSource: five SQL queries against OpenEMR's legacy tables
@@ -202,13 +203,15 @@ final class OpenEmrChartSource implements ChartSource
     public function intakeRecords(PatientId $pid): array
     {
         $rows = QueryUtils::fetchRecords(
-            "SELECT ci.id, ci.document_id, ci.kind, ci.value, ci.detail, ci.anchored, ci.page, ci.field_path, ci.bbox_json, ci.row_bbox_json, cd.created_at
+            "SELECT ci.id, ci.document_id, ci.kind, ci.value, ci.detail, ci.anchored, ci.page, ci.field_path, ci.bbox_json, ci.row_bbox_json, cd.created_at, cd.doc_type,
+                    (SELECT l.value FROM copilot_intake l WHERE l.document_id = ci.document_id AND l.kind = 'form_date' LIMIT 1) AS printed_date
              FROM copilot_intake ci
              JOIN copilot_document cd ON cd.document_id = ci.document_id
              JOIN documents d ON d.id = cd.document_id
              WHERE ci.pid = ? AND cd.status = 'extracted' AND d.deleted = 0
              UNION ALL
-             SELECT cdf.id, cdf.document_id, cdf.kind, cdf.value, NULL AS detail, cdf.anchored, cdf.page, cdf.field_path, cdf.bbox_json, cdf.row_bbox_json, cd.created_at
+             SELECT cdf.id, cdf.document_id, cdf.kind, cdf.value, NULL AS detail, cdf.anchored, cdf.page, cdf.field_path, cdf.bbox_json, cdf.row_bbox_json, cd.created_at, cd.doc_type,
+                    NULL AS printed_date
              FROM copilot_document_fact cdf
              JOIN copilot_document cd ON cd.document_id = cdf.document_id
              JOIN documents d ON d.id = cd.document_id
@@ -228,6 +231,8 @@ final class OpenEmrChartSource implements ChartSource
                 is_string($r['detail'] ?? null) ? $r['detail'] : null,
                 $this->date(Row::str($r, 'created_at')),
                 new Citation('document', (string) Row::int($r, 'document_id'), self::pageLabel($r), Row::str($r, 'field_path'), Row::str($r, 'value'), Row::int($r, 'anchored') === 1 && is_array($bbox), is_array($bbox) ? BBox::fromArray($bbox) : null, is_array($row) ? BBox::fromArray($row) : null),
+                DocType::tryFrom(Row::str($r, 'doc_type')) ?? DocType::IntakeForm,
+                is_string($r['printed_date'] ?? null) ? $r['printed_date'] : null,
             );
         }
         return $out;

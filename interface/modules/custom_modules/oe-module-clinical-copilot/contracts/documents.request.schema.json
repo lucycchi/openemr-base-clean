@@ -28,9 +28,10 @@
       "type": "string",
       "enum": [
         "lab_pdf",
-        "intake_form"
+        "intake_form",
+        "medication_list"
       ],
-      "description": "upload only. What the PDF is; decides the extraction contract (lab-report or intake-form)."
+      "description": "upload only. What the PDF is; decides the extraction contract (lab-report, intake-form or medication-list)."
     }
   },
   "required": [

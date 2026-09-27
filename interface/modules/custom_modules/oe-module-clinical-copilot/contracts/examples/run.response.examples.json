@@ -134,6 +134,78 @@
      "reason": null
     }
    ]
+  },
+  {
+   "correlation_id": "abcdefgh-1",
+   "extractions": [
+    {
+     "document_id": 1,
+     "status": "extracted",
+     "failure_reason": null,
+     "extraction": {
+      "doc_type": "medication_list",
+      "patient_name_on_list": "Test Zeta",
+      "list_date": "2026-09-10",
+      "list_date_citation": {
+       "source_type": "document",
+       "source_id": "1",
+       "page_or_section": "1",
+       "field_or_chunk_id": "/list_date",
+       "quote_or_value": "09/10/2026",
+       "anchored": true,
+       "bbox": {
+        "page": 1,
+        "x0": 10,
+        "y0": 10,
+        "x1": 50,
+        "y1": 20,
+        "origin": "top-left",
+        "units": "pt",
+        "page_w": 612,
+        "page_h": 792
+       }
+      },
+      "medications": [
+       {
+        "name": "atorvastatin",
+        "dose": "40 mg",
+        "frequency": "1 tablet by mouth at bedtime",
+        "citation": {
+         "source_type": "document",
+         "source_id": "1",
+         "page_or_section": "1",
+         "field_or_chunk_id": "/medications/0/name",
+         "quote_or_value": "atorvastatin",
+         "anchored": true,
+         "bbox": {
+          "page": 1,
+          "x0": 10,
+          "y0": 10,
+          "x1": 50,
+          "y1": 20,
+          "origin": "top-left",
+          "units": "pt",
+          "page_w": 612,
+          "page_h": 792
+         }
+        }
+       }
+      ]
+     },
+     "confidence": 1.0,
+     "retries": 0
+    }
+   ],
+   "chunks": [],
+   "handoffs": [],
+   "usage": [
+    {
+     "model": "gpt-4o-mini",
+     "kind": "chat",
+     "input": 10,
+     "output": 5
+    }
+   ]
   }
  ],
  "reject": [
@@ -294,6 +366,60 @@
      ],
      "applicable": null,
      "reason": null
+    }
+   ]
+  },
+  {
+   "correlation_id": "abcdefgh-1",
+   "extractions": [
+    {
+     "document_id": 1,
+     "status": "extracted",
+     "failure_reason": null,
+     "extraction": {
+      "doc_type": "medication_list",
+      "patient_name_on_list": "Test Zeta",
+      "list_date": "2026-09-10",
+      "list_date_citation": {
+       "source_type": "document",
+       "source_id": "1",
+       "page_or_section": "1",
+       "field_or_chunk_id": "/list_date",
+       "quote_or_value": "09/10/2026",
+       "anchored": true,
+       "bbox": {
+        "page": 1,
+        "x0": 10,
+        "y0": 10,
+        "x1": 50,
+        "y1": 20,
+        "origin": "top-left",
+        "units": "pt",
+        "page_w": 612,
+        "page_h": 792
+       }
+      },
+      "medications": [
+       {
+        "name": "atorvastatin",
+        "dose": "40 mg",
+        "frequency": "1 tablet by mouth at bedtime",
+        "citation": null
+       }
+      ]
+     },
+     "confidence": 1.0,
+     "retries": 0
+    }
+   ],
+   "chunks": [],
+   "handoffs": [],
+   "usage": [
+    {
+     "model": "gpt-4o-mini",
+     "kind": "chat",
+     "input": 10,
+     "output": 5
     }
    ]
   }

@@ -97,7 +97,7 @@
         extraction_unverified: 'Unverified values from uploaded documents',
         document_mismatch: 'Document does not match the chart',
         intake_chief_concern: 'Reason for visit (intake form)',
-        intake_med: 'Medications listed on the intake form',
+        intake_med: 'Medications listed on uploaded documents (intake form, outside medication list)',
         intake_allergy: 'Allergies listed on the intake form',
         intake_family_history: 'Family history (intake form)',
         prior_visit_plan: 'Plan from the prior visit',
@@ -414,6 +414,8 @@
     // How each server-side document status reads in the list. "stored" means the PDF
     // is saved but nothing has been read from it yet; "failed" means a read was attempted.
     const STATUS_LABEL = { stored: 'stored, not extracted', extracted: 'extracted', failed: 'extraction failed' };
+    // How each document type reads in the list (the upload form's three choices).
+    const DOC_TYPE_LABEL = { lab_pdf: 'lab report', intake_form: 'intake form', medication_list: 'medication list' };
 
     /**
      * Draw the "Uploaded documents" list. Each row shows the file name, its type,
@@ -430,7 +432,7 @@
         }
         docs.forEach(d => {
             // Build the row's text as a list of pieces, then join them into one string.
-            const parts = [d.filename + ' (' + (d.doc_type === 'lab_pdf' ? 'lab report' : 'intake form') + '): ' + (STATUS_LABEL[d.status] || d.status)];
+            const parts = [d.filename + ' (' + (DOC_TYPE_LABEL[d.doc_type] || d.doc_type) + '): ' + (STATUS_LABEL[d.status] || d.status)];
             // confidence is the fraction of extracted values the anchor step found on the page (0..1).
             if (d.status === 'extracted' && typeof d.confidence === 'number') parts.push(', ' + Math.round(d.confidence * 100) + '% of values verified');
             // failure_reason is a machine label like "no_text_layer"; underscores become spaces for reading.

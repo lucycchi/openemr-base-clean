@@ -237,6 +237,14 @@ final class DocumentIngestService
                 [$documentId, $pid->value, "/demographics/mismatch/$i", $what]
             );
         }
+        // A medication list prints only the patient's name. It is checked the way a lab
+        // report's is, and a mismatch is stored the same way: a fixed sentence, never the name.
+        if ($intake->patientNameOnList !== null && $this->demographicsMismatches($pid, ['name' => $intake->patientNameOnList]) !== []) {
+            QueryUtils::sqlInsert(
+                "INSERT INTO copilot_document_fact (document_id, field_path, kind, value, anchored, page) VALUES (?, '/patient_name_on_list', 'patient_mismatch', 'patient name on the list does not match the chart', 1, 1)",
+                [$documentId]
+            );
+        }
         // Each item keeps its citation (page and boxes) as JSON so the panel can highlight
         // the handwritten line. Unanchored items are stored too, counted as unverified.
         foreach ($intake->items as $item) {

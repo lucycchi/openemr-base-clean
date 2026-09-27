@@ -55,7 +55,7 @@ log = logging.getLogger("copilot.graph")
 
 # The document types the extractor knows how to anchor. A stored document of
 # any other type is routed to "done" with reason unsupported_doc_type.
-SUPPORTED_DOC_TYPES = {"lab_pdf", "intake_form"}
+SUPPORTED_DOC_TYPES = {"lab_pdf", "intake_form", "medication_list"}
 
 # The shapes of the two injectable workers: extract takes a document and the
 # correlation id and returns its Extraction plus usage; retrieve takes the

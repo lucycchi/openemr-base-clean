@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS `copilot_document` (
     `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
     `document_id` BIGINT(20) NOT NULL COMMENT 'references documents.id',
     `pid` BIGINT(20) NOT NULL,
-    `doc_type` ENUM('lab_pdf','intake_form') NOT NULL,
+    `doc_type` ENUM('lab_pdf','intake_form','medication_list') NOT NULL,
     `hash` CHAR(128) NOT NULL COMMENT 'sha3-512 hex of the file bytes, same as documents.hash',
     `status` ENUM('stored','extracted','failed') NOT NULL DEFAULT 'stored',
     `failure_reason` VARCHAR(32) NULL COMMENT 'encrypted, unreadable, too_many_pages, model_error, schema_mismatch, timeout',

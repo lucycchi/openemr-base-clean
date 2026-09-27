@@ -1,7 +1,7 @@
 <?php
 
 /**
- * copilot:attach <pid> <file> <lab_pdf|intake_form>: the brief's
+ * copilot:attach <pid> <file> <lab_pdf|intake_form|medication_list>: the brief's
  * attach_and_extract(patient_id, file_path, doc_type) as a console command.
  * Stores the PDF for the patient through the same DocumentStore the panel
  * uses, runs the sidecar extraction and persists the result, then prints a
@@ -59,7 +59,7 @@ final class AttachCommand extends Command
             ->setDescription('Attach a lab PDF or intake form to a patient and extract it (attach_and_extract)')
             ->addArgument('pid', InputArgument::REQUIRED, 'Patient id')
             ->addArgument('file', InputArgument::REQUIRED, 'Path to a PDF')
-            ->addArgument('doc_type', InputArgument::REQUIRED, 'lab_pdf or intake_form')
+            ->addArgument('doc_type', InputArgument::REQUIRED, 'lab_pdf, intake_form or medication_list')
             ->addOption('site', null, InputOption::VALUE_REQUIRED, 'OpenEMR site (consumed by bin/console)', 'default')
             ->addOption('user', null, InputOption::VALUE_REQUIRED, 'Username recorded as the uploader', 'admin')
             ->addOption('json', null, InputOption::VALUE_NONE, 'Print the summary as JSON, with the validated extraction (strict-schema JSON) under "extraction"');
@@ -78,7 +78,7 @@ final class AttachCommand extends Command
         $file = $input->getArgument('file');
         $type = DocType::tryFrom(is_string($input->getArgument('doc_type')) ? $input->getArgument('doc_type') : '');
         if (!is_string($pidArg) || !ctype_digit($pidArg) || (int) $pidArg <= 0 || !is_string($file) || $type === null) {
-            $output->writeln('<error>usage: copilot:attach <pid> <file.pdf> <lab_pdf|intake_form></error>');
+            $output->writeln('<error>usage: copilot:attach <pid> <file.pdf> <lab_pdf|intake_form|medication_list></error>');
             return Command::INVALID;
         }
         // The "@" silences PHP's own warning for an unreadable path; the false return is handled.

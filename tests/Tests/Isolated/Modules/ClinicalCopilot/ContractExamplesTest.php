@@ -101,6 +101,7 @@ final class ContractExamplesTest extends TestCase
             'handoff' => Handoff::fromArray(...),
             'lab-report' => LabReportExtraction::fromArray(...),
             'intake-form' => IntakeExtraction::fromArray(...),
+            'medication-list' => IntakeExtraction::fromArray(...),
             'run.response' => RunResult::fromArray(...),
             default => null,
         };

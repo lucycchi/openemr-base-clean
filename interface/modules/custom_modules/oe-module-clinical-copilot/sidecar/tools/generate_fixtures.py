@@ -10,6 +10,7 @@ lab-layout2.pdf        two-column report where the string "100" appears in the L
                        (the Codex "100 in three columns" case); different header wording
 intake-full.pdf        a filled new-patient intake form: free-text fields, not a table
 intake-full-scan.pdf   the same form as a 150 dpi scan, no text layer
+medication-list.pdf    a pharmacy medication profile: drug / strength / directions / last filled
 corrupt.pdf            a truncated file the parser cannot open
 lab-encrypted.pdf      a password-protected report
 lab-6page.pdf          one page over the five-page cap
@@ -296,6 +297,52 @@ def intake_full(out: Path) -> None:
     (out / "intake-full-scan.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
 
 
+def medication_list(out: Path) -> None:
+    """An outside medication list (PRD extension X3): the medication profile
+    a pharmacy prints for a patient. A table of drug, strength, directions
+    and date last filled, under a header with the patient name and the date
+    the list was printed.
+
+    It is anchored like the intake form's medications: the drug name must be
+    found in a row that also holds the strength and the directions the model
+    proposed (anchor_entry). Each medication's strength and directions are
+    printed on one row, short enough not to wrap, so a faithful proposal
+    anchors every entry. The "Last filled" column holds dates that are not
+    doses; the model is told not to extract it. One strength has a digit
+    pattern a careless reading could swap ("500 mg" and "50 mcg" are both on
+    the page), which the anchor eval case uses as its swapped value.
+    """
+    doc = fitz.open()
+    p = doc.new_page(width=612, height=792)
+    y = 50
+    p.insert_text((50, y), "OAK STREET PHARMACY  -  PATIENT MEDICATION PROFILE", fontsize=12); y += 14
+    p.insert_text((50, y), "Fixture for evals; fictional patient, invented prescriptions", fontsize=8); y += 22
+    p.insert_text((50, y), f"Patient: {PATIENT}          DOB: 01/01/1970          Printed: 09/10/2026", fontsize=10); y += 24
+    meds = [
+        ("atorvastatin", "40 mg", "1 tablet at bedtime", "08/28/2026"),
+        ("metformin ER", "500 mg", "2 tablets with supper", "09/02/2026"),
+        ("amlodipine", "5 mg", "1 tablet daily", "08/15/2026"),
+        ("levothyroxine", "50 mcg", "1 tablet before breakfast", "09/01/2026"),
+    ]
+    for x, h in [(50, "Drug"), (200, "Strength"), (280, "Directions"), (470, "Last filled")]:
+        p.insert_text((x, y), h, fontsize=10)
+    y += 6; p.draw_line((50, y), (560, y)); y += 16
+    for name, strength, directions, filled in meds:
+        for x, t in [(50, name), (200, strength), (280, directions), (470, filled)]:
+            p.insert_text((x, y), t, fontsize=10)
+        y += 18
+    y += 20
+    p.insert_text((50, y), "Pharmacist: ______________________", fontsize=10)
+    doc.save(out / "medication-list.pdf", garbage=4, deflate=True)
+    # The truth file mirrors the medication-list contract: the printed
+    # patient name and list date, then each medication with its page.
+    truth = {
+        "doc_type": "medication_list", "patient_name_on_list": PATIENT, "list_date": "2026-09-10",
+        "medications": [{"name": n, "dose": d, "frequency": f, "page": 1} for n, d, f, _ in meds],
+    }
+    (out / "medication-list.truth.json").write_text(json.dumps(truth, indent=2) + "\n")
+
+
 def malformed(out: Path) -> None:
     """Inputs the ingestion path must refuse, one per failure reason:
     corrupt.pdf        a truncated file: the parser cannot open it (unreadable)
@@ -355,6 +402,7 @@ def main() -> None:
     lab_layout1(out)
     lab_layout2(out)
     intake_full(out)
+    medication_list(out)
     malformed(out)
     print("wrote", sorted(p.name for p in out.glob("*.pdf")))
 

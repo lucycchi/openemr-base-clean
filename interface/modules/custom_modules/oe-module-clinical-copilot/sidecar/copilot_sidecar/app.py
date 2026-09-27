@@ -59,7 +59,7 @@ from . import retrieve as retrieve_module
 from .keys import bind_keyless
 from .llm import PROMPT_VERSION
 from .logging_setup import bind_correlation_id, setup_logging
-from .schemas import CriticVerdict, Extraction, IntakeFormProposal, LabReportProposal, RunDocument, RunError, RunRequest, RunResponse, SidecarHealth, SidecarMetrics, SidecarReady, TriggerQuery, Usage
+from .schemas import CriticVerdict, Extraction, RunDocument, RunError, RunRequest, RunResponse, SidecarHealth, SidecarMetrics, SidecarReady, TriggerQuery, Usage, proposal_model
 
 # Module-level statements run once, when the process imports this file:
 # logging is configured before the first log line, and `app` is the object
@@ -399,7 +399,7 @@ class AnchorEvalRequest(BaseModel):
     """A fixture file plus a recorded model reply, so anchoring can be
     exercised without a model call."""
     fixture: str  # file name relative to FIXTURES_ROOT
-    doc_type: str  # "lab_pdf" or anything else, which is treated as intake_form
+    doc_type: str  # "lab_pdf", "medication_list", or anything else, which is treated as intake_form
     proposal: dict  # the recorded model reply, as plain JSON data
     document_id: int = 1
     question: str | None = None  # /eval/phi only: also run the retrieval leg (keyword leg, no embeddings call)
@@ -461,7 +461,7 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
             raise HTTPException(400, "fixture outside the fixtures directory")
         if not path.is_file():
             raise HTTPException(404, "fixture not found")
-        model = LabReportProposal if req.doc_type == "lab_pdf" else IntakeFormProposal
+        model = proposal_model(req.doc_type)
         proposal = model.model_validate(req.proposal)
         outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), "eval-anchor", proposal=proposal)
         return json.loads(outcome.extraction.model_dump_json())
@@ -474,7 +474,7 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         path = (FIXTURES_ROOT / req.fixture).resolve()
         if FIXTURES_ROOT not in path.parents or not path.is_file():
             raise HTTPException(404, "fixture not found")
-        model = LabReportProposal if req.doc_type == "lab_pdf" else IntakeFormProposal
+        model = proposal_model(req.doc_type)
         outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), "eval-anchor-absent", proposal=model.model_validate(req.proposal))
         ext = outcome.extraction.extraction
         if ext is None:
@@ -483,6 +483,8 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         # this list to be empty for a fixture that contains none of them.
         if req.doc_type == "lab_pdf":
             anchored = [r.analyte for r in ext.results if r.citation.anchored]
+        elif req.doc_type == "medication_list":
+            anchored = [m.name for m in ext.medications if m.citation.anchored]
         else:
             anchored = [m.name for m in ext.medications if m.citation.anchored] + [a.substance for a in ext.allergies if a.citation.anchored] + [f.condition for f in ext.family_history if f.citation.anchored]
             if ext.chief_concern is not None and ext.chief_concern.citation.anchored:
@@ -568,7 +570,7 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         # try/finally: the handler is removed even if the extraction raises,
         # so a failed eval does not leave the capture attached to the process.
         try:
-            model = LabReportProposal if req.doc_type == "lab_pdf" else IntakeFormProposal
+            model = proposal_model(req.doc_type)
             # An empty proposal dict means "call the real model".
             proposal = model.model_validate(req.proposal) if req.proposal else None
             outcome = extractor.extract(req.document_id, req.doc_type, path.read_bytes(), cid, proposal=proposal)
@@ -593,7 +595,7 @@ if os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1":
         bind_correlation_id(run_req.correlation_id)
 
         def recorded_extract(doc: RunDocument, correlation_id: str) -> tuple[Extraction, list[Usage]]:
-            model = LabReportProposal if doc.doc_type == "lab_pdf" else IntakeFormProposal
+            model = proposal_model(doc.doc_type)
             outcome = extractor.extract(doc.document_id, doc.doc_type, extractor.decode(doc.bytes_base64), correlation_id, proposal=model.model_validate(req.proposal))
             return outcome.extraction, outcome.usage
 

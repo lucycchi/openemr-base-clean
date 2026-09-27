@@ -35,7 +35,7 @@ from dataclasses import dataclass
 from pydantic import ValidationError
 
 from . import anchor, capacity, llm, parse
-from .schemas import Extraction, IntakeFormProposal, LabReportProposal, Usage
+from .schemas import Extraction, IntakeFormProposal, LabReportProposal, MedicationListProposal, Usage
 
 log = logging.getLogger("copilot.extractor")
 
@@ -51,7 +51,7 @@ class ExtractOutcome:
     proposal_raw: str | None = None
 
 
-def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, proposal: LabReportProposal | IntakeFormProposal | None = None) -> ExtractOutcome:
+def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, proposal: LabReportProposal | IntakeFormProposal | MedicationListProposal | None = None) -> ExtractOutcome:
     """Runs one document through parse -> propose -> anchor -> validate.
 
     `proposal` is normally None and the model is called. The eval harness
@@ -90,6 +90,9 @@ def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, p
         if doc_type == "lab_pdf":
             assert isinstance(proposal, LabReportProposal)
             built, reason = anchor.build_lab_report(document_id, parsed, proposal, anchor.load_loinc_map())
+        elif doc_type == "medication_list":
+            assert isinstance(proposal, MedicationListProposal)
+            built, reason = anchor.build_medication_list(document_id, parsed, proposal)
         else:
             assert isinstance(proposal, IntakeFormProposal)
             built, reason = anchor.build_intake_form(document_id, parsed, proposal)
@@ -152,7 +155,7 @@ def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, p
     return ExtractOutcome(Extraction(document_id=document_id, status="extracted", failure_reason=None, extraction=built, confidence=conf, retries=retries), usage, raw)
 
 
-def _propose_per_page(doc_type: str, parsed: parse.ParsedDocument) -> tuple[LabReportProposal | IntakeFormProposal, str, list[Usage]]:
+def _propose_per_page(doc_type: str, parsed: parse.ParsedDocument) -> tuple[LabReportProposal | IntakeFormProposal | MedicationListProposal, str, list[Usage]]:
     """One model call per page (fewer omissions than one call for the whole
     document), merged: list fields concatenate, scalar header fields take the
     first non-null value across pages.
@@ -161,7 +164,7 @@ def _propose_per_page(doc_type: str, parsed: parse.ParsedDocument) -> tuple[LabR
     the usage of every call. A ModelError from any page aborts the whole
     document; extract() turns it into a failure_reason."""
     usage: list[Usage] = []
-    merged: LabReportProposal | IntakeFormProposal | None = None
+    merged: LabReportProposal | IntakeFormProposal | MedicationListProposal | None = None
     for page in parsed.pages:
         # The request's deadline (capacity.py) is checked before every page:
         # once it has passed, no further page is paid for and the document

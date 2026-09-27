@@ -20,8 +20,9 @@
 //   0.1.3  0_1_2-to-0_1_3_upgrade.sql (mismatch kinds on copilot_intake and copilot_document_fact)
 //   0.1.4  0_1_3-to-0_1_4_upgrade.sql (copilot_briefing_rating: physician rating of the AI summary)
 //   0.1.5  0_1_4-to-0_1_5_upgrade.sql (copilot_prewarm.guideline_status; pre-0.1.5 receipt cache keys cleared)
+//   0.1.6  0_1_5-to-0_1_6_upgrade.sql (copilot_document.doc_type gains medication_list)
 $v_major = '0';
 $v_minor = '1';
-$v_patch = '5';
+$v_patch = '6';
 $v_tag   = '';
 $v_database = 0;

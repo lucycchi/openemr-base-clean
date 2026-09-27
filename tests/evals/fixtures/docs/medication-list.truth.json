@@ -1,0 +1,31 @@
+{
+  "doc_type": "medication_list",
+  "patient_name_on_list": "Test Zeta",
+  "list_date": "2026-09-10",
+  "medications": [
+    {
+      "name": "atorvastatin",
+      "dose": "40 mg",
+      "frequency": "1 tablet at bedtime",
+      "page": 1
+    },
+    {
+      "name": "metformin ER",
+      "dose": "500 mg",
+      "frequency": "2 tablets with supper",
+      "page": 1
+    },
+    {
+      "name": "amlodipine",
+      "dose": "5 mg",
+      "frequency": "1 tablet daily",
+      "page": 1
+    },
+    {
+      "name": "levothyroxine",
+      "dose": "50 mcg",
+      "frequency": "1 tablet before breakfast",
+      "page": 1
+    }
+  ]
+}

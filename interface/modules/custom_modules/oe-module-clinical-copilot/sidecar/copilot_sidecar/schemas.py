@@ -251,6 +251,20 @@ class IntakeForm(Strict):
     family_history: list[IntakeFamilyHistory]
 
 
+class MedicationList(Strict):
+    """An extracted outside medication list: a pharmacy printout or another
+    practice's list (PRD extension X3). Each medication is the same shape as
+    an intake medication, anchored the same way: the citation points at the
+    drug name and is anchored only when the strength and directions proposed
+    with it are printed in that row too."""
+    doc_type: Literal["medication_list"] = "medication_list"
+    # As printed; PHP compares it with the chart and throws it away.
+    patient_name_on_list: str | None
+    list_date: IsoDate | None  # the date printed on the list, not the upload date
+    list_date_citation: Citation | None
+    medications: list[IntakeMedication]
+
+
 # The nodes of the graph in graph.py that can hand off. ("critic" is reserved
 # in the contract; graph.py does not build one.)
 # answer_writer and verifier are the answer stage PHP appends after the graph
@@ -317,7 +331,7 @@ class Usage(Strict):
     output: int = Field(ge=0)  # tokens received (0 for embeddings and rerank)
 
 
-DocType = Literal["lab_pdf", "intake_form"]
+DocType = Literal["lab_pdf", "intake_form", "medication_list"]
 # Where the document is in its life: uploaded ("stored"), already processed,
 # or processed and failed. Only "stored" documents are extracted in a run.
 DocStatus = Literal["stored", "extracted", "failed"]
@@ -406,7 +420,7 @@ class Extraction(Strict):
     failure_reason: FailureReason | None  # set when status is "failed"
     # Either shape, or null on failure. The doc_type tag on each shape lets
     # only one of them validate a given document.
-    extraction: LabReport | IntakeForm | None
+    extraction: LabReport | IntakeForm | MedicationList | None
     # Share of citations that were anchored, between 0 and 1 inclusive.
     confidence: float = Field(ge=0, le=1)
     # Model calls beyond one per page (the omission-driven re-ask), for the dashboard's retry count.
@@ -623,3 +637,25 @@ class IntakeFormProposal(Strict):
     medications: list[IntakeMedicationProposal]
     allergies: list[IntakeAllergyProposal]
     family_history: list[IntakeFamilyHistoryProposal]
+
+
+class MedicationListProposal(Strict):
+    """The model's reading of an outside medication list: the drug as
+    printed (name), its strength (dose) and its directions (frequency),
+    copied verbatim; the list date and patient name as printed strings."""
+    patient_name: str | None
+    list_date: str | None
+    medications: list[IntakeMedicationProposal]
+
+
+# Which proposal model the model's reply (or a recorded proposal) is read
+# into, per document type. Anything unknown reads as an intake form, as before.
+PROPOSAL_MODELS: dict[str, type[LabReportProposal] | type[IntakeFormProposal] | type[MedicationListProposal]] = {
+    "lab_pdf": LabReportProposal,
+    "intake_form": IntakeFormProposal,
+    "medication_list": MedicationListProposal,
+}
+
+
+def proposal_model(doc_type: str) -> type[LabReportProposal] | type[IntakeFormProposal] | type[MedicationListProposal]:
+    return PROPOSAL_MODELS.get(doc_type, IntakeFormProposal)

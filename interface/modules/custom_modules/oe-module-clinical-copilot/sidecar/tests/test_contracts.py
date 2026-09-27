@@ -65,6 +65,7 @@ MODELS = {
     "sidecar.health.response": schemas.SidecarHealth, "sidecar.ready.response": schemas.SidecarReady,
     "sidecar.metrics.response": schemas.SidecarMetrics,
     "llm.critic.output": schemas.CriticVerdict,
+    "medication-list": schemas.MedicationList, "llm.medication-list-proposal.output": schemas.MedicationListProposal,
 }
 
 

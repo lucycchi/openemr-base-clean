@@ -162,6 +162,7 @@ final class Bootstrap
         <select id="copilot-doc-type" class="form-control form-control-sm">
           <option value="lab_pdf">Lab report (PDF)</option>
           <option value="intake_form">Intake form (PDF)</option>
+          <option value="medication_list">Medication list (PDF)</option>
         </select>
         <input type="file" id="copilot-file" class="form-control-file" accept="application/pdf">
         <button type="submit" class="btn btn-outline-primary btn-sm">Upload and extract</button>

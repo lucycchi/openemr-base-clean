@@ -1,0 +1,81 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://open-emr.org/clinical-copilot/contracts/medication-list.schema.json",
+ "title": "Medication list extraction",
+ "description": "Strict extraction of an uploaded outside medication list, such as a pharmacy printout or another practice's list (doc_type=medication_list; PRD extension X3). Each medication carries a citation to its name, anchored only when its strength and directions are printed in the same row. The printed patient name is compared with the session patient by PHP and never persisted; a mismatch surfaces as a fact. list_date is the date printed on the list, null when none is printed.",
+ "type": "object",
+ "properties": {
+  "doc_type": {
+   "type": "string",
+   "enum": [
+    "medication_list"
+   ]
+  },
+  "patient_name_on_list": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "list_date": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "format": "date",
+   "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+  },
+  "list_date_citation": {
+   "oneOf": [
+    {
+     "$ref": "citation.schema.json"
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "medications": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "name": {
+      "type": "string",
+      "minLength": 1
+     },
+     "dose": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "frequency": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "citation": {
+      "$ref": "citation.schema.json"
+     }
+    },
+    "required": [
+     "name",
+     "dose",
+     "frequency",
+     "citation"
+    ],
+    "additionalProperties": false
+   }
+  }
+ },
+ "required": [
+  "doc_type",
+  "patient_name_on_list",
+  "list_date",
+  "list_date_citation",
+  "medications"
+ ],
+ "additionalProperties": false
+}

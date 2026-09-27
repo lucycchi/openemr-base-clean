@@ -61,6 +61,8 @@ from .schemas import (
     LabReport,
     LabReportProposal,
     LabResult,
+    MedicationList,
+    MedicationListProposal,
     UnextractedRow,
 )
 
@@ -690,6 +692,29 @@ def build_intake_form(document_id: int, parsed: ParsedDocument, proposal: Intake
     )
 
 
+def build_medication_list(document_id: int, parsed: ParsedDocument, proposal: MedicationListProposal) -> tuple[MedicationList | None, str | None]:
+    """Builds a MedicationList from the model's reading of an outside list.
+    Each medication is anchored exactly as an intake medication is
+    (anchor_entry): its name, strength and directions must all be printed in
+    one row, or the entry is kept but unverified. The list date is cited when
+    it parses; the printed patient name is passed through uncited for PHP to
+    compare with the chart. A list with no medications is still a valid
+    extraction (an empty list printed as such), so this never fails."""
+    list_date = parse_date(proposal.list_date)
+    ld_cit = None
+    if list_date is not None:
+        b, rb, p = anchor_text(parsed, proposal.list_date or "")
+        ld_cit = _citation(document_id, "/list_date", proposal.list_date or "", b, rb, p)
+    meds = []
+    for i, m in enumerate(proposal.medications):
+        if not m.name.strip():
+            continue
+        b, rb, p = anchor_entry(parsed, m.name, [m.dose, m.frequency], m.page)
+        meds.append(IntakeMedication(name=m.name.strip(), dose=m.dose, frequency=m.frequency, citation=_citation(document_id, f"/medications/{i}/name", m.name.strip(), b, rb, p)))
+    name = proposal.patient_name.strip() if proposal.patient_name and proposal.patient_name.strip() else None
+    return MedicationList(patient_name_on_list=name, list_date=list_date, list_date_citation=ld_cit, medications=meds), None
+
+
 def confidence(citations: list[Citation]) -> float:
     """The share of citations that anchored, 0.0 to 1.0, three decimals.
     Not a model's self-reported confidence: it is a count of what the code
@@ -699,7 +724,7 @@ def confidence(citations: list[Citation]) -> float:
     return round(sum(1 for c in citations if c.anchored) / len(citations), 3)
 
 
-def citations_of(extraction: LabReport | IntakeForm) -> list[Citation]:
+def citations_of(extraction: LabReport | IntakeForm | MedicationList) -> list[Citation]:
     """Every Citation anywhere inside an extraction, in document order."""
     out: list[Citation] = []
 

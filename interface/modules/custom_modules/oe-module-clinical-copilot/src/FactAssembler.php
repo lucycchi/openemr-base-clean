@@ -16,6 +16,7 @@ namespace OpenEMR\Modules\ClinicalCopilot;
 
 use DateTimeImmutable;
 use OpenEMR\Modules\ClinicalCopilot\Documents\Citation;
+use OpenEMR\Modules\ClinicalCopilot\Documents\DocType;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -287,11 +288,13 @@ final class FactAssembler
             }
         }
 
-        // Week 2: intake-form entries and document-vs-chart mismatches since the prior visit.
+        // Week 2: intake-form and outside-medication-list entries, and document-vs-chart
+        // mismatches, since the prior visit.
         foreach ($this->chart->intakeRecords($pid) as $r) {
             $category = $r->category();
             if ($category !== null && ($since === null || $this->isNew($r->uploadedAt, $since))) {
-                $facts[] = $this->fact('IntakeForm', $r->id, $r->kind, $r->describe(), $category, $r->citation);
+                $service = $r->docType === DocType::MedicationList ? 'MedicationList' : 'IntakeForm';
+                $facts[] = $this->fact($service, $r->id, $r->kind, $r->describe(), $category, $r->citation);
             }
         }
 

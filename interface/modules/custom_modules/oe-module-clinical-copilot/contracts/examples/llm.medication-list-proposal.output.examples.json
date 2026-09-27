@@ -1,0 +1,59 @@
+{
+ "accept": [
+  {
+   "patient_name": "Test Zeta",
+   "list_date": "09/10/2026",
+   "medications": [
+    {
+     "name": "atorvastatin",
+     "dose": "40 mg",
+     "frequency": "1 tablet by mouth at bedtime",
+     "page": 1
+    }
+   ]
+  },
+  {
+   "patient_name": null,
+   "list_date": null,
+   "medications": []
+  }
+ ],
+ "reject": [
+  {
+   "patient_name": "Test Zeta",
+   "medications": [
+    {
+     "name": "atorvastatin",
+     "dose": "40 mg",
+     "frequency": "1 tablet by mouth at bedtime",
+     "page": 1
+    }
+   ]
+  },
+  {
+   "patient_name": "Test Zeta",
+   "list_date": "09/10/2026",
+   "medications": [
+    {
+     "name": "atorvastatin",
+     "dose": "40 mg",
+     "frequency": null,
+     "page": 0
+    }
+   ]
+  },
+  {
+   "patient_name": "Test Zeta",
+   "list_date": "09/10/2026",
+   "medications": [
+    {
+     "name": "atorvastatin",
+     "dose": "40 mg",
+     "frequency": "1 tablet by mouth at bedtime",
+     "page": 1
+    }
+   ],
+   "extra": 1
+  }
+ ]
+}

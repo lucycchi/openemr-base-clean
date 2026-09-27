@@ -1,0 +1,31 @@
+{
+  "id": "76-facts-medication-list-items-become-cited-facts",
+  "guards": "invariant",
+  "failure_mode": "Every medication anchored on an outside medication list (PRD extension X3) must reach the physician as a cited fact worded as the pharmacy list it came from, with the date printed on the list, never as a patient-reported intake form entry. The list's printed patient name differs from the chart, so it must yield a document_mismatch fact that names a medication list, not a lab report, and the name itself is never stored.",
+  "mode": "facts",
+  "doc_type": "medication_list",
+  "fixture": "medication-list.pdf",
+  "model_output": "medication-list.model.json",
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "anchor_correct": true
+  },
+  "expect": {
+    "status": "extracted",
+    "categories": {
+      "intake_med": 4,
+      "document_mismatch": 1
+    },
+    "cited": [
+      "intake_med"
+    ],
+    "worded": {
+      "intake_med": "Outside medication list (dated 2026-09-10) shows",
+      "document_mismatch": "Medication list uploaded"
+    },
+    "absent": [
+      "extraction_unverified"
+    ]
+  }
+}

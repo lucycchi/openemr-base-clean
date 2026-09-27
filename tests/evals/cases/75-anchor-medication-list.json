@@ -1,0 +1,22 @@
+{
+  "id": "75-anchor-medication-list",
+  "guards": "invariant",
+  "failure_mode": "The third document type (PRD extension X3): a recorded model proposal for a pharmacy medication profile must anchor every medication to its own row, with its strength and directions printed in that row, and the printed list date must be anchored; a real drug paired with a strength printed on another row ('metformin ER' with '50 mcg', levothyroxine's strength) must come back unverified, not ride on the drug name's citation.",
+  "mode": "anchor",
+  "doc_type": "medication_list",
+  "fixture": "medication-list.pdf",
+  "model_output": "medication-list.model.json",
+  "truth": "medication-list.truth.json",
+  "swapped": [
+    { "name": "metformin ER", "dose": "50 mcg", "frequency": "2 tablets with supper" }
+  ],
+  "rubrics": {
+    "schema_valid": true,
+    "citation_present": true,
+    "anchor_correct": true,
+    "factually_consistent": true
+  },
+  "expect": {
+    "status": "extracted"
+  }
+}

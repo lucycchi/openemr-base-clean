@@ -18,7 +18,7 @@ files are the source of truth.** Both implementations conform to them:
   before parsing it (`SidecarClient`, via `Contracts::violations()`), and
   both LLM callers send the contract *file* to OpenAI as the strict
   `response_format` (PHP: `llm.briefing.output`, `llm.followup.output`;
-  sidecar: `llm.lab-proposal.output`, `llm.intake-proposal.output`).
+  sidecar: `llm.lab-proposal.output`, `llm.intake-proposal.output`, `llm.medication-list-proposal.output`).
 
 How this meets the engineering requirement, the decisions and their
 trade-offs: [clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md § 3](../../../../../clinical_copilot_week2/ENGINEERING_REQUIREMENTS.md#3-canonical-contracts-as-the-source-of-truth).
@@ -54,6 +54,7 @@ code outside an enum, a missing required field, a value out of range).
 | `documents.error.response.schema.json` | `documents.php` → browser, every error including the 502 "stored, retry" shape | Examples in `ContractExamplesTest`; every error path in `DocumentController` uses this shape. |
 | `llm.lab-proposal.output.schema.json` | OpenAI → sidecar, one page of a lab PDF | **Loaded at runtime** by `sidecar/copilot_sidecar/contracts.py` and sent as `response_format.json_schema` with `strict: true`; the `LabReportProposal` Pydantic model validates the reply and is held to the file by the shared examples. Values only: citations and coordinates are attached by `anchor.py`. |
 | `llm.intake-proposal.output.schema.json` | OpenAI → sidecar, one page of an intake form | Same, `IntakeFormProposal`. |
+| `llm.medication-list-proposal.output.schema.json` | OpenAI → sidecar, one page of an outside medication list (PRD extension X3) | Same, `MedicationListProposal`. |
 | `llm.briefing.output.schema.json` | OpenAI → `OpenAiClient`, briefing | **Loaded at runtime** by `Prompt::briefingSchema()` via `Contracts::forOpenAi()` and sent to OpenAI as `response_format.json_schema` with `strict: true`. The provider enforces it; `LlmSchemaMismatch` is raised on any deviation. |
 | `llm.followup.output.schema.json` | OpenAI → `OpenAiClient`, follow-up | Same, via `Prompt::followUpSchema()`. |
 | `fact.schema.json` | shared: one row of the fact table | `$ref`'d by the three response contracts; its `category` enum is asserted equal to `FactCategory::cases()`. |
@@ -67,6 +68,7 @@ code outside an enum, a missing required field, a value out of range).
 | `citation.schema.json` | shared (Week 2): provenance for one claim or extracted field, with the bounding box for document sources | `$ref`'d by the extraction contracts; `Fact::citation` and the panel render it. Written by hand first; the sidecar's Pydantic export must equal it (pytest). |
 | `lab-report.schema.json` | sidecar → PHP: extraction of a lab PDF | `$ref`'d by `run.response`, which PHP validates at runtime before parsing (`SidecarClient`); built by the sidecar's anchor step, never returned by the model directly (the model fills `llm.lab-proposal.output`). `tests/evals` extract and anchor cases validate outputs against it. |
 | `intake-form.schema.json` | sidecar → PHP: extraction of an intake form | Same. |
+| `medication-list.schema.json` | sidecar → PHP: extraction of an outside medication list (pharmacy printout) | Same; PHP reads it with `IntakeExtraction` into `copilot_intake` rows, and the printed patient name is compared with the chart, never stored. |
 | `handoff.schema.json` | sidecar → PHP: one supervisor routing step | Every hop in `run.response.handoffs`; written to Langfuse spans and the panel drawer. Reasons are fixed codes so they are safe to log. |
 | `run.request.schema.json` | PHP → sidecar `POST /run` | `SidecarClient` builds it; the sidecar rejects anything else (422). No patient identifiers cross this boundary. |
 | `run.response.schema.json` | sidecar → PHP, success | **Validated at runtime** by `SidecarClient` (`Contracts::violations`) before any of it is typed or persisted: an unknown key, a reason code outside the enum or a malformed chunk id is `schema_mismatch`, whatever the typed parser would tolerate. Carries `usage` for `Pricing` (one entry per model call, each traced as a generation) and, per extraction, `retries` (the sidecar's omission-driven re-ask count, for the dashboard). |

@@ -79,7 +79,7 @@ final readonly class DocumentRequest
             DocumentAction::Upload => (static function () use ($csrf, $action, $bag, $file): self {
                 $type = DocType::tryFrom($bag->getString('doc_type'));
                 if ($type === null) {
-                    throw new InvalidRequest('doc_type must be lab_pdf or intake_form');
+                    throw new InvalidRequest('doc_type must be lab_pdf, intake_form or medication_list');
                 }
                 // isValid() is false when PHP itself rejected the upload (size limit, partial transfer).
                 if ($file === null || !$file->isValid()) {

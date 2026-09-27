@@ -15,7 +15,7 @@ declare(strict_types=1);
 namespace OpenEMR\Modules\ClinicalCopilot\Documents;
 
 /**
- * The two kinds of document the Co-Pilot can read. An "enum" is a closed
+ * The three kinds of document the Co-Pilot can read. An "enum" is a closed
  * list: a variable of this type can only ever hold one of the cases below,
  * so a typo like "lab_pfd" cannot travel through the code. It is a "backed"
  * enum (each case has a string value) because the value is written to the
@@ -25,6 +25,8 @@ enum DocType: string
 {
     case LabPdf = 'lab_pdf';
     case IntakeForm = 'intake_form';
+    // An outside medication list: a pharmacy printout or another practice's list.
+    case MedicationList = 'medication_list';
 
     /**
      * OpenEMR stock document category the file is filed under. OpenEMR's
@@ -38,6 +40,7 @@ enum DocType: string
         return match ($this) {
             self::LabPdf => 'Lab Report',
             self::IntakeForm => 'Patient Information',
+            self::MedicationList => 'Medical Record',
         };
     }
 }

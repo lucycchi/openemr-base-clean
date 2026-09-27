@@ -1,7 +1,7 @@
 <?php
 
 /**
- * An intake form as extracted by the sidecar, flattened to cited items; demographics are compared, never stored (contracts/intake-form.schema.json).
+ * An intake form or outside medication list as extracted by the sidecar, flattened to cited items; demographics are compared, never stored (contracts/intake-form.schema.json, contracts/medication-list.schema.json).
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -31,9 +31,14 @@ final readonly class IntakeExtraction
     /**
      * @param list<IntakeItem> $items
      * @param array<string, string> $demographics name/dob/sex/phone as printed, for comparison with the chart only
+     * @param ?string $patientNameOnList a medication list's printed patient name, for the same comparison; never stored
      */
-    public function __construct(public array $items, public array $demographics)
-    {
+    public function __construct(
+        public array $items,
+        public array $demographics,
+        public DocType $docType = DocType::IntakeForm,
+        public ?string $patientNameOnList = null,
+    ) {
     }
 
     /**
@@ -46,6 +51,9 @@ final readonly class IntakeExtraction
      */
     public static function fromArray(array $a): self
     {
+        if (($a['doc_type'] ?? null) === 'medication_list') {
+            return self::medicationList($a);
+        }
         if (($a['doc_type'] ?? null) !== 'intake_form' || !is_array($a['demographics'] ?? null)) {
             throw new SidecarException('schema_mismatch');
         }
@@ -99,6 +107,37 @@ final readonly class IntakeExtraction
             }
         }
         return new self($items, $demo);
+    }
+
+    /**
+     * An outside medication list (contracts/medication-list.schema.json),
+     * flattened into the same items an intake form's medications become:
+     * one "medication" item per row, and the printed list date as the
+     * "form_date" item at /list_date. It has no demographics block; the
+     * printed patient name is kept only for the chart comparison.
+     *
+     * @param array<mixed> $a  decoded JSON; every value is narrowed here
+     */
+    private static function medicationList(array $a): self
+    {
+        $list = $a['medications'] ?? null;
+        if (!is_array($list)) {
+            throw new SidecarException('schema_mismatch');
+        }
+        $items = [];
+        if (is_string($a['list_date'] ?? null) && is_array($a['list_date_citation'] ?? null)) {
+            $items[] = new IntakeItem('form_date', '/list_date', $a['list_date'], null, Citation::fromArray($a['list_date_citation']));
+        }
+        foreach (array_values($list) as $i => $entry) {
+            if (!is_array($entry) || !is_string($entry['name'] ?? null) || !is_array($entry['citation'] ?? null)) {
+                throw new SidecarException('schema_mismatch');
+            }
+            // The strength and directions, as printed, become the detail: "40 mg 1 tablet at bedtime".
+            $detail = trim(sprintf('%s %s', is_string($entry['dose'] ?? null) ? $entry['dose'] : '', is_string($entry['frequency'] ?? null) ? $entry['frequency'] : ''));
+            $items[] = new IntakeItem('medication', "/medications/$i/name", $entry['name'], $detail === '' ? null : $detail, Citation::fromArray($entry['citation']));
+        }
+        $name = is_string($a['patient_name_on_list'] ?? null) && trim($a['patient_name_on_list']) !== '' ? $a['patient_name_on_list'] : null;
+        return new self($items, [], DocType::MedicationList, $name);
     }
 
     /**

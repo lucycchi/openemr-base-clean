@@ -2,7 +2,7 @@
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "$id": "https://open-emr.org/clinical-copilot/contracts/run.response.schema.json",
  "title": "Sidecar run response",
- "description": "Sidecar -> PHP for a successful run. PHP validates this document against the contract before persisting anything. extractions are validated again against lab_report / intake_form by doc_type.",
+ "description": "Sidecar -> PHP for a successful run. PHP validates this document against the contract before persisting anything. extractions are validated again against lab_report / intake_form / medication_list by doc_type.",
  "type": "object",
  "properties": {
   "correlation_id": {
@@ -49,6 +49,9 @@
        },
        {
         "$ref": "intake-form.schema.json"
+       },
+       {
+        "$ref": "medication-list.schema.json"
        }
       ]
      },

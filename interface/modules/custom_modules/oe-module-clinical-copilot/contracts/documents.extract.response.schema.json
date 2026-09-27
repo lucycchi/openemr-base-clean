@@ -69,7 +69,8 @@
       "type": "string",
       "enum": [
         "lab_pdf",
-        "intake_form"
+        "intake_form",
+        "medication_list"
       ]
     },
     "status": {

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/llm.medication-list-proposal.output.schema.json",
+  "title": "LLM medication-list proposal",
+  "description": "What the extraction model is asked to return for one page of an outside medication list (sent by the sidecar as response_format.json_schema with strict: true). Values only, copied as printed: the drug as name, the strength as dose, the directions as frequency; anchor.py proves each row on the page. The patient name is compared with the chart and never stored. Every field is required and unknown is null.",
+  "type": "object",
+  "properties": {
+    "patient_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "list_date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "medications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dose": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "frequency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based page the value was read from, as labelled in the page markers of the document text."
+          }
+        },
+        "required": [
+          "name",
+          "dose",
+          "frequency",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "patient_name",
+    "list_date",
+    "medications"
+  ],
+  "additionalProperties": false
+}

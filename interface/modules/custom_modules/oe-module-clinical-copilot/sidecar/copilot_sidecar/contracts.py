@@ -39,7 +39,7 @@ METADATA_KEYS = {"$schema", "$id", "title"}
 UNSUPPORTED_KEYWORDS = {"minLength", "maxLength", "minItems", "maxItems", "format", "pattern", "minimum", "maximum", "default"}
 
 # Which contract file describes the model's reply for each document type.
-PROPOSAL_CONTRACT = {"lab_pdf": "llm.lab-proposal.output", "intake_form": "llm.intake-proposal.output"}
+PROPOSAL_CONTRACT = {"lab_pdf": "llm.lab-proposal.output", "intake_form": "llm.intake-proposal.output", "medication_list": "llm.medication-list-proposal.output"}
 
 
 # `@lru_cache` remembers the result for each name it has seen, so a contract

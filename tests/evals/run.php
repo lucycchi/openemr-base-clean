@@ -263,9 +263,16 @@ function runDocumentCase(array $case, string $mode): array
         return $run;
     }
     // schema_valid: the extraction must conform to its own contract, judged by the contract file.
-    $run['schema_errors'] = schemaErrors($docType === 'lab_pdf' ? 'lab-report' : 'intake-form', $doc);
+    $run['schema_errors'] = schemaErrors(match ($docType) {
+        'lab_pdf' => 'lab-report',
+        'medication_list' => 'medication-list',
+        default => 'intake-form',
+    }, $doc);
     if ($docType === 'intake_form') {
         return scoreIntake($run, $doc, $truth);
+    }
+    if ($docType === 'medication_list') {
+        return scoreMedicationList($run, $doc, $truth, $case);
     }
     // Lab report scoring from here on. Two small helpers read a result's anchoring and page.
     $run['unextracted'] = count(lst($doc, 'unextracted'));
@@ -332,6 +339,62 @@ function runDocumentCase(array $case, string $mode): array
             $run['anchor_errors'][] = sprintf('swapped %s=%s was anchored (must be unverified)', str($swap, 'analyte'), str($swap, 'value'));
         }
     }
+    return $run;
+}
+
+/**
+ * Medication-list scoring against truth.json: every true medication must be
+ * present (matched on the drug name) and anchored, the list date must equal
+ * the printed one and be anchored, and extra medications count against
+ * factually_consistent. The optional "swapped" list pairs a real drug with a
+ * strength printed on another row; re-anchored, each must come back
+ * unverified, because a strength being on the page is not the same as it
+ * being that drug's strength.
+ *
+ * @param array<string, mixed> $run
+ * @param array<string, mixed> $doc
+ * @param array<string, mixed> $truth
+ * @param array<string, mixed> $case
+ * @return array<string, mixed>
+ */
+function scoreMedicationList(array $run, array $doc, array $truth, array $case): array
+{
+    $anchorErrors = strings($run['anchor_errors'] ?? null);
+    $ungrounded = strings($run['ungrounded_tokens'] ?? null);
+    $got = array_map(mapOf(...), lst($doc, 'medications'));
+    $want = array_map(mapOf(...), lst($truth, 'medications'));
+    $isAnchored = static fn(array $m): bool => (map($m, 'citation')['anchored'] ?? false) === true;
+    foreach ($want as $w) {
+        $match = array_values(array_filter($got, static fn(array $g): bool => normName(str($g, 'name')) === normName(str($w, 'name'))));
+        if ($match === []) {
+            $anchorErrors[] = sprintf('medication "%s" missing', str($w, 'name'));
+        } elseif (!$isAnchored($match[0])) {
+            $anchorErrors[] = sprintf('medication "%s" not anchored', str($w, 'name'));
+        }
+    }
+    if (count($got) > count($want)) {
+        $ungrounded[] = sprintf('medications: %d listed, truth has %d', count($got), count($want));
+    }
+    if (($doc['list_date'] ?? null) !== ($truth['list_date'] ?? null)) {
+        $ungrounded[] = sprintf('list_date=%s (truth %s)', json_encode($doc['list_date'] ?? null), json_encode($truth['list_date'] ?? null));
+    }
+    if (($truth['list_date'] ?? null) !== null && (map($doc, 'list_date_citation')['anchored'] ?? false) !== true) {
+        $anchorErrors[] = 'list date not anchored';
+    }
+    foreach (array_map(mapOf(...), lst($case, 'swapped')) as $swap) {
+        $proposal = ['patient_name' => null, 'list_date' => null, 'medications' => [['name' => str($swap, 'name'), 'dose' => str($swap, 'dose'), 'frequency' => str($swap, 'frequency'), 'page' => 1]]];
+        $sw = sidecarPost('/eval/anchor', ['fixture' => str($case, 'fixture'), 'doc_type' => 'medication_list', 'document_id' => 1, 'proposal' => $proposal], deterministic($case));
+        $first = mapOf(lst(map($sw, 'extraction'), 'medications')[0] ?? null);
+        if ((map($first, 'citation')['anchored'] ?? null) !== false) {
+            $anchorErrors[] = sprintf('swapped %s %s was anchored (must be unverified)', str($swap, 'name'), str($swap, 'dose'));
+        }
+    }
+    $run['anchor_errors'] = $anchorErrors;
+    $run['ungrounded_tokens'] = $ungrounded;
+    $run['uncited_kept'] = count(array_filter($got, static fn(array $m): bool => !is_array($m['citation'] ?? null)));
+    $run['results'] = count($got);
+    $run['anchored'] = count(array_filter($got, $isAnchored));
+    $run['unextracted'] = 0;
     return $run;
 }
 
@@ -688,6 +751,7 @@ function runCriticCase(array $case): array
  * expect.categories: {category: minimum count}; expect.cited: categories whose
  * facts must all carry an anchored document citation; expect.absent: categories
  * that must not appear.
+ * expect.worded (optional): {category: phrase} every fact of the category must contain.
  * chart_labs (optional): numeric results seeded in the chart first, each
  * {loinc, name, value, unit, date}. expect.trends (optional): lines the panel's
  * trend chart must show, each {loinc, points, cited_last}.
@@ -783,6 +847,15 @@ function runFactsCase(array $case): array
             $last = $line->latest()->citation;
             if (($want['cited_last'] ?? false) === true && !($last !== null && $last->anchored && $last->sourceId === (string) $documentId)) {
                 $anchorErrors[] = sprintf('trend %s: newest point has no anchored citation to document %d', $line->loinc, $documentId);
+            }
+        }
+        // Optional "worded": {category: phrase}; every fact of that category must contain the
+        // phrase, so a medication read from a pharmacy list never reads as an intake form entry.
+        foreach (map($expect, 'worded') as $cat => $phrase) {
+            foreach ($facts as $f) {
+                if ($f->category->value === $cat && is_string($phrase) && !str_contains($f->value, $phrase)) {
+                    $anchorErrors[] = sprintf('%s fact not worded "%s": %s', $cat, $phrase, $f->value);
+                }
             }
         }
         foreach (strings($expect['cited'] ?? null) as $cat) {
@@ -985,7 +1058,7 @@ function compare(array $expect, array $actual): array
             }
             continue;
         }
-        if (in_array($key, ['min_chunks', 'categories', 'absent', 'cited', 'trends', 'min_chunks_per_trigger', 'top_sources_allowed'], true)) {
+        if (in_array($key, ['min_chunks', 'categories', 'absent', 'cited', 'trends', 'worded', 'min_chunks_per_trigger', 'top_sources_allowed'], true)) {
             continue; // scored into ungrounded_tokens / anchor_errors by the mode runner
         }
         if ($key === 'max_stripped') {
