@@ -15,9 +15,11 @@ Date: 2026-09-26 to 27. Branch: `dashboard-migration`. The work landed in two
 commits: `5d7988c` (the first round: admission gate, provider slots,
 deadline, retries, metrics) and `057832a` (the second round: adaptive
 provider limit, critic on the same slots, disconnect cancellation, panel
-auto-retry). Both run in the local dev stack, where the real 50-user test
-in [section 12](#12-the-real-50-user-test) was run. Neither is deployed to
-the droplet yet.
+auto-retry). Both run in the local dev stack, where the real 50-user tests
+in [section 12](#12-the-real-50-user-test) were run, and on the droplet
+since 2026-09-27 06:17 UTC (deployed at `3131484`; the droplet now tracks
+`dashboard-migration` instead of `pdf_reader`), where section 12.5's load
+test was run.
 
 ---
 
@@ -1077,12 +1079,62 @@ peaked at 313 MB both times, against the droplet's 768 MB limit.
 
 ---
 
+### 12.5 The same test on the droplet
+
+After the deploy, the same extract test ran against the droplet itself
+(`https://146-190-139-37.sslip.io`, now 4 CPUs and 8 GB; the sidecar
+container is capped at 768 MB). CPU and memory were sampled over ssh.
+Results: `tests/load/results/20260927T-droplet-v2c-*`.
+
+| Droplet | 10 users | 50 users |
+|---|---|---|
+| Extractions finished (k6) | 100 | 125 |
+| **Documents extracted** | **100 (100 %)** | **114 (91.2 %)**, all fully verified |
+| Documents failed inside an HTTP 200 | 0 | **0** |
+| Still "busy" after 3 automatic retries | 0 | 11 (8.8 %) |
+| Calls throttled by OpenAI | 0 | 0 |
+| One extract request p50 / p95 | 9.6 s / 12.0 s | 0.6 s / 28.6 s |
+| Whole extraction, waits included, p50 / p95 | 9.6 s / 12.0 s | 28.2 s / 63.8 s |
+| Chart open p50 / p95 | 1.2 s / 3.2 s | 2.1 s / 19.8 s |
+| Sidecar memory peak | 214 MB | 236 MB (of 768) |
+
+The sidecar's own counters for both levels: 249 documents extracted, **0
+failed**, 1,245 model calls (5 per document), **0 throttled**. Time in
+line p50 2.2 s, p95 18.6 s; work per document p50 9.0 s.
+
+What it shows:
+
+- **The droplet behaves like the laptop.** Every document either extracted
+  fully verified or was reported "busy"; none failed silently; OpenAI
+  never throttled at 8.
+- **At 50 users the droplet's other parts are the next limit.** Chart opens
+  reached a p95 of 19.8 s, and the host's load average peaked at 19 on 4
+  CPUs. That is OpenEMR and the database serving 50 simultaneous chart
+  opens, not the sidecar. The sidecar used 28 % of one CPU on average and
+  236 MB.
+- **An earlier droplet run is not a fair comparison.** Run 2 (2026-09-23)
+  ran on the old 2-CPU droplet with the old code: 58 extracted at 10 users
+  (p50 16.7 s), and at 50 users login failures dominated. The droplet's
+  hardware changed in between, so the difference cannot be credited to
+  this work alone.
+
+**Two false starts, recorded so they are not repeated.**
+1. The first attempt failed completely: 97 % of requests failed and
+   nothing was extracted. The cause was the password, not the droplet. The
+   `OE_PASS` value in the droplet's `.env` is not the admin account's
+   current password. The k6 script's login check did catch the failure,
+   but the script only logged in on each user's first iteration, so every
+   later iteration opened charts without a session, and OpenEMR answered
+   400.
+2. The script is fixed (`tests/load/copilot.js`). A user whose login fails
+   now tries again on its next iteration, after a 5-second pause, and
+   never opens a chart without a session. Tested with a wrong password: 2
+   login attempts in 8 seconds and no chart opens.
+
+---
+
 ## 13. Tests proposed but not run
 
-- **A load test on the droplet itself.** The real test ran on the local dev
-  stack. The droplet has 2 CPUs instead of 8 and a 768 MB sidecar memory
-  limit, so its numbers will differ. The command is
-  `tests/load/run-baselines.sh` with `STATS=ssh`, after deploying.
 - **A clean run with the limits at 12.** The one attempted was cut short
   by another session's eval gate restarting the sidecar (section 12.4).
   It was not repeated: its first 1 minute 45 seconds already showed throttling and failures.
@@ -1188,6 +1240,9 @@ Underneath that:
   a strict provider, adaptive limiting took failures from 138 to 0
   without any tuning. When clients gave up early, model calls wasted per
   abandoned document fell from about 4.8 to 1.9.
+- **On the deployed droplet**, the same test gave 100 % extracted at 10
+  users and 91 % at 50, with no silent failures and no throttling. The
+  rest ended as honest "busy" answers.
 - **Automated tests:**
   - 133 sidecar tests pass, 26 of them for this work.
   - The PHP contract and client tests pass, and PHPStan finds no errors.
@@ -1232,7 +1287,8 @@ unless stated otherwise. "R1" is commit `5d7988c`, "R2" is `057832a`.
 | `public/assets/panel.js` | **R2:** bounded automatic retry on "busy" |
 | `tests/Tests/Isolated/Modules/ClinicalCopilot/SidecarClientTest.php` (repository root) | **R2:** `Retry-After` test |
 | `tests/load/copilot.js` (repository root) | **R2:** the extract scenario retries like the panel and reports busy answers |
-| `tests/load/results/20260926T-mock-*.json`, `20260927T-real-v2-*`, `20260927T-real-v2-cap16-*`, `20260927T-real-v2-cap12-INTERRUPTED-*` (repository root) | Mock and real load-test results |
+| `tests/load/copilot.js` (repository root) | **After R2:** a user whose login fails retries it instead of opening charts without a session |
+| `tests/load/results/20260926T-mock-*.json`, `20260927T-real-v2-*`, `20260927T-real-v2-cap16-*`, `20260927T-real-v2-cap12-INTERRUPTED-*`, `20260927T-droplet-v2c-*` (repository root) | Mock, local and droplet load-test results |
 
 The settings, with their defaults:
 

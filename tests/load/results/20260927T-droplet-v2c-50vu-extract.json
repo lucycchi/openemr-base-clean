@@ -1,0 +1,99 @@
+{
+  "label": "20260927T-droplet-v2c-50vu-extract",
+  "base_url": "https://146-190-139-37.sslip.io",
+  "scenario": "extract",
+  "vus": 50,
+  "duration": "2m0s",
+  "finished_at": "2026-09-27T06:31:51.792Z",
+  "requests_total": 648,
+  "throughput_rps": 4.3,
+  "http_failed_pct": 22.53,
+  "copilot_request_error_pct": 4.09,
+  "summary_unavailable_pct": 0,
+  "verification_fail_pct": null,
+  "brief_cache_hit_pct": null,
+  "briefs": 0,
+  "asks": 0,
+  "guideline_hit_pct": null,
+  "extractions": 125,
+  "extract_ok_pct": 91.2,
+  "extract_verified_pct": 100,
+  "extract_confidence_p50": 1,
+  "extract_busy_answers": 146,
+  "extract_gave_up_busy_pct": 8.8,
+  "model_calls": 114,
+  "sentences_kept": 0,
+  "sentences_stripped": 0,
+  "latency_ms": {
+    "all_http": {
+      "count": 648,
+      "p50": 1554,
+      "p95": 27607,
+      "p99": 28981,
+      "max": 31045
+    },
+    "login": {
+      "count": 50,
+      "p50": 12247,
+      "p95": 16507,
+      "p99": 16888,
+      "max": 16906
+    },
+    "chart_open": {
+      "count": 144,
+      "p50": 2062,
+      "p95": 19780,
+      "p99": 20686,
+      "max": 21418
+    },
+    "brief": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "brief_cache_hit": {
+      "count": null,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "brief_cold": {
+      "count": null,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "ask": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "upload": {
+      "count": 125,
+      "p50": 291,
+      "p95": 1390,
+      "p99": 1984,
+      "max": 2125
+    },
+    "extract": {
+      "count": 125,
+      "p50": 560,
+      "p95": 28576,
+      "p99": 29344,
+      "max": 31045
+    },
+    "extract_e2e": {
+      "count": 125,
+      "p50": 28203,
+      "p95": 63802,
+      "p99": 79908,
+      "max": 80802
+    }
+  }
+}

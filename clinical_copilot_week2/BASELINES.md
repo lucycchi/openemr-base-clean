@@ -394,3 +394,55 @@ and 12 calls in flight. **The default stays at 8.** Not repeated.
 
 Not measured here: the droplet (2 vCPU, 768 MiB sidecar limit), and mixed
 load where PHP's briefing calls share the quota with extraction.
+
+## Run 5 (`3131484`, droplet): capacity controls in production
+
+The first droplet run since run 2, after deploying `3131484` (the droplet
+now tracks `dashboard-migration`). The droplet has grown since run 2: 4
+vCPU and 8 GB (was 2 vCPU, 3.9 GB), sidecar still capped at 768 MiB.
+Extract only, same script as run 4.
+
+```bash
+LOGIN_PASS=<admin password> STAMP=20260927T-droplet-v2c BASE_URL=https://146-190-139-37.sslip.io \
+  STATS=ssh SSH_HOST=do-openemr VUS_LIST="10 50" SCENARIOS="extract" DURATION=2m tests/load/run-baselines.sh
+```
+
+`LOGIN_PASS` must be the admin account's current password; the `OE_PASS`
+value in the droplet's `.env` is not it (it is the install-time value).
+Cleaned afterwards with `tests/load/cleanup-documents.php 30` in the
+droplet's openemr container.
+
+### Document extraction (Week 2)
+
+| VUs | Requests | req/s | Extractions | Extracted | Fully verified | Confidence p50 | Upload p50/p95 (ms) | Extract p50/p95/p99/max (ms) | Chart open p50/p95 | HTTP errors | Co-Pilot errors |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10 | 320 | 2.42 | 100 | 100 % | 100 % | 1 | 185 / 317 | 9592 / 12019 / 16735 / 17730 | 1232 / 3218 | 0 % | 0 % |
+| 50 | 648 | 4.3 | 125 | 91.2 % | 100 % | 1 | 291 / 1390 | 560 / 28576 / 29344 / 31045 | 2062 / 19780 | 22.53 % | 4.09 % |
+
+At 50 users: 146 `overloaded` answers, 11 extractions (8.8 %) still busy
+after three automatic retries; end to end p50 28.2 s / p95 63.8 s.
+
+### CPU and memory on the target host
+
+| VUs | Scenario | App CPU avg / peak (% of one core) | App memory avg / peak (MiB) | Sidecar CPU avg / peak | Sidecar memory avg / peak (MiB) | DB CPU avg / peak | DB memory avg / peak (MiB) | Host load1 peak |
+|---|---|---|---|---|---|---|---|---|
+| 10 | extract | 52.7 / 189.7 | 669 / 678 | 21.9 / 47.0 | 189 / 214 | 56.6 / 207.5 | 253 / 259 | 2.01 |
+| 50 | extract | 121.8 / 292.5 | 819 / 936 | 28.3 / 83.1 | 223 / 236 | 106.3 / 235.7 | 306 / 318 | 19.0 |
+
+### Reading run 5
+
+- **Same shape as run 4, in production.** 100 % extracted at 10 users (p50
+  9.6 s, against run 2's 16.7 s on the smaller droplet), 91.2 % at 50 with
+  the rest reported busy; the sidecar's `/metrics` for both levels: 249
+  extracted, 0 failed, 1,245 calls, 0 throttled; queue wait p50 2.2 s /
+  p95 18.6 s.
+- **The next limit at 50 users is OpenEMR, not the sidecar.** Chart open
+  p95 19.8 s and host load1 peaking at 19 on 4 vCPU; the sidecar averaged
+  28 % of one core and peaked at 236 MiB of its 768.
+- **Not comparable to run 2 as a before/after:** the droplet's hardware
+  changed in between.
+- **Two false starts** (not committed): the first attempt used `OE_PASS`
+  and extracted nothing, because `copilot.js` logged in only on each VU's
+  first iteration and then opened charts without a session (400). Fixed:
+  a VU retries a failed login on its next iteration after a 5 s pause.
+

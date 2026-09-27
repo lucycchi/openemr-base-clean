@@ -141,9 +141,20 @@ function login() {
     loginN.add(1);
     const ok = check(res, { 'login 302': (r) => r.status === 302 });
     if (!ok) {
+        // A wrong password answers 200 (the login form again). Pause before
+        // the next attempt so a bad LOGIN_PASS cannot hammer the login form
+        // (OpenEMR counts failed logins), then end this iteration.
+        sleep(5);
         throw new Error(`login failed for VU ${__VU}: HTTP ${res.status}`);
     }
 }
+
+// Whether this VU holds a session. Module-level variables are per VU in k6.
+// Set only after a successful login, so a VU whose login failed tries again
+// on its next iteration instead of opening charts without a session (which
+// OpenEMR answers 400, and which once made a wrong password look like a
+// broken chart page).
+let loggedIn = false;
 
 // GET the patient summary page. Two side effects matter: it sets the
 // session's current patient (chat.php reads pid from the session, never
@@ -300,8 +311,9 @@ function uploadAndExtract(csrf) {
 // One iteration = one clinician visit: pick a patient round-robin across
 // VUs, open the chart, brief, maybe ask, then "think" for a second.
 export default function () {
-    if (__ITER === 0) {
+    if (!loggedIn) {
         login();
+        loggedIn = true;
     }
     if (SCENARIO === 'extract') {
         const csrf = openChart(EXTRACT_PID);
