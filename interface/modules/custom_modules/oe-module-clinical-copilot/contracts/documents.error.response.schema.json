@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-emr.org/clinical-copilot/contracts/documents.error.response.schema.json",
   "title": "documents.php error response",
-  "description": "Body for every non-200/201 outcome of documents.php. 401 not authenticated; 403 CSRF failed or ACL denied; 400 no patient selected, unknown action, unexpected field, missing file or doc_type, or a rejected upload (reason too_large or not_a_pdf); 404 unknown document; 502 sidecar unavailable or timed out (reason, document_id and status=stored: the file is kept and extract can be retried); 500 internal error. Never contains an exception message, a filename or chart data.",
+  "description": "Body for every non-200/201 outcome of documents.php. 401 not authenticated; 403 CSRF failed or ACL denied; 400 no patient selected, unknown action, unexpected field, missing file or doc_type, or a rejected upload (reason too_large or not_a_pdf); 404 unknown document; 502 sidecar unavailable, timed out or overloaded (reason, document_id and status=stored: the file is kept and extract can be retried); 500 internal error. Never contains an exception message, a filename or chart data.",
   "type": "object",
   "properties": {
     "error": {
@@ -17,7 +17,7 @@
     },
     "reason": {
       "type": "string",
-      "description": "Fixed code for the client: too_large, not_a_pdf, or a sidecar code (unavailable, timeout, internal, bad_request, schema_mismatch).",
+      "description": "Fixed code for the client: too_large, not_a_pdf, or a sidecar code (unavailable, timeout, internal, bad_request, schema_mismatch, overloaded).",
       "enum": [
         "too_large",
         "not_a_pdf",
@@ -25,7 +25,8 @@
         "timeout",
         "internal",
         "bad_request",
-        "schema_mismatch"
+        "schema_mismatch",
+        "overloaded"
       ]
     },
     "document_id": {

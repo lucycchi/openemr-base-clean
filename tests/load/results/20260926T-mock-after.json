@@ -1,0 +1,111 @@
+{
+  "label": "after",
+  "workload": {
+    "users": 50,
+    "seconds": 90,
+    "think_s": 1.0,
+    "provider_rate_per_s": 4.0,
+    "provider_burst": 8,
+    "provider_latency_s": 2.0,
+    "document": "/fixtures/lab-layout1.pdf"
+  },
+  "requests": 2258,
+  "http": {
+    "200": 80,
+    "503": 2178
+  },
+  "http_200_pct": 3.54,
+  "documents": {
+    "error:overloaded": 2178,
+    "extracted": 80
+  },
+  "extracted_pct_of_requests": 3.54,
+  "extracted_pct_of_http_200": 100.0,
+  "extracted_per_min": 53.3,
+  "latency_ms": {
+    "http_200_p50": 22401,
+    "http_200_p95": 23561,
+    "extracted_p50": 22401,
+    "extracted_p95": 23561,
+    "rejected_503_p50": 7,
+    "rejected_503_p95": 591
+  },
+  "health_ms": {
+    "samples": 330,
+    "p50": 4,
+    "p95": 16,
+    "max": 818,
+    "over_1s": 0
+  },
+  "provider": {
+    "calls": 400,
+    "throttled_429": 0,
+    "peak_in_flight": 8
+  },
+  "sidecar_metrics": {
+    "since": "2026-09-27T01:42:27Z",
+    "limits": {
+      "max_extractions": 8,
+      "max_waiting": 16,
+      "max_wait_s": 20.0,
+      "deadline_s": 50.0,
+      "max_provider_calls": 8,
+      "provider_attempts": 3,
+      "attempt_timeout_s": 30.0
+    },
+    "now": {
+      "active_extractions": 0,
+      "waiting_extractions": 0,
+      "provider_in_flight": 0
+    },
+    "runs": {
+      "admitted": 80,
+      "rejected_queue_full": 2138,
+      "rejected_queue_timeout": 40,
+      "http_ok": 80,
+      "http_error": 2178
+    },
+    "documents": {
+      "extracted": 80,
+      "failed": {}
+    },
+    "provider": {
+      "calls": 400,
+      "throttled": 0,
+      "retries": 0,
+      "gave_up": {}
+    },
+    "timings_ms": {
+      "queue_wait_ms": {
+        "count": 80,
+        "p50": 11248,
+        "p95": 12744,
+        "max": 12780
+      },
+      "extract_active_ms": {
+        "count": 80,
+        "p50": 10885,
+        "p95": 11242,
+        "max": 11256
+      },
+      "document_ms": {
+        "count": 80,
+        "p50": 10720,
+        "p95": 11035,
+        "max": 11116
+      },
+      "provider_call_ms": {
+        "count": 400,
+        "p50": 2014,
+        "p95": 2090,
+        "max": 2200
+      },
+      "provider_slot_wait_ms": {
+        "count": 400,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      }
+    }
+  }
+}

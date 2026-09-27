@@ -48,7 +48,7 @@ from typing import Callable, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from . import extractor
+from . import capacity, extractor
 from .schemas import Chunk, Extraction, Handoff, RunDocument, Usage, TriggerEvidence, TriggerQuery, PatientContext
 
 log = logging.getLogger("copilot.graph")
@@ -288,13 +288,24 @@ def build_graph(extract: ExtractFn, retrieve: RetrieveFn, retrieve_many: Retriev
 def real_extract(doc: RunDocument, correlation_id: str) -> tuple[Extraction, list[Usage]]:
     """The production extract worker: decode the base64 payload, then hand
     the bytes to extractor.extract. A payload that will not decode is
-    reported as an unreadable document, not raised."""
+    reported as an unreadable document, not raised.
+
+    Every document's final outcome is counted here (capacity.metrics) and
+    logged as one "document outcome" line, whatever HTTP status the run
+    later gets: a 200 carrying a failed document is still a failure."""
+    started = time.monotonic()
     try:
         data = extractor.decode(doc.bytes_base64)
     except Exception:
-        return Extraction(document_id=doc.document_id, status="failed", failure_reason="unreadable", extraction=None, confidence=0.0), []
-    outcome = extractor.extract(doc.document_id, doc.doc_type, data, correlation_id)
-    return outcome.extraction, outcome.usage
+        extraction, usage = Extraction(document_id=doc.document_id, status="failed", failure_reason="unreadable", extraction=None, confidence=0.0), []
+    else:
+        outcome = extractor.extract(doc.document_id, doc.doc_type, data, correlation_id)
+        extraction, usage = outcome.extraction, outcome.usage
+    ms = (time.monotonic() - started) * 1000
+    capacity.metrics.document(extraction.failure_reason or extraction.status)
+    capacity.metrics.observe("document_ms", ms)
+    log.info("document outcome", extra={"document_id": doc.document_id, "doc_type": doc.doc_type, "status": extraction.status, "failure_reason": extraction.failure_reason, "count": len(usage), "retries": extraction.retries, "ms": int(ms)})
+    return extraction, usage
 
 
 def no_retrieve(question: str) -> tuple[list[Chunk], list[Usage]]:

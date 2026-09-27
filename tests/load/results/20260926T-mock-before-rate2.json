@@ -1,0 +1,45 @@
+{
+  "label": "before-rate2",
+  "workload": {
+    "users": 50,
+    "seconds": 90,
+    "think_s": 1.0,
+    "provider_rate_per_s": 2.0,
+    "provider_burst": 4,
+    "provider_latency_s": 2.0,
+    "document": "/fixtures/lab-layout1.pdf"
+  },
+  "requests": 1962,
+  "http": {
+    "200": 1962
+  },
+  "http_200_pct": 100.0,
+  "documents": {
+    "extracted": 9,
+    "failed:model_error": 1953
+  },
+  "extracted_pct_of_requests": 0.46,
+  "extracted_pct_of_http_200": 0.46,
+  "extracted_per_min": 6.0,
+  "latency_ms": {
+    "http_200_p50": 1078,
+    "http_200_p95": 1941,
+    "extracted_p50": 11237,
+    "extracted_p95": 12851,
+    "rejected_503_p50": null,
+    "rejected_503_p95": null
+  },
+  "health_ms": {
+    "samples": 325,
+    "p50": 4,
+    "p95": 73,
+    "max": 1137,
+    "over_1s": 1
+  },
+  "provider": {
+    "calls": 4152,
+    "throttled_429": 3954,
+    "peak_in_flight": 6
+  },
+  "sidecar_metrics": null
+}

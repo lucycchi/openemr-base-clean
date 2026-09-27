@@ -42,6 +42,8 @@ ALLOWED = {
     "correlation_id", "document_id", "doc_type", "sha3_512", "status", "failure_reason", "code",
     "pages", "ocr_pages", "page", "fields", "anchored", "confidence", "ms", "model", "kind", "input", "output",
     "from", "to", "reason", "count", "hops", "mode", "exception_class",
+    # Capacity (capacity.py): admission, queue wait, provider attempts and why they failed.
+    "queue_ms", "active", "waiting", "attempt", "cause", "retry_in_ms", "retries",
 }
 
 # The per-request slot for the correlation id. The default "" means "no id

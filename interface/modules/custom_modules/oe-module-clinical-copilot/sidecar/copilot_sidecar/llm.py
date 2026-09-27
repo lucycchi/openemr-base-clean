@@ -18,20 +18,33 @@ The call, step by step:
 Every failure is a ModelError with a short code (timeout, model_error,
 schema_mismatch) that extractor.py turns into a failure_reason on the
 document; nothing here ever raises the provider's own exception upward.
+
+Retries (extraction calls): the SDK's own retries are switched off
+(max_retries=0) and this module retries instead, so there is exactly one
+retry layer to reason about: at most COPILOT_PROVIDER_MAX_ATTEMPTS attempts
+per call, only for failures that can pass (429 throttling, timeouts,
+connection drops, 5xx), waiting what the provider's Retry-After asks or an
+exponential backoff with jitter, and never past the request's deadline.
+Every attempt holds one of the process's provider slots (capacity.py) and
+gives it back while it sleeps. A 429 for an exhausted quota is not retried:
+waiting does not refill a quota.
 """
 
 from __future__ import annotations
 
+import email.utils
 import json
 import logging
 import os
 import time
 from dataclasses import dataclass
+from typing import Any, Callable
 
+import openai
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
-from . import contracts
+from . import capacity, contracts
 from .logging_setup import correlation_id
 from .schemas import CriticVerdict, IntakeFormProposal, LabReportProposal, Usage
 
@@ -91,10 +104,111 @@ INTAKE_TASK = (
 class ModelError(Exception):
     """A failed model call, carrying a short code the caller maps to a
     failure_reason. super().__init__(code) also makes the code the
-    exception's text, so it reads sensibly if it is ever printed."""
-    def __init__(self, code: str) -> None:
+    exception's text, so it reads sensibly if it is ever printed.
+
+    `cause` is finer than the contract's code and stays inside the sidecar
+    (logs and /metrics): throttled, quota, timeout, connection,
+    server_error, client_error, deadline, no_provider_slot, other."""
+    def __init__(self, code: str, cause: str = "other") -> None:
         super().__init__(code)
         self.code = code
+        self.cause = cause
+
+
+@dataclass(frozen=True)
+class _Failure:
+    code: str
+    cause: str
+    retryable: bool
+    retry_after: float | None = None
+
+
+def _retry_after(response: Any) -> float | None:
+    """The provider's requested wait in seconds: retry-after-ms (OpenAI's
+    own header), else retry-after as seconds or as an HTTP date."""
+    headers = getattr(response, "headers", None)
+    if headers is None:
+        return None
+    try:
+        if headers.get("retry-after-ms") is not None:
+            return max(0.0, float(headers["retry-after-ms"]) / 1000)
+        value = headers.get("retry-after")
+        if value is None:
+            return None
+        try:
+            return max(0.0, float(value))
+        except ValueError:
+            when = email.utils.parsedate_to_datetime(value)
+            return max(0.0, when.timestamp() - time.time())
+    except (TypeError, ValueError):
+        return None
+
+
+def _classify(exc: Exception) -> _Failure:
+    """Which failures are worth another attempt. The order matters:
+    APITimeoutError is a subclass of APIConnectionError."""
+    if isinstance(exc, openai.APITimeoutError):
+        return _Failure("timeout", "timeout", True)
+    if isinstance(exc, openai.APIConnectionError):
+        return _Failure("model_error", "connection", True)
+    if isinstance(exc, openai.RateLimitError):
+        if getattr(exc, "code", None) == "insufficient_quota":
+            return _Failure("model_error", "quota", False)
+        return _Failure("model_error", "throttled", True, _retry_after(exc.response))
+    if isinstance(exc, openai.APIStatusError):
+        if exc.status_code in (408, 409) or exc.status_code >= 500:
+            return _Failure("model_error", "server_error", True, _retry_after(exc.response))
+        return _Failure("model_error", "client_error", False)
+    # Not the SDK's (a test fake, a bug): the old text check, no retry.
+    return _Failure("timeout" if "timeout" in str(exc).lower() else "model_error", "other", False)
+
+
+def _call_with_retries(send: Callable[[float], Any], page: int | None) -> Any:
+    """Runs send(timeout_s) until it returns, retrying transient failures
+    inside the attempt limit and the request's deadline. Raises ModelError."""
+    lim = capacity.limits()
+    attempt = 0
+    while True:
+        attempt += 1
+        left = capacity.remaining()
+        if left is not None and left < capacity.MIN_ATTEMPT_S:
+            capacity.metrics.gave_up("deadline")
+            raise ModelError("timeout", "deadline")
+        # Wait for a provider slot no longer than the deadline allows (or one
+        # attempt's length when there is no deadline, as in the eval endpoints).
+        with capacity.provider_slots.hold(left if left is not None else lim.attempt_timeout_s) as got:
+            if not got:
+                capacity.metrics.gave_up("no_provider_slot")
+                log.info("model_call failed", extra={"model": model_name(), "kind": "chat", "page": page, "attempt": attempt, "cause": "no_provider_slot"})
+                raise ModelError("timeout", "no_provider_slot")
+            left = capacity.remaining()
+            timeout = lim.attempt_timeout_s if left is None else min(lim.attempt_timeout_s, left)
+            started = time.monotonic()
+            capacity.metrics.inc("provider_calls")
+            try:
+                resp = send(timeout)
+                capacity.metrics.observe("provider_call_ms", (time.monotonic() - started) * 1000)
+                return resp
+            except Exception as exc:  # classified below; the provider's exception never travels up
+                error = exc
+                failure = _classify(exc)
+                ms = int((time.monotonic() - started) * 1000)
+        if failure.cause == "throttled":
+            capacity.metrics.inc("provider_throttled")
+        # The log carries the exception's class name and the cause code only.
+        log.info("model_call failed", extra={"model": model_name(), "kind": "chat", "page": page, "ms": ms, "attempt": attempt, "cause": failure.cause, "exception_class": type(error).__name__})
+        if not failure.retryable or attempt >= lim.provider_attempts:
+            capacity.metrics.gave_up(failure.cause)
+            raise ModelError(failure.code, failure.cause) from error
+        delay = capacity.backoff_delay(attempt, failure.retry_after)
+        left = capacity.remaining()
+        # A retry that could not start with time to finish is not worth the wait.
+        if left is not None and delay + capacity.MIN_ATTEMPT_S > left:
+            capacity.metrics.gave_up(failure.cause)
+            raise ModelError(failure.code, failure.cause) from error
+        capacity.metrics.inc("provider_retries")
+        log.info("model_call retry", extra={"model": model_name(), "kind": "chat", "page": page, "attempt": attempt, "cause": failure.cause, "retry_in_ms": int(delay * 1000)})
+        capacity.sleep(delay)
 
 
 # What a successful call returns: the validated proposal object, the token
@@ -130,34 +244,29 @@ def propose(doc_type: str, page_text: str, client: OpenAI | None = None, extra_t
     # is not a lab report is treated as an intake form.
     schema_model = LabReportProposal if doc_type == "lab_pdf" else IntakeFormProposal
     task = LAB_TASK if doc_type == "lab_pdf" else INTAKE_TASK
-    # 45 s per attempt and one automatic retry inside the SDK; the key comes
-    # from OPENAI_API_KEY in the environment.
-    client = client or OpenAI(timeout=45.0, max_retries=1)
+    # No retries inside the SDK: _call_with_retries is the only retry layer,
+    # and each attempt's timeout is set per call from the deadline. The key
+    # comes from OPENAI_API_KEY in the environment.
+    client = client or OpenAI(max_retries=0)
     started = time.monotonic()
-    try:
-        resp = client.chat.completions.create(
-            model=model_name(),
-            # temperature=0 asks for the least random reply, so the same page
-            # tends to give the same proposal.
-            temperature=0,
-            **correlation_options(),
-            # Two messages: the standing rules, then the task followed by the
-            # document text between <<<DOCUMENT_TEXT ... DOCUMENT_TEXT>>>
-            # markers so the model can tell where the data starts and ends.
-            messages=[
-                {"role": "system", "content": SYSTEM},
-                {"role": "user", "content": f"{task}{extra_task}\n\n<<<DOCUMENT_TEXT\n{page_text}\nDOCUMENT_TEXT>>>"},
-            ],
-            # The contract file is what the model is asked to fill; the Pydantic
-            # proposal model validates the reply (they agree by tests/test_contracts.py).
-            response_format=contracts.openai_response_format(contracts.PROPOSAL_CONTRACT[doc_type]),
-        )
-    except Exception as exc:  # network, auth, rate limit; the caller maps to failure_reason
-        # A timeout is recognised by the word in the exception's text (a string
-        # check, not a type check); everything else is model_error. The log
-        # carries the exception's class name only.
-        log.info("model_call failed", extra={"model": model_name(), "kind": "chat", "page": page, "ms": int((time.monotonic() - started) * 1000), "exception_class": type(exc).__name__})
-        raise ModelError("timeout" if "timeout" in str(exc).lower() else "model_error") from exc
+    resp = _call_with_retries(lambda timeout: client.chat.completions.create(
+        model=model_name(),
+        # temperature=0 asks for the least random reply, so the same page
+        # tends to give the same proposal.
+        temperature=0,
+        **correlation_options(),
+        # Two messages: the standing rules, then the task followed by the
+        # document text between <<<DOCUMENT_TEXT ... DOCUMENT_TEXT>>>
+        # markers so the model can tell where the data starts and ends.
+        messages=[
+            {"role": "system", "content": SYSTEM},
+            {"role": "user", "content": f"{task}{extra_task}\n\n<<<DOCUMENT_TEXT\n{page_text}\nDOCUMENT_TEXT>>>"},
+        ],
+        # The contract file is what the model is asked to fill; the Pydantic
+        # proposal model validates the reply (they agree by tests/test_contracts.py).
+        response_format=contracts.openai_response_format(contracts.PROPOSAL_CONTRACT[doc_type]),
+        timeout=timeout,
+    ), page)
     # A reply the provider cut off for content reasons, or an explicit refusal,
     # carries no usable JSON; it is a model error, not a schema mismatch.
     choice = resp.choices[0]

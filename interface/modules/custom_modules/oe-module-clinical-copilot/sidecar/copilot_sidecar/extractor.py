@@ -34,7 +34,7 @@ from dataclasses import dataclass
 
 from pydantic import ValidationError
 
-from . import anchor, llm, parse
+from . import anchor, capacity, llm, parse
 from .schemas import Extraction, IntakeFormProposal, LabReportProposal, Usage
 
 log = logging.getLogger("copilot.extractor")
@@ -61,8 +61,8 @@ def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, p
     "failed" and a failure_reason; the caller never has to catch those."""
     # A helper defined inside the function (a closure) so every failure path
     # logs the same fields and builds the same shape of failed Extraction.
-    def failed(reason: str) -> ExtractOutcome:
-        log.info("extract failed", extra={"correlation_id": correlation_id, "document_id": document_id, "doc_type": doc_type, "failure_reason": reason})
+    def failed(reason: str, cause: str | None = None) -> ExtractOutcome:
+        log.info("extract failed", extra={"correlation_id": correlation_id, "document_id": document_id, "doc_type": doc_type, "failure_reason": reason, "cause": cause})
         return ExtractOutcome(Extraction(document_id=document_id, status="failed", failure_reason=reason, extraction=None, confidence=0.0), [])
 
     # 1. Parse. ParseError codes already match the contract's failure reasons,
@@ -81,7 +81,7 @@ def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, p
         try:
             proposal, raw, usage = _propose_per_page(doc_type, parsed)
         except llm.ModelError as exc:
-            return failed(exc.code)
+            return failed(exc.code, exc.cause)
 
     # 3. Anchor. `assert isinstance` checks the proposal is the right shape for
     #    the document type; a wrong pairing, or an anchored object that fails
@@ -109,7 +109,10 @@ def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, p
     #    fails, the first extraction stands and the rows stay listed as
     #    unextracted, so the clinician still sees them. `raw is not None`
     #    limits this to live model runs; a recorded proposal is never re-asked.
-    if doc_type == "lab_pdf" and raw is not None and built.unextracted:
+    #    The retry is optional work: it is skipped when the request's deadline
+    #    could not fit one more call, and the leftover rows stay listed.
+    left = capacity.remaining()
+    if doc_type == "lab_pdf" and raw is not None and built.unextracted and (left is None or left >= capacity.MIN_ATTEMPT_S):
         assert isinstance(proposal, LabReportProposal)
         rows_text = "\n".join(f"=== page {u.page} ===\n{u.text}" for u in built.unextracted)
         try:
@@ -160,6 +163,13 @@ def _propose_per_page(doc_type: str, parsed: parse.ParsedDocument) -> tuple[LabR
     usage: list[Usage] = []
     merged: LabReportProposal | IntakeFormProposal | None = None
     for page in parsed.pages:
+        # The request's deadline (capacity.py) is checked before every page:
+        # once it has passed, no further page is paid for and the document
+        # fails as "timeout" rather than finishing after PHP stopped waiting.
+        left = capacity.remaining()
+        if left is not None and left <= 0:
+            capacity.metrics.gave_up("deadline")
+            raise llm.ModelError("timeout", "deadline")
         # text_for_model([n]) renders only that page's rows, one per line.
         p = llm.propose(doc_type, parsed.text_for_model([page.number]), page=page.number)
         usage.append(p.usage)

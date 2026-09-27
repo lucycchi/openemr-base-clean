@@ -1,9 +1,12 @@
 """FastAPI surface of the sidecar.
 
-POST /run       the graph (contracts run.request / run.response / run.error)
+POST /run       the graph (contracts run.request / run.response / run.error);
+                503 "overloaded" when extraction capacity is full (capacity.py)
 GET  /health    liveness, model and parser versions (contract sidecar.health.response)
 GET  /ready     readiness: every local dependency a run needs, checked for real
                 (contract sidecar.ready.response); 503 when one is missing
+GET  /metrics   extraction admission, document outcomes, provider throttling
+                and retries since the process started (contract sidecar.metrics.response)
 POST /eval/anchor   test-only (COPILOT_EVAL_ENDPOINTS=1): a fixture path
                     and a recorded proposal through anchor.py, no model call
 
@@ -16,6 +19,7 @@ The path of one /run request:
 
   PHP -> POST /run -> read JSON, bind correlation id -> RunRequest validation
       -> idempotency cache hit? return it
+      -> extract mode: wait for an extraction slot (bounded), or 503 overloaded
       -> graph.run on a worker thread (extract and/or retrieve)
       -> RunResponse JSON -> store in cache -> PHP
 
@@ -35,6 +39,7 @@ Notes for readers new to Python and FastAPI:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -48,12 +53,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 from starlette.concurrency import run_in_threadpool
 
-from . import anchor, contracts, extractor, graph
+from . import anchor, capacity, contracts, extractor, graph
 from . import retrieve as retrieve_module
 from .keys import bind_keyless
 from .llm import PROMPT_VERSION
 from .logging_setup import bind_correlation_id, setup_logging
-from .schemas import CriticVerdict, Extraction, IntakeFormProposal, LabReportProposal, RunDocument, RunError, RunRequest, RunResponse, SidecarHealth, SidecarReady, TriggerQuery, Usage
+from .schemas import CriticVerdict, Extraction, IntakeFormProposal, LabReportProposal, RunDocument, RunError, RunRequest, RunResponse, SidecarHealth, SidecarMetrics, SidecarReady, TriggerQuery, Usage
 
 # Module-level statements run once, when the process imports this file:
 # logging is configured before the first log line, and `app` is the object
@@ -186,6 +191,21 @@ def ready() -> JSONResponse:
     return JSONResponse(status_code=200 if ok else 503, content=body.model_dump())
 
 
+@app.get("/metrics")
+async def metrics() -> dict:
+    """What extraction capacity is doing, since this process started: runs
+    admitted and refused, documents extracted and failed (by reason),
+    provider calls, throttling and retries, and recent queue-wait and
+    work timings. Counts and milliseconds only. `async def` because it
+    reads the admission gate, which lives on the event loop thread."""
+    return SidecarMetrics.model_validate({**capacity.metrics.snapshot(), **capacity.status()}).model_dump()
+
+
+# Seconds a refused extraction is told to wait (Retry-After on the 503): about
+# one extraction's length, the soonest a slot is likely to have freed up.
+OVERLOADED_RETRY_AFTER_S = 15
+
+
 @app.post("/run")
 async def run(request: Request) -> JSONResponse:
     """The main endpoint: validate, consult the idempotency cache, run the
@@ -221,26 +241,70 @@ async def run(request: Request) -> JSONResponse:
         log.info("run served from cache", extra={"mode": req.mode})
         return JSONResponse(content=hit[1])
 
+    # Admission (extract mode only; see capacity.py). A run that finds every
+    # extraction slot busy waits its turn on the event loop, holding no
+    # thread; if the line is full or the wait runs out it is answered 503
+    # "overloaded" at once, and PHP tells the user the file is stored and can
+    # be extracted again. An admitted run gets a deadline, measured from its
+    # arrival, that every model call inside it respects.
+    extracting = req.mode == "extract"
+    gate = capacity.gate
+    if extracting:
+        try:
+            waited = await gate.acquire(capacity.limits().max_wait_s)
+        except capacity.Overloaded as exc:
+            capacity.metrics.inc(f"runs_rejected_{exc.reason}")
+            capacity.metrics.inc("runs_http_error")
+            log.warning("run rejected", extra={"mode": req.mode, "code": "overloaded", "reason": exc.reason, "active": gate.active, "waiting": gate.waiting, "ms": int((time.monotonic() - started) * 1000)})
+            response = _error(req.correlation_id, "overloaded", 503)
+            response.headers["Retry-After"] = str(OVERLOADED_RETRY_AFTER_S)
+            return response
+        capacity.metrics.inc("runs_admitted")
+        capacity.metrics.observe("queue_wait_ms", waited * 1000)
+        log.info("run admitted", extra={"mode": req.mode, "queue_ms": int(waited * 1000), "active": gate.active, "waiting": gate.waiting})
+        capacity.bind_deadline(started + capacity.limits().deadline_s)
+
+    # The graph is synchronous (model calls, OCR, retrieval). Running it on
+    # the thread pool keeps the event loop free, so concurrent runs overlap
+    # instead of queueing behind each other: the 2026-09-23 load baseline
+    # showed one blocked loop turning ten concurrent 12 s extractions into
+    # 60 s timeouts and ten 2.7 s retrievals into a 19 s follow-up p50.
+    # Each invocation carries its own state; the compiled graph is shared
+    # read-only. Context variables (the correlation id, the deadline)
+    # propagate to the worker thread.
+    #
+    # In plain words: the event loop is the one thread that takes turns
+    # serving every request. A plain function call from an `async def`
+    # handler would hold that thread for the whole graph run (many
+    # seconds), and every other request would wait. run_in_threadpool
+    # hands the call to a separate worker thread and `await` lets the
+    # loop serve others until that thread is done.
+    #
+    # A thread cannot be stopped from outside. If this request is cancelled
+    # (the server shutting down, say), `shield` lets the thread's work run
+    # on, and the extraction slot is released only when that work really
+    # ends, so the limit counts threads that exist, not requests still open.
+    active_started = time.monotonic()
+    work = asyncio.ensure_future(run_in_threadpool(graph.run, req.mode, req.correlation_id, req.facts_hash, req.question, req.documents, None, req.queries, req.patient, req.facts))
     try:
-        # The graph is synchronous (model calls, OCR, retrieval). Running it on
-        # the thread pool keeps the event loop free, so concurrent runs overlap
-        # instead of queueing behind each other: the 2026-09-23 load baseline
-        # showed one blocked loop turning ten concurrent 12 s extractions into
-        # 60 s timeouts and ten 2.7 s retrievals into a 19 s follow-up p50.
-        # Each invocation carries its own state; the compiled graph is shared
-        # read-only. Context variables (the correlation id) propagate to the
-        # worker thread.
-        #
-        # In plain words: the event loop is the one thread that takes turns
-        # serving every request. A plain function call from an `async def`
-        # handler would hold that thread for the whole graph run (many
-        # seconds), and every other request would wait. run_in_threadpool
-        # hands the call to a separate worker thread and `await` lets the
-        # loop serve others until that thread is done.
-        state = await run_in_threadpool(graph.run, req.mode, req.correlation_id, req.facts_hash, req.question, req.documents, None, req.queries, req.patient, req.facts)
+        state = await asyncio.shield(work)
     except Exception as exc:  # never leak a traceback; the code is the message
         log.error("run failed", extra={"mode": req.mode, "code": "internal", "exception_class": type(exc).__name__, "ms": int((time.monotonic() - started) * 1000)})
+        if extracting:
+            capacity.metrics.inc("runs_http_error")
         return _error(req.correlation_id, "internal", 500)
+    finally:
+        if extracting:
+            def _done(_: object) -> None:
+                gate.release()
+                capacity.metrics.observe("extract_active_ms", (time.monotonic() - active_started) * 1000)
+
+            if work.done():
+                _done(work)
+            else:
+                work.add_done_callback(_done)
+    if extracting:
+        capacity.metrics.inc("runs_http_ok")
     # Build the contract response from the graph's final state. by_alias=True
     # writes handoffs with the key "from" (the Python attribute is from_);
     # json.loads turns the text back into plain data for JSONResponse and

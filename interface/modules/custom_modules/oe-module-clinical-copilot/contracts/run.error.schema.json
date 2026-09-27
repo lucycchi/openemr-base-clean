@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-emr.org/clinical-copilot/contracts/run.error.schema.json",
   "title": "Sidecar run error",
-  "description": "Sidecar -> PHP with HTTP 4xx/5xx when the run could not complete at all (a per-document failure is reported inside run.response instead). Codes are fixed; the message is a code too, never document text.",
+  "description": "Sidecar -> PHP with HTTP 4xx/5xx when the run could not complete at all (a per-document failure is reported inside run.response instead). Codes are fixed; the message is a code too, never document text. overloaded (HTTP 503, with Retry-After) means the sidecar's extraction capacity is full: nothing was attempted and the document can be extracted again later.",
   "type": "object",
   "properties": {
     "correlation_id": {
@@ -17,7 +17,8 @@
         "unreadable",
         "model_error",
         "timeout",
-        "internal"
+        "internal",
+        "overloaded"
       ]
     }
   },

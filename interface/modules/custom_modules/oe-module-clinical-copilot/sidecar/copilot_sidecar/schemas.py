@@ -447,10 +447,11 @@ class RunError(Strict):
     """What /run returns on failure: an id and a fixed code, never a message,
     so no internal detail (a path, a stack trace) reaches the caller."""
     correlation_id: str
-    code: Literal["bad_request", "parse_failed", "encrypted", "unreadable", "model_error", "timeout", "internal"]
+    # overloaded (HTTP 503): extraction capacity was full and nothing was attempted (capacity.py).
+    code: Literal["bad_request", "parse_failed", "encrypted", "unreadable", "model_error", "timeout", "internal", "overloaded"]
 
 
-# ---- Operator endpoints (contracts sidecar.health.response, sidecar.ready.response) ----
+# ---- Operator endpoints (contracts sidecar.health.response, sidecar.ready.response, sidecar.metrics.response) ----
 
 
 class SidecarHealth(Strict):
@@ -481,6 +482,78 @@ class SidecarReady(Strict):
     dependencies: SidecarReadyDependencies
     optional: SidecarReadyOptional
     time: str
+
+
+# /metrics building blocks: a non-negative count, and counts keyed by a short
+# lower-case code (a failure_reason or a provider cause, never free text).
+Count = Annotated[int, Field(ge=0)]
+CodeCounts = dict[Annotated[str, Field(pattern=r"^[a-z_]{1,40}$")], Count]
+
+
+class MetricsTiming(Strict):
+    """Recent samples of one timing (the last 1000): how many were ever
+    recorded, and the median, 95th percentile and maximum in milliseconds."""
+    count: Count
+    p50: Count | None
+    p95: Count | None
+    max: Count | None
+
+
+class MetricsLimits(Strict):
+    max_extractions: int = Field(ge=1)
+    max_waiting: Count
+    max_wait_s: float = Field(ge=0)
+    deadline_s: float = Field(ge=0)
+    max_provider_calls: int = Field(ge=1)
+    provider_attempts: int = Field(ge=1)
+    attempt_timeout_s: float = Field(ge=0)
+
+
+class MetricsNow(Strict):
+    active_extractions: Count
+    waiting_extractions: Count
+    provider_in_flight: Count
+
+
+class MetricsRuns(Strict):
+    """Extract-mode /run requests: admitted or refused, then HTTP outcome."""
+    admitted: Count
+    rejected_queue_full: Count
+    rejected_queue_timeout: Count
+    http_ok: Count
+    http_error: Count
+
+
+class MetricsDocuments(Strict):
+    """Each document's final outcome, whatever the HTTP status of its run."""
+    extracted: Count
+    failed: CodeCounts
+
+
+class MetricsProvider(Strict):
+    calls: Count
+    throttled: Count
+    retries: Count
+    gave_up: CodeCounts
+
+
+class MetricsTimings(Strict):
+    queue_wait_ms: MetricsTiming
+    extract_active_ms: MetricsTiming
+    document_ms: MetricsTiming
+    provider_call_ms: MetricsTiming
+    provider_slot_wait_ms: MetricsTiming
+
+
+class SidecarMetrics(Strict):
+    """/metrics body: extraction capacity since the process started (capacity.py)."""
+    since: str = Field(min_length=1)
+    limits: MetricsLimits
+    now: MetricsNow
+    runs: MetricsRuns
+    documents: MetricsDocuments
+    provider: MetricsProvider
+    timings_ms: MetricsTimings
 
 
 # ---- Proposal models: what the model returns -------------------------------
