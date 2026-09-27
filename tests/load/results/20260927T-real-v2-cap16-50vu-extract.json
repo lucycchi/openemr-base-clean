@@ -1,0 +1,99 @@
+{
+  "label": "20260927T-real-v2-cap16-50vu-extract",
+  "base_url": "http://localhost:8300",
+  "scenario": "extract",
+  "vus": 50,
+  "duration": "2m0s",
+  "finished_at": "2026-09-27T05:24:49.064Z",
+  "requests_total": 752,
+  "throughput_rps": 4.99,
+  "http_failed_pct": 20.08,
+  "copilot_request_error_pct": 2.13,
+  "summary_unavailable_pct": 7.69,
+  "verification_fail_pct": null,
+  "brief_cache_hit_pct": null,
+  "briefs": 0,
+  "asks": 0,
+  "guideline_hit_pct": null,
+  "extractions": 150,
+  "extract_ok_pct": 88,
+  "extract_verified_pct": 92.31,
+  "extract_confidence_p50": 1,
+  "extract_busy_answers": 151,
+  "extract_gave_up_busy_pct": 4.67,
+  "model_calls": 143,
+  "sentences_kept": 0,
+  "sentences_stripped": 0,
+  "latency_ms": {
+    "all_http": {
+      "count": 752,
+      "p50": 1590,
+      "p95": 25402,
+      "p99": 28816,
+      "max": 33889
+    },
+    "login": {
+      "count": 50,
+      "p50": 8353,
+      "p95": 11623,
+      "p99": 12036,
+      "max": 12208
+    },
+    "chart_open": {
+      "count": 179,
+      "p50": 2046,
+      "p95": 8994,
+      "p99": 11099,
+      "max": 12193
+    },
+    "brief": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "brief_cache_hit": {
+      "count": null,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "brief_cold": {
+      "count": null,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "ask": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "upload": {
+      "count": 150,
+      "p50": 391,
+      "p95": 1579,
+      "p99": 2177,
+      "max": 2189
+    },
+    "extract": {
+      "count": 150,
+      "p50": 11917,
+      "p95": 28270,
+      "p99": 29053,
+      "max": 33889
+    },
+    "extract_e2e": {
+      "count": 150,
+      "p50": 21812,
+      "p95": 73527,
+      "p99": 81640,
+      "max": 98101
+    }
+  }
+}
