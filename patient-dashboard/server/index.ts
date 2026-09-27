@@ -77,6 +77,14 @@ const app = createApp({
         publicUrl: config.publicUrl,
         apiBase: `${config.oemrBase}/apis/default/api`,
     },
+    // The "Edit in OpenEMR" button's redirect to the patient's chart page in OpenEMR (ARC-06).
+    openemrLink: {
+        store,
+        oauth,
+        now,
+        apiBase: `${config.oemrBase}/apis/default/api`,
+        oemrPublicUrl: config.oemrPublicUrl,
+    },
     // Each user's collapsed cards, kept in a file so they survive restarts (a Docker volume on the droplet).
     cardSettings: {
         store,

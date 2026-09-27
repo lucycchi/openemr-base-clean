@@ -26,6 +26,8 @@ import { listDatesRoutes } from './listDates';
 import type { ListDatesDeps } from './listDates';
 import type { AppConfig } from './appConfig';
 import { cardSettingsRoutes } from './cardSettings';
+import { openemrLinkRoutes } from './openemrLink';
+import type { OpenEmrLinkDeps } from './openemrLink';
 import { prescriptionWritesRoutes } from './prescriptionWrites';
 import type { PrescriptionWritesDeps } from './prescriptionWrites';
 import type { CardSettingsDeps } from './cardSettings';
@@ -49,6 +51,7 @@ export interface AppOptions {
     appConfig?: AppConfig;
     cardSettings?: CardSettingsDeps;
     prescriptionWrites?: PrescriptionWritesDeps;
+    openemrLink?: OpenEmrLinkDeps;
 }
 
 /**
@@ -87,6 +90,9 @@ export function createApp(options: AppOptions = {}): Hono {
     }
     if (options.prescriptionWrites !== undefined) {
         app.route('/api/prescriptions', prescriptionWritesRoutes(options.prescriptionWrites));
+    }
+    if (options.openemrLink !== undefined) {
+        app.route('/openemr', openemrLinkRoutes(options.openemrLink));
     }
 
     // Last of all, the page's own files. If no file matches the address, send index.html anyway, so a

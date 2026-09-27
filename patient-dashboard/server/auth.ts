@@ -154,7 +154,10 @@ export function authRoutes(deps: AuthDeps): Hono {
         const session = store.get(getCookie(c, SESSION_COOKIE));
         const tokens = session?.tokens;
         const authenticated = tokens !== undefined && (tokens.expiresAt > now() || tokens.refreshToken !== undefined);
-        return c.json({ authenticated });
+        // A signed-in user whose login named them also gets their id, which the prescription form uses to
+        // fill in the prescriber's name (ARC-06). It identifies the user only; it grants nothing.
+        const userId = authenticated ? session?.userId : undefined;
+        return c.json(userId === undefined ? { authenticated } : { authenticated, userId });
     });
 
     return routes;

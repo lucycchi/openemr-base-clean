@@ -21,6 +21,13 @@ describe('BFF configuration', () => {
         );
     });
 
+    it("OpenEMR's address for the user's browser defaults to OEMR_BASE, and can be set apart", () => {
+        expect(loadConfig(base).oemrPublicUrl).toBe('https://oemr.test');
+        expect(loadConfig({ ...base, OEMR_PUBLIC_URL: 'https://emr.clinic.test/' }).oemrPublicUrl).toBe(
+            'https://emr.clinic.test',
+        );
+    });
+
     it('fails fast without the names client, rather than silently showing "Name unavailable" to everyone', () => {
         expect(() => loadConfig({ ...base, NAMES_CLIENT_ID: '' })).toThrow(/NAMES_CLIENT_ID/);
     });

@@ -11,6 +11,8 @@
 export interface BffConfig {
     /** OpenEMR's address, for example https://localhost:9300 (no trailing slash). */
     oemrBase: string;
+    /** OpenEMR's address as the user's browser reaches it, for the "Edit in OpenEMR" link (default: oemrBase). */
+    oemrPublicUrl: string;
     /** The dashboard's registered OpenEMR client: its id, secret and the permissions (scope) it asks for. */
     clientId: string;
     clientSecret: string;
@@ -60,6 +62,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): BffConfig {
     const publicUrl = required(env, 'PUBLIC_URL').replace(/\/+$/, '');
     return {
         oemrBase: required(env, 'OEMR_BASE').replace(/\/+$/, ''),
+        // OpenEMR's address as a clinician's browser reaches it, for the "Edit in OpenEMR" link. Usually the
+        // same as OEMR_BASE; set OEMR_PUBLIC_URL when the server reaches OpenEMR by an internal address.
+        oemrPublicUrl: (env.OEMR_PUBLIC_URL ?? required(env, 'OEMR_BASE')).replace(/\/+$/, ''),
         clientId: required(env, 'OEMR_CLIENT_ID'),
         clientSecret: required(env, 'OEMR_CLIENT_SECRET'),
         scope: required(env, 'OEMR_SCOPE'),

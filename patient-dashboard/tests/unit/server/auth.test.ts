@@ -129,8 +129,9 @@ describe('BFF login flow', () => {
         });
         const sessionId = setCookieOf(callback).split('=')[1] ?? '';
         expect(store.get(sessionId)?.userId).toBe('user-uuid-1');
+        // /auth/me also names the signed-in user, for the prescription form's prescriber box (ARC-06).
         const me = await app.request('/auth/me', { headers: { cookie: setCookieOf(callback) } });
-        expect(await me.json()).toEqual({ authenticated: true });
+        expect(await me.json()).toEqual({ authenticated: true, userId: 'user-uuid-1' });
     });
 
     it('without an ID token the user is not known, and the login still works', async () => {
