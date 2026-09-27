@@ -172,6 +172,25 @@ sentence against the fact, and strips anything else (cases 33, 35, 45, 46).
 The panel renders "From the record" and "From guidelines" apart. Answers
 are capped at six sentences ([experiments/answer-length-cap.md](clinical_copilot_week2/experiments/answer-length-cap.md)).
 
+### Contextual retrieval improvements
+
+The PRD's stretch item names better chunking, query rewriting and
+domain-specific filters. The retriever has four, all deterministic:
+
+| Improvement | What it does | Where | Evidence |
+|---|---|---|---|
+| Heading-aware chunking | One chunk per `##` section, and the heading path ("2018 AHA/ACC cholesterol guideline (summary) > Statin therapy") is indexed into BM25 with the body and sent to the reranker with it, so a question naming a topic finds its section even when the body words differ. Stop words are removed and lab tokens such as `mg/dl` and `a1c` stay whole. | `retrieve.py` `chunk_corpus()`, `Index` (BM25 over heading + body), `rerank()`, `tokenize()` | Cases 29-31: a statin, an A1c-target and an anemia question each return their own guideline first. |
+| Query rewriting from the chart | The briefing never searches with chart text. `GuidelineTriggers` turns chart facts (an LDL above range, diabetes on the problem list) into a fixed, curated query per topic from `contracts/guideline_triggers.json`, whose vectors are committed, so a brief costs no embedding call and no chart text leaves the server for retrieval. | `GuidelineTriggers.php`, `guideline_triggers.json`, `trigger_vectors()` | Cases 53, 54, 56, 57: a high LDL fires the lipids query, a normal chart fires none, a problem-list diagnosis fires its topic, and each topic's top passage comes from its own guideline (case 57). |
+| Population filters | Each topic carries exclusions for the population its guideline does not cover: age bands (the 2018 statin guidance is for 40-75), pregnancy, type 1 diabetes, children. An excluded topic is never searched, so no card appears. The critic then checks each retrieved passage's stated population against the patient. | `guideline_triggers.json` `exclude`, `GuidelineTriggers::fire()`, the `critic` node | Case 55 (82-year-old: no statin card), case 65 (pregnancy: no A1c or anemia card), cases 60-64 (critic). |
+| Relevance floor | After fusion a candidate survives only if the dense leg is confident (cosine ≥ 0.25), or a keyword hit is backed by some meaning (cosine ≥ 0.15), or the keyword score is strong. An off-corpus question returns no passage, and the answer refuses, instead of citing the least-bad guideline. | `retrieve.py` `FLOOR`, `WEAK`, `STRONG_BM25`, `Index.candidates()` | Cases 32, 34. |
+
+Not done: these are not measured against a plainer retriever (body-only
+chunks, no floor), so the cases show each improvement working, not how much
+it gains. Each trigger rule names its guideline (`source`), but retrieval
+does not yet restrict a trigger's search to that guideline: the curated
+query is what points it there, and case 57 checks that each topic's top
+passage comes from the right guideline.
+
 ## What the guidelines say about this chart (brief mode and the critic, 2026-09-23)
 
 The briefing carries a section of guideline cards the chart itself raised. No model

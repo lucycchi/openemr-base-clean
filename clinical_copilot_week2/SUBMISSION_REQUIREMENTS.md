@@ -223,10 +223,14 @@ submission too. The S8 brief doubles as preparation.
 
 ### Optional extensions the PRD lists under Core Deliverables
 
-Critic agent: built (applicability critic, cases 58-64). Click-to-source with
-document preview: built. Third document type, lab trend chart, contextual
-retrieval improvements: not built and not planned before the final; say so in
-the interview rather than start them.
+Critic agent: built (applicability critic, cases 60-64, and the Verifier's
+rule that strips action suggestions without a guideline citation, case 73).
+Click-to-source with document preview: built. Contextual retrieval
+improvements: built and documented in W2_ARCHITECTURE.md ("Contextual
+retrieval improvements": heading-aware chunking, chart-derived queries,
+population filters, relevance floor), not measured against a plainer
+retriever. Third document type and lab trend chart: not built and not planned
+before the final; say so in the interview rather than start them.
 
 ---
 
