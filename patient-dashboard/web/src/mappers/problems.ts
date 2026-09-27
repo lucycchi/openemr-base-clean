@@ -1,3 +1,8 @@
+/**
+ * Medical Problems card rules. In: OpenEMR's own problem list rows from the Standard REST API (title,
+ * start and end dates, and whether each is resolved) and the current local time. Out: the problem
+ * names the Medical Problems card lists, current ones only, oldest first.
+ */
 import { isCurrentListRow } from '../api/listDates';
 import type { ListDates } from '../api/listDates';
 
@@ -16,6 +21,9 @@ export interface ProblemView {
  * ORDER BY begdate (BM-018). `now` is the local date and time, "YYYY-MM-DD HH:MM:SS".
  */
 export function mapProblemList(rows: ReadonlyMap<string, ListDates>, now: string): ProblemView[] {
+    // Take every row as an (id, row) pair; keep the current ones; note each one's position; sort by
+    // start date, oldest first (a blank start sorts first, equal dates keep list order); then keep
+    // just the id and the title as the name.
     return [...rows]
         .filter(([, row]) => isCurrentListRow(row, now))
         .map(([id, row], index) => ({ id, row, index }))

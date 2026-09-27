@@ -1,18 +1,29 @@
 # The patient dashboard on the droplet, as its own compose project in ~/patient-dashboard.
 # It is kept apart from ~/openemr, whose compose file every OpenEMR deploy overwrites.
 # Caddy serves it at https://dashboard.146-190-139-37.sslip.io (see README.md).
+#
+# Used on the droplet only: deploy.sh copies this file to ~/patient-dashboard and runs `docker compose` there.
+# It tells Docker how to build and run the one dashboard container (the React page plus the Node BFF).
+# Caddy, the web server in front, handles HTTPS and passes requests on to port 5180 here.
 services:
   dashboard:
+    # Build the image from the copied source, using its Dockerfile.
     build: ./src
+    # Start again automatically if it crashes or the droplet reboots.
     restart: always
     # OEMR_BASE, the two clients, PUBLIC_URL and the site settings; never committed.
     env_file: .env
+    # Settings that are the same on every deploy: listen on all addresses inside the container, on port
+    # 5180, and find the names client's private key at this path.
     environment:
       BFF_HOST: 0.0.0.0
       BFF_PORT: '5180'
       NAMES_KEY_FILE: /run/names/names-client-key.pem
+    # Make the droplet's names-key folder visible inside the container, read-only (ro).
     volumes:
       - ./names-key:/run/names:ro
+    # Reachable only from the droplet itself (127.0.0.1), so the outside world must come in through Caddy.
     ports:
       - '127.0.0.1:5180:5180'
+    # Memory cap, so the dashboard cannot starve OpenEMR on the shared droplet.
     mem_limit: 256m

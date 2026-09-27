@@ -1,3 +1,10 @@
+/**
+ * Medications and Prescriptions card rules. In: the patient's FHIR MedicationRequest records (FHIR's
+ * record of a medicine ordered or taken, each with a status and an "intent" such as order or plan)
+ * and OpenEMR's own medication list from the Standard REST API. Out: two lists, one for the
+ * Medications card (the patient's medication list) and one for the Prescriptions card (prescriptions
+ * that are not on that list), each filtered and ordered the way the old dashboard did.
+ */
 import type { MedicationRequest } from 'fhir/r4';
 import { isCurrentListRow } from '../api/listDates';
 import type { ListDates } from '../api/listDates';
@@ -15,15 +22,18 @@ export interface MedicationView {
     added: string;
 }
 
+/** The two lists splitMedications hands back: one per card. */
 export interface MedicationSplit {
     medications: MedicationView[];
     prescriptions: MedicationView[];
 }
 
+/** Turns one FHIR prescription into a Prescriptions card row. */
 function toView(request: MedicationRequest): MedicationView {
     const quantity = request.dispenseRequest?.quantity?.value;
     return {
         id: request.id ?? '',
+        // The medicine's free-text name, else its coded name, else "Unnamed medication".
         name:
             request.medicationCodeableConcept?.text?.trim() ||
             realCodingDisplay(request.medicationCodeableConcept?.coding) ||
@@ -31,6 +41,7 @@ function toView(request: MedicationRequest): MedicationView {
         dosage: dosageText(request),
         quantity: quantity === undefined ? '' : String(quantity),
         // OpenEMR sends the stored local time with an offset; keep its date and time as written.
+        // `slice(0, 19)` keeps "YYYY-MM-DDTHH:MM:SS" (dropping the offset), then the "T" becomes a space.
         added: (request.authoredOn ?? '').slice(0, 19).replace('T', ' '),
     };
 }
@@ -44,6 +55,7 @@ function isCurrentPrescription(request: MedicationRequest): boolean {
     return request.status === 'active' || request.status === 'completed';
 }
 
+/** Every dosage instruction's text, blanks dropped, joined with "; "; '' when there is no request. */
 function dosageText(request: MedicationRequest | undefined): string {
     return (request?.dosageInstruction ?? [])
         .map((instruction) => instruction.text?.trim() ?? '')
@@ -61,13 +73,18 @@ function dosageText(request: MedicationRequest | undefined): string {
  * - Prescriptions: every FHIR request that is not a list entry, whatever its intent, active or
  *   completed, newest first.
  * `now` is the local date and time, "YYYY-MM-DD HH:MM:SS".
+ * (The old rule, isCurrentListRow: hide an entry marked resolved or whose end date has passed.)
  */
 export function splitMedications(
     resources: readonly MedicationRequest[],
     listRows: ReadonlyMap<string, ListDates>,
     now: string,
 ): MedicationSplit {
+    // A lookup table from each FHIR request's id to the request, to find an entry's dosage quickly.
     const byId = new Map(resources.map((request) => [request.id ?? '', request]));
+    // Medications card: take every list row as an (id, row) pair, keep the current ones, note each
+    // one's position, sort by start date (oldest first; blank start dates sort first as '' comes before
+    // any date; equal dates keep list order), then turn each into a card row.
     const medications = [...listRows]
         .filter(([, row]) => isCurrentListRow(row, now))
         .map(([id, row], index) => ({ id, row, index }))
@@ -83,6 +100,8 @@ export function splitMedications(
             quantity: '',
             added: '',
         }));
+    // Prescriptions card: keep FHIR requests that are not on the medication list and are active or
+    // completed, turn each into a row, then sort by date added, newest first (ties keep API order).
     const prescriptions = resources
         .filter((request) => !listRows.has(request.id ?? '') && isCurrentPrescription(request))
         .map(toView)

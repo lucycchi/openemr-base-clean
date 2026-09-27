@@ -1,3 +1,19 @@
+/**
+ * The BFF's front door: it decides which web address goes to which piece of the server.
+ *
+ * Runs on the server (the droplet in production, the developer's machine in development), inside the
+ * Node process started by index.ts. The browser's requests come in here and are handed on:
+ * - /healthz: a "yes, I am running" answer for the deploy script and Docker's health check.
+ * - /app-config: the site's settings for the page (hidden cards, date format, idle timeout).
+ * - /auth/...: logging in and out with OpenEMR (auth.ts).
+ * - /api/fhir/...: read-only FHIR requests, checked and passed on to OpenEMR (fhirProxy.ts).
+ * - /api/display-names: staff and facility names (displayNames.ts).
+ * - /api/list-dates: medication, allergy and problem list details from the Standard REST API (listDates.ts).
+ * - anything else: the built React page itself (index.html, scripts, styles).
+ *
+ * "Hono" is the small web-server library that does the routing. Each piece is optional so that tests can
+ * build an app with only the parts they need.
+ */
 import { Hono } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { authRoutes } from './auth';
@@ -10,6 +26,10 @@ import { listDatesRoutes } from './listDates';
 import type { ListDatesDeps } from './listDates';
 import type { AppConfig } from './appConfig';
 
+/**
+ * Everything createApp can be given. A "?" after a name means that part is optional: when it is left out,
+ * the matching web addresses simply do not exist.
+ */
 export interface AppOptions {
     /** Directory holding the built SPA (index.html and assets). Omitted in unit tests. */
     staticRoot?: string;
@@ -25,12 +45,19 @@ export interface AppOptions {
     appConfig?: AppConfig;
 }
 
-/** Builds the BFF: health check, /auth routes, the /api/fhir proxy, and the built SPA with an index.html fallback. */
+/**
+ * Builds the BFF: health check, /auth routes, the /api/fhir proxy, and the built SPA with an index.html fallback.
+ * ("SPA" = single-page app: the React page, which handles its own screens once loaded.)
+ */
 export function createApp(options: AppOptions = {}): Hono {
     const app = new Hono();
 
+    // `(c) => ...` is a short function that Hono runs for each request; `c` holds the request and builds
+    // the reply. c.json(...) sends a JSON reply, here simply {"ok": true}.
     app.get('/healthz', (c) => c.json({ ok: true }));
 
+    // Each block below adds a group of web addresses only if that part was supplied ("!== undefined"
+    // means "was given").
     if (options.appConfig !== undefined) {
         const appConfig = options.appConfig;
         app.get('/app-config', (c) => c.json(appConfig));
@@ -50,6 +77,8 @@ export function createApp(options: AppOptions = {}): Hono {
         app.route('/api/list-dates', listDatesRoutes(options.listDates));
     }
 
+    // Last of all, the page's own files. If no file matches the address, send index.html anyway, so a
+    // reload on any dashboard address still opens the app ("*" matches any address).
     if (options.staticRoot !== undefined) {
         const root = options.staticRoot;
         app.use('/*', serveStatic({ root }));

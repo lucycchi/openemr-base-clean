@@ -1,6 +1,18 @@
+/**
+ * The BFF's conversation with OpenEMR's login service (OAuth2), on behalf of the logged-in user.
+ *
+ * Runs on the server. It does three things: builds the address of OpenEMR's login page (the browser is
+ * sent there by auth.ts); swaps the one-time code OpenEMR hands back after login for tokens; and swaps a
+ * refresh token for a fresh access token when the old one is about to run out (session.ts). Tokens are
+ * OpenEMR's "passes" for API calls. The dashboard proves who it is with its own client id and secret,
+ * which are read from environment variables and never sent to the browser.
+ */
+
+/** OpenEMR's answer when it issues tokens (the names match OpenEMR's JSON). */
 export interface TokenResponse {
     access_token: string;
     refresh_token?: string;
+    /** How many seconds the access token lasts. */
     expires_in: number;
     scope?: string;
 }
@@ -12,15 +24,22 @@ export interface OAuthClient {
     refresh(refreshToken: string): Promise<TokenResponse>;
 }
 
+/** The dashboard's OpenEMR client registration, as read from the environment (config.ts). */
 export interface OAuthConfig {
     /** OpenEMR origin, for example https://localhost:9300 */
     base: string;
     clientId: string;
     clientSecret: string;
+    /** The permissions the dashboard asks for, space-separated. */
     scope: string;
+    /** Where OpenEMR sends the browser back after login. */
     redirectUri: string;
 }
 
+/**
+ * An error from OpenEMR's token service, carrying the HTTP status number so callers can tell a refused
+ * token (400 or 401) from OpenEMR being down or answering nonsense (502).
+ */
 export class OAuthError extends Error {
     constructor(
         message: string,
@@ -31,8 +50,10 @@ export class OAuthError extends Error {
     }
 }
 
+/** Give up on OpenEMR after 15 seconds. */
 const TIMEOUT_MS = 15_000;
 
+/** Checks OpenEMR's token answer has the parts the BFF needs, keeping only those; anything else is a 502. */
 function parseTokenResponse(body: unknown): TokenResponse {
     if (typeof body !== 'object' || body === null) {
         throw new OAuthError('Token response is not an object', 502);
@@ -53,10 +74,16 @@ function parseTokenResponse(body: unknown): TokenResponse {
     return response;
 }
 
-/** OpenEMR's confidential-client token endpoint, authenticated with HTTP Basic. */
+/**
+ * OpenEMR's confidential-client token endpoint, authenticated with HTTP Basic.
+ * ("Confidential client": the dashboard has a secret, kept on the server. "HTTP Basic": the id and secret
+ * are sent together, encoded, in a header on each token request.) `fetchImpl` is the function used to call
+ * OpenEMR; tests pass a fake one.
+ */
 export function createOAuthClient(config: OAuthConfig, fetchImpl: typeof fetch = fetch): OAuthClient {
     const basic = 'Basic ' + Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
 
+    /** Sends one form to OpenEMR's token endpoint and waits for its answer; any non-success status throws. */
     async function token(form: Record<string, string>): Promise<TokenResponse> {
         const res = await fetchImpl(`${config.base}/oauth2/default/token`, {
             method: 'POST',
@@ -71,6 +98,11 @@ export function createOAuthClient(config: OAuthConfig, fetchImpl: typeof fetch =
     }
 
     return {
+        /**
+         * The address of OpenEMR's login page, with what OpenEMR needs to know: who is asking, which
+         * permissions, where to send the browser back, the `state` check value and the PKCE code challenge
+         * (see auth.ts). `aud` names the FHIR API the tokens are for.
+         */
         authorizeUrl({ state, codeChallenge }) {
             const url = new URL(`${config.base}/oauth2/default/authorize`);
             url.search = new URLSearchParams({
@@ -85,6 +117,7 @@ export function createOAuthClient(config: OAuthConfig, fetchImpl: typeof fetch =
             }).toString();
             return url.toString();
         },
+        /** Swaps the one-time login code for tokens; the code verifier proves this server started the login. */
         exchangeCode(code, codeVerifier) {
             return token({
                 grant_type: 'authorization_code',
@@ -93,6 +126,7 @@ export function createOAuthClient(config: OAuthConfig, fetchImpl: typeof fetch =
                 code_verifier: codeVerifier,
             });
         },
+        /** Swaps a refresh token for a new access token (and usually a new refresh token). */
         refresh(refreshToken) {
             return token({ grant_type: 'refresh_token', refresh_token: refreshToken });
         },

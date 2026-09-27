@@ -1,3 +1,9 @@
+/**
+ * The Prescriptions card on screen. In: the patient's id and the prescription rows prepared by
+ * mappers/medications.ts (the "prescriptions" half of splitMedications, newest first), or a note that
+ * they are still loading or failed. Out: a table with one row per prescription (drug, details,
+ * quantity, refills, date added). The markup looks like HTML; see AllergiesCard.tsx for a reading guide.
+ */
 import type { LoadState } from '../hooks/loadState';
 import type { MedicationView } from '../mappers/medications';
 
@@ -8,6 +14,7 @@ import type { MedicationView } from '../mappers/medications';
  */
 export function PrescriptionsCard({ patientId, state }: { patientId: string; state: LoadState<MedicationView[]> }) {
     if (state.status !== 'ready') {
+        // Still loading or failed: the heading and a loading or error message (`a ? b : c` chooses).
         return (
             <section data-card="prescriptions" data-state={state.status} aria-label="Prescriptions">
                 <h3>Prescriptions</h3>
@@ -26,6 +33,7 @@ export function PrescriptionsCard({ patientId, state }: { patientId: string; sta
                 // Also shown when every prescription is discontinued; the old card showed an empty table (BM-024).
                 <p data-empty>No active prescriptions</p>
             ) : (
+                // A table: <thead> is the header row, <tbody> holds one <tr> row per prescription.
                 <table className="table table-sm">
                     <thead>
                         <tr>
