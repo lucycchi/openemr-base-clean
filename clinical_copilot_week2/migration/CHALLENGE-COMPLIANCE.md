@@ -40,7 +40,7 @@ For the hand-in, the grader is pointed at the `dashboard-migration` branch on Gi
 | 7 | Allergies, Problem List, Medications, Prescriptions and Care Team, each with live data from the FHIR API | Met for four cards; the Problem List is a documented deviation | All five cards read live data on every patient open. Three cards also read OpenEMR's Standard REST API, because FHIR reports those lists wrongly: FHIR drops some problems, and it marks future-ended medications and allergies as finished. Specifically, the Problem List is built from the standard problem list, Medications from the standard medication list plus FHIR dosage, and Allergies from FHIR plus end dates from the standard list. The defence explains each case (BM-044, BM-047, BM-051), and the challenge's own introduction allows "REST and FHIR". Risk: a grader who reads "from the FHIR API" literally may mark this down. |
 | 8 | One additional section of your choice | Met | Encounter history, from FHIR `Encounter`. Parity test: `tests/parity/encounters.spec.ts`. |
 | 9 | A working reimplementation | Met | Deployed at https://dashboard.146-190-139-37.sslip.io, redeployed with the new look; 4 of 4 deployed smoke tests pass. |
-| 10 | "Feature parity with the original is the standard" | Met for what the dashboard shows; prescriptions can be edited, the other cards' editing links to OpenEMR, and translated labels are not ported (disclosed) | 9 of 9 parity tests pass against the running old dashboard. Every difference is an approved exception in `BUGS-MITIGATIONS.md`. Each card collapses from its title and, as on the old dashboard, stays collapsed for that user on later visits and other patients (added in `e4f31a4`; the BFF keeps the choice because the API cannot reach OpenEMR's user settings). The edit buttons are left out on purpose, because the port is read-only, and the defence says so. |
+| 10 | "Feature parity with the original is the standard" | Met for what the dashboard shows; prescriptions can be edited, the other cards' editing links to OpenEMR, and translated labels are not ported (disclosed) | 9 of 9 parity tests pass against the running old dashboard. Every difference is an approved exception in `BUGS-MITIGATIONS.md`. Each card collapses from its title and, as on the old dashboard, stays collapsed for that user on later visits and other patients (added in `e4f31a4`; the BFF keeps the choice because the API cannot reach OpenEMR's user settings). Editing: prescriptions are added, changed and discontinued in the dashboard; the other four cards link to OpenEMR for editing, because OpenEMR's write API cannot record their clinical fields (BM-062, BM-063). Nothing deletes. |
 | 11 | Explain why you chose your framework | Met | `PATIENT_DASHBOARD_MIGRATION.md`, "Why this framework" (four reasons, including the CORS spike that required a server in front of the API) |
 | 12 | Explain what you gained by moving away from PHP | Met | "What moving off PHP gained" |
 | 13 | Explain what tradeoffs came with that choice | Met | "Tradeoffs and costs", plus "Parity evidence" and "Not ported" |
@@ -50,9 +50,9 @@ For the hand-in, the grader is pointed at the `dashboard-migration` branch on Gi
 
 Last run on 2026-09-27.
 
-| Check | Command | Result at `5238e83` |
+| Check | Command | Result at `a213485` |
 |---|---|---|
-| Unit tests | `npm test` | 342 of 342 pass (52 files) |
+| Unit tests | `npm test` | 353 of 353 pass (52 files) |
 | Lint | `npm run lint` | clean |
 | Types | `npm run typecheck` | clean |
 | Formatting | `npx prettier --check .` | clean |

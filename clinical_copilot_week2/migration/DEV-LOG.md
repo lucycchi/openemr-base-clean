@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-27 — Arc 06 / Final review — Fixes from a fresh whole-branch review
+
+**Branch:** `dashboard-migration`
+**Status:** committed (a213485)
+
+### Worked on
+- A fresh Opus reviewer checked 7b84b14..e3d364e against the plan and OpenEMR's PHP. It found 1 Critical and 5 Important issues; all were fixed test-first:
+  - **Critical: Change dropped the old prescription's data.** It lost the structured dose, RxNorm code, directions, diagnosis and note, then discontinued the original. The corrected prescription now carries over everything OpenEMR's read returns (`carriedOver` in `server/prescriptionInput.ts`). The Change form says refills must be set again, because the read does not return them.
+  - **A half-failed Change now names the old prescription**, giving its name, details and date added.
+  - **The OpenEMR-screens warning now also appears in the Change form.** It adds that saving the prescription in OpenEMR's editor makes it active again. BM-067 is updated.
+  - **An unclear answer (a timeout or a 5xx) is now "uncertain":** "may not have saved; check the list", and the list reloads. It no longer says "Nothing was changed".
+  - **One write at a time:** Add, Change and Discontinue are locked while a write is running.
+  - **The compliance report's requirement 10** no longer calls the port read-only.
+- Minor findings are deferred and listed in the plan ledger. They cover accessibility polish, a stale-404 retry message, Add on a collapsed card, and two extra tests.
+
+### Tests
+- Unit: 353 of 353.
+- Browser: 42 of 42 (33 end-to-end and 9 parity).
+
 ## 2026-09-27 — Arc 06 / Stories 06-01 to 06-03 — Prescription editing, and Edit in OpenEMR elsewhere
 
 **Branch:** `dashboard-migration`

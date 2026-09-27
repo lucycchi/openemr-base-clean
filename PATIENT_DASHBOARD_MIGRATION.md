@@ -88,10 +88,10 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
 - **Editing through OpenEMR's write API (ARC-06).** OpenEMR's write API is much thinner than its read API, so editing was ported only where it can be done without losing clinical data:
   - *Allergies, problems and medications (BM-062):* the API silently drops an allergy's reaction, severity, outcome and verification, a problem's comments, and a medication's dosage instructions, and gives a new medication no uuid. Editing them in the dashboard would save incomplete records, so each card has an "Edit in OpenEMR" link. It opens the patient's chart page on its own, without OpenEMR's menu, because OpenEMR has no link that opens a patient inside its full screen; a user not signed in to OpenEMR signs in there and lands on OpenEMR's home screen, so the note says to click again. OpenEMR's session cookie is `SameSite=Strict`, so the link works when the dashboard and OpenEMR share a site, as on the droplet.
   - *Care team (BM-063):* no API route can change a care team, so the card links to OpenEMR too.
-  - *Prescriptions (BM-064, BM-065):* the API can add and discontinue but not update, so Change adds the corrected prescription and then discontinues the old one; if the second step fails, the page says both exist rather than showing none. The BFF sets what the old form sets (date added, start date, intent, category). The date added is the browser's local time, which assumes the clinic's clock matches OpenEMR's time zone.
+  - *Prescriptions (BM-064, BM-065):* the API can add and discontinue but not update, so Change adds the corrected prescription and then discontinues the old one; if the second step fails, the page names the old prescription and says both exist rather than showing none. The corrected prescription keeps the old one's structured dose, RxNorm code, directions, diagnosis and note; OpenEMR's read does not return refills, the start date or the medication-list link, so the Change form asks for refills again. If OpenEMR does not answer clearly, the page says the prescription may have saved and reloads the list, rather than inviting a duplicate. The BFF sets what the old form sets (date added, start date, intent, category). The date added is the browser's local time, which assumes the clinic's clock matches OpenEMR's time zone.
   - *Prescriber (BM-065):* OpenEMR's prescriber field only takes its numeric user id, which only admins can read through the API, so the form's Prescriber box is saved in the prescription's note as "Prescriber: ..."; OpenEMR's own prescriber field stays empty and the typed name is not checked.
   - *Permissions (BM-065):* the API checks the medications permission for prescription writes, not the prescriptions permission. In a default install the same groups can write prescriptions as before; a site that took prescribing away from a group but kept its medications access would still find prescriptions writable.
-  - *Discontinued prescriptions look current in OpenEMR's screens (BM-067).* The API marks a discontinued prescription `active = 0`, and OpenEMR's legacy screens skip empty values when they load a record, so they show it as active; the old form uses `-1`. Kept by decision: the dashboard and FHIR show it as stopped, and the Discontinue question warns that OpenEMR's own screens will still list it. A browser test pins the behaviour, so a fix in OpenEMR will show up.
+  - *Discontinued prescriptions look current in OpenEMR's screens (BM-067).* The API marks a discontinued prescription `active = 0`, and OpenEMR's legacy screens skip empty values when they load a record, so they show it as active; the old form uses `-1`. Kept by decision: the dashboard and FHIR show it as stopped, and the Discontinue question and the Change form warn that OpenEMR's own screens will still list it, and that saving it in OpenEMR's prescription editor makes it active again. A browser test pins the behaviour, so a fix in OpenEMR will show up.
   - *No deletes (BM-066):* the API's allergy, problem and medication deletes are permanent and open to any clinician, where the old screens let only superusers delete, so the dashboard never deletes.
   - A backend change, such as a custom module with proper write routes, is a possible follow-up that would let all of this move into the dashboard.
 - **Not ported:** the edit workflows for allergies, problems, medications and the care team (they link to OpenEMR), the reminders, disclosures, amendments, billing, insurance, portal, photos and other cards listed in the next section.
@@ -109,7 +109,7 @@ Parity was measured against the running old dashboard, not against my reading of
 
 ### Results
 
-Full parity suite (`npm run test:parity`) on commit `5238e83`, 2026-09-27, against the development-easy stack: **9 of 9 tests passed**, including the two self-tests of the old-dashboard reader.
+Full parity suite (`npm run test:parity`) on commit `a213485`, 2026-09-27, against the development-easy stack: **9 of 9 tests passed**, including the two self-tests of the old-dashboard reader.
 
 | Section | Fields compared | Fixtures | Result | Approved exceptions |
 |---|---|---|---|---|
@@ -122,7 +122,7 @@ Full parity suite (`npm run test:parity`) on commit `5238e83`, 2026-09-27, again
 | Encounter history | date, reason, provider (named wherever FHIR sends one), first page and all visits | TYPICAL, HISTORY, LONG, EMPTY | Pass | BM-032 (provider without an NPI), BM-034 ("Show all"), BM-035 (empty text), BM-039 (billing, forms, insurance not ported) |
 
 Every parity test was also shown to fail when the rule it guards was broken on purpose (recorded per slice in `DEV-LOG.md`). Alongside it, on the same commit:
-- **Unit tests:** 342 of 342 pass, covering every mapper, hook, card and BFF route.
+- **Unit tests:** 353 of 353 pass, covering every mapper, hook, card and BFF route.
 - **End-to-end tests:** 33 of 33 pass, covering:
   - login, logout, idle sign-out and ended sessions
   - load failures shown as errors, and cards a user may not see left out
