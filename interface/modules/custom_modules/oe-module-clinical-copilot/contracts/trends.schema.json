@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/trends.schema.json",
+  "title": "Lab trends",
+  "description": "The lab trend lines the panel draws, one per test (LOINC code and unit), built by LabTrends from the same lab rows the fact table reads. Display data, never a fact: not in the facts hash or the prompt. A point read from an uploaded document carries its document citation; a point entered in the chart carries null. At most 6 series (most recently resulted first) of 2 to 8 points (oldest first); more counts the series left out.",
+  "type": "object",
+  "properties": {
+    "series": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "properties": {
+          "loinc": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "description": "The latest point's test name as recorded." },
+          "unit": { "type": "string", "description": "The latest point's unit as recorded; may be empty." },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+                "value": { "type": "number" },
+                "citation": { "oneOf": [{ "type": "null" }, { "$ref": "citation.schema.json" }] }
+              },
+              "required": ["date", "value", "citation"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["loinc", "name", "unit", "points"],
+        "additionalProperties": false
+      }
+    },
+    "more": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["series", "more"],
+  "additionalProperties": false
+}

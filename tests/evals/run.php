@@ -688,6 +688,9 @@ function runCriticCase(array $case): array
  * expect.categories: {category: minimum count}; expect.cited: categories whose
  * facts must all carry an anchored document citation; expect.absent: categories
  * that must not appear.
+ * chart_labs (optional): numeric results seeded in the chart first, each
+ * {loinc, name, value, unit, date}. expect.trends (optional): lines the panel's
+ * trend chart must show, each {loinc, points, cited_last}.
  *
  * @param array<string, mixed> $case
  * @return array<string, mixed>
@@ -713,6 +716,11 @@ function runFactsCase(array $case): array
     $run = ['ms' => 0, 'ungrounded_tokens' => []];
     try {
         $patient = new PatientId($pid);
+        // Optional: numeric lab results already in the chart before the upload (the
+        // case's "chart_labs"), so a trend case has earlier points to join.
+        foreach (lst($case, 'chart_labs') as $lab) {
+            seedChartLab($pid, mapOf($lab));
+        }
         $store = new DocumentStore();
         $type = DocType::from(str($case, 'doc_type'));
         $stored = $store->store($patient, $type, str($case, 'fixture'), (string) file_get_contents($fixturesDir . str($case, 'fixture')), 'admin', 1);
@@ -751,6 +759,32 @@ function runFactsCase(array $case): array
                 $anchorErrors[] = sprintf('%s: present, expected absent', $cat);
             }
         }
+        // Optional "trends": each named LOINC must have a line with exactly that many
+        // points, and with cited_last the newest point must carry an anchored citation
+        // to the uploaded document (the chart's click-to-source point).
+        $trends = $assembled->labTrends();
+        $schemaErrors = [...$schemaErrors, ...schemaErrors('trends', $trends->toArray())];
+        $run['trends'] = array_map(static fn($s): string => sprintf('%s:%d', $s->loinc, count($s->points)), $trends->series);
+        foreach (lst($expect, 'trends') as $want) {
+            $want = mapOf($want);
+            $line = null;
+            foreach ($trends->series as $s) {
+                if ($s->loinc === str($want, 'loinc')) {
+                    $line = $s;
+                }
+            }
+            if ($line === null) {
+                $anchorErrors[] = sprintf('trend %s: no line', str($want, 'loinc'));
+                continue;
+            }
+            if (count($line->points) !== intOf($want['points'] ?? null)) {
+                $anchorErrors[] = sprintf('trend %s: %d points, expected %d', $line->loinc, count($line->points), intOf($want['points'] ?? null));
+            }
+            $last = $line->latest()->citation;
+            if (($want['cited_last'] ?? false) === true && !($last !== null && $last->anchored && $last->sourceId === (string) $documentId)) {
+                $anchorErrors[] = sprintf('trend %s: newest point has no anchored citation to document %d', $line->loinc, $documentId);
+            }
+        }
         foreach (strings($expect['cited'] ?? null) as $cat) {
             foreach ($facts as $f) {
                 if ($f->category->value === $cat && !($f->citation !== null && $f->citation->anchored && $f->citation->sourceId === (string) $documentId)) {
@@ -766,11 +800,45 @@ function runFactsCase(array $case): array
             require_once __DIR__ . '/phi.php';
             removeDocument($documentId);
         }
+        removeChartLabs($pid);
         QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$pid]);
         QueryUtils::sqlStatementThrowException("DELETE FROM patient_data WHERE pid = ?", [$pid]);
     }
     $run['ms'] = (int) round((hrtime(true) - $t) / 1e6);
     return $run + ['schema_errors' => $schemaErrors, 'anchor_errors' => $anchorErrors, 'categories' => $categories, 'uncited_kept' => $uncited];
+}
+
+/**
+ * Writes one numeric chart lab result for a throwaway eval patient: an order,
+ * its report and one result row, the shape a lab interface would leave.
+ * No encounter (0) and no document, so it reads back as a chart-entered value.
+ *
+ * @param array<string, mixed> $lab {loinc, name, value, unit, date}
+ */
+function seedChartLab(int $pid, array $lab): void
+{
+    $date = str($lab, 'date') . ' 00:00:00';
+    $orderId = (int) QueryUtils::sqlInsert(
+        "INSERT INTO procedure_order (provider_id, patient_id, encounter_id, date_collected, date_ordered, order_status, activity, procedure_order_type, clinical_hx) VALUES (0, ?, 0, ?, ?, 'complete', 1, 'laboratory_test', 'eval chart lab')",
+        [$pid, $date, $date]
+    );
+    $reportId = (int) QueryUtils::sqlInsert(
+        "INSERT INTO procedure_report (procedure_order_id, procedure_order_seq, date_collected, date_report, source, report_status, review_status) VALUES (?, 1, ?, ?, 0, 'final', 'reviewed')",
+        [$orderId, $date, $date]
+    );
+    QueryUtils::sqlInsert(
+        "INSERT INTO procedure_result (procedure_report_id, result_data_type, result_code, result_text, date, units, result, result_status) VALUES (?, 'N', ?, ?, ?, ?, ?, 'final')",
+        [$reportId, str($lab, 'loinc'), str($lab, 'name'), $date, str($lab, 'unit'), str($lab, 'value')]
+    );
+}
+
+/** Removes every lab order, report and result left for a throwaway eval patient. */
+function removeChartLabs(int $pid): void
+{
+    QueryUtils::sqlStatementThrowException("DELETE pr FROM procedure_result pr JOIN procedure_report prp ON prp.procedure_report_id = pr.procedure_report_id JOIN procedure_order po ON po.procedure_order_id = prp.procedure_order_id WHERE po.patient_id = ?", [$pid]);
+    QueryUtils::sqlStatementThrowException("DELETE prp FROM procedure_report prp JOIN procedure_order po ON po.procedure_order_id = prp.procedure_order_id WHERE po.patient_id = ?", [$pid]);
+    QueryUtils::sqlStatementThrowException("DELETE poc FROM procedure_order_code poc JOIN procedure_order po ON po.procedure_order_id = poc.procedure_order_id WHERE po.patient_id = ?", [$pid]);
+    QueryUtils::sqlStatementThrowException("DELETE FROM procedure_order WHERE patient_id = ?", [$pid]);
 }
 
 /**
@@ -917,7 +985,7 @@ function compare(array $expect, array $actual): array
             }
             continue;
         }
-        if (in_array($key, ['min_chunks', 'categories', 'absent', 'cited', 'min_chunks_per_trigger', 'top_sources_allowed'], true)) {
+        if (in_array($key, ['min_chunks', 'categories', 'absent', 'cited', 'trends', 'min_chunks_per_trigger', 'top_sources_allowed'], true)) {
             continue; // scored into ungrounded_tokens / anchor_errors by the mode runner
         }
         if ($key === 'max_stripped') {

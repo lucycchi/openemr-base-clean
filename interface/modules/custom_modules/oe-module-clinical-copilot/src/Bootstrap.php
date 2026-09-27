@@ -153,6 +153,7 @@ final class Bootstrap
   <div class="card-body">
     <div id="copilot-narration" class="copilot-narration"></div>
     <div id="copilot-guidelines" class="copilot-guidelines"></div>
+    <div id="copilot-trends" class="copilot-trends" hidden></div>
     <div id="copilot-facts" class="copilot-facts"></div>
     <div id="copilot-documents" class="copilot-documents">
       <h6>Uploaded documents</h6>

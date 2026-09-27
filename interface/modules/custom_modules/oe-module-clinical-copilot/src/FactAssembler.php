@@ -302,7 +302,9 @@ final class FactAssembler
             }
         }
 
-        return new AssembledFacts(new FactSet($this->capPerCategory($facts)), $prior, $activeProblemTitles, $latestBmi);
+        // The trend chart is drawn from every result on file (hidden encounters already
+        // removed), not only the ones new since the prior visit that became facts above.
+        return new AssembledFacts(new FactSet($this->capPerCategory($facts)), $prior, $activeProblemTitles, $latestBmi, LabTrends::fromLabs($labs));
     }
 
     private const CAP_PER_CATEGORY = 50;

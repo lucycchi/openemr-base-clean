@@ -141,6 +141,7 @@ final class ContractsTest extends TestCase
             'llm follow-up output' => ['llm.followup.output'],
             'fact' => ['fact'],
             'citation' => ['citation'],
+            'lab trends' => ['trends'],
             'cited sentence' => ['sentence'],
             'lab report extraction' => ['lab-report'],
             'intake form extraction' => ['intake-form'],

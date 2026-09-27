@@ -119,6 +119,8 @@ final class PanelPayload
                 ],
                 $assembled->facts()->all()
             ),
+            // Lab trend lines for the panel's chart (contracts/trends.schema.json).
+            'trends' => $assembled->labTrends()->toArray(),
         ];
     }
 

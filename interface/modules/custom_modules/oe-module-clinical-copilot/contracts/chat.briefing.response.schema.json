@@ -29,6 +29,9 @@
   "facts": {
    "$ref": "#/$defs/facts"
   },
+  "trends": {
+   "$ref": "trends.schema.json"
+  },
   "narration": {
    "type": "object",
    "properties": {
@@ -241,6 +244,7 @@
   "prior_visit",
   "facts_hash",
   "facts",
+  "trends",
   "narration",
   "guidelines"
  ],

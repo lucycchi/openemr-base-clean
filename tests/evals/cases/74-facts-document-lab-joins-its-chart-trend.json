@@ -1,0 +1,23 @@
+{
+  "id": "74-facts-document-lab-joins-its-chart-trend",
+  "guards": "invariant",
+  "failure_mode": "The lab trend chart (PRD extension X4) must draw extracted Observation data on the same line as the chart's own results for that test. Two LDL results already in the chart (one recorded as 'mg/dl', one as 'mg/dL') plus the LDL read from an uploaded report must form one three-point line whose newest point carries the anchored citation back to the document, so clicking it opens the highlighted row. A spelling difference in the unit must not split the line, and the trend payload must match contracts/trends.schema.json.",
+  "mode": "facts",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-layout1.pdf",
+  "model_output": "lab-layout1.model.json",
+  "chart_labs": [
+    { "loinc": "2089-1", "name": "LDL Cholesterol", "value": "162", "unit": "mg/dl", "date": "2025-09-10" },
+    { "loinc": "2089-1", "name": "LDL Cholesterol", "value": "150", "unit": "mg/dL", "date": "2026-03-12" }
+  ],
+  "rubrics": {
+    "schema_valid": true,
+    "anchor_correct": true
+  },
+  "expect": {
+    "status": "extracted",
+    "trends": [
+      { "loinc": "2089-1", "points": 3, "cited_last": true }
+    ]
+  }
+}

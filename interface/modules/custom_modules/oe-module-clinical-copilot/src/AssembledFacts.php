@@ -27,7 +27,14 @@ final readonly class AssembledFacts
         private ?EncounterRecord $priorEncounter,
         private array $activeProblemTitles = [],
         private ?float $latestBmi = null,
+        private ?LabTrends $labTrends = null,
     ) {
+    }
+
+    /** The lab trend lines for the panel's chart; display data, never a fact. */
+    public function labTrends(): LabTrends
+    {
+        return $this->labTrends ?? LabTrends::none();
     }
 
     /** The most recent BMI on the chart, any date, for the trigger rules; never a fact. */

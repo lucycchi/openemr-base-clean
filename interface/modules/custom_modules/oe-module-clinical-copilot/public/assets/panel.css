@@ -75,3 +75,19 @@
 #copilot-panel .copilot-rate-status { color: #6c757d; }
 #copilot-panel .copilot-rate-comment { display: flex; gap: .4rem; align-items: flex-start; margin-top: .35rem; }
 #copilot-panel .copilot-rate-comment[hidden] { display: none; }
+
+/* Lab trends: one small line per test above the fact table. Chart values are
+   solid dots; values read from an uploaded PDF are outlined and clickable. */
+#copilot-panel .copilot-trends { margin-bottom: .75rem; }
+#copilot-panel .copilot-trend { display: inline-block; vertical-align: top; margin: 0 1rem .5rem 0; }
+#copilot-panel .copilot-trend-head { font-size: .8rem; }
+#copilot-panel .copilot-trend svg { display: block; overflow: visible; }
+#copilot-panel .copilot-trend-line { fill: none; stroke: #6c757d; stroke-width: 1.5; }
+#copilot-panel .copilot-trend-chart { fill: #343a40; }
+#copilot-panel .copilot-trend-doc { fill: #fff; stroke: #0d6efd; stroke-width: 2; pointer-events: none; }
+#copilot-panel .copilot-trend-hit { fill: transparent; }
+#copilot-panel .copilot-trend-cited { cursor: pointer; outline: none; }
+#copilot-panel .copilot-trend-cited:hover .copilot-trend-doc,
+#copilot-panel .copilot-trend-cited:focus .copilot-trend-doc { stroke: #0a58ca; stroke-width: 3; }
+#copilot-panel .copilot-trend-dates { display: flex; justify-content: space-between; width: 240px; font-size: .7rem; color: #6c757d; }
+#copilot-panel .copilot-trend-key { font-size: .75rem; color: #6c757d; margin-bottom: .25rem; }

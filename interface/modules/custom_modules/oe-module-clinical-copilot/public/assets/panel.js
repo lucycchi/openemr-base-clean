@@ -72,6 +72,7 @@
         narration: document.getElementById('copilot-narration'),
         guidelines: document.getElementById('copilot-guidelines'),
         facts: document.getElementById('copilot-facts'),
+        trends: document.getElementById('copilot-trends'),
         form: document.getElementById('copilot-ask'),
         question: document.getElementById('copilot-question'),
         button: document.querySelector('#copilot-ask button'),
@@ -197,6 +198,7 @@
         state.factsHash = payload.facts_hash;
         state.factsById = {};
         payload.facts.forEach(f => { state.factsById[f.id] = f; });
+        renderTrends(payload.trends);
         // Setting innerHTML to an empty string clears the container (no data involved).
         els.facts.innerHTML = '';
         // No facts: say so, and say whether that is "nothing changed" or "first visit".
@@ -224,6 +226,115 @@
             });
             els.facts.appendChild(ul);
         });
+    }
+
+    // ---- Lab trends: one small line chart per test ------------------------
+    //
+    // `payload.trends` (contracts/trends.schema.json) lists up to six tests with
+    // two or more numeric results each, oldest point first. The server already
+    // decided which results belong on a line; this code only draws them.
+    //   - a result entered in the chart is a solid dot;
+    //   - a result read from an uploaded PDF is an outlined dot, and clicking it
+    //     (or pressing Enter on it) opens the PDF with that row highlighted,
+    //     exactly like the "source p.N" link in the fact table.
+    // Points are spaced by date, so a gap of a year looks longer than a gap of a
+    // month. Every label is set as text (textContent), never as markup, because
+    // a test name can come from an uploaded PDF. A hidden table repeats the
+    // values for screen readers (Bootstrap's sr-only class).
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const TREND_W = 240;
+    const TREND_H = 60;
+    const TREND_PAD = 7;
+
+    // A value as the fact table prints it: at most two decimals, no trailing zeros
+    // (synthetic chart values can carry fifteen).
+    function trendValue(v) {
+        return String(Number(v.toFixed(2)));
+    }
+
+    // The SVG twin of el(): SVG elements must be created in the SVG namespace.
+    function svgEl(tag, attrs) {
+        const node = document.createElementNS(SVG_NS, tag);
+        Object.entries(attrs || {}).forEach(([k, v]) => node.setAttribute(k, String(v)));
+        return node;
+    }
+
+    function renderTrends(trends) {
+        els.trends.innerHTML = '';
+        const series = (trends && trends.series) || [];
+        els.trends.hidden = series.length === 0;
+        if (series.length === 0) return;
+        els.trends.appendChild(el('h6', { text: 'Lab trends' }));
+        const anyCited = series.some(s => s.points.some(p => p.citation));
+        els.trends.appendChild(el('p', { class: 'copilot-trend-key', text: anyCited ? '● entered in the chart   ○ read from an uploaded document (click to see where)' : '● entered in the chart' }));
+        series.forEach(s => els.trends.appendChild(trendCard(s)));
+        if (trends.more > 0) {
+            els.trends.appendChild(el('p', { class: 'copilot-muted', text: trends.more + ' more test' + (trends.more === 1 ? '' : 's') + ' with trends not shown.' }));
+        }
+    }
+
+    // One test's card: a heading with the latest value, the line, the first and
+    // last dates under it, and the screen-reader table.
+    function trendCard(s) {
+        const pts = s.points;
+        const latest = pts[pts.length - 1];
+        const unit = s.unit ? ' ' + s.unit : '';
+        // x: position by date. If every point shares one day (two different values
+        // drawn the same day), fall back to even spacing so the dots do not overlap.
+        const times = pts.map(p => Date.parse(p.date + 'T00:00:00Z'));
+        const t0 = Math.min(...times);
+        const tSpan = Math.max(...times) - t0;
+        const x = (i) => TREND_PAD + (tSpan > 0 ? (times[i] - t0) / tSpan : i / (pts.length - 1)) * (TREND_W - 2 * TREND_PAD);
+        // y: the values' range plus 10 % padding, but never a span smaller than
+        // 10 % of the latest value (1 when that is 0). The floor stops a trivial
+        // wobble (140 -> 141) from filling the whole height, and a flat line
+        // (every value equal) sits in the middle instead of dividing by zero.
+        const vals = pts.map(p => p.value);
+        const lo = Math.min(...vals);
+        const hi = Math.max(...vals);
+        const floor = Math.abs(latest.value) * 0.1 || 1;
+        const half = Math.max((hi - lo) * 0.6, floor / 2);
+        const mid = (hi + lo) / 2;
+        const y = (v) => TREND_H - TREND_PAD - ((v - (mid - half)) / (2 * half)) * (TREND_H - 2 * TREND_PAD);
+
+        const chart = svgEl('svg', { width: TREND_W, height: TREND_H, viewBox: '0 0 ' + TREND_W + ' ' + TREND_H, role: 'img' });
+        chart.setAttribute('aria-label', s.name + ' trend, ' + pts.length + ' results from ' + pts[0].date + ' to ' + latest.date);
+        chart.appendChild(svgEl('polyline', { class: 'copilot-trend-line', points: pts.map((p, i) => x(i).toFixed(1) + ',' + y(p.value).toFixed(1)).join(' ') }));
+        pts.forEach((p, i) => {
+            const cx = x(i).toFixed(1);
+            const cy = y(p.value).toFixed(1);
+            const tip = svgEl('title');
+            tip.textContent = p.date + ': ' + trendValue(p.value) + unit + (p.citation ? ' (uploaded document, page ' + (p.citation.page_or_section || '?') + ')' : ' (chart)');
+            if (!p.citation) {
+                const dot = svgEl('circle', { class: 'copilot-trend-chart', cx, cy, r: 3 });
+                dot.appendChild(tip);
+                chart.appendChild(dot);
+                return;
+            }
+            // A cited point: a larger invisible circle takes the click so the small
+            // dot is easy to hit; the group is focusable and opens on Enter or Space.
+            const g = svgEl('g', { class: 'copilot-trend-cited', tabindex: 0, role: 'button' });
+            g.setAttribute('aria-label', 'Show where ' + s.name + ' ' + trendValue(p.value) + unit + ' on ' + p.date + ' was read');
+            g.appendChild(tip);
+            g.appendChild(svgEl('circle', { class: 'copilot-trend-hit', cx, cy, r: 9 }));
+            g.appendChild(svgEl('circle', { class: 'copilot-trend-doc', cx, cy, r: 3.5 }));
+            const open = () => openSource({ citation: p.citation, category: 'lab_trend' });
+            g.addEventListener('click', open);
+            g.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+            });
+            chart.appendChild(g);
+        });
+
+        const table = el('table', { class: 'sr-only' }, [el('caption', { text: s.name + ' results' })]);
+        pts.forEach(p => table.appendChild(el('tr', {}, [el('td', { text: p.date }), el('td', { text: trendValue(p.value) + unit }), el('td', { text: p.citation ? 'uploaded document' : 'chart' })])));
+
+        return el('div', { class: 'copilot-trend' }, [
+            el('div', { class: 'copilot-trend-head' }, [el('strong', { text: s.name }), ' latest ' + trendValue(latest.value) + unit + ' (' + latest.date + ')']),
+            chart,
+            el('div', { class: 'copilot-trend-dates' }, [el('span', { text: pts[0].date }), el('span', { text: latest.date })]),
+            table,
+        ]);
     }
 
     // Week 2: a fact that came from an uploaded document links to the page and
@@ -673,6 +784,7 @@
             // Server refused or errored: show its message in the header and in the fact area.
             if (!ok) {
                 setStatus(json.error || 'unavailable', true);
+                renderTrends(null);
                 els.facts.innerHTML = '';
                 els.facts.appendChild(el('p', { class: 'copilot-muted', text: json.error || 'The Co-Pilot is unavailable for this chart.' }));
                 return;
@@ -691,6 +803,7 @@
             // No usable reply at all: the network failed, the 30 s timer aborted the
             // request (err.name is 'AbortError'), or the body was not JSON.
             setStatus(err.name === 'AbortError' ? 'timed out' : 'unavailable', true);
+            renderTrends(null);
             els.facts.innerHTML = '';
             els.facts.appendChild(el('p', { class: 'copilot-muted', text: 'The Co-Pilot could not be reached. The chart below is unaffected.' }));
         });

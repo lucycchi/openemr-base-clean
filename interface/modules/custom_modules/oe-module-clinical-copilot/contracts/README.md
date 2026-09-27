@@ -57,6 +57,7 @@ code outside an enum, a missing required field, a value out of range).
 | `llm.briefing.output.schema.json` | OpenAI → `OpenAiClient`, briefing | **Loaded at runtime** by `Prompt::briefingSchema()` via `Contracts::forOpenAi()` and sent to OpenAI as `response_format.json_schema` with `strict: true`. The provider enforces it; `LlmSchemaMismatch` is raised on any deviation. |
 | `llm.followup.output.schema.json` | OpenAI → `OpenAiClient`, follow-up | Same, via `Prompt::followUpSchema()`. |
 | `fact.schema.json` | shared: one row of the fact table | `$ref`'d by the three response contracts; its `category` enum is asserted equal to `FactCategory::cases()`. |
+| `trends.schema.json` | shared: the lab trend lines the panel charts (PRD extension X4) | `$ref`'d by the three response contracts as `trends`; built by `LabTrends` from the lab rows the fact table reads, never a fact; a point read from an uploaded document carries its `citation.schema.json` citation. |
 | `sentence.schema.json` | shared: one cited sentence | `$ref`'d by the response contracts. |
 | `loinc_map.json` | shared (Week 2): analyte name to LOINC and canonical unit | Read by the sidecar's anchor step (`sidecar/copilot_sidecar/anchor.py`) to code results and flag unit mismatches. Not a schema; a coding table. |
 | `reference_ranges.json` | Adult reference intervals by LOINC (sex-specific rows, panic bounds, a source per row) the briefing judges lab results against when the report printed no usable range or to name a disagreement; `ReferenceRanges::VERSION` mirrors its version |  |

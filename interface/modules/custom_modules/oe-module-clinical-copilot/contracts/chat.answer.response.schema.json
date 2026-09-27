@@ -31,6 +31,9 @@
         "$ref": "fact.schema.json"
       }
     },
+    "trends": {
+      "$ref": "trends.schema.json"
+    },
     "chart_changed": {
       "const": false
     },
@@ -152,6 +155,7 @@
     "prior_visit",
     "facts_hash",
     "facts",
+    "trends",
     "chart_changed",
     "answer"
   ],
