@@ -11,7 +11,9 @@ for the briefing alone and up to 100,000 users, is in
 ## 1. Latency per step
 
 All numbers from the dev stack (Docker on a laptop, `gpt-4o-mini`) on
-2026-09-22, the last full live eval run ([tests/evals/results.json](tests/evals/results.json))
+2026-09-22, the full live eval run of that day (`tests/evals/results.json` as
+committed in `c4d03a1`: `git show c4d03a1:tests/evals/results.json`; the
+latest live run is [results-live.json](tests/evals/results-live.json))
 and the Langfuse traces of the smoke run. The droplet has slower CPU and
 the same provider, so model-bound steps match and CPU-bound steps
 (tesseract, index load) run about 1.5× longer there (Week 1 BASELINES).
