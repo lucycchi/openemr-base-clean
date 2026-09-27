@@ -59,3 +59,20 @@ test('the droplet recognises the user and saves their card layout to its volume'
     const after = (await (await page.request.get('/api/card-settings')).json()) as { collapsed: string[] };
     expect(after.collapsed.includes('encounter-history')).toBe(wasCollapsed);
 });
+
+test('a physician adds and discontinues a prescription on the droplet (ARC-06)', async ({ page }) => {
+    await logInThroughOpenEmr(page, USER);
+    await page.getByLabel('Find a patient').fill('RxEdit');
+    await page.getByRole('search').evaluate((form) => (form as HTMLFormElement).requestSubmit());
+    await page.getByRole('button', { name: /^Rita RxEdit/ }).click();
+    const card = page.locator('[data-card="prescriptions"]');
+    await expect(card).toHaveAttribute('data-state', 'ready');
+    const drug = `Smoke drug ${Date.now().toString(36)}`;
+    await card.getByRole('button', { name: 'Add prescription' }).click();
+    await page.getByLabel('Drug').fill(drug);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(card.locator('[data-item="prescription"]', { hasText: drug })).toHaveCount(1);
+    await card.getByRole('button', { name: `Discontinue ${drug}` }).click();
+    await page.getByRole('button', { name: 'Yes, discontinue' }).click();
+    await expect(card.locator('[data-item="prescription"]', { hasText: drug })).toHaveCount(0);
+});
