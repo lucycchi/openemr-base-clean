@@ -11,9 +11,13 @@ Clinical Co-Pilot's Python sidecar. This document covers four things:
 Every technical term is defined the first time it appears, and again in the
 [glossary](#glossary) at the end.
 
-Date: 2026-09-26. Branch: `dashboard-migration`, on top of `32098f9`. The
-changes described here are not yet committed and not yet deployed: the
-sidecar image must be rebuilt before the droplet or the dev stack runs them.
+Date: 2026-09-26 to 27. Branch: `dashboard-migration`. The work landed in two
+commits: `5d7988c` (the first round: admission gate, provider slots,
+deadline, retries, metrics) and `057832a` (the second round: adaptive
+provider limit, critic on the same slots, disconnect cancellation, panel
+auto-retry). Both run in the local dev stack, where the real 50-user test
+in [section 12](#12-the-real-50-user-test) was run. Neither is deployed to
+the droplet yet.
 
 ---
 
@@ -29,11 +33,13 @@ sidecar image must be rebuilt before the droplet or the dev stack runs them.
 8. [Deadlines, retries, and work that outlives its request](#8-deadlines-retries-and-work-that-outlives-its-request)
 9. [Measuring document success separately from HTTP success](#9-measuring-document-success-separately-from-http-success)
 10. [Evidence: tests and load tests that were actually run](#10-evidence-tests-and-load-tests-that-were-actually-run)
-11. [Tests proposed but not run](#11-tests-proposed-but-not-run)
-12. [What is still not solved](#12-what-is-still-not-solved)
-13. [Interview answers in plain words](#13-interview-answers-in-plain-words)
-14. [Files changed](#14-files-changed)
-15. [Glossary](#glossary)
+11. [Round two: fixing the problems the first round left](#11-round-two-fixing-the-problems-the-first-round-left)
+12. [The real 50-user test](#12-the-real-50-user-test)
+13. [Tests proposed but not run](#13-tests-proposed-but-not-run)
+14. [What is still not solved](#14-what-is-still-not-solved)
+15. [Interview answers in plain words](#15-interview-answers-in-plain-words)
+16. [Files changed](#16-files-changed)
+17. [Glossary](#glossary)
 
 ---
 
@@ -296,7 +302,7 @@ contention.
 
 ## 6. What was changed
 
-The change adds three controls, all in a new module,
+Round one added three controls, all in a new module,
 [capacity.py](../interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/capacity.py),
 and wires them into the request handler and the model call.
 
@@ -340,6 +346,8 @@ are unchanged. A repeat request served from the idempotency cache never
 reaches the gate.
 
 ### 6.2 Provider slots: a limit on model calls in flight
+
+*(Round two made this limit adaptive: section 11.1.)*
 
 **Semaphore.** A semaphore is a counter of free slots. Taking a slot when
 none is free means waiting until someone gives one back.
@@ -480,10 +488,13 @@ What happens, step by step, when capacity is exhausted:
 4. The file stays in `stored` status, so pressing Extract again later
    works normally.
 
-There is no automatic retry on either side, and no unlimited queue. Both
-the number waiting and the time waited are capped.
+In round one there was no automatic retry on either side. *Round two
+added one, bounded to three tries, in the panel (section 11.4).* There is
+no unlimited queue: both the number waiting and the time waited are
+capped.
 
-Two contracts gained the new `overloaded` code:
+Two contracts gained the new `overloaded` code (and, in round two, the
+documents error contract gained `retry_after_s`, section 11.4):
 [run.error](../interface/modules/custom_modules/oe-module-clinical-copilot/contracts/run.error.schema.json)
 (sidecar to PHP) and
 [documents.error.response](../interface/modules/custom_modules/oe-module-clinical-copilot/contracts/documents.error.response.schema.json)
@@ -506,13 +517,16 @@ and now only for a bounded time:
   a single page, about 2–3 seconds.
 - **When PHP gives up at 60 seconds,** the sidecar has already stopped at
   50.
-- **When a client disconnects early,** the sidecar does not notice. The
-  work runs on until it finishes or reaches the deadline. The result is
+- **When a client disconnects early,** in round one the sidecar did not
+  notice, and the work ran on until it finished or reached the deadline.
+  *Round two fixed this (section 11.3): the work now stops at the next page
+  or retry.* The result is
   stored in the idempotency cache, but PHP generates a new correlation id
   for every attempt, so a retried request will not find it. The waste is
   bounded, but not eliminated.
-- **When a waiting request's client disconnects,** it still takes its turn
-  when a slot frees. It is bounded by the 20-second maximum wait.
+- **When a waiting request's client disconnects,** in round one it still
+  took its turn when a slot freed. *Round two: it now leaves the line at
+  once (section 11.3).*
 
 **How long can one document take in the worst case?** Before the change:
 up to about 450 seconds, from 5 pages × 2 SDK attempts × 45 seconds, with
@@ -729,54 +743,315 @@ files: `before`, `after`, `before-rate2`, `after-rate2`,
 
 ---
 
-## 11. Tests proposed but not run
+## 11. Round two: fixing the problems the first round left
 
-- **A real 50-user load test against the real provider**, with the rebuilt
-  sidecar image, using the existing k6 script
-  (`tests/load/run-baselines.sh`, scenario `extract`). This is the only
-  way to learn the account's true rate limit and tune the settings to it.
-  It was not run because it costs money and deliberately hits the real
-  quota. It needs the user's go-ahead.
-- **A full PHPStan run** (static analysis of all the PHP code). The PHP
-  change is a two-branch message choice. The pre-commit hook runs PHPStan
-  on commit.
-- **A PHP controller test** checking that the `overloaded` code produces
-  the "busy" message. No existing test pins these messages.
-- **A test of client disconnection** during a long extraction. The
-  behaviour is described in section 8 but not tested.
+The first round (sections 6 to 10) left six problems open. Five were
+fixed in a second round (commit `057832a`); the sixth is not a defect.
+Each fix below says what the problem was, what changed, and how it was
+checked.
+
+### 11.1 The limit now adapts to the provider
+
+**The problem.** A limit on calls *at the same time* only stands in for
+the provider's limit on calls *per minute*. Set too high, it still caused
+throttling: in the strict mock scenario (2 calls per second), the default
+limit of 8 left 138 documents failed.
+
+**The fix: AIMD.** The model-call limit now adjusts itself with the rule
+the internet's TCP protocol uses for congestion, called **AIMD**
+("additive increase, multiplicative decrease"):
+
+- **Multiplicative decrease.** A 429 halves the limit (never below 1). If
+  8 calls that were already in flight all get 429 at once, that is one
+  signal, not eight, so the limit halves at most once per second.
+- **Additive increase.** Each successful call raises the limit by
+  1 ÷ (current limit). It therefore climbs back by about one slot for
+  every "limit" successes, and never above the configured maximum
+  (`COPILOT_MAX_PROVIDER_CALLS`, which is now a ceiling rather than a
+  target).
+- **A shared cooldown.** A 429 also pauses *every* new model call, from
+  any document, until the provider's `Retry-After` has passed (one second
+  if it gives none). Callers throttled together no longer each discover
+  the limit separately.
+- **The admission gate follows the limit.** While the limit is 2, only 2
+  extractions are admitted. More documents would only wait for a model
+  call until their deadline ran out.
+
+The live limit is shown in `/metrics` as `now.provider_limit`, and
+`now.extraction_slots` follows it.
+
+**Checked by.**
+- Unit tests: the limit halves once per second and grows back to exactly
+  the ceiling; a 429 pauses a new caller for the `Retry-After`; the gate
+  admits fewer while throttled and lets the line move when the limit
+  grows.
+- The strict mock scenario, rerun with default settings and no tuning:
+  **43 extracted and 0 failed**, where round one gave 25 and 138. Only 21
+  calls were throttled instead of 496, and throughput reached the
+  provider's ceiling (about 24 documents per minute plus the burst).
+
+### 11.2 More than one process, and calls the sidecar cannot see
+
+**The problem.** The limits are per process, and PHP's own model calls
+(briefings, follow-up questions) draw on the same OpenAI quota without the
+sidecar knowing.
+
+**The fix.** The adaptive limit covers both *without* a shared store. It
+reacts to the provider's 429s, whoever caused them. If PHP's calls or a
+second sidecar process use up the quota, this process gets 429s and
+shrinks its own limit. Each process adapts independently, the way every
+computer on the internet slows down on the same congested link without
+talking to the others.
+
+The sidecar's own critic calls (the check, during a briefing, of whether
+a guideline applies to this patient) now take a model-call slot too. The
+critic waits at most 2 seconds for one; without one, its verdict is
+"unknown", which the briefing already shows honestly. Its 429s shrink
+the shared limit as well.
+
+**What this does not give:** a *strict* cap across processes (for example
+"never more than 8 calls in total from two containers"). That still needs
+a shared store such as Redis. It was not built, because the deployment
+runs one process.
+
+**Checked by.** Unit tests: the critic gives up quickly when extraction
+holds every slot, and a critic 429 shrinks the shared limit.
+
+### 11.3 A client that leaves now stops the work
+
+**The problem.** When PHP gave up (or a connection dropped), the sidecar
+did not notice. A waiting request stayed in line, and a running one
+finished every page, paying for answers nobody would read.
+
+**The fix.** While an extraction waits or runs, the handler checks every
+half second whether its client is still connected. If not:
+- a request **waiting in line** leaves the line at once;
+- a **running** request has a cancel flag set. The worker thread checks it
+  at the same points as the deadline: before each page, before each model
+  attempt, and during the wait between retries. It stops at the next one.
+
+Either way, the sidecar logs `run abandoned` and records the request under
+`runs.abandoned_by_client` in `/metrics`. Its status is 499, a code the
+web server nginx made common for "client closed the request"; nobody reads
+it, because the client has gone.
+
+**A bug found on the way.** The first version never noticed a disconnect.
+The cause was the sidecar's correlation-id **middleware** (code that runs
+around every request). It was written with FastAPI's
+`@app.middleware("http")` decorator. Starlette implements that decorator by
+wrapping the request's incoming message channel, and once the body has
+been read, the wrapped channel never reports the client leaving. The
+middleware is now a plain **ASGI** middleware (ASGI being the standard
+interface between Python web servers and apps). It passes the channel
+through untouched and still binds the correlation id. Every existing test
+that checks log lines carry the correlation id still passes.
+
+**Checked by.**
+- Two unit tests drive the app the way uvicorn does, with a client that
+  disconnects: a running extraction notices within 2.5 seconds, and a
+  waiting one leaves the line.
+- A mock load test with real uvicorn, where 10 users give up after 4
+  seconds on documents that take about 10. Round one kept paying for about
+  **4.8** model calls per abandoned document (all 5 pages, nearly). Round
+  two paid for about **1.9**.
+
+### 11.4 The panel retries by itself when the service is busy
+
+**The problem.** When the sidecar was full, the user had to notice the
+"busy" message and press Extract again.
+
+**The fix.**
+1. The sidecar already sends `Retry-After: 15` with `overloaded`.
+2. PHP now reads that header and passes it to the browser as
+   `retry_after_s` (a new optional field in the documents error contract).
+3. The panel then shows *"The document service is busy; the file is
+   stored. Trying again in 16 s (1 of 3)…"*, waits that long plus up to
+   20 % at random, and tries again by itself, **at most 3 times**. The
+   randomness stops clinicians refused at the same moment from all coming
+   back at the same moment.
+4. After the third busy answer, it shows the message and the list's
+   "Retry extraction" button, as before.
+
+Retrying is safe here because "overloaded" means nothing was attempted.
+The number of retries is capped, so there is still no unlimited retrying.
+
+A full background job queue (accept every upload, process it later) was
+considered again and still not built. The bounded automatic retry gives
+the user the same experience for bursts of a minute or so, without job
+storage, a status endpoint or polling.
+
+The k6 load script now does exactly what the panel does, so the real load
+test measures what a clinician would end up with. It reports busy answers
+separately (`busy_answers`, `gave_up_busy`).
+
+**Checked by.** A PHP test that a 503 with `Retry-After: 15` becomes an
+exception carrying 15, and that other errors carry none. The PHP contract
+tests pass (105). The panel script passes ESLint, and the k6 script loads.
+
+### 11.5 Not changed: metrics reset on restart
+
+`/metrics` is a live view of one process since it started. That is its
+job; the lasting record of each document is PHP's log line and the
+Langfuse trace. This is recorded as a property, not a defect.
+
+### 11.6 Round-two test totals
+
+- Sidecar: **133 of 133** pass (26 in `test_capacity.py`, 10 of them new).
+- PHP: contract and client tests **105** pass (13 skipped, as before). Full-codebase
+  **PHPStan: no errors**.
+- Eval gate (the project's pre-push check, which drives the real PHP code
+  against the rebuilt sidecar with recorded model replies): **56 of 56**,
+  no rubric below its baseline.
 
 ---
 
-## 12. What is still not solved
+## 12. The real 50-user test
 
-1. **A concurrency limit is only a stand-in for a rate limit.** The
-   provider limits calls and text *per minute*; the sidecar limits calls
-   *at the same time*. The two match only when the call length is known.
-   Scenario B shows that a limit set too high still produces failures. The
-   settings must be tuned to the account's tier with a real load test. A
-   future improvement would read the provider's own rate-limit headers
-   (`x-ratelimit-remaining-requests` and similar) and adjust automatically.
-2. **The limits are per process.** Today there is one process, so they are
-   also the limits for the deployment. Running two containers, or uvicorn
-   with several workers, would double every limit, with no coordination.
-   A limit shared across processes would need a shared store such as
-   Redis.
-3. **The sidecar cannot see PHP's own model calls.** The briefing and
-   question answering call OpenAI directly from PHP, on the same account
-   and quota. The critic's calls in the sidecar are also not counted. Under
-   mixed load, those calls and extraction compete for one quota.
-4. **A disconnected client's work is not cancelled.** It is bounded by the
-   deadline, not stopped at once.
-5. **Overload means the user must press Extract again.** A background job
-   queue would let uploads wait longer and finish on their own, at the
-   cost of a larger design change (job storage, a status endpoint, polling
-   in the panel).
-6. **The metrics reset on restart** and cover one process. They are a live
-   view, not a history. The history is in PHP's logs and Langfuse.
+### 12.1 What was run
+
+This test used the real OpenAI account; nothing was mocked.
+
+- **Target:** the local dev stack (the same place as the saved run 3),
+  with the sidecar rebuilt from `057832a`.
+- **Tool:** **k6**, a load-testing program. Each **virtual user (VU)**
+  logs in, opens test patient 30's chart, uploads the 5-page synthetic lab
+  report (made unique each time, so it is never skipped as a duplicate),
+  and presses Extract. It pauses 1 second, then repeats.
+- **Levels:** 10 users for 2 minutes, a 30-second pause, then 50 users for
+  2 minutes.
+- **Command:**
+
+```bash
+STAMP=20260927T-real-v2 BASE_URL=http://localhost:8300 STATS=local \
+  VUS_LIST="10 50" SCENARIOS="extract" DURATION=2m tests/load/run-baselines.sh
+python3 tests/load/summarise.py 20260927T-real-v2
+```
+
+Afterwards, the test documents were removed with
+`php tests/load/cleanup-documents.php 30`.
+
+Results: `tests/load/results/20260927T-real-v2-*`. The sidecar's own
+counters were sampled every 5 seconds during the run.
+
+### 12.2 Results against run 3
+
+Run 3 (2026-09-23) is the run that found the problem: same dev stack, same
+scenario, same 2 minutes, before any of this work.
+
+**50 users:**
+
+| Measure | Run 3 (before) | Now |
+|---|---|---|
+| Extractions finished (from k6's side) | 322 | 131 |
+| **Documents extracted** | **41 (12.73 %)** | **113 (86.26 %)** |
+| **Documents failed inside an HTTP 200** | **~281** | **0** |
+| Ended "busy" after 3 automatic retries | – | 18 (13.74 %) |
+| Fully verified (every value found on its page) | 12.73 % | 100 % of the extracted |
+| k6 "HTTP failed" | 0 % | 25.64 % (the 179 "busy" answers, counted honestly) |
+| Provider 429s seen by the sidecar | hundreds | **0** |
+| One extract request p50 / p95 | 6.0 s / 15.7 s (mostly fast failures) | 1.0 s / 29.5 s |
+| Whole extraction, including busy waits, p50 / p95 | – | 28.5 s / 69.9 s |
+
+**10 users:**
+
+| Measure | Run 3 | Now |
+|---|---|---|
+| Documents extracted | 80 (100 %) | 92 (100 %) |
+| Extract p50 / p95 | 13.1 s / 15.7 s | **10.7 s / 13.4 s** |
+| Busy answers | – | 0 |
+
+The sidecar's own counters for both levels together: 222 documents
+extracted, **0 failed**, 1,110 model calls (exactly 5 per document), **0
+throttled, 0 retries**. Time in line: p50 7.7 s, p95 19.3 s. Work per
+document: p50 9.6 s. At 50 users the gate ran full the whole time (8
+running, up to 16 waiting). 179 requests were refused as busy and then
+retried by the k6 users.
+
+The sidecar counted 17 more extractions than k6 did at 50 users (130
+against 113). Those requests finished on the server just after k6's
+2-minute window closed and k6 stopped recording, so the k6 numbers are the
+ones compared above.
+
+### 12.3 What the numbers mean
+
+1. **The failure the reviewer found is gone.** 2.8 times as many documents
+   were extracted at 50 users (113 against 41). Not one document failed
+   inside a successful response. Every document either extracted fully
+   verified, or was reported plainly as "busy".
+2. **HTTP errors went up, and that is the honest direction.** Run 3 showed
+   0 % HTTP errors while 87 % of documents failed. Now the failures that
+   remain are real "busy" answers, visible in the HTTP numbers and in
+   `/metrics`.
+3. **The bottleneck is now our own cap, not the provider.** OpenAI never
+   throttled, not once. Eight model calls at a time (about 4 per second)
+   is below this account's real limit. So the adaptive limit, the shared
+   cooldown and the retries were never needed in this run; they are proven
+   by the mock tests, not by this one.
+4. **The price is waiting.** At 50 users, a clinician's extraction took a
+   median of 28 seconds and up to 70 seconds at p95, counting time in line
+   and automatic retries. That is the trade: a wait with a clear message,
+   instead of a fast silent failure. 14 % still ended "busy" after three
+   retries, so at this burst level some users would press Extract again.
+5. **The sidecar used less memory:** a peak of 313 MB against about 820 MB
+   in run 3. That is consistent with at most 8 documents in memory at once
+   instead of about 40. It was not measured separately, so treat it as
+   likely rather than proven.
+6. **10 users got faster.** The median fell from 13.1 to 10.7 seconds, with
+   no busy answers. Not every part of that change can be attributed:
+   provider speed differs from day to day.
+
+### 12.4 The next tuning step (not done)
+
+Because the provider never pushed back, the ceiling can go up. For
+example, set `COPILOT_MAX_PROVIDER_CALLS=16` and
+`COPILOT_MAX_EXTRACTIONS=16`, and rerun the same command. The adaptive
+limit is the safety net if 16 turns out to be too many. On the droplet,
+check memory first: the sidecar's limit there is 768 MB, and this run
+peaked at 313 MB with 8 extractions.
 
 ---
 
-## 13. Interview answers in plain words
+## 13. Tests proposed but not run
+
+- **A load test on the droplet itself.** The real test ran on the local dev
+  stack. The droplet has 2 CPUs instead of 8 and a 768 MB sidecar memory
+  limit, so its numbers will differ. The command is
+  `tests/load/run-baselines.sh` with `STATS=ssh`, after deploying.
+- **A real test where the provider does throttle**, to see the adaptive
+  limit work against OpenAI rather than the mock. The simplest way is to
+  raise the ceiling (section 12.4) until 429s appear.
+- **A mixed load test** (briefings, questions and extractions together),
+  to see PHP's calls and extraction share the quota.
+- **A PHP controller test** for the "busy" message and `retry_after_s`.
+  The client-level test exists; the controller-level one does not.
+- **A browser test of the panel's automatic retry.** The logic passes ESLint and
+  mirrors the k6 script, but no test clicks through it.
+
+---
+
+## 14. What is still not solved
+
+1. **No strict cap across processes.** The adaptive limit makes several
+   processes back off when the provider pushes back. A hard ceiling
+   shared by all of them would still need a shared store such as Redis.
+   Today there is one process, so this is theoretical.
+2. **The adaptive limit only learns from 429s.** It cannot see the
+   quota *before* it runs out. OpenAI also sends
+   `x-ratelimit-remaining-requests` and `-tokens` headers on every answer,
+   which could slow down before the first 429. Not used yet.
+3. **At a 50-user burst, 14 % of extractions still end "busy"** after three
+   automatic retries, and the median wait is 28 seconds. Raising the
+   ceiling (section 12.4) should help. A true background queue would
+   remove the "busy" outcome altogether, at the cost of a bigger design.
+4. **Cancellation is checked between steps, not inside them.** A model call
+   already in progress runs to its end (at most its time limit), and so
+   does OCR of the current page.
+5. **The metrics reset on restart** and cover one process: a live view,
+   not a history (section 11.5).
+
+---
+
+## 15. Interview answers in plain words
 
 **What blocked the event loop?**
 The sidecar's extraction work (reading the PDF, OCR, five model calls in
@@ -807,82 +1082,88 @@ The bottleneck had moved from our code to the provider's quota, and
 nothing in the sidecar knew about that quota.
 
 **What does the new control do when demand exceeds capacity?**
-It works like a waiting room with a fixed number of exam rooms. 8
-extractions run at once. Up to 16 more wait their turn, in order, for at
-most 20 seconds. Anyone beyond that is told "busy, try again in 15
-seconds" within milliseconds, with nothing attempted and nothing paid
-for. The file stays stored, and the user sees "The document service is
-busy; try extracting it again in a minute". Separately:
+It works like a waiting room with a fixed number of exam rooms. Up to 8
+extractions run at once (fewer while the provider is pushing back). Up to
+16 more wait their turn, in order, for at most 20 seconds. Anyone beyond
+that is told "busy, try again in 15 seconds" within milliseconds, with
+nothing attempted and nothing paid for. The panel then waits and tries
+again by itself, up to three times, telling the user what it is doing.
+Underneath that:
 
-- model calls are capped at 8 in flight
+- model calls are capped at 8 in flight; the cap halves when the provider
+  says "too many" and grows back as calls succeed
 - throttled calls are retried at most 3 times, waiting what the provider
   asks, with some randomness so they do not all return together
-- every extraction has a 50-second deadline, so nothing runs on after
-  PHP has stopped waiting
+- every extraction has a 50-second deadline
+- if the user's connection goes away, the work stops at the next page
 
 **What evidence supports the improvement?**
-Two kinds, both run with a mocked provider and no real key.
 
-- **Unit tests:** 123 of 123 sidecar tests pass, 16 of them new. They show
-  the limits holding, overflow refused with 503, the health check
-  answering in under a second while every slot is busy, retries stopping
-  after 3 attempts and honouring `Retry-After`, the deadline stopping
-  further page calls, and a failed document inside a 200 still counted as
-  a failure.
-- **A before-and-after load test:** the same workload (50 users, 90
-  seconds, a rate-limited fake provider) against the old and new code.
-  - Documents extracted per minute rose 3.5× (15 to 53).
-  - Documents failed inside a 200 fell from 1,760 to 0.
-  - Throttled calls fell from 3,605 to 0.
-  - Against a stricter provider, with the limits tuned to it: 4.4× the
-    throughput and zero failures.
+- **The real test** repeated the 50-user run that found the problem: same
+  stack, same scenario, real OpenAI. Documents extracted went from 41
+  (12.7 %) to 113 (86 %). Documents failed silently inside a 200 went from
+  about 281 to 0. The provider never throttled once. The remaining 14 %
+  ended as an honest "busy", not a hidden failure. At 10 users, 100 %
+  extracted and the median time fell from 13.1 to 10.7 seconds.
+- **Mock load tests** covered what the real run did not trigger. Against
+  a strict provider, adaptive limiting took failures from 138 to 0
+  without any tuning. When clients gave up early, model calls wasted per
+  abandoned document fell from about 4.8 to 1.9.
+- **Automated tests:**
+  - 133 sidecar tests pass, 26 of them for this work.
+  - The PHP contract and client tests pass, and PHPStan finds no errors.
+  - The eval gate passes 56 of 56 against the rebuilt sidecar.
 
 **What limitation remains?**
 
-- A concurrency cap only stands in for a rate limit, so it must be tuned
-  to the real account. Set too high, it still produced 138 failures in
-  the strict test.
-- The limits are per process.
-- PHP's own model calls share the quota but are invisible to the sidecar.
-- A disconnected client's work runs on until the deadline.
-- When full, the user has to press Extract again; there is no background
-  queue.
+- At a 50-user burst, 14 % still end "busy" after three retries, and the
+  median wait is 28 seconds. The next step is to raise the ceiling, since
+  the provider never pushed back.
+- The limit reacts to 429s instead of reading the provider's
+  "remaining quota" headers ahead of time.
+- There is no strict limit shared across several processes, though today
+  there is only one.
+- Cancellation happens between steps, not in the middle of a model call.
 
 ---
 
-## 14. Files changed
+## 16. Files changed
 
 All paths are under `interface/modules/custom_modules/oe-module-clinical-copilot/`
-unless stated otherwise.
+unless stated otherwise. "R1" is commit `5d7988c`, "R2" is `057832a`.
 
 | File | Change |
 |---|---|
-| `sidecar/copilot_sidecar/capacity.py` | **New.** Limits read from the environment, the admission gate, provider slots, the deadline, backoff, and the metrics counters |
-| `sidecar/copilot_sidecar/app.py` | `/run` admits extractions through the gate, answers 503 `overloaded` with `Retry-After`, binds the deadline, frees the slot only when the thread ends; new `GET /metrics` |
-| `sidecar/copilot_sidecar/llm.py` | SDK retries off; one bounded retry loop with error sorting, `Retry-After`, jittered backoff, provider slots and the deadline |
-| `sidecar/copilot_sidecar/extractor.py` | Deadline checked before each page; the optional missed-rows call is skipped when time is short; failure cause logged |
-| `sidecar/copilot_sidecar/graph.py` | Each document's final outcome and duration counted and logged |
-| `sidecar/copilot_sidecar/schemas.py` | `overloaded` added to `RunError`; new `SidecarMetrics` model |
-| `sidecar/copilot_sidecar/logging_setup.py` | New allowlisted log fields |
-| `sidecar/tests/test_capacity.py` | **New.** 16 tests |
-| `sidecar/tests/test_contracts.py` | The metrics contract added to the contract-to-model checks |
-| `sidecar/tools/load_mock.py` | **New.** The mocked-provider load test |
-| `sidecar/README.md` | Settings table and how to run the comparison |
-| `contracts/run.error.schema.json` (+ examples) | `overloaded` code |
-| `contracts/documents.error.response.schema.json` (+ examples) | `overloaded` reason |
-| `contracts/sidecar.metrics.response.schema.json` (+ examples) | **New** contract for `/metrics` |
-| `src/Controller/DocumentController.php` | "Busy, try again" message for `overloaded` |
-| `tests/load/results/20260926T-mock-*.json` (repository root) | **New.** The five load-test results |
+| `sidecar/copilot_sidecar/capacity.py` | **New in R1:** limits from the environment, the admission gate, provider slots, the deadline, backoff, metrics. **R2:** adaptive limit (AIMD) with shared cooldown, the gate following it, the cancel flag |
+| `sidecar/copilot_sidecar/app.py` | **R1:** `/run` admits extractions through the gate, answers 503 `overloaded` with `Retry-After`, binds the deadline, frees the slot only when the thread ends; new `GET /metrics`. **R2:** disconnect watcher (leave the line, or cancel the running work; 499); correlation middleware rewritten as plain ASGI |
+| `sidecar/copilot_sidecar/llm.py` | **R1:** SDK retries off; one bounded retry loop with error sorting, `Retry-After`, jittered backoff, provider slots, the deadline. **R2:** feeds the adaptive limit; stops on cancel; the critic takes a provider slot |
+| `sidecar/copilot_sidecar/extractor.py` | **R1:** deadline checked before each page; the optional missed-rows call skipped when time is short. **R2:** also stops on cancel |
+| `sidecar/copilot_sidecar/graph.py` | **R1:** each document's final outcome and duration counted and logged |
+| `sidecar/copilot_sidecar/schemas.py` | **R1:** `overloaded` in `RunError`; `SidecarMetrics`. **R2:** new metrics fields |
+| `sidecar/copilot_sidecar/logging_setup.py` | **R1:** new allowlisted log fields |
+| `sidecar/tests/test_capacity.py` | **New in R1** (16 tests); **R2:** 10 more |
+| `sidecar/tests/test_contracts.py` | **R1:** the metrics contract added |
+| `sidecar/tools/load_mock.py` | **New in R1:** the mocked-provider load test. **R2:** `--client-timeout` |
+| `sidecar/README.md` | Settings, adaptive limit, cancellation, how to run the comparison |
+| `contracts/run.error.schema.json` (+ examples) | **R1:** `overloaded` |
+| `contracts/documents.error.response.schema.json` (+ examples) | **R1:** `overloaded` reason. **R2:** optional `retry_after_s` |
+| `contracts/sidecar.metrics.response.schema.json` (+ examples) | **New in R1.** **R2:** adaptive-limit, cooldown and abandoned-run fields |
+| `src/Controller/DocumentController.php` | **R1:** "busy" message. **R2:** passes `retry_after_s` |
+| `src/Documents/SidecarClient.php`, `SidecarException.php` | **R2:** read and carry `Retry-After` |
+| `public/assets/panel.js` | **R2:** bounded automatic retry on "busy" |
+| `tests/Tests/Isolated/Modules/ClinicalCopilot/SidecarClientTest.php` (repository root) | **R2:** `Retry-After` test |
+| `tests/load/copilot.js` (repository root) | **R2:** the extract scenario retries like the panel and reports busy answers |
+| `tests/load/results/20260926T-mock-*.json`, `20260927T-real-v2-*` (repository root) | Mock and real load-test results |
 
 The settings, with their defaults:
 
 | Variable | Default | What it controls |
 |---|---|---|
-| `COPILOT_MAX_EXTRACTIONS` | 8 | extractions worked on at once |
+| `COPILOT_MAX_EXTRACTIONS` | 8 | the most extractions worked on at once (fewer while the provider throttles) |
 | `COPILOT_MAX_WAITING_EXTRACTIONS` | 16 | requests allowed to wait for a slot |
 | `COPILOT_EXTRACTION_MAX_WAIT_S` | 20 | longest wait for a slot before `overloaded` |
 | `COPILOT_EXTRACTION_DEADLINE_S` | 50 | time an extraction has from arrival |
-| `COPILOT_MAX_PROVIDER_CALLS` | 8 | model calls in flight |
+| `COPILOT_MAX_PROVIDER_CALLS` | 8 | the ceiling for model calls in flight; the adaptive limit moves below it |
 | `COPILOT_PROVIDER_MAX_ATTEMPTS` | 3 | attempts per model call |
 | `COPILOT_PROVIDER_ATTEMPT_TIMEOUT_S` | 30 | longest single attempt (further cut to the time left) |
 | `COPILOT_PROVIDER_BACKOFF_BASE_S` / `_CAP_S` | 1 / 8 | backoff when no `Retry-After` is given |
@@ -894,6 +1175,10 @@ The settings, with their defaults:
 **429 Too Many Requests.** The HTTP status a provider sends when a caller
 has gone over its rate limit.
 
+**499.** A status code, made common by the web server nginx, for "the client
+closed the request before the answer was ready". The sidecar logs it for
+work abandoned because the client left; nobody receives it.
+
 **503 Service Unavailable.** The HTTP status meaning "I cannot take this
 right now". The sidecar sends it, with code `overloaded`, when extraction
 capacity is full.
@@ -901,8 +1186,18 @@ capacity is full.
 **Admission control.** Deciding at the door whether to accept a piece of
 work, instead of accepting everything and failing some later.
 
+**AIMD (additive increase, multiplicative decrease).** A rule for finding
+a safe rate without knowing the limit in advance: cut sharply (halve) when
+told "too much", grow slowly after each success. TCP, the internet's
+transport protocol, uses it; the sidecar uses it for its model-call limit.
+
 **Allowlist.** A fixed list of what is permitted; everything else is
 refused. The sidecar's logs keep only allowlisted field names.
+
+**ASGI.** The standard interface between Python web servers (uvicorn) and
+web apps (FastAPI): the server calls the app with the request's details
+and two channels, one to receive the request (and news that the client
+left), one to send the answer.
 
 **Anchoring.** In this project: proving a value the model proposed is
 really printed on the page, by finding it in the same row as its test name
@@ -930,6 +1225,9 @@ passed as an argument.
 **Contract.** Here, a JSON Schema file that defines exactly what a message
 between two parts of the system may contain; both sides are tested
 against it.
+
+**Cooldown.** A pause that every caller observes after the provider says
+"too many requests", until the wait it asked for has passed.
 
 **Correlation id.** A unique label attached to one request and to every
 log line and model call it causes, so its whole path can be found later.
@@ -963,8 +1261,15 @@ identical request gets the same answer without the work being done twice.
 **Jitter.** Randomness added to a wait, so that many callers do not all
 retry at the same instant.
 
+**k6.** A load-testing program: it runs many simulated users (virtual
+users) against a website at once and reports timings and errors.
+
 **Load test.** Sending many requests at once to see how a system behaves
 under pressure.
+
+**Middleware.** Code that runs around every request, before and after the
+endpoint that handles it; here, it labels each request with its
+correlation id.
 
 **Mock / fake.** A stand-in for a real service in a test, which behaves
 the way the test tells it to.
@@ -1010,3 +1315,6 @@ each request spends one, and a request that finds no token is refused.
 
 **uvicorn.** The web server program that runs the sidecar's FastAPI
 application.
+
+**Virtual user (VU).** One simulated person in a load test, repeating a
+scripted visit (log in, open a chart, upload, extract) until the test ends.

@@ -62,32 +62,45 @@ rest: documents arrive as bytes and leave as extractions.
 
 Extraction is limited per process (the image runs one uvicorn process, so
 per process is also per deployment today; N processes or containers would
-each take the full numbers). Set through the environment:
+each take the full fixed numbers). Set through the environment:
 
 | Variable | Default | Controls |
 |---|---|---|
-| `COPILOT_MAX_EXTRACTIONS` | 8 | extract runs worked on at once |
+| `COPILOT_MAX_EXTRACTIONS` | 8 | extract runs worked on at once (the most; fewer while the provider throttles) |
 | `COPILOT_MAX_WAITING_EXTRACTIONS` | 16 | runs allowed to wait for a slot; beyond that, 503 `overloaded` at once |
 | `COPILOT_EXTRACTION_MAX_WAIT_S` | 20 | longest a run waits for a slot before 503 `overloaded` |
 | `COPILOT_EXTRACTION_DEADLINE_S` | 50 | time from arrival an extract run has (PHP waits 60 s); queue wait counts |
-| `COPILOT_MAX_PROVIDER_CALLS` | 8 | model calls in flight, all pages, documents and retries together |
-| `COPILOT_PROVIDER_MAX_ATTEMPTS` | 3 | attempts per model call (the SDK's own retries are off) |
+| `COPILOT_MAX_PROVIDER_CALLS` | 8 | the most model calls in flight (extraction pages, retries and critic verdicts together) |
+| `COPILOT_PROVIDER_MAX_ATTEMPTS` | 3 | attempts per extraction model call (the SDK's own retries are off) |
 | `COPILOT_PROVIDER_ATTEMPT_TIMEOUT_S` | 30 | longest single attempt, further cut to the time left before the deadline |
 | `COPILOT_PROVIDER_BACKOFF_BASE_S` / `_CAP_S` | 1 / 8 | full-jitter backoff when the provider gives no Retry-After |
 
+The provider-call limit adapts: a 429 halves it (at most once a second)
+and pauses every new call for the provider's Retry-After; each success
+grows it back by 1/limit, up to `COPILOT_MAX_PROVIDER_CALLS`. The number of
+extraction slots follows it. So a limit set too high for the account
+corrects itself, and quota drawn by PHP's own model calls (invisible here)
+still shrinks it through the 429s it causes. The critic's calls take a
+provider slot too, waiting at most 2 s (else the verdict is unknown).
+
 A refused run is HTTP 503 with `{"code": "overloaded"}` and `Retry-After: 15`;
-PHP keeps the file stored and the panel says the service is busy. Retries
-happen only for 429 (except an exhausted quota), timeouts, connection drops
-and 5xx; they wait the provider's Retry-After when it sends one and never
-start one that the deadline could not fit.
+PHP keeps the file stored and passes `retry_after_s` to the panel, which
+waits that long (plus up to 20 %) and tries again by itself, at most three
+times. Retries happen only for 429 (except an exhausted quota), timeouts,
+connection drops and 5xx; they wait the provider's Retry-After when it
+sends one and never start one that the deadline could not fit.
 
-`GET /metrics` reports runs admitted and refused, each document's final
-outcome (a 200 run can carry a failed document), provider calls, 429s,
-retries and why calls were given up, and recent queue-wait and work timings.
+When the client disconnects, a waiting run leaves the line and a running
+one stops at the next page or retry (logged as `run abandoned`, status 499).
 
-The limits are a starting point. Tune `COPILOT_MAX_PROVIDER_CALLS` to the
-account's rate limit: a concurrency cap above what the provider serves still
-produces 429s, which the retries can only partly absorb. Compare two builds
+`GET /metrics` reports runs admitted, refused and abandoned, each document's
+final outcome (a 200 run can carry a failed document), provider calls,
+429s, retries, limit decreases and cooldowns, why calls were given up, the
+current adaptive limit, and recent queue-wait and work timings.
+
+`COPILOT_MAX_PROVIDER_CALLS` is a ceiling, not a target: set it to what the
+account can serve on a good day and the adaptive limit finds the rest.
+Compare two builds
 on the same workload with the mock load test (no key, no network):
 
 ```bash
@@ -104,6 +117,7 @@ done
 
 Defaults: 50 users, 90 s, one second between a user's requests, the 5-page
 `lab-layout1.pdf`, a provider that serves 4 calls/s (burst 8) at 2 s each.
-`--rate`, `--burst`, `--latency`, `--users`, `--seconds` and
-`--env KEY=VALUE` (sidecar settings) change the workload. Results from
+`--rate`, `--burst`, `--latency`, `--users`, `--seconds`, `--client-timeout`
+(users who give up early) and `--env KEY=VALUE` (sidecar settings) change
+the workload. Results from
 2026-09-26 are in `tests/load/results/20260926T-mock-*.json`.

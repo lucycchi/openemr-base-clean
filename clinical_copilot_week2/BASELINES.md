@@ -288,3 +288,67 @@ Not measured here: provider-side latency drift (two narrations timed out at
 27.5 s during the day's smoke runs, once before this work started), and the
 droplet itself; re-run `tests/load/run-baselines.sh` with `STATS=ssh`
 against it after the next deploy and add a run 4 to this file.
+
+## Run 4 (`057832a`, dev stack): extraction capacity controls
+
+What changed in the code under load since run 3: the sidecar now admits at
+most 8 extractions at once (16 more may wait up to 20 s; beyond that it
+answers 503 `overloaded`), caps model calls in flight with a limit that
+halves on a 429 and grows back on success, gives each extraction a 50 s
+deadline, retries only transient provider failures (the SDK's own retries
+are off), and stops work whose client has gone. On `overloaded` the panel,
+and now the k6 `extract` scenario, wait the `Retry-After` and try again, at
+most three times. Background and design:
+[EVENT_LOOP_ISSUE.md](EVENT_LOOP_ISSUE.md). Same host and scenario as run 3,
+extract only.
+
+```bash
+STAMP=20260927T-real-v2 BASE_URL=http://localhost:8300 STATS=local \
+  VUS_LIST="10 50" SCENARIOS="extract" DURATION=2m tests/load/run-baselines.sh
+```
+
+### Document extraction (Week 2)
+
+| VUs | Requests | req/s | Extractions | Extracted | Fully verified | Confidence p50 | Upload p50/p95 (ms) | Extract p50/p95/p99/max (ms) | Chart open p50/p95 | HTTP errors | Co-Pilot errors |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10 | 296 | 2.26 | 92 | 100 % | 100 % | 1 | 225 / 367 | 10650 / 13367 / 19851 / 20234 | 1255 / 2128 | 0 % | 0 % |
+| 50 | 698 | 4.64 | 131 | 86.26 % | 100 % | 1 | 410 / 1707 | 1004 / 29477 / 30357 / 30522 | 2422 / 8720 | 25.64 % | 6.34 % |
+
+At 50 users: 179 `overloaded` answers, 18 extractions (13.74 %) still busy
+after three automatic retries; extraction end to end, busy waits included,
+p50 28.5 s / p95 69.9 s / max 84.0 s.
+
+### CPU and memory on the target host
+
+| VUs | Scenario | App CPU avg / peak (% of one core) | App memory avg / peak (MiB) | Sidecar CPU avg / peak | Sidecar memory avg / peak (MiB) | DB CPU avg / peak | DB memory avg / peak (MiB) | Host load1 peak |
+|---|---|---|---|---|---|---|---|---|
+| 10 | extract | 21.9 / 791.0 | 228 / 535 | 7.1 / 36.1 | 192 / 305 | 33.7 / 167.2 | 694 / 696 | 2.75 |
+| 50 | extract | 61.0 / 971.1 | 426 / 1866 | 12.2 / 90.1 | 214 / 313 | 89.7 / 304.7 | 732 / 738 | 13.49 |
+
+### Reading run 4
+
+- **The run 3 failure is gone.** At 50 users 113 documents were extracted
+  (86.3 %, all fully verified) against run 3's 41 (12.7 %), and no document
+  failed inside a 200: every extraction either succeeded or was reported
+  `overloaded`. The sidecar's `/metrics` for the two levels: 222 documents
+  extracted, 0 failed, 1,110 model calls (5 per document), 0 throttled,
+  0 retries; queue wait p50 7.7 s / p95 19.3 s; work per document p50
+  9.6 s. (The sidecar counts 17 more extractions at 50 users than k6: they
+  finished just after k6's window closed.)
+- **HTTP errors are now where the failures are.** Run 3 reported 0 % HTTP
+  errors with 87 % of documents failed; run 4's 25.6 % are the 179
+  `overloaded` answers, and the Co-Pilot error rate (6.3 %) is exactly the
+  18 extractions still busy after three retries.
+- **OpenAI never throttled.** Eight calls in flight (~4/s at 1.9 s per
+  call) is under this account's limit, so the binding constraint is now
+  the sidecar's own ceiling. Next step: `COPILOT_MAX_PROVIDER_CALLS=16`
+  and `COPILOT_MAX_EXTRACTIONS=16`, rerun, with the adaptive limit as the
+  safety net; check the droplet's 768 MiB sidecar limit first (peak here
+  313 MiB at 8).
+- **10 users:** 100 % extracted, p50 10.7 s / p95 13.4 s (run 3: 13.1 s /
+  15.7 s), no busy answers.
+- **The cost is waiting at 50 users:** a median of 28 s end to end, against
+  a fast silent failure before.
+
+Not measured here: the droplet (2 vCPU, 768 MiB sidecar limit), and mixed
+load where PHP's briefing calls share the quota with extraction.
