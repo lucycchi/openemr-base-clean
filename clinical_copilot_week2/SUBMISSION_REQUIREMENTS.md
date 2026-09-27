@@ -455,4 +455,6 @@ Closed only after it is verified, like the S tasks.
   retrieval, click-to-source citation, eval results (the gate refusing a
   regression, and the GitLab pipeline if G3 lands), observability (a
   Langfuse trace, plus the new rating from G6). Synthetic patients only.
+  Plan (2026-09-27): recorded last, once every other change is deployed,
+  so the video shows the final build.
 - [ ] **S10** (above) now also covers: re-verify G4-G7 on the final deploy.
