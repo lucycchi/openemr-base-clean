@@ -307,11 +307,10 @@ output on each push; `results.json` for the last keyless run and
 `results-live.json` for the last full live run.
 
 **Baseline.** 73 cases (57 deterministic, 16 live), 8 rubrics. Last full
-live run, 2026-09-27 07:42 UTC (`results-live.json`): 72 of 73 pass, every
-deterministic case and 15 of 16 live. The failure is case 09: one seed
-patient's briefing lost two sentences (the limit is one) because the model
-cited a fact id one character short; the Verifier stripped both, so nothing
-uncited reached the panel. The live baseline the gate compares against
+live run, 2026-09-27 08:03 UTC (`results-live.json`): 73 of 73 pass. The
+run before it (07:42) failed case 09 because the model cited one chart's
+fact id one character short; the output schema now allows only the ids the
+request offers, and the rerun after that fix passed. The live baseline the gate compares against
 (`baseline-live.json`) was set on 2026-09-23. Three refusals recorded this week (a fact contract change, a
 case-12 timeout, a log-field allowlist miss), each with the fix that
 followed.

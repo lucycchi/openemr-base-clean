@@ -283,6 +283,71 @@ final class NarrationPipelineTest extends TestCase
         self::assertStringContainsString('hi', $this->llm->lastUser);
     }
 
+    // -- Citable ids: the model can only cite what it was given --------------
+
+    /**
+     * The ids the schema lets the model put in fact_ids, or null when the
+     * schema leaves them open.
+     *
+     * @return list<string>|null
+     */
+    private function citableIds(): ?array
+    {
+        $node = $this->llm->lastSchema;
+        foreach (['properties', 'sentences', 'items', 'properties', 'fact_ids', 'items'] as $key) {
+            $node = $node[$key] ?? null;
+            self::assertIsArray($node, "schema has no $key");
+        }
+        $ids = $node['enum'] ?? null;
+        if ($ids === null) {
+            return null;
+        }
+        self::assertIsArray($ids);
+        return array_values(array_map(static fn(mixed $id): string => is_string($id) ? $id : '', $ids));
+    }
+
+    /**
+     * A model that shortens or invents a fact id loses a true sentence to the
+     * Verifier; with the chart's ids as the only allowed values it cannot
+     * produce one at all.
+     */
+    public function testTheBriefingSchemaAllowsOnlyThisChartsFactIds(): void
+    {
+        $this->llm->reply = ['sentences' => []];
+
+        $this->pipeline()->brief($this->assembled());
+
+        self::assertSame(['rx0001', 'al0001', 'en0001'], $this->citableIds());
+    }
+
+    public function testOfferedGuidelinePassagesAreCitableToo(): void
+    {
+        $this->llm->reply = ['sentences' => []];
+
+        $this->pipeline()->brief($this->assembled(), $this->evidence());
+
+        self::assertSame(['rx0001', 'al0001', 'en0001', 'a1b2c3d4e5f6'], $this->citableIds());
+    }
+
+    public function testTheFollowUpSchemaAllowsOnlyThisChartsFactIds(): void
+    {
+        $this->llm->reply = ['answer_type' => 'not_in_facts', 'sentences' => []];
+
+        $this->pipeline()->answer($this->assembled(), 'When was lisinopril started?', []);
+
+        self::assertSame(['rx0001', 'al0001', 'en0001'], $this->citableIds());
+    }
+
+    /** An empty enum is not a valid schema; a chart with no facts keeps the open one. */
+    public function testAChartWithNoFactsKeepsTheOpenSchema(): void
+    {
+        $this->llm->reply = ['sentences' => []];
+
+        $this->pipeline()->brief(new AssembledFacts(new FactSet([]), null));
+
+        self::assertNull($this->citableIds());
+    }
+
     // -- Task 8: guideline passages in the briefing narration ----------------
 
     private function evidence(): EvidenceSet

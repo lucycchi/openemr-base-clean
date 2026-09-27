@@ -111,7 +111,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | Expected behavior per case | Done | Each case has `expect`, `failure_mode` and `guards`; the table in [tests/evals/README.md](../tests/evals/README.md#cases-and-the-failure-mode-each-guards) lists them. |
 | Boolean rubrics | Done | Eight pass/fail rubrics, including the five the PRD names; thresholds in `gate.php`. |
 | Judge configuration | Done (S5) | [EVAL_DATASET.md](EVAL_DATASET.md) §3: no LLM judge; the code check and pass rule behind each rubric; the models under test. |
-| Results | Done (S5) | [EVAL_DATASET.md](EVAL_DATASET.md) §4: full live run 2026-09-27, 72/73 (deterministic 57/57, live 15/16; case 09 failed on a truncated fact id, explained there), per rubric; files [results.json](../tests/evals/results.json), [results-live.json](../tests/evals/results-live.json) and `baseline-live.json`. |
+| Results | Done (S5) | [EVAL_DATASET.md](EVAL_DATASET.md) §4: full live run 2026-09-27 08:03 UTC, 73/73 (the run before it failed case 09 on a truncated fact id; fixed by narrowing the output schema to the offered ids, explained there), per rubric; files [results.json](../tests/evals/results.json), [results-live.json](../tests/evals/results-live.json) and `baseline-live.json`. |
 
 ## 6. CI evidence
 
