@@ -112,7 +112,7 @@ def extract(document_id: int, doc_type: str, data: bytes, correlation_id: str, p
     #    The retry is optional work: it is skipped when the request's deadline
     #    could not fit one more call, and the leftover rows stay listed.
     left = capacity.remaining()
-    if doc_type == "lab_pdf" and raw is not None and built.unextracted and (left is None or left >= capacity.MIN_ATTEMPT_S):
+    if doc_type == "lab_pdf" and raw is not None and built.unextracted and not capacity.cancelled() and (left is None or left >= capacity.MIN_ATTEMPT_S):
         assert isinstance(proposal, LabReportProposal)
         rows_text = "\n".join(f"=== page {u.page} ===\n{u.text}" for u in built.unextracted)
         try:
@@ -166,6 +166,10 @@ def _propose_per_page(doc_type: str, parsed: parse.ParsedDocument) -> tuple[LabR
         # The request's deadline (capacity.py) is checked before every page:
         # once it has passed, no further page is paid for and the document
         # fails as "timeout" rather than finishing after PHP stopped waiting.
+        # A client that has disconnected (capacity.cancelled) stops it the same way.
+        if capacity.cancelled():
+            capacity.metrics.gave_up("cancelled")
+            raise llm.ModelError("timeout", "cancelled")
         left = capacity.remaining()
         if left is not None and left <= 0:
             capacity.metrics.gave_up("deadline")

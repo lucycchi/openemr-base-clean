@@ -299,10 +299,16 @@ final class DocumentController
             $this->tracer->record(new RequestTrace($this->correlationId, 'copilot.documents.extract', $user, $startedAtMs, (int) round((hrtime(true) - $started) / 1e6), ['http_status' => 502, 'sidecar_error' => $e->errorCode, 'document_id' => $doc['document_id']], null, 0, 0, 0, 'sidecar ' . $e->errorCode, $this->steps->all()));
             // overloaded: the sidecar refused the run because its extraction capacity was
             // full, so nothing was attempted; the honest message is "busy, try again".
+            // retry_after_s tells the panel how long to wait before trying again by
+            // itself (a bounded number of times; see extractDocument in panel.js).
             $message = $e->errorCode === 'overloaded'
                 ? 'The document service is busy; the file is stored. Try extracting it again in a minute'
                 : 'The document service is unavailable; the file is stored and can be retried';
-            return ['error' => $message, 'reason' => $e->errorCode, 'document_id' => $doc['document_id'], 'status' => 'stored', 'http_status' => 502];
+            $response = ['error' => $message, 'reason' => $e->errorCode, 'document_id' => $doc['document_id'], 'status' => 'stored', 'http_status' => 502];
+            if ($e->errorCode === 'overloaded' && $e->retryAfterSeconds !== null) {
+                $response['retry_after_s'] = $e->retryAfterSeconds;
+            }
+            return $response;
         }
         $run = $outcome['run'];
         $extraction = $outcome['extraction'];

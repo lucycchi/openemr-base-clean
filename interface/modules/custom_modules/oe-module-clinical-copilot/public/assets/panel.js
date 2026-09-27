@@ -386,10 +386,26 @@
      * The briefing is refreshed after a successful extraction because extracted
      * values become new chart facts (labs, intake meds) and the fact table must
      * show them; the server's facts hash changes, so any open chat is stale.
+     *
+     * When the document service is full (reason "overloaded"), nothing was
+     * attempted, so trying again is safe: the panel waits the server's
+     * retry_after_s (plus up to 20 % at random, so clinicians refused together
+     * do not all come back in the same second) and tries again by itself, at
+     * most EXTRACT_AUTO_RETRIES times, showing
+     *   "The document service is busy; the file is stored. Trying again in N s (k of 3)…"
+     * After the last try it shows the server's message and the list's retry button.
      */
-    function extractDocument(documentId) {
+    const EXTRACT_AUTO_RETRIES = 3;
+    function extractDocument(documentId, retry = 0) {
         els.uploadStatus.textContent = 'Extracting… (reading the pages and checking every value against the document)';
         return postDocuments({ action: 'extract', document_id: String(documentId) }).then(r => {
+            // Busy: wait as told, then try again, a bounded number of times.
+            if (!r.ok && r.json && r.json.reason === 'overloaded' && retry < EXTRACT_AUTO_RETRIES) {
+                const base = Math.min(Math.max(Number(r.json.retry_after_s) || 15, 1), 120);
+                const wait = base * (1 + 0.2 * Math.random());
+                els.uploadStatus.textContent = 'The document service is busy; the file is stored. Trying again in ' + Math.round(wait) + ' s (' + (retry + 1) + ' of ' + EXTRACT_AUTO_RETRIES + ')…';
+                return new Promise(resolve => { setTimeout(resolve, wait * 1000); }).then(() => extractDocument(documentId, retry + 1));
+            }
             // Not ok (4xx/5xx): show the server's message and refresh the list so the
             // retry button appears if the file is still stored.
             if (!r.ok) {

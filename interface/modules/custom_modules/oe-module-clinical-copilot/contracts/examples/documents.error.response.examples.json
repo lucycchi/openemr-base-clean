@@ -21,7 +21,8 @@
       "correlation_id": "0123456789abcdef0123456789abcdef",
       "reason": "overloaded",
       "document_id": 12,
-      "status": "stored"
+      "status": "stored",
+      "retry_after_s": 15
     }
   ],
   "reject": [
@@ -37,6 +38,12 @@
       "error": "x",
       "correlation_id": "0123456789abcdef0123456789abcdef",
       "exception": "RuntimeException: /var/www/secret"
+    },
+    {
+      "error": "x",
+      "correlation_id": "0123456789abcdef0123456789abcdef",
+      "reason": "overloaded",
+      "retry_after_s": -1
     }
   ]
 }

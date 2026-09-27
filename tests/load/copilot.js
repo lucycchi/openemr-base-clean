@@ -114,6 +114,15 @@ const extractions = new Counter('copilot_extractions');
 const extractOk = new Rate('copilot_extract_ok');                    // status extracted
 const extractVerified = new Rate('copilot_extract_verified');        // extracted with nothing unverified and nothing unextracted
 const extractConfidence = new Trend('copilot_extract_confidence');   // share of fields anchored, 0-1
+// Capacity (2026-09-26): the sidecar answers "overloaded" when its extraction
+// slots and waiting line are full. The script then does what the panel does
+// (panel.js extractDocument): waits the server's retry_after_s plus up to 20 %
+// and tries again, at most EXTRACT_AUTO_RETRIES times. extract_ok is scored on
+// the final outcome, what the clinician ends up with.
+const EXTRACT_AUTO_RETRIES = Number(__ENV.EXTRACT_AUTO_RETRIES || 3);
+const extractBusy = new Counter('copilot_extract_busy');             // overloaded answers received (each one retried or given up)
+const extractGaveUpBusy = new Rate('copilot_extract_gave_up_busy');  // still busy after the last automatic retry
+const extractEndToEndMs = new Trend('copilot_extract_end_to_end_ms', true); // first request to final answer, waits included
 const stripped = new Counter('copilot_sentences_stripped');
 const kept = new Counter('copilot_sentences_kept');
 
@@ -242,14 +251,34 @@ function uploadAndExtract(csrf) {
     if (!stored) {
         return;
     }
-    const ex = http.post(
-        `${MODULE}/documents.php`,
-        { csrf_token_form: csrf, action: 'extract', document_id: String(upBody.document_id) },
-        { tags: { name: 'extract' }, timeout: '90s' },
-    );
-    extractMs.add(ex.timings.duration);
+    const started = Date.now();
+    let ex;
+    let body;
+    for (let attempt = 0; ; attempt++) {
+        ex = http.post(
+            `${MODULE}/documents.php`,
+            { csrf_token_form: csrf, action: 'extract', document_id: String(upBody.document_id) },
+            { tags: { name: 'extract' }, timeout: '90s' },
+        );
+        extractMs.add(ex.timings.duration);
+        body = parse(ex);
+        const busy = ex.status === 502 && body && body.reason === 'overloaded';
+        if (!busy) {
+            break;
+        }
+        extractBusy.add(1);
+        if (attempt >= EXTRACT_AUTO_RETRIES) {
+            extractGaveUpBusy.add(true);
+            break;
+        }
+        const wait = Math.min(Math.max(Number(body.retry_after_s) || 15, 1), 120);
+        sleep(wait * (1 + 0.2 * Math.random()));
+    }
+    if (!(ex.status === 502 && body && body.reason === 'overloaded')) {
+        extractGaveUpBusy.add(false);
+    }
+    extractEndToEndMs.add(Date.now() - started);
     extractions.add(1);
-    const body = parse(ex);
     const ok = ex.status === 200 && body && typeof body.status === 'string';
     requestErrors.add(!ok);
     if (!ok) {
@@ -337,6 +366,8 @@ export function handleSummary(data) {
         extract_ok_pct: rate('copilot_extract_ok'),
         extract_verified_pct: rate('copilot_extract_verified'),
         extract_confidence_p50: m.copilot_extract_confidence ? Number(m.copilot_extract_confidence.values.med.toFixed(3)) : null,
+        extract_busy_answers: count('copilot_extract_busy'),
+        extract_gave_up_busy_pct: rate('copilot_extract_gave_up_busy'),
         model_calls: count('copilot_model_calls'),
         sentences_kept: count('copilot_sentences_kept'),
         sentences_stripped: count('copilot_sentences_stripped'),
@@ -350,6 +381,7 @@ export function handleSummary(data) {
             ask: { ...row('copilot_ask_ms'), count: count('copilot_asks') },
             upload: { ...row('copilot_upload_ms'), count: count('copilot_extractions') },
             extract: { ...row('copilot_extract_ms'), count: count('copilot_extractions') },
+            extract_e2e: { ...row('copilot_extract_end_to_end_ms'), count: count('copilot_extractions') },
         },
     };
     const lines = [
@@ -358,6 +390,7 @@ export function handleSummary(data) {
         `requests=${summary.requests_total} throughput=${summary.throughput_rps} req/s  http_failed=${summary.http_failed_pct}%  copilot_errors=${summary.copilot_request_error_pct}%`,
         `briefs=${summary.briefs} (cache hit ${summary.brief_cache_hit_pct}%)  asks=${summary.asks} (guideline hit ${summary.guideline_hit_pct}%)  model_calls=${summary.model_calls}  summary_unavailable=${summary.summary_unavailable_pct}%  verification_fail=${summary.verification_fail_pct}%`,
         `extractions=${summary.extractions}  extracted=${summary.extract_ok_pct}%  fully_verified=${summary.extract_verified_pct}%  confidence_p50=${summary.extract_confidence_p50}`,
+        `busy_answers=${summary.extract_busy_answers}  gave_up_busy=${summary.extract_gave_up_busy_pct}%  (auto retries per extraction: ${EXTRACT_AUTO_RETRIES})`,
         `sentences kept=${summary.sentences_kept} stripped=${summary.sentences_stripped}`,
         '',
         'endpoint          n      p50     p95     p99     max  (ms)',

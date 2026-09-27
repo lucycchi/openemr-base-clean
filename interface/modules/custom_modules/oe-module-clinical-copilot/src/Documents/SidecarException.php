@@ -25,7 +25,12 @@ namespace OpenEMR\Modules\ClinicalCopilot\Documents;
  */
 final class SidecarException extends \RuntimeException
 {
-    public function __construct(public readonly string $errorCode, ?\Throwable $previous = null)
+    /**
+     * @param int|null $retryAfterSeconds the sidecar's Retry-After, when it sent one
+     *                                    (the "overloaded" answer does): how long to
+     *                                    wait before asking again
+     */
+    public function __construct(public readonly string $errorCode, ?\Throwable $previous = null, public readonly ?int $retryAfterSeconds = null)
     {
         parent::__construct('sidecar: ' . $errorCode, 0, $previous);
     }

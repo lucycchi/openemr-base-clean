@@ -35,6 +35,12 @@
     },
     "status": {
       "const": "stored"
+    },
+    "retry_after_s": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 300,
+      "description": "With reason overloaded: seconds to wait before the panel tries the extraction again by itself (the sidecar's Retry-After)."
     }
   },
   "required": [
