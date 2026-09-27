@@ -136,7 +136,12 @@ export function PrescriptionsCard({
             {/* The "are you sure?" question for Discontinue, in the card rather than a pop-up. */}
             {editing !== undefined && mode.kind === 'confirm' && (
                 <div role="alertdialog" aria-label="Discontinue prescription" className="border rounded p-2 mb-2">
-                    <p className="mb-2">Discontinue {mode.row.name}?</p>
+                    <p className="mb-1">Discontinue {mode.row.name}?</p>
+                    {/* OpenEMR's API marks it inactive in a way OpenEMR's own screens misread as active (BM-067). */}
+                    <p className="small text-muted mb-2">
+                        OpenEMR's own prescription screens will still list it as active; the dashboard and FHIR show it
+                        as stopped.
+                    </p>
                     <button
                         type="button"
                         className="btn btn-danger btn-sm mr-2"

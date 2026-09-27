@@ -95,6 +95,10 @@ describe('PrescriptionsCard', () => {
         render(<PrescriptionsCard patientId="p1" state={oneRow} editing={e} />);
         fireEvent.click(screen.getByRole('button', { name: `Discontinue ${omeprazole.name}` }));
         expect(screen.getByRole('alertdialog').textContent).toContain(`Discontinue ${omeprazole.name}?`);
+        // OpenEMR's own screens misread the API's discontinue as still active (BM-067); the question says so.
+        expect(screen.getByRole('alertdialog').textContent).toContain(
+            "OpenEMR's own prescription screens will still list it as active",
+        );
         fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
         expect(e.discontinue).not.toHaveBeenCalled();
         expect(screen.queryByRole('alertdialog')).toBeNull();
