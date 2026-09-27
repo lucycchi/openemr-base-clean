@@ -7,6 +7,7 @@
  */
 import { useState } from 'react';
 import type { LoadState } from '../hooks/loadState';
+import { CardFrame } from './CardFrame';
 import { formatShortDate } from '../mappers/dates';
 import type { DateDisplayFormat } from '../mappers/dates';
 import type { EncounterView } from '../mappers/encounters';
@@ -35,14 +36,13 @@ export function EncounterHistoryCard({
     if (state.status !== 'ready') {
         // Still loading or failed: the heading and a loading or error message (`a ? b : c` chooses).
         return (
-            <section data-card="encounter-history" data-state={state.status} aria-label="Encounter history">
-                <h3>Encounter history</h3>
+            <CardFrame card="encounter-history" title="Encounter history" state={state.status} patientId={patientId}>
                 {state.status === 'loading' ? (
                     <p aria-busy="true">Loading encounters…</p>
                 ) : (
                     <p role="alert">Couldn't load encounters</p>
                 )}
-            </section>
+            </CardFrame>
         );
     }
     const total = state.data.length;
@@ -51,13 +51,7 @@ export function EncounterHistoryCard({
     // The visits to draw: the first `pageSize` (the most recent) unless "show all" is on.
     const shown = paged && !showAll ? state.data.slice(0, pageSize) : state.data;
     return (
-        <section
-            data-card="encounter-history"
-            data-state="ready"
-            data-patient-id={patientId}
-            aria-label="Encounter history"
-        >
-            <h3>Encounter history</h3>
+        <CardFrame card="encounter-history" title="Encounter history" state="ready" patientId={patientId}>
             {total === 0 ? (
                 // The old page showed "1-0 of 0" above an empty header (BM-035).
                 <p data-empty>No encounters recorded</p>
@@ -103,6 +97,6 @@ export function EncounterHistoryCard({
                     </p>
                 </>
             )}
-        </section>
+        </CardFrame>
     );
 }

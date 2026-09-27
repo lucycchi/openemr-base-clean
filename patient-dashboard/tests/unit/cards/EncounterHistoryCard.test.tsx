@@ -43,7 +43,7 @@ describe('EncounterHistoryCard', () => {
         );
 
         expect(rows(container)).toHaveLength(30);
-        expect(screen.queryByRole('button')).toBeNull();
+        expect(screen.queryByRole('button', { name: /^Show / })).toBeNull();
     });
 
     it('shows date, reason and provider columns', () => {
@@ -66,7 +66,7 @@ describe('EncounterHistoryCard', () => {
         expect(
             ['date', 'reason', 'provider'].map((f) => row?.querySelector(`[data-field="${f}"]`)?.textContent),
         ).toEqual(['2026-03-02', 'Blood pressure check', 'Name unavailable']);
-        expect(screen.queryByRole('button')).toBeNull();
+        expect(screen.queryByRole('button', { name: /^Show / })).toBeNull();
     });
 
     it('empty shows "No encounters recorded" (BM-035)', () => {

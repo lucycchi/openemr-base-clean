@@ -5,6 +5,7 @@
  * quantity, refills, date added). The markup looks like HTML; see AllergiesCard.tsx for a reading guide.
  */
 import type { LoadState } from '../hooks/loadState';
+import { CardFrame } from './CardFrame';
 import type { MedicationView } from '../mappers/medications';
 
 /**
@@ -16,19 +17,17 @@ export function PrescriptionsCard({ patientId, state }: { patientId: string; sta
     if (state.status !== 'ready') {
         // Still loading or failed: the heading and a loading or error message (`a ? b : c` chooses).
         return (
-            <section data-card="prescriptions" data-state={state.status} aria-label="Prescriptions">
-                <h3>Prescriptions</h3>
+            <CardFrame card="prescriptions" title="Prescriptions" state={state.status} patientId={patientId}>
                 {state.status === 'loading' ? (
                     <p aria-busy="true">Loading prescriptions…</p>
                 ) : (
                     <p role="alert">Couldn't load prescriptions</p>
                 )}
-            </section>
+            </CardFrame>
         );
     }
     return (
-        <section data-card="prescriptions" data-state="ready" data-patient-id={patientId} aria-label="Prescriptions">
-            <h3>Prescriptions</h3>
+        <CardFrame card="prescriptions" title="Prescriptions" state="ready" patientId={patientId}>
             {state.data.length === 0 ? (
                 // Also shown when every prescription is discontinued; the old card showed an empty table (BM-024).
                 <p data-empty>No active prescriptions</p>
@@ -59,6 +58,6 @@ export function PrescriptionsCard({ patientId, state }: { patientId: string; sta
                     </tbody>
                 </table>
             )}
-        </section>
+        </CardFrame>
     );
 }

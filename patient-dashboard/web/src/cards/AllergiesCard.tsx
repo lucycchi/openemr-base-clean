@@ -7,9 +7,12 @@
  * what to draw. That markup (JSX) looks like HTML: <section>, <h3> (a heading), <ul>/<li> (a bulleted
  * list and its items), <p> (a paragraph). Anything inside { } is worked out, not printed as written.
  * `data-...` attributes are labels the automated tests read to find things; they change nothing visible.
- * `aria-...` and `role` attributes describe the page to screen readers.
+ * `aria-...` and `role` attributes describe the page to screen readers. `className` lists Bootstrap
+ * styles, the same ones the old dashboard uses. Every card is drawn inside <CardFrame> (CardFrame.tsx),
+ * a copy of the old dashboard's card box with its title and open/close toggle.
  */
 import type { LoadState } from '../hooks/loadState';
+import { CardFrame } from './CardFrame';
 import type { AllergyView } from '../mappers/allergies';
 
 /**
@@ -20,32 +23,35 @@ export function AllergiesCard({ patientId, state }: { patientId: string; state: 
     if (state.status !== 'ready') {
         // Still loading or failed: show the heading and a loading or error message, never an empty list.
         return (
-            <section data-card="allergies" data-state={state.status} aria-label="Allergies">
-                <h3>Allergies</h3>
+            <CardFrame card="allergies" title="Allergies" state={state.status} patientId={patientId}>
                 {/* `a ? b : c` chooses: the loading line while loading, otherwise the error line. */}
                 {state.status === 'loading' ? (
                     <p aria-busy="true">Loading allergies…</p>
                 ) : (
                     <p role="alert">Couldn't load allergies</p>
                 )}
-            </section>
+            </CardFrame>
         );
     }
     return (
-        <section data-card="allergies" data-state="ready" data-patient-id={patientId} aria-label="Allergies">
-            <h3>Allergies</h3>
+        <CardFrame card="allergies" title="Allergies" state="ready" patientId={patientId}>
             {/* No rows: say none are recorded. Otherwise draw one list item per allergy, in the given order. */}
             {state.data.length === 0 ? (
                 <p data-empty>No allergies recorded</p>
             ) : (
-                <ul>
+                // The old card's flush list: one thin row per allergy (allergies.html.twig).
+                <ul className="list-group list-group-flush">
                     {state.data.map((allergy) => (
                         <li
                             key={allergy.id}
                             data-item="allergy"
                             // High-risk allergies get a highlight label for the tests and a yellow, bold style.
                             data-highlight={allergy.high ? '' : undefined}
-                            className={allergy.high ? 'bg-warning font-weight-bold' : undefined}
+                            className={
+                                allergy.high
+                                    ? 'list-group-item p-0 pl-1 bg-warning font-weight-bold px-1'
+                                    : 'list-group-item p-0 pl-1'
+                            }
                             // Hover text: name, reaction and risk, with runs of spaces squeezed to one.
                             title={`${allergy.name} Reaction: ${allergy.reaction} - ${allergy.risk}`
                                 .replace(/\s+/g, ' ')
@@ -57,6 +63,6 @@ export function AllergiesCard({ patientId, state }: { patientId: string; state: 
                     ))}
                 </ul>
             )}
-        </section>
+        </CardFrame>
     );
 }

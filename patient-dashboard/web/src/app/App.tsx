@@ -10,6 +10,7 @@
  * the card components in ../cards, which draw them.
  */
 import { useEffect, useMemo, useState } from 'react';
+import type { ReactElement } from 'react';
 import { createApiClient } from '../api/client';
 import type { ApiClient } from '../api/client';
 import { AllergiesCard } from '../cards/AllergiesCard';
@@ -93,35 +94,56 @@ function PatientView({ client, patientId, config }: { client: ApiClient; patient
     if (header.status !== 'ready') {
         return <PatientHeader state={header} />;
     }
+    // The first three cards share one row, as on the old dashboard (demographics.php:1099-1102): each
+    // visible card gets an equal share of Bootstrap's 12 columns, so three cards get 4 each. Each
+    // `if` adds a card only when the site has not hidden it and OpenEMR did not refuse its data.
+    const topRow: ReactElement[] = [];
+    if (shown.includes('card_allergies') && !forbidden(allergies)) {
+        topRow.push(<AllergiesCard key="allergies" patientId={patientId} state={allergies} />);
+    }
+    if (shown.includes('card_medicalproblems') && !forbidden(problems)) {
+        topRow.push(<ProblemListCard key="problems" patientId={patientId} state={problems} />);
+    }
+    if (shown.includes('card_medication') && !forbidden(medicationCards.medications)) {
+        topRow.push(<MedicationsCard key="medications" patientId={patientId} state={medicationCards.medications} />);
+    }
+    const topColumn = `col-md-${String(12 / Math.max(1, topRow.length))} p-1`;
     // The markup below (JSX) describes what to draw. `<>...</>` groups items without adding a box around
-    // them. Each `condition && <Card />` line draws that card only when the condition holds: the site has
-    // not hidden it and OpenEMR did not refuse its data.
+    // them. The header stays outside the rows so it can stay pinned to the top while they scroll. The
+    // cards below the first row each take the full width, as on the old page; each
+    // `condition && (...)` line draws its card only when the condition holds.
     return (
         <>
             <PatientHeader state={header} />
-            {shown.includes('card_allergies') && !forbidden(allergies) && (
-                <AllergiesCard patientId={patientId} state={allergies} />
-            )}
-            {shown.includes('card_medicalproblems') && !forbidden(problems) && (
-                <ProblemListCard patientId={patientId} state={problems} />
-            )}
-            {shown.includes('card_medication') && !forbidden(medicationCards.medications) && (
-                <MedicationsCard patientId={patientId} state={medicationCards.medications} />
-            )}
-            {shown.includes('card_prescriptions') && !forbidden(medicationCards.prescriptions) && (
-                <PrescriptionsCard patientId={patientId} state={medicationCards.prescriptions} />
-            )}
-            {shown.includes('card_care_team') && !forbidden(careTeam) && (
-                <CareTeamCard patientId={patientId} state={careTeam} />
-            )}
-            {shown.includes('card_encounter_history') && !forbidden(encounters) && (
-                <EncounterHistoryCard
-                    patientId={patientId}
-                    state={encounters}
-                    pageSize={config.encounterPageSize}
-                    dateFormat={config.dateDisplayFormat}
-                />
-            )}
+            <div className="row no-gutters">
+                {topRow.map((card) => (
+                    <div key={card.key} className={topColumn}>
+                        {card}
+                    </div>
+                ))}
+            </div>
+            <div className="row no-gutters">
+                {shown.includes('card_prescriptions') && !forbidden(medicationCards.prescriptions) && (
+                    <div className="col-12 p-1">
+                        <PrescriptionsCard patientId={patientId} state={medicationCards.prescriptions} />
+                    </div>
+                )}
+                {shown.includes('card_care_team') && !forbidden(careTeam) && (
+                    <div className="col-12 p-1">
+                        <CareTeamCard patientId={patientId} state={careTeam} />
+                    </div>
+                )}
+                {shown.includes('card_encounter_history') && !forbidden(encounters) && (
+                    <div className="col-12 p-1">
+                        <EncounterHistoryCard
+                            patientId={patientId}
+                            state={encounters}
+                            pageSize={config.encounterPageSize}
+                            dateFormat={config.dateDisplayFormat}
+                        />
+                    </div>
+                )}
+            </div>
         </>
     );
 }
@@ -246,18 +268,26 @@ export function App() {
     }, [auth]);
 
     return (
-        <main>
-            <h1>Patient Dashboard</h1>
+        <main className="container-fluid py-2">
+            <h1 className="h4">Patient Dashboard</h1>
             {/* Each `condition && (...)` below is drawn only when its condition holds. */}
             {auth === 'signed-out' && signedOutForIdle && (
                 <p role="status">
                     You were signed out after {Math.round(idleTimeoutSeconds / 60)} minutes without activity.
                 </p>
             )}
-            {auth === 'signed-out' && <a href="/auth/login">Log in with OpenEMR</a>}
+            {auth === 'signed-out' && (
+                <a className="btn btn-primary" href="/auth/login">
+                    Log in with OpenEMR
+                </a>
+            )}
             {auth === 'signed-in' && (
                 <>
-                    <button type="button" onClick={() => void logOut()}>
+                    <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm mb-2"
+                        onClick={() => void logOut()}
+                    >
                         Log out
                     </button>
                     <PatientPicker client={client} onSelect={openPatient} />

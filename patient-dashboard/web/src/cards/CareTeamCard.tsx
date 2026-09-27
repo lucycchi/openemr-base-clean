@@ -5,6 +5,7 @@
  * The markup below looks like HTML; see AllergiesCard.tsx for a short reading guide.
  */
 import type { LoadState } from '../hooks/loadState';
+import { CardFrame } from './CardFrame';
 import type { CareTeamView } from '../mappers/careTeam';
 
 /**
@@ -26,19 +27,17 @@ export function CareTeamCard({ patientId, state }: { patientId: string; state: L
     if (state.status !== 'ready') {
         // Still loading or failed: the heading and a loading or error message (`a ? b : c` chooses).
         return (
-            <section data-card="care-team" data-state={state.status} aria-label="Care Team">
-                <h3>Care Team</h3>
+            <CardFrame card="care-team" title="Care Team" state={state.status} patientId={patientId}>
                 {state.status === 'loading' ? (
                     <p aria-busy="true">Loading the care team…</p>
                 ) : (
                     <p role="alert">Couldn't load the care team</p>
                 )}
-            </section>
+            </CardFrame>
         );
     }
     return (
-        <section data-card="care-team" data-state="ready" data-patient-id={patientId} aria-label="Care Team">
-            <h3>Care Team</h3>
+        <CardFrame card="care-team" title="Care Team" state="ready" patientId={patientId}>
             {state.data.length === 0 ? (
                 // The old card showed a bare header row (BM-030).
                 <p data-empty>No care team recorded</p>
@@ -90,6 +89,6 @@ export function CareTeamCard({ patientId, state }: { patientId: string; state: L
                     OpenEMR before relying on it.
                 </p>
             )}
-        </section>
+        </CardFrame>
     );
 }

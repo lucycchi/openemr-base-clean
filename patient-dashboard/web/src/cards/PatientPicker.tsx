@@ -69,23 +69,34 @@ export function PatientPicker({ client, onSelect }: { client: ApiClient; onSelec
     }
 
     return (
-        <form role="search" onSubmit={(event) => void runSearch(event)}>
+        <form className="mb-2" role="search" onSubmit={(event) => void runSearch(event)}>
             {/* The labelled text box; every keystroke updates the remembered query. */}
-            <label>
+            <label className="mb-0">
                 Find a patient{' '}
-                <input value={query} onChange={(event) => setQuery(event.target.value)} autoComplete="off" />
+                <input
+                    className="form-control form-control-sm d-inline-block w-auto"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    autoComplete="off"
+                />
             </label>{' '}
-            <button type="submit">Search</button>
+            <button type="submit" className="btn btn-primary btn-sm">
+                Search
+            </button>
             {/* Each `cond && …` line draws its message only in the matching state. */}
             {search.status === 'searching' && <p>Searching…</p>}
             {search.status === 'error' && <p role="alert">Couldn't search for patients</p>}
             {search.status === 'done' && search.matches.length === 0 && <p>No patients match "{search.query}"</p>}
             {search.status === 'done' && search.matches.length > 0 && (
-                <ul>
+                <ul className="list-unstyled mb-0 mt-1">
                     {/* One button per match; clicking it passes that patient's id on. */}
                     {search.matches.map((match) => (
                         <li key={match.id}>
-                            <button type="button" onClick={() => onSelect(match.id)}>
+                            <button
+                                type="button"
+                                className="btn btn-link btn-sm p-0"
+                                onClick={() => onSelect(match.id)}
+                            >
                                 {match.label}
                             </button>
                         </li>
