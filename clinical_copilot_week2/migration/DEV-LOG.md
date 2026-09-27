@@ -2,6 +2,49 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-27 — Arc 06 / Stories 06-01 to 06-03 — Prescription editing, and Edit in OpenEMR elsewhere
+
+**Branch:** `dashboard-migration`
+**Status:** committed (32847e7 to 5238e83); Task 10, the droplet, waits for the user's go-ahead
+
+### Worked on
+- The plan is `arcs/ARC-06-EDITING.md`. Its "Decisions" section records the user's choices, which rest on three research reports on OpenEMR's write API.
+- **Task 1:**
+  - the app client asks for `user/prescription.crds`; it was re-registered on dev and the old client disabled
+  - `fixtures/seed-rxedit.mjs` creates TP-RXEDIT (Rita RxEdit, pid 43 on dev), the only patient the write tests change
+- **Tasks 2–4, the BFF:**
+  - `writeGuard.ts`: same origin, a JSON body, a fresh token
+  - `patientLookup.ts`
+  - `prescriptionInput.ts`: checks every field, and sets what the old form sets
+  - `prescriptionWrites.ts`: add, discontinue, and replace (add, then discontinue; 207 if the second step fails). It never touches another patient's prescription or a medication-list entry.
+  - `openemrLink.ts`: a 302 to `demographics.php?set_pid=`
+  - `/auth/me` returns `userId`
+- **Tasks 5–7, the page:**
+  - `sendJson` on a separate `WriteClient`
+  - `api/prescriptionWrites.ts`
+  - a `revision` input on the card hooks, so a card reloads after a save
+  - `CardFrame` `actions`
+  - `PrescriptionForm.tsx`: it cannot be saved twice
+  - the editable `PrescriptionsCard`, with Discontinue asking first
+  - `EditInOpenEmr` and its visible note on four cards
+  - the prescriber default, from the names lookup
+- **Task 8:** browser tests for add, change and discontinue on TP-RXEDIT, each checked against the old dashboard, and `readonly.spec.ts` rewritten.
+
+### Decisions
+- **BM-067, by the user (option 2):** the API's discontinue sets `active = 0`. OpenEMR's legacy screens skip empty fields when they load a record, so the old dashboard lists that prescription as active. Discontinue and Change stay in the dashboard. The question now warns about this, and the browser test pins it.
+- **Date added** is the browser's local time. This assumes the clinic's clock matches OpenEMR's time zone; on dev the two differ by 7 hours.
+- **`sendJson`** lives on its own `WriteClient` interface, so the read-only test fakes keep compiling.
+
+### Tests
+- Unit: 342 of 342.
+- End-to-end: 33 of 33.
+- Parity: 9 of 9, with parity fixtures untouched.
+- Each new browser test was proven red by removing the card's title-bar actions.
+
+### BUGS-MITIGATIONS.md updates
+- BM-062 to BM-067 added; BM-013 updated.
+- BM-061's severity and port action fixed, so `tools/check-bugs.sh` passes again (67 rows).
+
 ## 2026-09-27 — Follow-up / Slice 05-04-03 — Fixes from the Codex challenge check
 
 **Branch:** `dashboard-migration`

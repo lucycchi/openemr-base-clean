@@ -41,7 +41,7 @@ Observed on the old dashboard (2026-09-26, body text read from the DOM):
 
 | Control | What it does | New dashboard |
 |---|---|---|
-| Edit (card header) | opens the prescription list (`controller.php?prescription&list&id=<pid>`) in a dialog; `auth` is `aclCheckCore('patients','rx','',['write','addonly'])` (demographics.php:1219) | leaves it out (read-only) |
+| Edit (card header) | opens the prescription list (`controller.php?prescription&list&id=<pid>`) in a dialog; `auth` is `aclCheckCore('patients','rx','',['write','addonly'])` (demographics.php:1219) | Add in the card header, and Change and Discontinue on each row (ARC-06); Change adds the corrected prescription then discontinues the old one (BM-064), and Discontinue asks first and warns that OpenEMR's own screens will still list it as active (BM-067) |
 | Add (inside the prescription list) | broken: links to `controller.php??prescription&edit…` and fails with HTTP 400 (BM-021) | not ported |
 | Save (prescription form) | fails silently outside the main tab frame, because it calls `top.restoreSession()` first (BM-022) | not ported |
 | Collapse / expand | toggles the card and saves `prescriptions_ps_expand` | local collapse state; starts expanded |
@@ -51,7 +51,7 @@ Observed on the old dashboard (2026-09-26, body text read from the DOM):
 | Check | Line | Scope in the new app |
 |---|---|---|
 | disable_prescriptions off, aclCheckCore patients rx, card_prescriptions not hidden (card visible) | demographics.php:1098 | `patient/MedicationRequest.rs` or `user/MedicationRequest.rs` |
-| aclCheckCore patients rx write or addonly (Edit button) | demographics.php:1219 | not needed: no edit control |
+| aclCheckCore patients rx write or addonly (Edit button) | demographics.php:1219 | not checked: OpenEMR's API checks patients/med for prescription writes, not patients/rx; in a default install the same groups can write (BM-065) |
 | checkControllerAcl for the prescription controller | library/classes/Controller.class.php (dispatch) | not applicable to the API |
 
 ## 5. Data

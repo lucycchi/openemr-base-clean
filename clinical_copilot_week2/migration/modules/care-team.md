@@ -37,7 +37,7 @@ Observed on the old dashboard (2026-09-26):
 
 | Control | What it does | New dashboard |
 |---|---|---|
-| Edit | switches the card into its inline editor; the link is `javascript:void(0);` rendered with linkMethod html, so safe_href blocks the URL and logs a warning (BM-027) | leaves it out (read-only) |
+| Edit | switches the card into its inline editor; the link is `javascript:void(0);` rendered with linkMethod html, so safe_href blocks the URL and logs a warning (BM-027) | an "Edit in OpenEMR" link in the card header opens the patient's chart in OpenEMR, where the care team is edited (ARC-06); no API can change a care team (BM-063) |
 | Add team member / Add related person / Remove / Save / Cancel | inline editor that POSTs to the dashboard | not ported |
 | Collapse / expand | saves `careteam_ps_expand` | local collapse state |
 
@@ -47,7 +47,7 @@ Observed on the old dashboard (2026-09-26):
 |---|---|---|
 | card_care_team not hidden | demographics.php:1252 | deployment configuration (Gate 2 visibility decision) |
 | aclCheckCore patients demo (render) | demographics.php:1271 | `patient/CareTeam.rs` or `user/CareTeam.rs`, plus Practitioner and RelatedPerson reads for names |
-| aclCheckCore patients demo write (Edit button) | CareTeamViewCard.php setupOpts | not needed: no edit |
+| aclCheckCore patients demo write (Edit button) | CareTeamViewCard.php setupOpts | not needed: the link relies on OpenEMR's own ACL once the chart opens |
 | save on POST: CSRF only, no write ACL, runs before the render ACL | CareTeamViewCard.php:124-145, demographics.php:1253 | not applicable (BM-026) |
 
 ## 5. Data

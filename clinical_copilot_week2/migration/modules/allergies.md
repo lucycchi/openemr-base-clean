@@ -34,7 +34,7 @@ Observed on the old dashboard (`tmp/dash_text.php`, 2026-09-26):
 
 | Control | What it does | New dashboard |
 |---|---|---|
-| Edit (card header) | opens `stats_full.php?active=all&category=allergy` in the frame; shown to everyone because `auth` is hard-coded `true` (BM-013) | leaves it out (read-only port); an optional "Open in OpenEMR" link is a Gate 3 hosting question |
+| Edit (card header) | opens `stats_full.php?active=all&category=allergy` in the frame; shown to everyone because `auth` is hard-coded `true` (BM-013) | an "Edit in OpenEMR" link in the card header opens the patient's chart in OpenEMR (ARC-06), because the write API cannot record this card's clinical fields (BM-062) |
 | Collapse / expand | toggles the card and saves the user setting `allergy_ps_expand` | the new app keeps its own collapse state; it doesn't write OpenEMR user settings |
 | Hover tooltip | shows the reaction and severity | the new app shows the reaction inline or in a tooltip, and a parity test checks the text |
 
@@ -43,7 +43,7 @@ Observed on the old dashboard (`tmp/dash_text.php`, 2026-09-26):
 | Check | Line | Scope in the new app |
 |---|---|---|
 | aclCheckIssue allergy (card visible) | demographics.php:1095 | `patient/AllergyIntolerance.rs` (Option A) or `user/AllergyIntolerance.rs` (Option B); the server applies its own ACL |
-| Edit button `auth` hard-coded true, so no write check | demographics.php:1129 | not needed: no edit control |
+| Edit button `auth` hard-coded true, so no write check | demographics.php:1129 | not needed: the link relies on OpenEMR's own ACL once the chart opens |
 
 ## 5. Data
 

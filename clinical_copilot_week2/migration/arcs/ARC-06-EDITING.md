@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** planned
+**Status:** in progress (Tasks 1–9 done; Task 10, the droplet, waits for the user)
 **Estimate:** 8 h
 
 **Goal:** Clinicians can add, change and discontinue prescriptions from the dashboard. Every other card has an "Edit in OpenEMR" button, because OpenEMR's write API cannot record those cards' clinical fields.
@@ -118,7 +118,7 @@ These were agreed with the user on 2026-09-27, after three research reports on O
 **Interfaces:**
 - Produces: `fixture('TP-RXEDIT')` → `{ pid, puuid, fhirId }`; an app client with `user/prescription.crds`
 
-- [ ] **Step 1: Add the scope to the `app` client kind**
+- [x] **Step 1: Add the scope to the `app` client kind**
 
 ```js
     scope: ['openid', 'fhirUser', 'offline_access', 'api:fhir', ...READ.map((r) => `user/${r}.rs`),
@@ -127,7 +127,7 @@ These were agreed with the user on 2026-09-27, after three research reports on O
       'user/prescription.crds'],
 ```
 
-- [ ] **Step 2: Re-register the dev app client and enable it**
+- [x] **Step 2: Re-register the dev app client and enable it**
 
 Ask the peer session first. Then run:
 
@@ -140,7 +140,7 @@ docker compose -f ../../../docker/development-easy/docker-compose.yml exec -T my
 
 Copy `APP_CLIENT_ID`, `APP_CLIENT_SECRET` and `APP_SCOPE` into `patient-dashboard/.env` as `OEMR_CLIENT_ID`, `OEMR_CLIENT_SECRET` and `OEMR_SCOPE`. Disable the old client under Admin > System > API Clients.
 
-- [ ] **Step 3: Write `seed-rxedit.mjs`**
+- [x] **Step 3: Write `seed-rxedit.mjs`**
 
 It finds or creates "Rita RxEdit" (DOB 1970-01-01, Female) through the seed client, and adds `TP-RXEDIT` to the fixture-ids file. Reuse `readEnv`, `fetchText` and `OEMR_BASE` from `../spike/lib.mjs`, the same way `seed.mjs` does.
 
@@ -190,7 +190,7 @@ console.log(`TP-RXEDIT is pid ${record.pid}`);
 ```
 
 If `POST /api/patient` answers with only `{ pid }` or only `{ uuid }` in `data`, fetch `GET /api/patient?fname=Rita&lname=RxEdit` again to read both. `seed.mjs` shows which fields its create call reads back.
-- [ ] **Step 4: Run it, and extend the fixture type**
+- [x] **Step 4: Run it, and extend the fixture type**
 
 ```bash
 cd clinical_copilot_week2/migration/fixtures && node seed-rxedit.mjs && node seed-rxedit.mjs
@@ -200,12 +200,12 @@ Expected: the second run prints the same pid, so the script is idempotent.
 
 In `tests/support/fixtures.ts`, add `'TP-RXEDIT'` to `FixtureKey`.
 
-- [ ] **Step 5: Confirm the new scope on a real login**
+- [x] **Step 5: Confirm the new scope on a real login**
 
 Run the existing login test: `npx playwright test --project=e2e tests/e2e/login.spec.ts`.
 Expected: it passes. Then add a temporary log in `server/auth.ts` that prints `response.scope`, check it includes `prescription`, remove the log, and confirm with `git diff --stat server/auth.ts` that nothing is left.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add clinical_copilot_week2/migration/spike/register-client.mjs clinical_copilot_week2/migration/fixtures/seed-rxedit.mjs clinical_copilot_week2/migration/fixtures/fixture-ids.json patient-dashboard/tests/support/fixtures.ts
@@ -229,7 +229,7 @@ git commit -m "feat(dashboard): prescription write scope and the TP-RXEDIT write
   - `guardWrite(c: Context, deps: { store: SessionStore; oauth: OAuthClient; now: () => number; publicUrl: string }): Promise<{ ok: true; accessToken: string; session: Session } | { ok: false; response: Response }>`
   - `lookupPid(apiBase: string, accessToken: string, patientUuid: string, fetchImpl: typeof fetch): Promise<number>`, which throws `PatientLookupError` on a mismatch or failure
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // tests/unit/server/writeGuard.test.ts
@@ -304,12 +304,12 @@ describe('lookupPid', () => {
 });
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `cd patient-dashboard && npx vitest run tests/unit/server/writeGuard.test.ts tests/unit/server/patientLookup.test.ts`
 Expected: FAIL, "Cannot find module '../../../server/writeGuard'" (and the same for patientLookup).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 // server/writeGuard.ts
@@ -391,12 +391,12 @@ export async function lookupPid(apiBase: string, accessToken: string, patientUui
 
 In `server/listDates.ts`, replace the `medicationRows` pid lookup with `await lookupPid(apiBase, accessToken, patient, fetchImpl)`, converting `PatientLookupError` to `Unavailable`. Leave the `get(...)` helper for the rows themselves.
 
-- [ ] **Step 4: Run the server tests**
+- [x] **Step 4: Run the server tests**
 
 Run: `npx vitest run tests/unit/server`
 Expected: all pass, including the existing `listDates.test.ts`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add patient-dashboard/server/writeGuard.ts patient-dashboard/server/patientLookup.ts patient-dashboard/server/listDates.ts patient-dashboard/tests/unit/server/writeGuard.test.ts patient-dashboard/tests/unit/server/patientLookup.test.ts
@@ -423,7 +423,7 @@ git commit -m "feat(dashboard): shared write guard and patient number lookup for
     - `POST /api/prescriptions/:uuid/replace?patient=<uuid>` → 201 `{ added, discontinued: true }` or 207 `{ added, discontinued: false }`
     - Errors: 400 `{ errors }`, 401, 403, 404, 415, 502
 
-- [ ] **Step 1: Write the failing input tests**
+- [x] **Step 1: Write the failing input tests**
 
 ```ts
 // tests/unit/server/prescriptionInput.test.ts
@@ -476,12 +476,12 @@ describe('openemrPrescriptionBody', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run tests/unit/server/prescriptionInput.test.ts`
 Expected: FAIL, "Cannot find module".
 
-- [ ] **Step 3: Implement `server/prescriptionInput.ts`**
+- [x] **Step 3: Implement `server/prescriptionInput.ts`**
 
 ```ts
 /**
@@ -576,12 +576,12 @@ export function openemrPrescriptionBody(input: PrescriptionInput, pid: number): 
 }
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 Run: `npx vitest run tests/unit/server/prescriptionInput.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Write the failing route tests**
+- [x] **Step 5: Write the failing route tests**
 
 ```ts
 // tests/unit/server/prescriptionWrites.test.ts
@@ -707,12 +707,12 @@ describe('POST /api/prescriptions/:uuid/replace', () => {
 });
 ```
 
-- [ ] **Step 6: Run it to verify it fails**
+- [x] **Step 6: Run it to verify it fails**
 
 Run: `npx vitest run tests/unit/server/prescriptionWrites.test.ts`
 Expected: FAIL. `createApp` does not accept `prescriptionWrites`, so the routes answer 404.
 
-- [ ] **Step 7: Implement `server/prescriptionWrites.ts` and wire it**
+- [x] **Step 7: Implement `server/prescriptionWrites.ts` and wire it**
 
 ```ts
 /**
@@ -844,12 +844,12 @@ function failure(c: import('hono').Context, error: unknown): Response {
 
 Wiring: in `server/app.ts`, add `prescriptionWrites?: PrescriptionWritesDeps` to `AppOptions`, and `app.route('/api/prescriptions', prescriptionWritesRoutes(options.prescriptionWrites))` before the static handler. In `server/index.ts`, pass `{ store, oauth, now, publicUrl: config.publicUrl, apiBase: \`${config.oemrBase}/apis/default/api\` }`.
 
-- [ ] **Step 8: Run the server tests**
+- [x] **Step 8: Run the server tests**
 
 Run: `npx vitest run tests/unit/server && npm run typecheck && npm run lint`
 Expected: all pass, clean.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add patient-dashboard/server/prescriptionInput.ts patient-dashboard/server/prescriptionWrites.ts patient-dashboard/server/app.ts patient-dashboard/server/index.ts patient-dashboard/tests/unit/server/prescriptionInput.test.ts patient-dashboard/tests/unit/server/prescriptionWrites.test.ts
@@ -871,7 +871,7 @@ git commit -m "feat(dashboard): BFF routes to add, discontinue and change prescr
   - `GET /openemr/patient/:uuid` → 302 `Location: <oemrPublicUrl>/interface/patient_file/summary/demographics.php?set_pid=<pid>`, 401 when signed out, 400 for a bad uuid, 502 when the lookup fails
   - `GET /auth/me` → `{ authenticated: boolean, userId?: string }`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // tests/unit/server/openemrLink.test.ts
@@ -924,12 +924,12 @@ Add to `auth.test.ts`, inside `describe('BFF login flow')`:
 
 Also update the existing `/auth/me` expectations in `auth.test.ts`, which equal `{ authenticated: true }`. When no ID token was given they keep that exact shape, so only tests that pass `idToken(...)` change.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `npx vitest run tests/unit/server/openemrLink.test.ts tests/unit/server/auth.test.ts`
 Expected: FAIL. The route answers 404, and `userId` is missing.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 // server/openemrLink.ts
@@ -989,12 +989,12 @@ export function openemrLinkRoutes(deps: OpenEmrLinkDeps): Hono {
 - In `server/config.ts`, add `oemrPublicUrl: (env.OEMR_PUBLIC_URL ?? env.OEMR_BASE).replace(/\/+$/, '')`, with a `config.test.ts` case for the default.
 - Wire it in `app.ts` as `app.route('/openemr', openemrLinkRoutes(...))`, and in `index.ts`.
 
-- [ ] **Step 4: Run the server tests, type check and lint**
+- [x] **Step 4: Run the server tests, type check and lint**
 
 Run: `npx vitest run tests/unit/server && npm run typecheck && npm run lint`
 Expected: PASS, clean.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add patient-dashboard/server/openemrLink.ts patient-dashboard/server/auth.ts patient-dashboard/server/config.ts patient-dashboard/server/app.ts patient-dashboard/server/index.ts patient-dashboard/tests/unit/server/openemrLink.test.ts patient-dashboard/tests/unit/server/auth.test.ts patient-dashboard/tests/unit/server/config.test.ts
@@ -1027,7 +1027,7 @@ git commit -m "feat(dashboard): Edit in OpenEMR redirect and the signed-in user 
   - `useMedicationCards(client, patientId, now, revision = 0)` and `useBundleCard(..., extraQuery = '', revision = 0)`
   - `CardFrame` gets `actions?: ReactNode`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // tests/unit/api/prescriptionWrites.test.ts
@@ -1099,12 +1099,12 @@ Add to `tests/unit/cards/CardFrame.test.tsx`:
     });
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `npx vitest run tests/unit/api/prescriptionWrites.test.ts tests/unit/hooks/useMedicationCards.test.tsx tests/unit/cards/CardFrame.test.tsx`
 Expected: FAIL, from the missing module, the unchanged call count and the missing actions.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 // web/src/api/prescriptionWrites.ts
@@ -1167,12 +1167,12 @@ export async function replacePrescription(client: ApiClient, patientId: string, 
 - In `useBundleCard`, add a `revision = 0` parameter after `extraQuery`, and include it in the effect's dependency list. In `useListDates` and `useMedicationCards`, add `revision = 0` and pass it through. The "tagged by patient" return means the previous ready state stays on screen while the reload runs.
 - In `CardFrame`, render `{actions}` inside the `<h3>` after the toggle button. The `<h3>` is already `d-flex justify-content-between`, so the actions sit at the right.
 
-- [ ] **Step 4: Run to verify they pass, then the full unit suite**
+- [x] **Step 4: Run to verify they pass, then the full unit suite**
 
 Run: `npm test`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add patient-dashboard/web/src/api/client.ts patient-dashboard/web/src/api/prescriptionWrites.ts patient-dashboard/web/src/hooks/useBundleCard.ts patient-dashboard/web/src/hooks/useMedicationCards.ts patient-dashboard/web/src/cards/CardFrame.tsx patient-dashboard/tests/unit/api/prescriptionWrites.test.ts patient-dashboard/tests/unit/hooks/useMedicationCards.test.tsx patient-dashboard/tests/unit/cards/CardFrame.test.tsx
@@ -1189,7 +1189,7 @@ git commit -m "feat(dashboard): page-side prescription writes, card reloads and 
 - Consumes: `PrescriptionForm`, `WriteOutcome` (Task 5)
 - Produces: `<PrescriptionFormPanel initial={Partial<PrescriptionForm>} prescriberDefault={string} today={string} nowText={() => string} onSave={(form: PrescriptionForm) => Promise<WriteOutcome>} onCancel={() => void} />`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```tsx
 // tests/unit/cards/PrescriptionForm.test.tsx
@@ -1241,12 +1241,12 @@ describe('PrescriptionFormPanel', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `npx vitest run tests/unit/cards/PrescriptionForm.test.tsx`
 Expected: FAIL, "Cannot find module".
 
-- [ ] **Step 3: Implement `web/src/cards/PrescriptionForm.tsx`**
+- [x] **Step 3: Implement `web/src/cards/PrescriptionForm.tsx`**
 
 Fields, in the old form's order: Drug, Directions (`dosage`), Quantity, Refills (a select of 0–20, as the old form's `refills_array`), Start date (`type="date"`), and Prescriber. Under Prescriber, in `small text-muted`: "Saved in the prescription's note. OpenEMR's own prescriber field stays empty; see the dashboard's notes." Use Bootstrap `form-group`, `form-control` and `btn btn-primary` / `btn btn-link`.
 
@@ -1257,12 +1257,12 @@ Behaviour:
 - A `saved` outcome is handled by the card (Task 7).
 - `dateAdded` is read from `nowText()` at the moment Save is pressed, not when the form opens.
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `npx vitest run tests/unit/cards/PrescriptionForm.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add patient-dashboard/web/src/cards/PrescriptionForm.tsx patient-dashboard/tests/unit/cards/PrescriptionForm.test.tsx
@@ -1284,7 +1284,7 @@ git commit -m "feat(dashboard): the prescription add and change form"
   - `PrescriptionsCard` props: `{ patientId; state; editing?: { prescriberDefault: string; today: string; nowText: () => string; add(form): Promise<WriteOutcome>; change(rxId, form): Promise<WriteOutcome>; discontinue(rxId): Promise<WriteOutcome> } }`. Without `editing`, the card is read-only, as today.
   - `<EditInOpenEmr patientId={string} />`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```tsx
 // tests/unit/cards/EditInOpenEmr.test.tsx
@@ -1354,12 +1354,12 @@ Add to `tests/unit/cards/PrescriptionsCard.test.tsx`:
 
 (Add `vi`, `fireEvent` and `waitFor` to that file's imports.)
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `npx vitest run tests/unit/cards/EditInOpenEmr.test.tsx tests/unit/cards/PrescriptionsCard.test.tsx`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `EditInOpenEmr.tsx`:
 
@@ -1404,7 +1404,7 @@ Also render the note as visible text once per card, in `small text-muted` under 
 - `today`: `localToday()`; `nowText`: `localNow`; `prescriberDefault`: from Step 4 below.
 - Because `PatientView` is keyed by `patientId`, a patient switch unmounts it. An in-flight write's result then has nowhere to land, which covers Review Focus 4. The card must not call `setState` after unmount: guard with a mounted ref, as the hooks already do.
 
-- [ ] **Step 4: The prescriber default**
+- [x] **Step 4: The prescriber default**
 
 In `App`:
 - keep `userId` from `/auth/me`, which Task 4 adds
@@ -1413,12 +1413,12 @@ In `App`:
 
 Add a unit test in `tests/unit/app/` for the small parser that does this (`prescriberNameFrom(body: unknown, userId: string): string`), covering: a name found, a name unavailable, and a malformed answer.
 
-- [ ] **Step 5: Run the unit suite, type check, lint and format**
+- [x] **Step 5: Run the unit suite, type check, lint and format**
 
 Run: `npm test && npm run typecheck && npm run lint && npx prettier --check .`
 Expected: all pass, clean.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add patient-dashboard/web/src/cards/PrescriptionsCard.tsx patient-dashboard/web/src/cards/EditInOpenEmr.tsx patient-dashboard/web/src/cards/AllergiesCard.tsx patient-dashboard/web/src/cards/ProblemListCard.tsx patient-dashboard/web/src/cards/MedicationsCard.tsx patient-dashboard/web/src/cards/CareTeamCard.tsx patient-dashboard/web/src/app/App.tsx patient-dashboard/web/src/app/prescriberName.ts patient-dashboard/tests/unit/cards/PrescriptionsCard.test.tsx patient-dashboard/tests/unit/cards/EditInOpenEmr.test.tsx patient-dashboard/tests/unit/app/prescriberName.test.ts
@@ -1435,7 +1435,7 @@ git commit -m "feat(dashboard): add, change and discontinue prescriptions; Edit 
 **Interfaces:**
 - Consumes: `fixture('TP-RXEDIT')`, `logInThroughOpenEmr`, `PHYSICIAN`, `openOldDashboard`, `readOldCard`
 
-- [ ] **Step 1: Write the failing browser tests**
+- [x] **Step 1: Write the failing browser tests**
 
 ```ts
 // tests/e2e/prescriptionEdits.spec.ts
@@ -1532,17 +1532,17 @@ test('clinical cards offer no delete, and edit only where decided (BM-013, ARC-0
 
 Before relying on `readOldCard(old, 'prescriptions_ps_expand')`, check how `tests/parity/prescriptions.spec.ts` reads the old prescriptions card, and use the same helper and card id.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `npx playwright test --project=e2e tests/e2e/prescriptionEdits.spec.ts tests/e2e/readonly.spec.ts`
 Expected: FAIL. There is no "Add prescription" button yet on the running build, and no Edit in OpenEMR links. If Tasks 5–7 are already merged, prove red by breaking the code instead: comment out the `actions` render in `CardFrame`, watch the tests fail, and restore it.
 
-- [ ] **Step 3: Make them pass**
+- [x] **Step 3: Make them pass**
 
 Fix what the tests show, in the owning task's files. Then run the whole suite: `npx playwright test`.
 Expected: every end-to-end and parity test passes. Parity fixtures are untouched, and the parity counts are unchanged.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add patient-dashboard/tests/e2e/prescriptionEdits.spec.ts patient-dashboard/tests/e2e/readonly.spec.ts
@@ -1564,7 +1564,7 @@ git commit -m "test(dashboard): prescription edits end to end, checked against t
 - Modify: `clinical_copilot_week2/migration/modules/prescriptions.md`, `allergies.md`, `problem-list.md`, `medications.md`, `care-team.md`: the Controls tables
 - Modify: `clinical_copilot_week2/migration/DEV-LOG.md`, this arc file
 
-- [ ] **Step 1: Bug catalogue rows**
+- [x] **Step 1: Bug catalogue rows**
 
 Add these rows, using the table's existing column order:
 - **BM-062:** OpenEMR's write API cannot record an allergy's reaction, severity, outcome or verification, a problem's comments, or a medication's dosage instructions (whitelists in `AllergyIntoleranceRestController.php:38-44`, `ConditionRestController.php:38-43`, `ListService.php:186-209`).
@@ -1585,7 +1585,7 @@ Add these rows, using the table's existing column order:
 
 Update BM-013's text: the dashboard now edits prescriptions, and every other card is read-only with a link.
 
-- [ ] **Step 2: The defence**
+- [x] **Step 2: The defence**
 
 In `PATIENT_DASHBOARD_MIGRATION.md`:
 - **"What was ported":** Prescriptions now says "add, change, discontinue", and the other four rows say "Edit in OpenEMR".
@@ -1599,14 +1599,14 @@ In `PATIENT_DASHBOARD_MIGRATION.md`:
 - **"Not ported":** replace the "edit workflows" line with the precise list.
 - **Parity evidence:** add the write tests and their counts.
 
-- [ ] **Step 3: Compliance, module audits, dev log, arc file**
+- [x] **Step 3: Compliance, module audits, dev log, arc file**
 
 - `CHALLENGE-COMPLIANCE.md`: rows 4 and 10 and the Verdict. The port is no longer read-only.
 - Each module file's Controls table: the new behaviour for its edit control.
 - `DEV-LOG.md`: one entry per story, plus an arc-completion entry.
 - This arc file: tick every step, and set Status to complete.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add PATIENT_DASHBOARD_MIGRATION.md clinical_copilot_week2/migration/BUGS-MITIGATIONS.md clinical_copilot_week2/migration/CHALLENGE-COMPLIANCE.md clinical_copilot_week2/migration/modules/prescriptions.md clinical_copilot_week2/migration/modules/allergies.md clinical_copilot_week2/migration/modules/problem-list.md clinical_copilot_week2/migration/modules/medications.md clinical_copilot_week2/migration/modules/care-team.md clinical_copilot_week2/migration/DEV-LOG.md clinical_copilot_week2/migration/arcs/ARC-06-EDITING.md

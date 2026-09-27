@@ -33,7 +33,7 @@ Observed on the old dashboard (2026-09-26):
 
 | Control | What it does | New dashboard |
 |---|---|---|
-| Edit | opens `stats_full.php?active=all&category=medical_problem`; shown to everyone because `auth` is hard-coded true (BM-013) | leaves it out (read-only) |
+| Edit | opens `stats_full.php?active=all&category=medical_problem`; shown to everyone because `auth` is hard-coded true (BM-013) | an "Edit in OpenEMR" link in the card header opens the patient's chart in OpenEMR (ARC-06), because the write API cannot record this card's clinical fields (BM-062) |
 | Collapse / expand | toggles the card and saves the user setting `medical_problem_ps_expand` | local collapse state only |
 
 ## 4. Permission checks
@@ -41,7 +41,7 @@ Observed on the old dashboard (2026-09-26):
 | Check | Line | Scope in the new app |
 |---|---|---|
 | aclCheckIssue medical_problem (card visible) | demographics.php:1096 | `patient/Condition.rs` or `user/Condition.rs` |
-| Edit `auth` hard-coded true, so no write check | demographics.php:1153 | not needed: no edit control |
+| Edit `auth` hard-coded true, so no write check | demographics.php:1153 | not needed: the link relies on OpenEMR's own ACL once the chart opens |
 
 ## 5. Data
 

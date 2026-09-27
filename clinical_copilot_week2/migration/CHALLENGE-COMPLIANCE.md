@@ -14,7 +14,7 @@ Every required feature is built, tested and deployed:
 
 A strict grader could still mark down three deliberate, disclosed choices:
 1. **The Problem List reads OpenEMR's Standard REST API, not FHIR.** FHIR drops some problems the old card shows (BM-051), so the card reads the old card's own list; the FHIR `Condition` search is used only to check the user's permission. This was your decision, and the defence argues it.
-2. **The port is read-only.** The old cards' add and edit buttons, and the links into OpenEMR, are not ported.
+2. **Editing is ported only for prescriptions** (ARC-06): add, change and discontinue. Allergies, problems, medications and the care team link to OpenEMR for editing, because OpenEMR's write API cannot record their clinical fields (BM-062, BM-063). A prescription discontinued from the dashboard still shows as active in OpenEMR's own screens, an OpenEMR fault kept by your decision and warned about on screen (BM-067), and the typed prescriber is saved in the note, not OpenEMR's prescriber field (BM-065).
 3. **Some details FHIR does not carry are shown differently:**
    - the allergy risk level in place of the eight severities
    - refills "Not available"
@@ -40,7 +40,7 @@ For the hand-in, the grader is pointed at the `dashboard-migration` branch on Gi
 | 7 | Allergies, Problem List, Medications, Prescriptions and Care Team, each with live data from the FHIR API | Met for four cards; the Problem List is a documented deviation | All five cards read live data on every patient open. Three cards also read OpenEMR's Standard REST API, because FHIR reports those lists wrongly: FHIR drops some problems, and it marks future-ended medications and allergies as finished. Specifically, the Problem List is built from the standard problem list, Medications from the standard medication list plus FHIR dosage, and Allergies from FHIR plus end dates from the standard list. The defence explains each case (BM-044, BM-047, BM-051), and the challenge's own introduction allows "REST and FHIR". Risk: a grader who reads "from the FHIR API" literally may mark this down. |
 | 8 | One additional section of your choice | Met | Encounter history, from FHIR `Encounter`. Parity test: `tests/parity/encounters.spec.ts`. |
 | 9 | A working reimplementation | Met | Deployed at https://dashboard.146-190-139-37.sslip.io, redeployed with the new look; 4 of 4 deployed smoke tests pass. |
-| 10 | "Feature parity with the original is the standard" | Met for what the dashboard shows; the edit workflows, links into OpenEMR and translated labels are not ported (disclosed) | 9 of 9 parity tests pass against the running old dashboard. Every difference is an approved exception in `BUGS-MITIGATIONS.md`. Each card collapses from its title and, as on the old dashboard, stays collapsed for that user on later visits and other patients (added in `e4f31a4`; the BFF keeps the choice because the API cannot reach OpenEMR's user settings). The edit buttons are left out on purpose, because the port is read-only, and the defence says so. |
+| 10 | "Feature parity with the original is the standard" | Met for what the dashboard shows; prescriptions can be edited, the other cards' editing links to OpenEMR, and translated labels are not ported (disclosed) | 9 of 9 parity tests pass against the running old dashboard. Every difference is an approved exception in `BUGS-MITIGATIONS.md`. Each card collapses from its title and, as on the old dashboard, stays collapsed for that user on later visits and other patients (added in `e4f31a4`; the BFF keeps the choice because the API cannot reach OpenEMR's user settings). The edit buttons are left out on purpose, because the port is read-only, and the defence says so. |
 | 11 | Explain why you chose your framework | Met | `PATIENT_DASHBOARD_MIGRATION.md`, "Why this framework" (four reasons, including the CORS spike that required a server in front of the API) |
 | 12 | Explain what you gained by moving away from PHP | Met | "What moving off PHP gained" |
 | 13 | Explain what tradeoffs came with that choice | Met | "Tradeoffs and costs", plus "Parity evidence" and "Not ported" |
@@ -50,13 +50,13 @@ For the hand-in, the grader is pointed at the `dashboard-migration` branch on Gi
 
 Last run on 2026-09-27.
 
-| Check | Command | Result at `f48ab1c` |
+| Check | Command | Result at `5238e83` |
 |---|---|---|
-| Unit tests | `npm test` | 285 of 285 pass (43 files) |
+| Unit tests | `npm test` | 342 of 342 pass (52 files) |
 | Lint | `npm run lint` | clean |
 | Types | `npm run typecheck` | clean |
 | Formatting | `npx prettier --check .` | clean |
-| End-to-end, against the development-easy stack | `npx playwright test --project=e2e` | 30 of 30 pass |
+| End-to-end, against the development-easy stack | `npx playwright test --project=e2e` | 33 of 33 pass |
 | Parity, against the running old dashboard | `npx playwright test --project=parity` | 9 of 9 pass |
 | Deployed smoke tests, after redeploying | `npx playwright test -c playwright.deployed.config.ts` | 5 of 5 pass |
 | Backend untouched | files changed by the dashboard commits on `main..dashboard-migration` | only `patient-dashboard/`, `clinical_copilot_week2/`, the defence and `.gitignore` |
@@ -92,7 +92,7 @@ A fresh Codex agent read the challenge text and checked every requirement agains
 | This document said all non-port files came from "earlier" Co-Pilot commits. | Some are interleaved (`5d7988c`, `057832a`). | **Corrected** (row 3). |
 | The Problem List's data comes only from the Standard REST API. | True. | **Kept, by your decision** (BM-051). The verdict above now says so plainly. |
 | Sensitive visit reasons are shown with a note, not masked. | True. | **Kept, by your decision** (BM-033). |
-| The add and edit buttons are removed, and several details differ. | True. | **Kept:** the port is read-only, and each detail is an approved exception. |
+| The add and edit buttons are removed, and several details differ. | True. | **Since built (ARC-06):** prescriptions are edited in the dashboard, and the other cards link to OpenEMR, because the write API cannot record their clinical fields. Each remaining detail is an approved exception. |
 | The test, deployment and parity results were not verified. | Codex's sandbox could not run tests. | The suites were run for this document: see [Checks run](#checks-run). |
 
 ## Gap 1, closed: the look and the persistent header
