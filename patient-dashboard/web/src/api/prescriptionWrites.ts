@@ -4,7 +4,9 @@
  * - saved
  * - partly saved: a change added the new prescription but could not discontinue the old one
  * - invalid: a message for each field the server rejected
- * - failed: nothing was changed
+ * - failed: the server refused before writing, so nothing was changed
+ * - uncertain: no clear answer (a timeout, a lost connection, a server fault): OpenEMR may have saved it,
+ *   so the user is told to check the list before trying again, rather than risk a duplicate
  */
 import type { WriteClient } from './client';
 
@@ -28,11 +30,21 @@ export type WriteOutcome =
     | { kind: 'saved' }
     | { kind: 'partly-saved'; message: string }
     | { kind: 'invalid'; errors: Record<string, string> }
-    | { kind: 'failed'; message: string };
+    | { kind: 'failed'; message: string }
+    | { kind: 'uncertain'; message: string };
 
 const FAILED: WriteOutcome = { kind: 'failed', message: "Couldn't save. Nothing was changed; try again." };
+const UNCERTAIN: WriteOutcome = {
+    kind: 'uncertain',
+    message: 'This may not have saved: OpenEMR did not answer clearly. Check the list before trying again.',
+};
+/** Answers that mean the BFF refused the request before anything was written. */
+const REFUSED = [400, 401, 403, 404, 415];
 
-/** Reads the BFF's answer: 200/201 saved, 207 partly saved, 400 with field messages, anything else failed. */
+/**
+ * Reads the BFF's answer: 200/201 saved, 207 partly saved, 400 with field messages, other refusals
+ * failed, and anything else (0 = no answer, 5xx) uncertain.
+ */
 function outcome(answer: { status: number; body: unknown }): WriteOutcome {
     if (answer.status === 200 || answer.status === 201) {
         return { kind: 'saved' };
@@ -51,7 +63,7 @@ function outcome(answer: { status: number; body: unknown }): WriteOutcome {
     if (answer.status === 400 && typeof errors === 'object' && errors !== null) {
         return { kind: 'invalid', errors: errors as Record<string, string> };
     }
-    return FAILED;
+    return REFUSED.includes(answer.status) ? FAILED : UNCERTAIN;
 }
 
 /** The query naming the patient on screen, e.g. "patient=a2d6...". */
@@ -84,4 +96,12 @@ export async function replacePrescription(
     return outcome(
         await client.sendJson('POST', `prescriptions/${encodeURIComponent(rxId)}/replace?${q(patientId)}`, form),
     );
+}
+
+/**
+ * True when the prescription list should be read again after a write: anything that may have changed it,
+ * including an unclear answer, so the user can see whether an uncertain save went through before retrying.
+ */
+export function shouldReload(outcome: WriteOutcome): boolean {
+    return outcome.kind === 'saved' || outcome.kind === 'partly-saved' || outcome.kind === 'uncertain';
 }

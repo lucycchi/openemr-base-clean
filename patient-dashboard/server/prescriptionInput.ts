@@ -103,12 +103,72 @@ export function parsePrescriptionInput(
     return { ok: true, value: { drug, dosage, quantity, refills, startDate, dateAdded, prescriber } };
 }
 
-/** The body for OpenEMR's POST /api/prescription: the form, the patient's number, and the old form's defaults. */
-export function openemrPrescriptionBody(input: PrescriptionInput, pid: number): Record<string, string | number> {
+/**
+ * For a Change: what the old prescription holds that the form does not edit, so the corrected prescription
+ * keeps it (final review, Critical 1). In: the old prescription as OpenEMR's GET /api/prescription/<uuid>
+ * returns it. Out: the matching columns for the new insert: the structured dose (dosage, unit, route,
+ * interval, size), the RxNorm code, directions, diagnosis, intent, category and the note. Empty or
+ * non-text values are left out.
+ *
+ * OpenEMR's read does not return refills, start date, the prescriber's number, the encounter, the dose
+ * form or the medication-list link, so those cannot be carried over; the Change form says refills must
+ * be set again.
+ */
+export function carriedOver(old: Record<string, unknown>): Record<string, string> {
+    // Each pair: the name in OpenEMR's read answer, then the column name for the insert.
+    const pairs: [string, string][] = [
+        ['rxnorm_drugcode', 'rxnorm_drugcode'],
+        ['dosage', 'dosage'],
+        ['unit', 'unit'],
+        ['route', 'route'],
+        ['interval', 'interval'],
+        ['prescription_drug_size', 'size'],
+        ['drug_dosage_instructions', 'drug_dosage_instructions'],
+        ['diagnosis', 'diagnosis'],
+        ['intent', 'request_intent'],
+        ['intent_title', 'request_intent_title'],
+        ['category', 'usage_category'],
+        ['category_title', 'usage_category_title'],
+        ['note', 'note'],
+    ];
+    const carried: Record<string, string> = {};
+    for (const [from, to] of pairs) {
+        const value = old[from];
+        if (typeof value === 'string' && value.trim() !== '') {
+            carried[to] = value;
+        }
+    }
+    return carried;
+}
+
+/** The note with any earlier "Prescriber: ..." line replaced by the new one (or just removed when none is typed). */
+function noteWithPrescriber(oldNote: string, prescriber: string): string {
+    const kept = oldNote.split(/\r?\n/).filter((line) => line.trim() !== '' && !line.startsWith('Prescriber:'));
+    if (prescriber !== '') {
+        kept.push(`Prescriber: ${prescriber}`);
+    }
+    return kept.join('\n');
+}
+
+/**
+ * The body for OpenEMR's POST /api/prescription: the old form's defaults, then (for a Change) what the old
+ * prescription carries over, then the form's own fields, which win. Directions left blank on a Change keep
+ * the old ones, because the old structured dose often leaves the Details column empty (BM-038).
+ */
+export function openemrPrescriptionBody(
+    input: PrescriptionInput,
+    pid: number,
+    carried: Record<string, string> = {},
+): Record<string, string | number> {
     return {
+        request_intent: 'order',
+        request_intent_title: 'Order',
+        usage_category: 'outpatient',
+        usage_category_title: 'Outpatient',
+        ...carried,
         patient_id: pid,
         drug: input.drug,
-        drug_dosage_instructions: input.dosage,
+        drug_dosage_instructions: input.dosage !== '' ? input.dosage : (carried.drug_dosage_instructions ?? ''),
         quantity: input.quantity,
         refills: input.refills,
         per_refill: 0,
@@ -116,10 +176,6 @@ export function openemrPrescriptionBody(input: PrescriptionInput, pid: number): 
         date_added: input.dateAdded,
         date_modified: input.dateAdded,
         active: 1,
-        request_intent: 'order',
-        request_intent_title: 'Order',
-        usage_category: 'outpatient',
-        usage_category_title: 'Outpatient',
-        note: input.prescriber === '' ? '' : `Prescriber: ${input.prescriber}`,
+        note: noteWithPrescriber(carried.note ?? '', input.prescriber),
     };
 }

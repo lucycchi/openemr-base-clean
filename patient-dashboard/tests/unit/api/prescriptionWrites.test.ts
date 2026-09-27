@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { addPrescription, discontinuePrescription, replacePrescription } from '../../../web/src/api/prescriptionWrites';
+import {
+    addPrescription,
+    discontinuePrescription,
+    replacePrescription,
+    shouldReload,
+} from '../../../web/src/api/prescriptionWrites';
 import type { WriteClient } from '../../../web/src/api/client';
 
 const form = {
@@ -54,8 +59,28 @@ describe('prescription writes from the page', () => {
         ]);
     });
 
-    it('reports any other answer, or no answer, as not saved', async () => {
-        expect((await discontinuePrescription(clientAnswering(502, {}), 'p1', 'rx')).kind).toBe('failed');
-        expect((await discontinuePrescription(clientAnswering(0, undefined), 'p1', 'rx')).kind).toBe('failed');
+    it('says nothing changed only when the server refused before writing', async () => {
+        for (const status of [400, 403, 404, 415]) {
+            const outcome = await discontinuePrescription(clientAnswering(status, {}), 'p1', 'rx');
+            expect(outcome.kind, String(status)).toBe('failed');
+        }
+    });
+
+    it('says it may not have saved after a timeout or a lost answer, so the user checks before retrying (final review, Important 4)', async () => {
+        for (const status of [502, 500, 0]) {
+            const outcome = await addPrescription(clientAnswering(status, undefined), 'p1', form);
+            expect(outcome.kind, String(status)).toBe('uncertain');
+            expect(outcome.kind === 'uncertain' ? outcome.message : '').toContain('Check the list before trying again');
+        }
+    });
+});
+
+describe('shouldReload', () => {
+    it('reloads the list after anything that may have changed it, including an unclear answer', () => {
+        expect(shouldReload({ kind: 'saved' })).toBe(true);
+        expect(shouldReload({ kind: 'partly-saved', message: '' })).toBe(true);
+        expect(shouldReload({ kind: 'uncertain', message: '' })).toBe(true);
+        expect(shouldReload({ kind: 'failed', message: '' })).toBe(false);
+        expect(shouldReload({ kind: 'invalid', errors: {} })).toBe(false);
     });
 });

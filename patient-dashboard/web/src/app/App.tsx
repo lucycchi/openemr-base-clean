@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { createApiClient } from '../api/client';
 import type { WriteClient } from '../api/client';
-import { addPrescription, discontinuePrescription, replacePrescription } from '../api/prescriptionWrites';
+import { addPrescription, discontinuePrescription, replacePrescription, shouldReload } from '../api/prescriptionWrites';
 import type { WriteOutcome } from '../api/prescriptionWrites';
 import type { PrescriptionEditing } from '../cards/PrescriptionsCard';
 import { prescriberNameFrom } from './prescriberName';
@@ -106,9 +106,9 @@ function PatientView({
     // list stays on screen until the new one arrives.
     const [revision, setRevision] = useState(0);
     const medicationCards = useMedicationCards(client, patientId, asOfTime, revision);
-    /** After a write: reload when something was saved, and hand the outcome back to the card to show. */
+    /** After a write: reload when the list may have changed, and hand the outcome back to the card to show. */
     const reloadAfter = (outcome: WriteOutcome): WriteOutcome => {
-        if (outcome.kind === 'saved' || outcome.kind === 'partly-saved') {
+        if (shouldReload(outcome)) {
             setRevision((current) => current + 1);
         }
         return outcome;

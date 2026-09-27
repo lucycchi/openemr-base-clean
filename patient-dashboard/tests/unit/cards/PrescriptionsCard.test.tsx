@@ -99,6 +99,7 @@ describe('PrescriptionsCard', () => {
         expect(screen.getByRole('alertdialog').textContent).toContain(
             "OpenEMR's own prescription screens will still list it as active",
         );
+        expect(screen.getByRole('alertdialog').textContent).toContain('saving it there makes it active again');
         fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
         expect(e.discontinue).not.toHaveBeenCalled();
         expect(screen.queryByRole('alertdialog')).toBeNull();
@@ -131,6 +132,61 @@ describe('PrescriptionsCard', () => {
         await waitFor(() => expect(screen.queryByLabelText('Drug')).toBeNull());
     });
 
+    it('names the old prescription when a change saved the new one but kept the old one (final review, Important 2)', async () => {
+        const e = editing();
+        e.change.mockResolvedValue({
+            kind: 'partly-saved',
+            message: 'The new prescription was saved, but the old one could not be discontinued.',
+        });
+        render(<PrescriptionsCard patientId="p1" state={oneRow} editing={e} />);
+        fireEvent.click(screen.getByRole('button', { name: `Change ${omeprazole.name}` }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        const alert = await screen.findByRole('alert');
+        expect(alert.textContent).toContain(`${omeprazole.name}, 1 daily, added ${omeprazole.added}`);
+        expect(alert.textContent).toContain('is still active');
+    });
+
+    it('says in the Change form that refills are not carried over, and warns about OpenEMR screens (final review, Critical 1 and Important 3)', () => {
+        render(<PrescriptionsCard patientId="p1" state={oneRow} editing={editing()} />);
+        fireEvent.click(screen.getByRole('button', { name: `Change ${omeprazole.name}` }));
+        const card = screen.getByRole('region', { name: 'Prescriptions' });
+        expect(card.textContent).toContain('Refills are not carried over');
+        expect(card.textContent).toContain("OpenEMR's own prescription screens will still list it as active");
+    });
+
+    it('locks Add, Change and Discontinue while a write is on its way (final review, Important 5)', async () => {
+        const e = editing();
+        let finish: (value: WriteOutcome) => void = () => undefined;
+        e.add.mockImplementation(() => new Promise<WriteOutcome>((resolve) => (finish = resolve)));
+        render(<PrescriptionsCard patientId="p1" state={oneRow} editing={e} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Add prescription' }));
+        fireEvent.change(screen.getByLabelText('Drug'), { target: { value: 'Amoxicillin' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        for (const name of ['Add prescription', `Change ${omeprazole.name}`, `Discontinue ${omeprazole.name}`]) {
+            expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled, name).toBe(true);
+        }
+        finish({ kind: 'saved' });
+        await waitFor(() =>
+            expect((screen.getByRole('button', { name: 'Add prescription' }) as HTMLButtonElement).disabled).toBe(
+                false,
+            ),
+        );
+    });
+
+    it('keeps the form open with the warning when a save may not have gone through', async () => {
+        const e = editing();
+        e.add.mockResolvedValue({
+            kind: 'uncertain',
+            message: 'May not have saved. Check the list before trying again.',
+        });
+        render(<PrescriptionsCard patientId="p1" state={oneRow} editing={e} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Add prescription' }));
+        fireEvent.change(screen.getByLabelText('Drug'), { target: { value: 'Amoxicillin' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        expect((await screen.findByRole('alert')).textContent).toContain('Check the list before trying again');
+        expect(screen.getByLabelText('Drug')).toBeTruthy();
+    });
+
     it('says so above the list when a change saved the new prescription but kept the old one', async () => {
         const e = editing();
         e.change.mockResolvedValue({
@@ -140,7 +196,7 @@ describe('PrescriptionsCard', () => {
         render(<PrescriptionsCard patientId="p1" state={oneRow} editing={e} />);
         fireEvent.click(screen.getByRole('button', { name: `Change ${omeprazole.name}` }));
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-        expect((await screen.findByRole('alert')).textContent).toContain('could not be discontinued');
+        expect((await screen.findByRole('alert')).textContent).toContain('is still active');
         expect(screen.queryByLabelText('Drug')).toBeNull();
     });
 

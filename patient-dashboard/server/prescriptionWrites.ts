@@ -16,7 +16,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { OAuthClient } from './oauth';
 import { lookupPid, PatientLookupError } from './patientLookup';
-import { openemrPrescriptionBody, parsePrescriptionInput } from './prescriptionInput';
+import { carriedOver, openemrPrescriptionBody, parsePrescriptionInput } from './prescriptionInput';
 import type { SessionStore } from './session';
 import { guardWrite } from './writeGuard';
 
@@ -60,11 +60,18 @@ export function prescriptionWritesRoutes(deps: PrescriptionWritesDeps): Hono {
             signal: AbortSignal.timeout(TIMEOUT_MS),
         });
 
-    /** True when the prescription exists, is a real (not list) prescription, is active, and is the patient's. */
-    async function ownsActivePrescription(accessToken: string, patient: string, rx: string): Promise<boolean> {
+    /**
+     * The prescription as OpenEMR reads it back, when it exists, is a real (not list) prescription, is active,
+     * and is the patient's; otherwise undefined.
+     */
+    async function activePrescriptionOf(
+        accessToken: string,
+        patient: string,
+        rx: string,
+    ): Promise<Record<string, unknown> | undefined> {
         const res = await call(accessToken, 'GET', `prescription/${rx}`);
         if (!res.ok) {
-            return false;
+            return undefined;
         }
         const body = (await res.json()) as { data?: unknown };
         // OpenEMR may answer with one record or a list holding it; either way, find the one asked for.
@@ -72,22 +79,30 @@ export function prescriptionWritesRoutes(deps: PrescriptionWritesDeps): Hono {
         const row = rows.find(
             (r): r is Record<string, unknown> => typeof r === 'object' && r !== null && 'uuid' in r && r.uuid === rx,
         );
-        return (
+        const owned =
             row !== undefined &&
             row.puuid === patient &&
             row.source_table === 'prescriptions' &&
-            String(row.active) === '1'
-        );
+            String(row.active) === '1';
+        return owned ? row : undefined;
     }
 
-    /** Checks the form and adds one prescription; the new uuid, or undefined if OpenEMR did not save it. */
-    async function add(accessToken: string, patient: string, body: unknown): Promise<string | undefined> {
+    /**
+     * Checks the form and adds one prescription; the new uuid, or undefined if OpenEMR did not save it.
+     * `carried` holds what a Change keeps from the old prescription (prescriptionInput.ts carriedOver).
+     */
+    async function add(
+        accessToken: string,
+        patient: string,
+        body: unknown,
+        carried: Record<string, string> = {},
+    ): Promise<string | undefined> {
         const input = parsePrescriptionInput(body, deps.now());
         if (!input.ok) {
             throw new InputError(input.errors);
         }
         const pid = await lookupPid(deps.apiBase, accessToken, patient, fetchImpl);
-        const res = await call(accessToken, 'POST', 'prescription', openemrPrescriptionBody(input.value, pid));
+        const res = await call(accessToken, 'POST', 'prescription', openemrPrescriptionBody(input.value, pid, carried));
         if (res.status !== 201) {
             return undefined;
         }
@@ -129,7 +144,7 @@ export function prescriptionWritesRoutes(deps: PrescriptionWritesDeps): Hono {
             return c.json({ error: 'patient and prescription must be uuids' }, 400);
         }
         try {
-            if (!(await ownsActivePrescription(guard.accessToken, patient, rx))) {
+            if ((await activePrescriptionOf(guard.accessToken, patient, rx)) === undefined) {
                 return c.json({ error: 'No such active prescription' }, 404);
             }
             return (await discontinue(guard.accessToken, rx))
@@ -151,10 +166,17 @@ export function prescriptionWritesRoutes(deps: PrescriptionWritesDeps): Hono {
             return c.json({ error: 'patient and prescription must be uuids' }, 400);
         }
         try {
-            if (!(await ownsActivePrescription(guard.accessToken, patient, rx))) {
+            const old = await activePrescriptionOf(guard.accessToken, patient, rx);
+            if (old === undefined) {
                 return c.json({ error: 'No such active prescription' }, 404);
             }
-            const added = await add(guard.accessToken, patient, await c.req.json().catch(() => undefined));
+            // The corrected prescription keeps what the form does not edit (dose, code, note, ...).
+            const added = await add(
+                guard.accessToken,
+                patient,
+                await c.req.json().catch(() => undefined),
+                carriedOver(old),
+            );
             if (added === undefined) {
                 return c.json({ error: 'OpenEMR did not save the prescription' }, 502);
             }

@@ -37,8 +37,21 @@ function fakeOpenEmr(options: { rx?: Record<string, unknown>; insertStatus?: num
             return Response.json({ data: { uuid: PATIENT, pid: '42' } });
         }
         if (method === 'GET' && url.endsWith(`/prescription/${RX}`)) {
+            // OpenEMR's getOne answers with one object, not a list (RestControllerHelper.php:274-275).
             return Response.json({
-                data: [options.rx ?? { uuid: RX, puuid: PATIENT, source_table: 'prescriptions', active: '1' }],
+                data: options.rx ?? {
+                    uuid: RX,
+                    puuid: PATIENT,
+                    source_table: 'prescriptions',
+                    active: '1',
+                    rxnorm_drugcode: '308182',
+                    unit: '2',
+                    route: '1',
+                    interval: '5',
+                    prescription_drug_size: '500',
+                    dosage: '1',
+                    note: 'Take with food',
+                },
             });
         }
         if (method === 'POST' && url.endsWith('/prescription')) {
@@ -143,6 +156,30 @@ describe('POST /api/prescriptions/:uuid/replace', () => {
         expect(await res.json()).toEqual({ added: 'new-uuid', discontinued: true });
         const order = calls.filter((call) => call.method !== 'GET').map((call) => call.method);
         expect(order).toEqual(['POST', 'DELETE']);
+    });
+
+    it('carries the old structured dose, code and note over to the corrected prescription (final review, Critical 1)', async () => {
+        const { send, calls } = setup();
+        await send(`/api/prescriptions/${RX}/replace?patient=${PATIENT}`, { ...form, prescriber: 'Dr New' });
+        const insert = calls.find((call) => call.method === 'POST');
+        expect(insert?.body).toMatchObject({
+            drug: 'Amoxicillin 500 mg',
+            quantity: '21',
+            rxnorm_drugcode: '308182',
+            unit: '2',
+            route: '1',
+            interval: '5',
+            size: '500',
+            dosage: '1',
+            note: 'Take with food\nPrescriber: Dr New',
+        });
+    });
+
+    it('refuses to replace a medication-list entry', async () => {
+        const openemr = fakeOpenEmr({ rx: { uuid: RX, puuid: PATIENT, source_table: 'lists', active: '1' } });
+        const { send } = setup(openemr);
+        expect((await send(`/api/prescriptions/${RX}/replace?patient=${PATIENT}`)).status).toBe(404);
+        expect(openemr.calls.some((call) => call.method === 'POST')).toBe(false);
     });
 
     it('reports 207 when the new one was added but the old one could not be discontinued', async () => {

@@ -32,6 +32,13 @@ export interface PrescriptionEditing {
     discontinue: (rxId: string) => Promise<WriteOutcome>;
 }
 
+/** A row named so it can be told apart from a similar one: "Omeprazole 20 mg, 1 daily, added 2026-09-26 11:58:32". */
+function describe(row: MedicationView): string {
+    return [row.name, row.dosage, row.added === '' ? '' : `added ${row.added}`]
+        .filter((part) => part !== '')
+        .join(', ');
+}
+
 /** What the card is showing: the list, the Add or Change form, or the Discontinue question for one row. */
 type Mode =
     | { kind: 'list' }
@@ -56,8 +63,9 @@ export function PrescriptionsCard({
     const [mode, setMode] = useState<Mode>({ kind: 'list' });
     // A message kept above the list after a write, e.g. a change that could not discontinue the old one.
     const [notice, setNotice] = useState('');
-    // True while a Discontinue is on its way, so it cannot be sent twice.
-    const [discontinuing, setDiscontinuing] = useState(false);
+    // True while any write (Add, Change or Discontinue) is on its way. Every button that starts a write is
+    // locked meanwhile, so a second one cannot start or close the form that is waiting (final review).
+    const [busy, setBusy] = useState(false);
 
     if (state.status !== 'ready') {
         // Still loading or failed: the heading and a loading or error message (`a ? b : c` chooses).
@@ -72,25 +80,43 @@ export function PrescriptionsCard({
         );
     }
 
-    /** Runs one write; on success (or partial success) goes back to the list, keeping any message to show. */
-    async function afterWrite(write: Promise<WriteOutcome>): Promise<WriteOutcome> {
-        const outcome = await write;
-        if (outcome.kind === 'saved' || outcome.kind === 'partly-saved') {
-            setNotice(outcome.kind === 'partly-saved' ? outcome.message : '');
+    /**
+     * Runs one Add or Change. On success goes back to the list. When a Change added the new prescription but
+     * could not discontinue the old one, the message names the old one, so the right row gets discontinued.
+     * Other outcomes keep the form open; it shows their message.
+     */
+    async function afterWrite(write: () => Promise<WriteOutcome>, old?: MedicationView): Promise<WriteOutcome> {
+        setBusy(true);
+        const outcome = await write().finally(() => setBusy(false));
+        if (outcome.kind === 'saved') {
+            setNotice('');
+            setMode({ kind: 'list' });
+        } else if (outcome.kind === 'partly-saved') {
+            const details = old === undefined ? '' : describe(old);
+            setNotice(
+                old === undefined
+                    ? outcome.message
+                    : `The corrected prescription was saved, but the old one (${details}) is still active. Discontinue it below.`,
+            );
             setMode({ kind: 'list' });
         }
         return outcome;
     }
 
     async function confirmDiscontinue(row: MedicationView) {
-        if (editing === undefined || discontinuing) {
+        if (editing === undefined || busy) {
             return;
         }
-        setDiscontinuing(true);
-        const outcome = await editing.discontinue(row.id);
-        setDiscontinuing(false);
+        setBusy(true);
+        const outcome = await editing.discontinue(row.id).finally(() => setBusy(false));
         setMode({ kind: 'list' });
-        setNotice(outcome.kind === 'saved' ? '' : `${row.name} was not discontinued. Try again.`);
+        setNotice(
+            outcome.kind === 'saved'
+                ? ''
+                : outcome.kind === 'uncertain'
+                  ? `${describe(row)}: ${outcome.message}`
+                  : `${row.name} was not discontinued. Try again.`,
+        );
     }
 
     const addButton =
@@ -99,6 +125,7 @@ export function PrescriptionsCard({
                 type="button"
                 className="btn btn-link btn-sm p-0"
                 aria-label="Add prescription"
+                disabled={busy}
                 onClick={() => {
                     setNotice('');
                     setMode({ kind: 'add' });
@@ -115,6 +142,13 @@ export function PrescriptionsCard({
                     {notice}
                 </p>
             )}
+            {/* A Change cannot carry everything over, and OpenEMR's own screens misread the discontinue (BM-067). */}
+            {editing !== undefined && mode.kind === 'change' && (
+                <p className="small text-muted mb-1">
+                    Changing adds a corrected prescription and discontinues this one. Refills are not carried over; set
+                    them below. OpenEMR's own prescription screens will still list it as active.
+                </p>
+            )}
             {/* The Add or Change form opens above the list. */}
             {editing !== undefined && (mode.kind === 'add' || mode.kind === 'change') && (
                 <PrescriptionFormPanel
@@ -128,7 +162,9 @@ export function PrescriptionsCard({
                     today={editing.today}
                     nowText={editing.nowText}
                     onSave={(form) =>
-                        afterWrite(mode.kind === 'change' ? editing.change(mode.row.id, form) : editing.add(form))
+                        mode.kind === 'change'
+                            ? afterWrite(() => editing.change(mode.row.id, form), mode.row)
+                            : afterWrite(() => editing.add(form))
                     }
                     onCancel={() => setMode({ kind: 'list' })}
                 />
@@ -139,13 +175,13 @@ export function PrescriptionsCard({
                     <p className="mb-1">Discontinue {mode.row.name}?</p>
                     {/* OpenEMR's API marks it inactive in a way OpenEMR's own screens misread as active (BM-067). */}
                     <p className="small text-muted mb-2">
-                        OpenEMR's own prescription screens will still list it as active; the dashboard and FHIR show it
-                        as stopped.
+                        OpenEMR's own prescription screens will still list it as active, and saving it there makes it
+                        active again; the dashboard and FHIR show it as stopped.
                     </p>
                     <button
                         type="button"
                         className="btn btn-danger btn-sm mr-2"
-                        disabled={discontinuing}
+                        disabled={busy}
                         onClick={() => void confirmDiscontinue(mode.row)}
                     >
                         Yes, discontinue
@@ -153,7 +189,7 @@ export function PrescriptionsCard({
                     <button
                         type="button"
                         className="btn btn-link btn-sm"
-                        disabled={discontinuing}
+                        disabled={busy}
                         onClick={() => setMode({ kind: 'list' })}
                     >
                         Keep it
@@ -198,6 +234,7 @@ export function PrescriptionsCard({
                                                 type="button"
                                                 className="btn btn-link btn-sm p-0 mr-2"
                                                 aria-label={`Change ${prescription.name}`}
+                                                disabled={busy}
                                                 onClick={() => {
                                                     setNotice('');
                                                     setMode({ kind: 'change', row: prescription });
@@ -209,6 +246,7 @@ export function PrescriptionsCard({
                                                 type="button"
                                                 className="btn btn-link btn-sm p-0 text-danger"
                                                 aria-label={`Discontinue ${prescription.name}`}
+                                                disabled={busy}
                                                 onClick={() => {
                                                     setNotice('');
                                                     setMode({ kind: 'confirm', row: prescription });

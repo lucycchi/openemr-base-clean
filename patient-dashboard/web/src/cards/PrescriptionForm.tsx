@@ -84,7 +84,7 @@ export function PrescriptionFormPanel({
             setErrors(outcome.errors);
             // Messages that are not about one field (the page clock, the form as a whole) go above the buttons.
             setAlert(outcome.errors.dateAdded ?? outcome.errors.form ?? '');
-        } else if (outcome.kind === 'failed' || outcome.kind === 'partly-saved') {
+        } else if (outcome.kind === 'failed' || outcome.kind === 'partly-saved' || outcome.kind === 'uncertain') {
             setAlert(outcome.message);
         }
         // 'saved': the card closes the form and reloads the list.

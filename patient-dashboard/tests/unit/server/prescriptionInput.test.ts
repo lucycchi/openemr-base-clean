@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { openemrPrescriptionBody, parsePrescriptionInput } from '../../../server/prescriptionInput';
+import { carriedOver, openemrPrescriptionBody, parsePrescriptionInput } from '../../../server/prescriptionInput';
 
 const NOW = Date.parse('2026-09-27T12:00:00Z');
 const valid = {
@@ -75,5 +75,66 @@ describe('openemrPrescriptionBody', () => {
 
     it('leaves the note empty when no prescriber is typed', () => {
         expect(openemrPrescriptionBody({ ...valid, prescriber: '' }, 42).note).toBe('');
+    });
+});
+
+// Change must not lose what the old prescription held beyond the form's fields (final review, Critical 1).
+describe('carriedOver', () => {
+    const old = {
+        uuid: 'rx',
+        drug: 'Amoxicillin 500 mg',
+        rxnorm_drugcode: '308182',
+        dosage: '1',
+        unit: '2',
+        route: '1',
+        interval: '5',
+        prescription_drug_size: '500',
+        drug_dosage_instructions: '',
+        diagnosis: 'ICD10:J02.9',
+        intent: 'order',
+        intent_title: 'Order',
+        category: 'community',
+        category_title: 'Home/Community',
+        note: 'Take with food\nPrescriber: Dr Old',
+        quantity: '21',
+    };
+
+    it('keeps the structured dose, code, diagnosis, intent and category of the old prescription', () => {
+        expect(carriedOver(old)).toEqual({
+            rxnorm_drugcode: '308182',
+            dosage: '1',
+            unit: '2',
+            route: '1',
+            interval: '5',
+            size: '500',
+            diagnosis: 'ICD10:J02.9',
+            request_intent: 'order',
+            request_intent_title: 'Order',
+            usage_category: 'community',
+            usage_category_title: 'Home/Community',
+            note: 'Take with food\nPrescriber: Dr Old',
+        });
+    });
+
+    it('skips empty or non-text values', () => {
+        expect(carriedOver({ rxnorm_drugcode: '', unit: 7, note: null })).toEqual({});
+    });
+
+    it('lets the form win for what the form edits, and keeps the old directions when none are typed', () => {
+        const body = openemrPrescriptionBody({ ...valid, dosage: '', prescriber: 'Dr New' }, 42, {
+            ...carriedOver(old),
+            drug_dosage_instructions: '1 tablet three times daily',
+        });
+        expect(body).toMatchObject({
+            drug: 'Amoxicillin 500 mg',
+            quantity: '21',
+            rxnorm_drugcode: '308182',
+            unit: '2',
+            size: '500',
+            request_intent: 'order',
+            usage_category: 'community',
+            drug_dosage_instructions: '1 tablet three times daily',
+            note: 'Take with food\nPrescriber: Dr New',
+        });
     });
 });
