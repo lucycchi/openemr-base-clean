@@ -57,7 +57,7 @@ All of these are committed.
 | Document extraction and guideline-critic prompts (`PROMPT_VERSION`) | [interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/llm.py](interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/llm.py) (`SYSTEM`, `LAB_TASK`, `RETRY_TASK`, `INTAKE_TASK`, `CRITIC_SYSTEM`) |
 | Prompt locks (a hash of every prompt; any edit fails the push until the lock is rewritten) | [PromptLockTest.php](tests/Tests/Isolated/Modules/ClinicalCopilot/PromptLockTest.php) + `prompts.lock.json` beside it; [test_prompt_lock.py](interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/tests/test_prompt_lock.py) + `prompts.lock.json` beside it |
 | Schemas (the contracts every output is validated against) | [interface/modules/custom_modules/oe-module-clinical-copilot/contracts/](interface/modules/custom_modules/oe-module-clinical-copilot/contracts/) (30 `*.schema.json`, with examples) |
-| Golden set: cases | [tests/evals/cases/](tests/evals/cases/): 72 cases, 56 deterministic and 16 live. Each case declares what it guards and the failure it catches; the table is in [tests/evals/README.md](tests/evals/README.md#cases-and-the-failure-mode-each-guards) |
+| Golden set: cases | [tests/evals/cases/](tests/evals/cases/): 73 cases, 57 deterministic and 16 live. Each case declares what it guards and the failure it catches; the table is in [tests/evals/README.md](tests/evals/README.md#cases-and-the-failure-mode-each-guards) |
 | Golden set: fixtures | [tests/evals/fixtures/](tests/evals/fixtures/): documents with `truth.json` answer keys, and committed query vectors |
 | Baselines the gate compares against | [tests/evals/baseline.json](tests/evals/baseline.json) (deterministic) and [tests/evals/baseline-live.json](tests/evals/baseline-live.json) (live) |
 | Gate logic, rubrics and thresholds | [tests/evals/gate.php](tests/evals/gate.php), harness [tests/evals/run.php](tests/evals/run.php), wrapper [tests/evals/gate.sh](tests/evals/gate.sh) |
@@ -140,7 +140,7 @@ judge configuration and per-rubric checks are in
 
 - any rubric's pass rate is below its minimum; or
 - **any** case that passed a rubric in the baseline now fails it. This applies
-  to the 56 deterministic cases the hook runs. They replay recorded model
+  to the 57 deterministic cases the hook runs. They replay recorded model
   output, so a flip is always a real regression, and a single broken case in
   a 90% rubric (a drop of about 3 points) is still refused. This is stricter
   than the PRD's 5% rule; or
@@ -175,7 +175,7 @@ justifies it.
 
 | Run | Needs |
 |---|---|
-| Default gate (what `git push` runs) | **Nothing.** The 56 deterministic cases replay recorded model output and make no model call, even when your `.env` holds keys: the harness marks each of their requests to the sidecar `X-Eval-Keyless: 1`, the sidecar then acts as if it had no keys for that request, and any deterministic case that still reports a model call fails. The hook's pytest stage runs with the keys blanked. |
+| Default gate (what `git push` runs) | **Nothing.** The 57 deterministic cases replay recorded model output and make no model call, even when your `.env` holds keys: the harness marks each of their requests to the sidecar `X-Eval-Keyless: 1`, the sidecar then acts as if it had no keys for that request, and any deterministic case that still reports a model call fails. The hook's pytest stage runs with the keys blanked. |
 | Live cases (`COPILOT_GATE_LIVE=1`) | `OPENAI_API_KEY` in a `.env` file at the repo root (read by both containers). Optional: `OPENAI_MODEL`, and `COHERE_API_KEY` for reranking. Without a key the live cases are skipped with a note, never failed. |
 
 Set by the stack itself; nothing to configure: `COPILOT_SIDECAR_URL`, and

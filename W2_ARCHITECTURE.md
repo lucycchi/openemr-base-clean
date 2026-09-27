@@ -99,7 +99,7 @@ text.
 | Supervisor | No (deterministic rules) | Reads the run state: a stored document that has not been extracted goes to the intake-extractor; a question goes to the evidence-retriever; otherwise done. Every decision is one `Handoff {from, to, reason, state_keys_changed, ms}` (`contracts/handoff.schema.json`). |
 | Intake-extractor (worker) | gpt-4o-mini | Parses the PDF, asks the model for values page by page, anchors every value to its row, marks what it cannot anchor as unverified, reports rows it could not extract. Never writes prose. |
 | Evidence-retriever (worker) | Embeddings + rerank, no generation | Hybrid retrieval over the guideline corpus, top 5 chunks with citations. The PHP narrator may cite a chunk id; the Verifier checks the sentence's numbers against the passage (heading + text) exactly as it checks fact ids. |
-| Critic (extension, Phase 10) | Rules first | Rejects uncited claims and action suggestions without guideline support. |
+| Critic (extension, Phase 10) | gpt-4o-mini for applicability; rules for suggestions | Two halves. The sidecar `critic` node asks whether each guideline passage's stated population includes this patient and drops cards that don't apply. The rule half runs in the PHP Verifier: a sentence that suggests an action (advice words such as *consider* or *should*, or an instruction such as *Start*) is stripped unless it cites a guideline passage. Uncited claims are stripped by the Verifier's citation rules. |
 | Narrator + Verifier (Week 1, PHP) | gpt-4o-mini | The only physician-facing text. Cites fact ids (and, after Phase 6, chunk ids); the Verifier strips anything uncited or with a number not present verbatim in the cited source. |
 
 ```
@@ -201,6 +201,18 @@ leaves the verdict unknown and the card labelled "applicability not assessed". T
 recorded eval cases 60-62 and the live twins 63-64 pin the 40-75 statin passage for an
 82-year-old (not applicable) and a 55-year-old (applicable).
 
+The critic's rule half guards the other direction: advice the model writes itself.
+`Verifier::suggestsActionWithoutGuideline()` strips any sentence that suggests an action
+without citing a guideline passage, whether in the briefing or in an answer. Advice is
+an advice word (consider, recommend, should, indicated, would benefit, ...) or a
+base-form instruction verb opening the sentence or a clause (Start, Increase, Order,
+Refer, ...), unless a hyphen or a noun-phrase word follows ("Increase in A1c..." is a
+report). A suggestion word that also appears in a cited chart fact is the chart's own
+wording, so "Recheck lipids in 3 months" restating a prior plan is kept. Because the
+Verifier already strips a sentence citing a chart fact and a passage together, a kept
+suggestion is always the guideline's recommendation, never one aimed at this patient.
+Eval case 73 pins both sides.
+
 On the PHP side `GuidelineSection::fromRun()` builds the cards, `PanelPayload` carries
 them as `guidelines` in the briefing contract, and the panel renders them between the
 narration and the fact table. The section is built before the narration and also when no
@@ -220,7 +232,7 @@ sentences only.
 
 Every push runs `tests/evals/gate.sh` from the pre-push hook
 (`tests/evals/install-hooks.sh`): the sidecar's pytest, the module's
-isolated PHPUnit suite, `case-index.php --check`, then the 56 deterministic
+isolated PHPUnit suite, `case-index.php --check`, then the 57 deterministic
 golden cases through `gate.php`, which compares each case's rubric verdicts
 with the committed baseline and refuses the push on a threshold breach or on
 any case that went from pass to fail. `COPILOT_GATE_LIVE=1` adds the 16 live

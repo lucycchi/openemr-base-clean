@@ -34,7 +34,10 @@ use PHPUnit\Framework\TestCase;
  *     from any of several cited facts;
  *   - inline "[id]" echoes are not mistaken for numeric literals, even
  *     when the id happens to be all digits;
- *   - all-stripped is a total failure, but an empty narration is not.
+ *   - all-stripped is a total failure, but an empty narration is not;
+ *   - an action suggestion must cite a guideline, unless its wording is the
+ *     chart's own, and report sentences that open with a verb-like noun or
+ *     adjective are not suggestions.
  */
 final class VerifierTest extends TestCase
 {
@@ -235,5 +238,99 @@ final class VerifierTest extends TestCase
         self::assertCount(2, $verified->kept());
         self::assertSame(1, $verified->strippedCount());
         self::assertSame(['9e41cdd9', 'a1b2c3d4e5f6'], $verified->stripped()[0]->factIds);
+    }
+
+    /**
+     * The critic rule: advice the model writes itself must rest on a guideline.
+     * A failure means an unsupported treatment suggestion reaches the physician
+     * looking like part of the chart.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('actionSuggestionProvider')]
+    public function testActionSuggestionCitingOnlyChartFactsIsStripped(string $text): void
+    {
+        $narration = new Narration([new Sentence($text, ['a1b2c3'])]);
+
+        $result = (new Verifier())->verify($narration, $this->facts());
+
+        self::assertSame([], $result->kept(), $text);
+    }
+
+    /**
+     * @return array<string, array{string}>
+     *
+     * @codeCoverageIgnore Data providers run before coverage instrumentation starts.
+     */
+    public static function actionSuggestionProvider(): array
+    {
+        return [
+            'consider' => ['Consider switching Lisinopril to losartan.'],
+            'should' => ['This patient should be on a statin.'],
+            'recommend' => ['A statin is recommended for this patient.'],
+            'indicated' => ['Metformin is indicated given the diabetes.'],
+            'would benefit' => ['The patient would benefit from aspirin.'],
+            'imperative opening' => ['Start aspirin today.'],
+            'imperative after a clause' => ['Given the blood pressure, increase Lisinopril.'],
+        ];
+    }
+
+    public function testActionSuggestionCitingAGuidelineIsKept(): void
+    {
+        $narration = new Narration([new Sentence('Consider an A1C goal below 7 percent for many nonpregnant adults.', ['a1b2c3d4e5f6'])]);
+
+        $result = (new Verifier())->verify($narration, new FactSet([]), $this->evidence());
+
+        self::assertCount(1, $result->kept());
+    }
+
+    /**
+     * A sentence that repeats the chart's own plan ("recheck", "start") is
+     * reporting the record, not advising; so is one about a past action.
+     */
+    public function testChartWordingAndPastActionsAreNotSuggestions(): void
+    {
+        $facts = new FactSet([
+            new Fact('5e2a9c01', 'EncounterService', 99, 'plan', 'Recheck A1c in 3 months and start lisinopril 10 mg.', FactCategory::PriorVisitPlan),
+            new Fact('a1b2c3', 'PrescriptionService', 17, 'drug', 'Lisinopril 10 MG Oral Tablet', FactCategory::MedicationNew),
+        ]);
+        $narration = new Narration([
+            new Sentence('Recheck A1c in 3 months.', ['5e2a9c01']),
+            new Sentence('The plan was to start lisinopril 10 mg.', ['5e2a9c01']),
+            new Sentence('Lisinopril was started recently.', ['a1b2c3']),
+            new Sentence('The patient was referred to cardiology after starting Lisinopril.', ['a1b2c3']),
+        ]);
+
+        $result = (new Verifier())->verify($narration, $facts);
+
+        self::assertCount(4, $result->kept(), implode(' | ', array_map(fn($s) => $s->text, $result->stripped())));
+    }
+
+    /**
+     * Several instruction verbs are also nouns or adjectives that open an
+     * ordinary report sentence; those must survive.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('reportSentenceProvider')]
+    public function testReportSentencesOpeningWithAVerbLikeWordAreKept(string $text): void
+    {
+        $facts = new FactSet([new Fact('d4e5f6', 'ObservationLabService', 902, 'result', 'Hemoglobin A1c 7.8 % on 2026-09-15, previously 7.2 %; low back pain; visit 2026-09-09', FactCategory::LabAbnormal)]);
+
+        $result = (new Verifier())->verify(new Narration([new Sentence($text, ['d4e5f6'])]), $facts);
+
+        self::assertCount(1, $result->kept(), $text);
+    }
+
+    /**
+     * @return array<string, array{string}>
+     *
+     * @codeCoverageIgnore Data providers run before coverage instrumentation starts.
+     */
+    public static function reportSentenceProvider(): array
+    {
+        return [
+            'noun increase' => ['Increase in A1c from 7.2 % to 7.8 %.'],
+            'adjective repeat' => ['Repeat A1c was 7.8 % on 2026-09-15.'],
+            'adjective lower' => ['Lower back pain is also on the chart.'],
+            'hyphenated check-in' => ['Check-in was on 2026-09-09.'],
+            'noun change' => ['Change of A1c since the last visit: 7.2 % to 7.8 %.'],
+        ];
     }
 }
