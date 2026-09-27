@@ -10,11 +10,11 @@ table is in [tests/evals/README.md](../tests/evals/README.md).
 
 | | |
 |---|---|
-| Cases | **72** JSON files in [tests/evals/cases/](../tests/evals/cases/): 56 deterministic (recorded model output, run on every push, no API key) and 16 live (real model calls, run before each submission) |
+| Cases | **73** JSON files in [tests/evals/cases/](../tests/evals/cases/): 57 deterministic (recorded model output, run on every push, no API key) and 16 live (real model calls, run before each submission) |
 | Data | Synthetic only: the 30-patient demo seed, generated lab PDFs and intake forms in [tests/evals/fixtures/docs/](../tests/evals/fixtures/docs/) with their `truth.json`, and throwaway patients the harness creates and deletes. No real patient appears anywhere. |
 | Rubrics | 8, each pass / fail / not applicable. No 1-10 scores. |
 | Judge | **Code, not a model.** Every verdict is computed by `evaluateRubrics()` in [run.php](../tests/evals/run.php) from what the run produced. |
-| Latest results | Deterministic 56/56 pass (2026-09-24 05:04 UTC); live 16/16 pass (2026-09-24 04:37 UTC). Kill matrix: see [EVAL_GATE.md § 7](../EVAL_GATE.md#7-kill-matrix). |
+| Latest results | Deterministic 57/57 pass (2026-09-27 06:43 UTC); live 16/16 pass (2026-09-24 04:37 UTC). Kill matrix: see [EVAL_GATE.md § 7](../EVAL_GATE.md#7-kill-matrix). |
 
 ## 1. What the cases cover
 
@@ -27,16 +27,17 @@ exists to catch).
 |---|---|---|
 | Extraction | `anchor`, `extract`, `malformed`, `absent`, `facts` | 16-22, 39-44, 47-52 |
 | Evidence retrieval | `retrieve`, `answer`, `triggers`, `brief_evidence` | 29-35, 53-57, 65 |
-| Citations | `briefing`, `followup`, `answer` | 01-15, 33, 35, 45-46, 66-67 |
+| Citations | `briefing`, `followup`, `answer` | 01-15, 33, 35, 45-46, 66-67, 73 |
 | Refusals and safe failures | `followup`, `retrieve`, `answer`, `malformed`, `anchor` | 10, 13-14, 32, 34, 39-42, 49 |
 | Missing data | `briefing`, `absent`, boundary cases | 04-05, 43-44, 47-49 |
 | Routing (supervisor) | `route` | 23-28, 58-59 |
 | Critic applicability | `critic` | 60-64 |
+| Critic: action suggestions need a guideline | `answer` | 73 |
 | PHI in logs | `phi_logs` | 36-38, 68-72 |
 
 | `guards` | Count | Meaning |
 |---|---|---|
-| invariant | 42 | A rule that must always hold: a claim cites a source, a value is found on the page, an identifier never leaves the server |
+| invariant | 43 | A rule that must always hold: a claim cites a source, a value is found on the page, an identifier never leaves the server |
 | boundary | 23 | Missing, empty, malformed or edge input: blank fields, no unit, no collection date, an encrypted PDF, a blank scan |
 | regression | 7 | Something that broke once during development and must not break again |
 
@@ -44,7 +45,7 @@ exists to catch).
 exact outcome the harness compares (status, answer type, which facts must
 surface, which handoffs the supervisor must log, whether a value must come
 back unverified), and `failure_mode` says in one sentence what goes wrong for
-the physician if the case fails. The README table lists all 72 with their
+the physician if the case fails. The README table lists all 73 with their
 failure mode: [Cases and the failure mode each guards](../tests/evals/README.md#cases-and-the-failure-mode-each-guards).
 
 A deterministic case looks like this
@@ -123,16 +124,16 @@ refreshed with the live `/eval/extract` endpoint when a prompt changes.
 
 | Run | When | Cases | Pass | Fail | File |
 |---|---|---|---|---|---|
-| Deterministic (the push gate) | 2026-09-24 05:04 UTC | 56 | 56 | 0 | [results.json](../tests/evals/results.json), baseline [baseline.json](../tests/evals/baseline.json) |
+| Deterministic (the push gate) | 2026-09-27 06:43 UTC | 57 | 57 | 0 | [results.json](../tests/evals/results.json), baseline [baseline.json](../tests/evals/baseline.json) |
 | Live (real model calls) | 2026-09-24 04:37 UTC | 16 | 16 | 0 | [baseline-live.json](../tests/evals/baseline-live.json) |
 
 Per rubric, pass / scored:
 
 | Rubric | Deterministic | Live |
 |---|---|---|
-| `schema_valid` | 47 / 47 | 8 / 8 |
-| `citation_present` | 28 / 28 | 10 / 10 |
-| `factually_consistent` | 34 / 34 (1 n/a, case 08) | 14 / 14 |
+| `schema_valid` | 48 / 48 | 8 / 8 |
+| `citation_present` | 29 / 29 | 10 / 10 |
+| `factually_consistent` | 35 / 35 (1 n/a, case 08) | 14 / 14 |
 | `safe_refusal` | 7 / 7 | 3 / 3 |
 | `no_phi_in_logs` | 4 / 4 | 11 / 11 |
 | `anchor_correct` | 11 / 11 | 3 / 3 |

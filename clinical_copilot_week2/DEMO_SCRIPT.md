@@ -97,7 +97,7 @@ and the evidence retriever, and every handoff is logged with its reason."
 **Do:** run `tests/evals/install-hooks.sh --self-test`, or if it runs too
 long, show [eval-gate-proof/push-refused.png](eval-gate-proof/push-refused.png).
 
-**Say:** "Seventy-two golden cases with pass/fail rubrics: schema valid,
+**Say:** "Seventy-three golden cases with pass/fail rubrics: schema valid,
 citation present, factually consistent, safe refusal, no PHI in logs. They
 run on every push. Here I inject a regression, and the push is refused."
 
