@@ -2,7 +2,7 @@
 
 ## Summary
 
-I ported OpenEMR's patient dashboard (the identity header, the Allergies, Problem List, Medications, Prescriptions and Care Team cards, and an Encounter history section) from server-rendered PHP to a **React + TypeScript** single-page app. It reads OpenEMR's FHIR R4 API, plus OpenEMR's Standard REST API for the three lists FHIR reports wrongly (medications, allergies, problems). Login uses OAuth2/OpenID Connect through a small **Node backend-for-frontend (BFF)** that holds a confidential client, so tokens never reach the browser; a second, server-only client reads staff and facility names, which OpenEMR's API shows only to administrators. I chose this pairing because two working spikes showed that a browser cannot call OpenEMR's FHIR API directly, and React gives typed, testable card components that map one-to-one onto the old Twig cards. Every section passes a parity test against the running old dashboard (see Parity evidence). It is deployed next to OpenEMR on the droplet at https://dashboard.146-190-139-37.sslip.io.
+I ported OpenEMR's patient dashboard (the identity header, the Allergies, Problem List, Medications, Prescriptions and Care Team cards, and an Encounter history section) from server-rendered PHP to a **React + TypeScript** single-page app. It reads OpenEMR's FHIR R4 API, plus OpenEMR's Standard REST API for the three lists FHIR reports wrongly (medications, allergies, problems). Login uses OAuth2/OpenID Connect through a small **Node backend-for-frontend (BFF)** that holds a confidential client, so tokens never reach the browser; a second, server-only client reads staff and facility names, which OpenEMR's API shows only to administrators. I chose this pairing because two working spikes showed that a browser cannot call OpenEMR's FHIR API directly, and React gives typed, testable card components that map one-to-one onto the old Twig cards. Every section passes a parity test against the running old dashboard (see Parity evidence), and the page keeps the old look: the same Bootstrap card box with a collapsible title, the first three cards side by side, and an identity header that stays in view. It is deployed next to OpenEMR on the droplet at https://dashboard.146-190-139-37.sslip.io.
 
 Supporting evidence, all in `clinical_copilot_week2/migration/`:
 - `API-SPIKE.md`: auth spikes and exact API behaviour
@@ -84,6 +84,7 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
 - **The proxy forwards only the query parameters the app uses.** OpenEMR's rewrite rule would otherwise let a forwarded `_REWRITE_COMMAND` send a request to any API route (BM-054).
 - **A server-held credential that can read the staff directory.** The names client can read every Practitioner and Organization. It is used only for a logged-in user, only for those two resource types, and the route returns the display name alone; the old page already showed these names to anyone who could open the patient (BM-048).
 - **Permissions move from page-level PHP ACL checks to OAuth scopes and the API's own authorisation.** Site-wide card hiding (`hide_dashboard_cards`) is read by the old dashboard straight from SQL and is not in the API, so the new app reads a hidden-cards list from its own configuration.
+- **Collapsed cards are not remembered.** The old card saves whether it was collapsed in OpenEMR's user settings. The new cards start open and keep that choice only while the page is open, because the port writes nothing to OpenEMR.
 - **Not ported:** the edit workflows (every card is read-only), the reminders, disclosures, amendments, billing, insurance, portal, photos and other cards listed in the next section.
 
 ## Parity evidence
@@ -99,7 +100,7 @@ Parity was measured against the running old dashboard, not against my reading of
 
 ### Results
 
-Full parity suite (`npm run test:parity`) on commit `336768d`, 2026-09-26, against the development-easy stack: **9 of 9 tests passed**, including the two self-tests of the old-dashboard reader.
+Full parity suite (`npm run test:parity`) on commit `e02f4ed`, 2026-09-26, against the development-easy stack: **9 of 9 tests passed**, including the two self-tests of the old-dashboard reader.
 
 | Section | Fields compared | Fixtures | Result | Approved exceptions |
 |---|---|---|---|---|
@@ -112,12 +113,13 @@ Full parity suite (`npm run test:parity`) on commit `336768d`, 2026-09-26, again
 | Encounter history | date, reason, provider (named wherever FHIR sends one), first page and all visits | TYPICAL, HISTORY, LONG, EMPTY | Pass | BM-032 (provider without an NPI), BM-034 ("Show all"), BM-035 (empty text), BM-039 (billing, forms, insurance not ported) |
 
 Every parity test was also shown to fail when the rule it guards was broken on purpose (recorded per slice in `DEV-LOG.md`). Alongside it, on the same commit:
-- **Unit tests:** 245 of 245 pass, covering every mapper, hook, card and BFF route.
-- **End-to-end tests:** 26 of 26 pass, covering:
+- **Unit tests:** 254 of 254 pass, covering every mapper, hook, card and BFF route.
+- **End-to-end tests:** 29 of 29 pass, covering:
   - login, logout, idle sign-out and ended sessions
   - load failures shown as errors, and cards a user may not see left out
   - patient switching with no stale data, and every card rejecting another patient's data
   - the high-risk highlight, the read-only cards, and a non-admin physician
+  - the old layout: the header stays in view while a long chart scrolls, the first three cards share a row, and each card's title collapses it
 - **Ledger:** every "fix in the new app" row in `BUGS-MITIGATIONS.md` is resolved.
 - **Deployed:** 4 of 4 smoke tests pass against the droplet: health, login, TP-TYPICAL with every card and a named provider for a non-admin physician, and TP-DECEASED's status.
 

@@ -2,6 +2,35 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Follow-up / Slice 05-04-01 — Keep the old dashboard's look
+
+**Branch:** `dashboard-migration`
+**Status:** committed (e02f4ed)
+
+### Worked on
+- The challenge check (`CHALLENGE-COMPLIANCE.md`) found that the page did not look like the old dashboard: one column of plain headings and bullet lists, a header that scrolled away, and none of the collapse toggles the module audits promised. The challenge says to reimplement the interface, not redesign it.
+- Test first, all watched failing:
+  - `tests/e2e/layout.spec.ts`: the header stays at the top while TP-LONG scrolls; Allergies, Medical Problems and Medications share one row; a card title collapses and reopens the card
+  - `tests/unit/cards/CardFrame.test.tsx`: the frame's markup and toggle, and every clinical card drawn in it
+- `web/src/cards/CardFrame.tsx`: a copy of `templates/patient/card/card_base.html.twig`, a Bootstrap card whose bold blue title opens and closes the body. It starts open and keeps its state only while the page is open, because the port writes nothing to OpenEMR user settings.
+- All six cards now use the frame. Allergies, Medical Problems and Medications use the old flush list rows.
+- `App.tsx` lays the first three cards out in one row, with each visible card getting an equal share of 12 columns (demographics.php:1099-1102). The other cards run full width below.
+- `PatientHeader.tsx` is `sticky-top`, with the old bar's blue name and grey record number, and spacing between the fields.
+- The top bar and patient search use Bootstrap buttons and inputs.
+
+### Decisions
+- The one button a card now has is its title, which only toggles the card. `readonly.spec.ts` now allows exactly that button, and edit, add and form controls must still be absent. Two encounter unit tests that asserted "no button at all" now assert "no Show all button".
+
+### Tests
+- Unit: 254 of 254 (9 new).
+- End-to-end: 29 of 29 (3 new).
+- Parity: 9 of 9.
+- One full run had a parity failure while the dev OpenEMR returned HTTP 500s and timeouts on the allergy list. The card correctly showed a load error, and the rerun passed.
+- Deployed: redeployed to the droplet; 4 of 4 smoke tests pass.
+
+### BUGS-MITIGATIONS.md updates
+- None.
+
 ## 2026-09-26 — Project complete: patient dashboard migration
 
 **Arcs:** 5 of 5 complete.
