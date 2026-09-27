@@ -58,7 +58,10 @@ Deterministic cases compare with `baseline.json`; live cases with
 `baseline-live.json` and only run with `--live` / `COPILOT_GATE_LIVE=1` and
 an `OPENAI_API_KEY` (skipped with a note otherwise, never failed). The only
 way a baseline changes is `--update-baseline`; commit the file with the
-change that justified it.
+change that justified it. A missing baseline file refuses the push (deleting
+it must not switch the regression check off), and `--update-baseline` still
+fails when a rubric is below its threshold, so a regression cannot be written
+into a new baseline.
 
 Before the golden cases, the wrapper copies the checkout's sidecar code into
 the running `copilot-sidecar` when it differs (the code is baked into the
