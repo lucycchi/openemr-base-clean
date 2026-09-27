@@ -303,10 +303,16 @@ regression has not met Week 2; the rate is the evidence that the gate is
 exercised, not decorative.
 
 **Source.** `tests/evals/baseline.json`, `baseline-live.json`, the hook's
-output on each push; `results.json` for the last full run.
+output on each push; `results.json` for the last keyless run and
+`results-live.json` for the last full live run.
 
-**Baseline.** 73 cases (57 deterministic, 16 live), 8 rubrics, 100% on
-every rubric at the last full live run (2026-09-25); three refusals recorded this week (a fact contract change, a
+**Baseline.** 73 cases (57 deterministic, 16 live), 8 rubrics. Last full
+live run, 2026-09-27 07:42 UTC (`results-live.json`): 72 of 73 pass, every
+deterministic case and 15 of 16 live. The failure is case 09: one seed
+patient's briefing lost two sentences (the limit is one) because the model
+cited a fact id one character short; the Verifier stripped both, so nothing
+uncited reached the panel. The live baseline the gate compares against
+(`baseline-live.json`) was set on 2026-09-23. Three refusals recorded this week (a fact contract change, a
 case-12 timeout, a log-field allowlist miss), each with the fix that
 followed.
 

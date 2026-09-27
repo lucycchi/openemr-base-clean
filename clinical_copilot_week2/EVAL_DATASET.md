@@ -14,7 +14,7 @@ table is in [tests/evals/README.md](../tests/evals/README.md).
 | Data | Synthetic only: the 30-patient demo seed, generated lab PDFs and intake forms in [tests/evals/fixtures/docs/](../tests/evals/fixtures/docs/) with their `truth.json`, and throwaway patients the harness creates and deletes. No real patient appears anywhere. |
 | Rubrics | 8, each pass / fail / not applicable. No 1-10 scores. |
 | Judge | **Code, not a model.** Every verdict is computed by `evaluateRubrics()` in [run.php](../tests/evals/run.php) from what the run produced. |
-| Latest results | Deterministic 57/57 pass (2026-09-27 06:43 UTC); live 16/16 pass (2026-09-24 04:37 UTC). Kill matrix: see [EVAL_GATE.md § 7](../EVAL_GATE.md#7-kill-matrix). |
+| Latest results | Full live run 2026-09-27 07:42 UTC: 72 of 73 pass, deterministic 57/57, live 15/16 (case 09 failed; see §4). The live baseline the gate compares against was set 2026-09-23. Kill matrix: see [EVAL_GATE.md § 7](../EVAL_GATE.md#7-kill-matrix). |
 
 ## 1. What the cases cover
 
@@ -125,7 +125,8 @@ refreshed with the live `/eval/extract` endpoint when a prompt changes.
 | Run | When | Cases | Pass | Fail | File |
 |---|---|---|---|---|---|
 | Deterministic (the push gate) | 2026-09-27 06:43 UTC | 57 | 57 | 0 | [results.json](../tests/evals/results.json), baseline [baseline.json](../tests/evals/baseline.json) |
-| Live (real model calls) | 2026-09-24 04:37 UTC | 16 | 16 | 0 | [baseline-live.json](../tests/evals/baseline-live.json) |
+| Full live run (all cases, real model calls) | 2026-09-27 07:42 UTC | 73 (16 live) | 72 | 1 | [results-live.json](../tests/evals/results-live.json) |
+| Live baseline (what the live gate compares against) | 2026-09-23 20:57 UTC | 16 | 16 | 0 | [baseline-live.json](../tests/evals/baseline-live.json) |
 
 Per rubric, pass / scored:
 
@@ -133,12 +134,24 @@ Per rubric, pass / scored:
 |---|---|---|
 | `schema_valid` | 48 / 48 | 8 / 8 |
 | `citation_present` | 29 / 29 | 10 / 10 |
-| `factually_consistent` | 35 / 35 (1 n/a, case 08) | 14 / 14 |
+| `factually_consistent` | 35 / 35 (1 n/a, case 08) | 13 / 14 |
 | `safe_refusal` | 7 / 7 | 3 / 3 |
 | `no_phi_in_logs` | 4 / 4 | 11 / 11 |
 | `anchor_correct` | 11 / 11 | 3 / 3 |
 | `routing_correct` | 8 / 8 | n/a |
 | `applicability_correct` | 3 / 3 | 2 / 2 |
+
+The live column is the 2026-09-27 full run. Its one failure is case 09
+(`factually_consistent`): with the real model, one seed patient's briefing
+had two sentences stripped where the case allows one. Re-briefing that
+patient showed why: the model cites that chart's cholesterol result (and
+sometimes a referral) by a fact id one character short (`ec9ec2b` for
+`ec9ec2b8`), and the Verifier strips any sentence citing an id that does
+not exist. Every briefing of that patient lost at least one sentence; two
+of five lost two. Nothing uncited reached the panel, and no other seed
+patient had a strip. It is recorded as found, not rerun until green; a fix
+(a firmer id instruction in the prompt, or accepting an id exactly one
+character short when it matches one fact) is open.
 
 All green is the expected state on a pushed commit: the gate refuses any push
 where a deterministic case flips from pass to fail, or a rubric falls below

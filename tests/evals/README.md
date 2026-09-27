@@ -19,7 +19,8 @@ Every script here is namespaced `OpenEMR\Tests\Evals` and reads decoded JSON thr
 | `phi.php`, `fixtures/chat/` | The real controllers under a capturing logger for `phi_logs` cases; `ChatReplay` answers the brief/ask model and sidecar calls from the recorded bodies in `fixtures/chat/` (cases 71, 72). |
 | `mutants/` | The kill matrix: one `.patch` per planted regression, `run.sh` to run them through the real hook in a worktree, `results.json` (a list of runs), `table.py` for the table in `EVAL_GATE.md` § 7. |
 | `baseline.json`, `baseline-live.json` | Per-case rubric verdicts the gate compares against; change only via `--update-baseline`. |
-| `results.json` | Latest local run (2026-09-17: 15/15, 0 of 60 stripped, 0 omissions): per-case pass/fail, per-patient strips/omissions/latency/tokens, and aggregate metrics (strip rate, p50/p95, tokens). |
+| `results.json` | Latest local run without API keys (deterministic cases only; live cases show as skipped): per-case pass/fail, per-patient strips/omissions/latency/tokens, and aggregate metrics (strip rate, p50/p95, tokens). |
+| `results-live.json` | Latest full live run, all 73 cases with real model calls (2026-09-27: 72/73; case 09 failed, see EVAL_DATASET.md §4). Written with `EVAL_RESULTS=tests/evals/results-live.json php tests/evals/run.php --live`. |
 | `results-deployed.json` | Same suite run on the deployed droplet (2026-09-16): 11/11, 1 of 58 sentences stripped, 0 omissions, p50 2.3 s, p95 14.4 s. Set `EVAL_RESULTS=<path>` to write elsewhere (the deployed tree is read-only). |
 | `smoke.php` | End-to-end through the real UI via Selenium: health/ready, then the dashboard panel for the 10 busiest seed patients as `admin`, then refusal as `receptionist`. |
 | `spike/` | The pre-build validation spike and its results (`../spike-results.md`). |
