@@ -17,13 +17,13 @@ has 72 cases with the five required boolean rubrics and refuses a regression
 both in the pre-push hook and in a GitLab merge-request job, and every
 request leaves a trace with tool sequence, step latency, tokens, cost,
 retrieval hits, extraction confidence and an eval outcome, with no raw PHI.
-The gaps are in the hand-in, not the agent: the demo video and social
-post have no link in the repo; the committed results file has no live run; and some Week 1 debt is
+The gaps are in the hand-in, not the agent: the demo video has no link in
+the repo; the committed results file has no live run; and some Week 1 debt is
 documented but still open.
 
-Counts over 45 rows: **34 Passing, 9 Partial, 2 Not passing.** Over the
-core rows alone (everything except the five stretch deliverables): 33
-Passing, 7 Partial, 0 Not passing. Every Partial in the core rows is a
+Counts over 45 rows: **35 Passing, 8 Partial, 2 Not passing.** Over the
+core rows alone (everything except the five stretch deliverables): 34
+Passing, 6 Partial, 0 Not passing. Every Partial in the core rows is a
 documentation, hand-in or currency gap; none is a missing capability.
 
 Status key. **Passing**: the code does it and the evidence is linked.
@@ -101,7 +101,7 @@ trend chart, contextual retrieval) as stretch in section 5.
 | U8 | Cost and latency report: actual dev spend, projected production cost, p50/p95 latency, bottleneck analysis. | **Passing** | Latency per step with p50 and p95 for briefing, follow-up and extraction, under load and on the droplet; five bottlenecks; development spend itemised with the basis of each figure (audit-log `cost_usd`, token counts at list price, the trial Cohere key, the droplet share); production cost for three tiers with the architectural change each forces. Caveat: the spend table is computed from measured tokens at list price rather than copied from the provider bill, and says so; adding the OpenAI and Cohere dashboard totals would remove the only room for doubt. | [COST_AND_LATENCY.md:11](../COST_AND_LATENCY.md#L11), [COST_AND_LATENCY.md:74](../COST_AND_LATENCY.md#L74), [COST_AND_LATENCY.md:97](../COST_AND_LATENCY.md#L97), [COST_AND_LATENCY.md:123](../COST_AND_LATENCY.md#L123) |
 | U9 | Publicly accessible deployed app with the Week 2 core flow working. | **Passing** | Checked on 2026-09-27 05:57 UTC: `/health` returned `{"status":"ok"}` and `/ready` returned `ready` with all five dependencies `ok`. Two seed patients on the droplet already carry an extracted lab PDF for the click-to-source check. Caveat: which commit the droplet runs is not verifiable from the repo; the project's notes say it is behind this commit. | [README.md:37](../README.md#L37), [README.md:26](README.md#L26), [docker/vps/README.md:1](../docker/vps/README.md#L1) |
 | U10 | Technical interview (early submission): schedule and be prepared. | **Partial** | Not verifiable from the repo. Preparation exists (INTERVIEW_BRIEF.md committed, INTERVIEW_PREP.md untracked); whether the interview happened is not recorded. | [INTERVIEW_BRIEF.md](INTERVIEW_BRIEF.md), [SUBMISSION_REQUIREMENTS.md:160](SUBMISSION_REQUIREMENTS.md#L160) |
-| U11 | Social post on X or LinkedIn describing the project, showing the agent, tagging @GauntletAI. | **Partial** | Not verifiable from the repo. Two drafts exist (X and LinkedIn, both tagging @GauntletAI, both stating the data is synthetic); no post link is recorded. Both drafts say "70 eval cases"; the repo has 72. | [SOCIAL_POST.md:18](SOCIAL_POST.md#L18), [SOCIAL_POST.md:43](SOCIAL_POST.md#L43), [SUBMISSION_REQUIREMENTS.md:170](SUBMISSION_REQUIREMENTS.md#L170) |
+| U11 | Social post on X or LinkedIn describing the project, showing the agent, tagging @GauntletAI. | **Passing** | Posted on LinkedIn on 2026-09-27 from the LinkedIn draft, with the eval count corrected to 72; the link is recorded in the tracker. The post itself is outside the repo, so its content was not re-checked here. | [LinkedIn post](https://www.linkedin.com/feed/update/urn:li:activity:7509849090348867584/), [SOCIAL_POST.md:7](SOCIAL_POST.md#L7), [SUBMISSION_REQUIREMENTS.md:170](SUBMISSION_REQUIREMENTS.md#L170) |
 | U12 | AI interview after each submission. | **Partial** | Not verifiable from the repo; nothing to prepare in code. | [SUBMISSION_REQUIREMENTS.md:179](SUBMISSION_REQUIREMENTS.md#L179) |
 
 ## 7. Cross-cutting requirements
@@ -123,17 +123,17 @@ trend chart, contextual retrieval) as stretch in section 5.
 Every Partial and Not passing row, most dangerous first, each with one fix.
 
 1. **U7, S5: no demo video link in the repo, and the final re-record (G9) is open.** Fix: record from DEMO_SCRIPT.md at 3-5 minutes and put the link in the README's Week 2 table and in SUBMISSION_REQUIREMENTS.md row 7.
-2. **U11: the social post is a draft only.** Fix: post one of the two drafts with a synthetic-data screenshot, change "70 eval cases" to 72, and record the link in SUBMISSION_REQUIREMENTS.md row 11.
-3. **S5, U9: the deployed commit is not recorded and, per the project's own notes, lags this one.** Fix: run `docker/vps/deploy.sh` at this commit (rebuild the sidecar image), re-run both Bruno collections, and add the deployed commit hash to the `/health` body or the README.
-4. **U5: no committed live eval results, and three documents give three dates for the last live run.** Fix: run `run.php --live`, commit the output as `results-live.json` (or the live `results.json`), and make EVAL_DATASET.md, KEY_METRICS.md metric 11 and `baseline-live.json` agree on the date.
-5. **C4: three Week 1 debt items remain open** (conversation persistence, production image, Langfuse v4 write path). Fix: either close the smallest (the Langfuse transport is one class with a test) or restate them in TODOS.md as deferred features with the reason, so "resolved" is not claimed.
-6. **X1: the critic checks population applicability, but W2_ARCHITECTURE.md line 102 says it rejects uncited claims and action suggestions.** Fix: correct that line to describe the applicability check and point at the Verifier for uncited claims; a rule-based reject of action-suggestion sentences without a guideline citation would earn the bullet.
-7. **X5: contextual retrieval is neither claimed nor measured.** Fix: either leave it unclaimed, or add one sentence to W2_ARCHITECTURE.md naming the heading-aware chunking and the relevance floor as the retrieval improvements, with cases 29-32 as the evidence.
-8. **X3, X4: no third document type and no lab trend chart.** Fix: none before the final; keep the tracker's plain statement that they are not built.
-9. **U10, U12: interviews are not verifiable from the repo.** Fix: nothing in code; note the dates in SUBMISSION_REQUIREMENTS.md once done.
+2. **S5, U9: the deployed commit is not recorded and, per the project's own notes, lags this one.** Fix: run `docker/vps/deploy.sh` at this commit (rebuild the sidecar image), re-run both Bruno collections, and add the deployed commit hash to the `/health` body or the README.
+3. **U5: no committed live eval results, and three documents give three dates for the last live run.** Fix: run `run.php --live`, commit the output as `results-live.json` (or the live `results.json`), and make EVAL_DATASET.md, KEY_METRICS.md metric 11 and `baseline-live.json` agree on the date.
+4. **C4: three Week 1 debt items remain open** (conversation persistence, production image, Langfuse v4 write path). Fix: either close the smallest (the Langfuse transport is one class with a test) or restate them in TODOS.md as deferred features with the reason, so "resolved" is not claimed.
+5. **X1: the critic checks population applicability, but W2_ARCHITECTURE.md line 102 says it rejects uncited claims and action suggestions.** Fix: correct that line to describe the applicability check and point at the Verifier for uncited claims; a rule-based reject of action-suggestion sentences without a guideline citation would earn the bullet.
+6. **X5: contextual retrieval is neither claimed nor measured.** Fix: either leave it unclaimed, or add one sentence to W2_ARCHITECTURE.md naming the heading-aware chunking and the relevance floor as the retrieval improvements, with cases 29-32 as the evidence.
+7. **X3, X4: no third document type and no lab trend chart.** Fix: none before the final; keep the tracker's plain statement that they are not built.
+8. **U10, U12: interviews are not verifiable from the repo.** Fix: nothing in code; note the dates in SUBMISSION_REQUIREMENTS.md once done.
 
 ## Resolved after the audit
 
+- **U11: the social post was a draft only.** Posted on LinkedIn on 2026-09-27 with the eval count corrected to 72: https://www.linkedin.com/feed/update/urn:li:activity:7509849090348867584/
 - **U1, C1: the README sent graders to a `pdf_reader` that lacked seven Week 2 commits** (the sidecar capacity work, its load-run records, the missing-baseline refusal and the intake anchoring fix). Cherry-picked onto `pdf_reader` as `03eedff`..`45d0e63` and pushed; the co-pilot, eval and docs trees match `dashboard-migration`.
 
 ## Watch items (not counted as gaps)

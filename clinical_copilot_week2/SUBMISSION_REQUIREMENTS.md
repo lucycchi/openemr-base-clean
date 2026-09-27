@@ -40,7 +40,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | 8 | Cost and latency report | Done | none | Final |
 | 9 | Deployed application | Done | none | Early |
 | 10 | Technical interview | User | S8 | Thu/Fri |
-| 11 | Social post | User | S9 | Final |
+| 11 | Social post | Done: [posted on LinkedIn](https://www.linkedin.com/feed/update/urn:li:activity:7509849090348867584/) 2026-09-27 | S9 | Final |
 | 12 | AI interview | User | none | after each submission |
 | H1 | README separates Week 1 from Week 2; grader can run Week 2 without guessing | Done | none | Early |
 | H2 | Week 1 debt documented and resolved | Done | none | Final |
@@ -174,7 +174,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 | Part | Status | Evidence |
 |---|---|---|
 | Draft | Done (S9) | [SOCIAL_POST.md](SOCIAL_POST.md): an X version (252 characters) and a LinkedIn version. |
-| Posted | User | With a screenshot or clip of synthetic data only. |
+| Posted | Done | [LinkedIn post](https://www.linkedin.com/feed/update/urn:li:activity:7509849090348867584/), 2026-09-27. |
 
 ## 12. AI interview (final submission only)
 
