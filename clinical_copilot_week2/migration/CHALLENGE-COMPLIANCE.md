@@ -58,7 +58,7 @@ Last run on 2026-09-27.
 | Formatting | `npx prettier --check .` | clean |
 | End-to-end, against the development-easy stack | `npx playwright test --project=e2e` | 33 of 33 pass |
 | Parity, against the running old dashboard | `npx playwright test --project=parity` | 9 of 9 pass |
-| Deployed smoke tests, after redeploying | `npx playwright test -c playwright.deployed.config.ts` | 5 of 5 pass |
+| Deployed smoke tests, after redeploying | `npx playwright test -c playwright.deployed.config.ts` | 6 of 6 pass |
 | Backend untouched | files changed by the dashboard commits on `main..dashboard-migration` | only `patient-dashboard/`, `clinical_copilot_week2/`, the defence and `.gitignore` |
 | Visual comparison | screenshots of TP-TYPICAL and TP-LONG in both dashboards at 1400×900, and the new one at phone width | matches the old card look and layout; the header stays in view |
 

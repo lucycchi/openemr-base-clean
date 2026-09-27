@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-27 — Arc 06 complete: Editing
+
+**Tasks:** 10, plus one fix pass from the final review. **BM rows:** BM-062 to BM-067 added; BM-061 and BM-013 updated.
+
+### Droplet (Task 10, with the user's go-ahead)
+- The app client was re-registered with `user/prescription.crds`, the new one enabled and the old one disabled, and `~/patient-dashboard/.env` updated.
+- TP-RXEDIT was seeded as pid 38.
+- The dashboard was redeployed. The smoke tests went from 5 of 6 (the new prescription test red) to 6 of 6.
+
+### Retrospective
+- **What worked:**
+  - Researching OpenEMR's write API before building. It showed that the allergy, problem and medication writes would lose clinical fields, and that the prescriber number is admin-only.
+  - Checking every write against the running old dashboard. That is how BM-067 came to light.
+- **What didn't:** the plan's Change copied only the form's fields. The fresh reviewer caught that it silently dropped the old prescription's dose and code.
+- **Carried forward:**
+  - BM-067 stays until OpenEMR fixes its API discontinue.
+  - A custom module with proper write routes (prescriber, reaction, severity, care team) is a possible follow-up.
+  - The deferred minors are listed in the final-review entry.
+
 ## 2026-09-27 — Arc 06 / Final review — Fixes from a fresh whole-branch review
 
 **Branch:** `dashboard-migration`

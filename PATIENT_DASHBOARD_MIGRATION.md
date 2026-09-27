@@ -132,7 +132,7 @@ Every parity test was also shown to fail when the rule it guards was broken on p
   - the old layout: the header stays in view while a long chart scrolls, the first three cards share a row, and each card's title collapses it
   - a collapsed card staying collapsed after a reload, for another patient, and after signing out and in
 - **Ledger:** every "fix in the new app" row in `BUGS-MITIGATIONS.md` is resolved.
-- **Deployed:** 5 of 5 smoke tests pass against the droplet: health, login, TP-TYPICAL with every card and a named provider for a non-admin physician, TP-DECEASED's status, and a saved card layout for that physician.
+- **Deployed:** 6 of 6 smoke tests pass against the droplet: health, login, TP-TYPICAL with every card and a named provider for a non-admin physician, TP-DECEASED's status, a saved card layout for that physician, and that physician adding and discontinuing a prescription on the write-test patient.
 
 ## Not ported
 

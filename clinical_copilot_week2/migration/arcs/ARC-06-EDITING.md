@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** in progress (Tasks 1–9 done; Task 10, the droplet, waits for the user)
+**Status:** complete (2026-09-27)
 **Estimate:** 8 h
 
 **Goal:** Clinicians can add, change and discontinue prescriptions from the dashboard. Every other card has an "Edit in OpenEMR" button, because OpenEMR's write API cannot record those cards' clinical fields.
@@ -1622,7 +1622,7 @@ This task writes to the shared droplet. **Ask the user for the go-ahead before S
 - Modify: `clinical_copilot_week2/migration/fixtures/fixture-ids.droplet.json` (via the seed script)
 - Modify: `patient-dashboard/deploy/README.md`
 
-- [ ] **Step 1: Write the failing deployed smoke test**
+- [x] **Step 1: Write the failing deployed smoke test**
 
 ```ts
 test('a physician adds and discontinues a prescription on the droplet', async ({ page }) => {
@@ -1645,7 +1645,7 @@ test('a physician adds and discontinues a prescription on the droplet', async ({
 Run: `npx playwright test -c playwright.deployed.config.ts`
 Expected: the new test FAILS, because there is no Add button on the droplet yet. The other five pass.
 
-- [ ] **Step 2: Re-register the droplet app client, then seed TP-RXEDIT**
+- [x] **Step 2: Re-register the droplet app client, then seed TP-RXEDIT**
 
 After the user's go-ahead:
 
@@ -1661,12 +1661,12 @@ Then:
 - Disable the old client.
 - Run `OEMR_BASE=$B SPIKE_ENV_FILE=.env.droplet FIXTURE_IDS_FILE=fixture-ids.droplet.json node ../fixtures/seed-rxedit.mjs`.
 
-- [ ] **Step 3: Deploy and run the smoke tests**
+- [x] **Step 3: Deploy and run the smoke tests**
 
 Tell the peer session first. Then run `patient-dashboard/deploy/deploy.sh`, then `npx playwright test -c playwright.deployed.config.ts`.
 Expected: 6 of 6 pass.
 
-- [ ] **Step 4: Record and commit**
+- [x] **Step 4: Record and commit**
 
 `deploy/README.md` gets:
 - the new scope
@@ -1680,9 +1680,9 @@ git commit -m "feat(dashboard): prescription editing on the droplet, with a smok
 
 ## Definition of Done for this arc
 
-- [ ] Tasks 1–10 ticked, and every step's Expected line compared with real output
-- [ ] `npm test`, `npm run lint`, `npm run typecheck` and `npx prettier --check .` are clean
-- [ ] `npx playwright test` is fully green, with the parity counts unchanged
-- [ ] The deployed smoke tests pass: 6 of 6
-- [ ] BM-062 to BM-066 are in the catalogue, and BM-013 is updated
-- [ ] The DEV-LOG has an arc-completion entry
+- [x] Tasks 1–10 ticked, and every step's Expected line compared with real output
+- [x] `npm test`, `npm run lint`, `npm run typecheck` and `npx prettier --check .` are clean
+- [x] `npx playwright test` is fully green, with the parity counts unchanged
+- [x] The deployed smoke tests pass: 6 of 6
+- [x] BM-062 to BM-066 are in the catalogue, and BM-013 is updated
+- [x] The DEV-LOG has an arc-completion entry

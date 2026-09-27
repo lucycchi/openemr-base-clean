@@ -44,6 +44,13 @@ and `DEPLOYED_URL` for another site.
     }
     ```
 
+## Prescription editing (ARC-06, set up 2026-09-27)
+
+- **Scope:** the app client asks for `user/prescription.crds` as well as the read scopes. It was re-registered on the droplet with `register-client.mjs app --replace`, the new client was enabled (`UPDATE oauth_clients SET is_enabled = 1 ...`), the old one disabled, and the new id, secret and scope copied into `~/patient-dashboard/.env`.
+- **Write-test patient:** Rita RxEdit (TP-RXEDIT, pid 38 on the droplet) is the only patient the smoke test writes to. Create her with `OEMR_BASE=https://146-190-139-37.sslip.io SPIKE_ENV_FILE=.env.droplet FIXTURE_IDS_FILE=fixture-ids.droplet.json node ../fixtures/seed-rxedit.mjs`, from `clinical_copilot_week2/migration/spike/`. It is safe to re-run.
+- **Known effect:** each smoke run adds and discontinues one prescription for her. OpenEMR's own screens show API-discontinued prescriptions as active (BM-067), so her old-dashboard prescription list grows. She is a test-only patient.
+- **"Edit in OpenEMR":** the link goes to `/openemr/patient/<uuid>`, which redirects to OpenEMR's chart page (`OEMR_PUBLIC_URL`, default `OEMR_BASE`). OpenEMR's session cookie is `SameSite=Strict`, so the link finds an existing OpenEMR sign-in only when the dashboard and OpenEMR share a site, as `dashboard.146-190-139-37.sslip.io` and `146-190-139-37.sslip.io` do. Elsewhere the user signs in to OpenEMR first.
+
 ## Saved card layouts
 
 Each user's collapsed cards are kept in `/app/data/card-settings.json` inside the container, on the named
