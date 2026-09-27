@@ -30,7 +30,7 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
 1. **The spikes decided the architecture before the framework.** OpenEMR answers every CORS preflight on FHIR routes with HTTP 404, because routes are dispatched before its CORS listener can respond (`RoutesExtensionListener` priority 40 vs `CORSListener` 25, BM-001). A browser page on another origin therefore cannot send an authenticated FHIR request, so any browser app needs a server in front of the API. The BFF spike passed every functional check (one login, two patients, refresh token, 401s where expected). Its only failure was a strict string match on the granted-scope list, which omits `api:fhir` although every resource scope was granted. So I made that server the BFF.
 2. **The BFF also removes a patient-safety trap.** With a patient-bound browser token, asking for another patient returns HTTP 200 with an empty list, not an error (BM-004), so a patient switch could show "no allergies" for the wrong person. A user-scoped BFF returns the patient actually requested.
 3. **React + TypeScript matches the shape of the problem.** Each old card is a small, independent view over one resource type, which is exactly a React component. TypeScript with `@types/fhir` makes every FHIR field access type-checked. The audits found that most parity risk sits in the translation from FHIR to what the card shows, so I put that logic in pure mapper functions that are easy to unit-test.
-4. **It is fast to build and light to host.** Vite plus a small Node BFF runs as one container of tens of MB, which fits the 3.9 GB droplet already running OpenEMR, MariaDB and the Python Co-Pilot sidecar. I compared Angular (more boilerplate for six cards, and not a real upgrade from AngularJS), Vue (a close second) and Next.js (heavier, and server-rendered, which is harder to justify as a presentation-layer move). See `MIGRATION-OPTIONS.md`.
+4. **It is fast to build and light to host.** Vite plus a small Node BFF runs as one container using about 45 MB of memory (capped at 256 MB), which fits the 3.9 GB droplet already running OpenEMR, MariaDB and the Python Co-Pilot sidecar. I compared Angular (more boilerplate for six cards, and not a real upgrade from AngularJS), Vue (a close second) and Next.js (heavier, and server-rendered, which is harder to justify as a presentation-layer move). See `MIGRATION-OPTIONS.md`.
 
 ## What moving off PHP gained
 
@@ -69,7 +69,7 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
   - an unsupported `_include` returns an empty Bundle instead of an error (BM-029)
   - a patient-bound token returns an empty Bundle for another patient (BM-004)
 
-  The new app never uses `_include`, and it treats an unexpected empty result as a load error, not as "nothing recorded".
+  The new app never uses `_include`, and it never holds a patient-bound token, so neither trap applies. Every record OpenEMR returns must name the patient on screen, or the card shows a load error. An empty result is shown as "nothing recorded", which is only safe because of those two guards.
 - **Security observations in the API that I can't fix (the backend is out of scope):**
   - OpenEMR echoes any `Origin` into `Access-Control-Allow-Origin` (BM-002)
   - its preflight handling is unreachable (BM-001)
@@ -84,7 +84,7 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
 - **The proxy forwards only the query parameters the app uses.** OpenEMR's rewrite rule would otherwise let a forwarded `_REWRITE_COMMAND` send a request to any API route (BM-054).
 - **A server-held credential that can read the staff directory.** The names client can read every Practitioner and Organization. It is used only for a logged-in user, only for those two resource types, and the route returns the display name alone; the old page already showed these names to anyone who could open the patient (BM-048).
 - **Permissions move from page-level PHP ACL checks to OAuth scopes and the API's own authorisation.** Site-wide card hiding (`hide_dashboard_cards`) is read by the old dashboard straight from SQL and is not in the API, so the new app reads a hidden-cards list from its own configuration.
-- **Collapsed cards are remembered by the BFF, not by OpenEMR.** The old card saves each user's collapsed cards in OpenEMR's user settings, which only a logged-in OpenEMR page can write. The BFF reads the user from the login's token and keeps the same per-user choice in a JSON file on a Docker volume, so a collapsed card stays collapsed across visits, patients and browsers. The two are separate: collapsing a card in the old dashboard does not collapse it here. OpenEMR grants `openid` but sends no ID token, so the user comes from the access token's `sub` (BM-061).
+- **Collapsed cards are remembered by the BFF, not by OpenEMR.** The old card saves each user's collapsed cards in OpenEMR's user settings, which only a logged-in OpenEMR page can write. The BFF reads the user from the login's token and keeps the same per-user choice in a JSON file on a Docker volume, so a collapsed card stays collapsed across visits, patients and browsers. The two are separate: collapsing a card in the old dashboard does not collapse it here. The user comes from the OpenID Connect ID token's `sub`, after checking its issuer, audience and expiry.
 - **Not ported:** the edit workflows (every card is read-only), the reminders, disclosures, amendments, billing, insurance, portal, photos and other cards listed in the next section.
 
 ## Parity evidence
@@ -96,11 +96,11 @@ Parity was measured against the running old dashboard, not against my reading of
   - a prescription with refills, a resolved allergy with no end date, and a severe allergy
   - two visits on one day, a care-team facility, a care team with an NPI provider, a middle name, and a non-admin physician
 - **Field-level comparison:** each module audit records, for every field the user sees, its source, whether it matches, and the values observed for named fixtures in both systems. The old dashboard was read in a real browser through the dev stack's Selenium.
-- **Reviews:** five independent reviews (Codex twice, Fable twice, Opus once) compared the new code with the old PHP. Each gap they found was fixed test-first or recorded as a user decision in `BUGS-MITIGATIONS.md`.
+- **Reviews:** five independent reviews (Codex twice, Fable twice, Opus once) compared the new code with the old PHP. Each gap they found was fixed test-first or recorded as a user decision in `BUGS-MITIGATIONS.md`. A final Codex check against the challenge text found a login bug (the ID token was dropped) and three inaccurate lines in this document; all are fixed (`clinical_copilot_week2/migration/CHALLENGE-COMPLIANCE.md`).
 
 ### Results
 
-Full parity suite (`npm run test:parity`) on commit `e4f31a4`, 2026-09-27, against the development-easy stack: **9 of 9 tests passed**, including the two self-tests of the old-dashboard reader.
+Full parity suite (`npm run test:parity`) on commit `f48ab1c`, 2026-09-27, against the development-easy stack: **9 of 9 tests passed**, including the two self-tests of the old-dashboard reader.
 
 | Section | Fields compared | Fixtures | Result | Approved exceptions |
 |---|---|---|---|---|
@@ -113,7 +113,7 @@ Full parity suite (`npm run test:parity`) on commit `e4f31a4`, 2026-09-27, again
 | Encounter history | date, reason, provider (named wherever FHIR sends one), first page and all visits | TYPICAL, HISTORY, LONG, EMPTY | Pass | BM-032 (provider without an NPI), BM-034 ("Show all"), BM-035 (empty text), BM-039 (billing, forms, insurance not ported) |
 
 Every parity test was also shown to fail when the rule it guards was broken on purpose (recorded per slice in `DEV-LOG.md`). Alongside it, on the same commit:
-- **Unit tests:** 280 of 280 pass, covering every mapper, hook, card and BFF route.
+- **Unit tests:** 285 of 285 pass, covering every mapper, hook, card and BFF route.
 - **End-to-end tests:** 30 of 30 pass, covering:
   - login, logout, idle sign-out and ended sessions
   - load failures shown as errors, and cards a user may not see left out
@@ -134,4 +134,6 @@ Every parity test was also shown to fail when the rule it guards was broken on p
 - **Treatment plan / issue list and LBF chartable forms:** site-configured, with no stable FHIR mapping.
 - **Portal, eRx notice, photos and ID card, advance directives, track anything:** not listed, and mostly write or launch workflows.
 - **Delete patient:** a destructive admin action; the new dashboard is read-only.
+- **Links into OpenEMR:** the old cards' edit buttons open OpenEMR's edit pages, and each old Visit History row opens that visit. The new dashboard is read-only and links nowhere.
+- **Translation:** the old templates pass every label through OpenEMR's translation tables (`xlt`), so a site set to Spanish sees Spanish labels. The new app's labels and messages are English only. The clinical data itself (titles, reactions, reasons) is shown as entered, as before.
 - **Vitals, labs, notes, immunizations and appointments:** reviewed as candidate extra sections (`EXTRA-SECTION-OPTIONS.md`); Encounter history was chosen instead.

@@ -2,6 +2,37 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-27 — Follow-up / Slice 05-04-03 — Fixes from the Codex challenge check
+
+**Branch:** `dashboard-migration`
+**Status:** committed (f48ab1c)
+
+### Worked on
+- A fresh Codex agent checked the port against the challenge text. Its verdict was partly compliant; every finding is listed with its outcome in `CHALLENGE-COMPLIANCE.md`.
+- Test first, all watched failing:
+  - `tests/unit/server/oauth.test.ts`: the token parser keeps `id_token`
+  - `idToken.test.ts`: another issuer or none is refused
+  - `auth.test.ts`: without an ID token the user is not known, but login still works
+  - `AllergiesCard.test.tsx`: only the risk in brackets is highlighted
+  - `PrescriptionsCard.test.tsx`: the table is striped and responsive
+- `server/oauth.ts` keeps `id_token`. `server/idToken.ts` checks the issuer (OpenEMR's address plus `/oauth2/default`) as well as audience and expiry. `server/auth.ts` no longer falls back to the access token.
+- `AllergiesCard.tsx` highlights only the risk, as the old card highlights only the severity. `PrescriptionsCard.tsx` uses the old striped table in a `table-responsive` wrapper.
+- `styling.spec.ts` now checks the highlight on the risk word.
+
+### Decisions
+- BM-061 is withdrawn. OpenEMR does send an ID token; the BFF's parser dropped it, and the earlier debug read the filtered copy. The lesson: inspect the raw response, not a parsed one, before blaming the server.
+- Defence corrections:
+  - how empty results are really guarded
+  - memory rather than image size (43 MB used; the image is 637 MB)
+  - English-only labels and the missing links into OpenEMR are now listed as not ported
+
+### Tests
+- Unit: 285 of 285. End-to-end: 30 of 30. Parity: 9 of 9.
+- Deployed: 5 of 5, including the saved layout, which needs the droplet's ID token to pass the new issuer check.
+
+### BUGS-MITIGATIONS.md updates
+- BM-061 withdrawn and resolved as a bug in the new app.
+
 ## 2026-09-27 — Follow-up / Slice 05-04-02 — Remember collapsed cards between visits
 
 **Branch:** `dashboard-migration`
