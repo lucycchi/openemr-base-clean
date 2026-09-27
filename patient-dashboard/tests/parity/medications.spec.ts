@@ -5,7 +5,7 @@ import { logInThroughOpenEmr } from '../support/login';
 import { readNewCard } from '../support/newApp';
 import { openOldSession, readOldCard, showOldPatient } from '../support/oldDashboard';
 
-// Compared (modules/medications.md): the set of medication-list entries, not their order.
+// Compared (modules/medications.md): every medication-list entry, in the old order, and its dosage.
 // Approved exceptions, applied below:
 //   BM-012  the old "Nothing Recorded" / "None" become "None recorded"
 //   BM-020  a list entry linked to a prescription has no dosage (FHIR only carries the prescription)

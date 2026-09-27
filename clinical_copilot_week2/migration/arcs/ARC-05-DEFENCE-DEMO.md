@@ -1,6 +1,6 @@
 # ARC-05 — Deploy, defence and demo
 
-**Status:** planned
+**Status:** in-progress (05-02-01 and 05-03-01 done; 05-01-01, the droplet deploy, waits on the user)
 **Estimate:** 6 h
 
 ## Goal
@@ -35,9 +35,9 @@ New features. Any parity failure found here is fixed in the owning arc's slice, 
 **Acceptance:** the full parity suite is green with approved exceptions only; `PATIENT_DASHBOARD_MIGRATION.md` has a results table per section and uses the past tense for work that is done.
 
 #### Slice 05-02-01 — Run the suite and record results
-- [ ] Tests first: the results-table check fails while the table is missing
-- [ ] Implement: run `npm run test:parity`, then write a per-section table (fields compared, matched, approved exceptions by BM id) into `## Parity evidence`; update the tense throughout; run `tools/check-bugs.sh` and confirm every `fix in the new app` row is struck through
-- [ ] Gates green; DEV-LOG, arc file updated
+- [x] Tests first: the results-table check fails while the table is missing
+- [x] Implement: run `npm run test:parity`, then write a per-section table (fields compared, matched, approved exceptions by BM id) into `## Parity evidence`; update the tense throughout; run `tools/check-bugs.sh` and confirm every `fix in the new app` row is struck through
+- [x] Gates green; DEV-LOG, arc file updated
 **Acceptance tests:**
 - `bash clinical_copilot_week2/migration/tools/check-doc.sh PATIENT_DASHBOARD_MIGRATION.md "## Parity evidence" "| Section |"`
 - `npm run test:parity` with all specs passing
@@ -47,9 +47,9 @@ New features. Any parity failure found here is fixed in the owning arc's slice, 
 **Acceptance:** a short script that shows login, TP-TYPICAL, TP-DECEASED (status), TP-LONG (long lists), a patient switch, and one Gate 2 exception explained.
 
 #### Slice 05-03-01 — Demo script
-- [ ] Tests first: `check-doc.sh` on the script's headings, watched failing
-- [ ] Implement `clinical_copilot_week2/migration/DEMO-WALKTHROUGH.md`
-- [ ] Gates green; DEV-LOG, arc file updated
+- [x] Tests first: `check-doc.sh` on the script's headings, watched failing
+- [x] Implement `clinical_copilot_week2/migration/DEMO-WALKTHROUGH.md`
+- [x] Gates green; DEV-LOG, arc file updated
 **Acceptance tests:**
 - `bash clinical_copilot_week2/migration/tools/check-doc.sh clinical_copilot_week2/migration/DEMO-WALKTHROUGH.md "## Login" "## Patient switch" "## Exceptions"`
 **Touches:** `clinical_copilot_week2/migration/`

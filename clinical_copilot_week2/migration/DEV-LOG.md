@@ -2,6 +2,36 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 05 / Stories 05-02 and 05-03 / Slices 05-02-01 and 05-03-01 — Parity results and demo walkthrough
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- The full parity suite ran on 94d82aa: 9 of 9 pass. Unit tests: 245 of 245. End-to-end tests: 26 of 26.
+- `PATIENT_DASHBOARD_MIGRATION.md`:
+  - a Results section under Parity evidence, with one row per section giving the fields compared, the fixtures, the result and the approved exceptions by BM id
+  - past tense throughout
+  - corrected three stale statements: "fed only by FHIR", the allergy-markup line, and the list of extra scopes
+- `DEMO-WALKTHROUGH.md`: a 4–5 minute script covering:
+  - login as the non-admin `tp-physician`
+  - TP-TYPICAL, TP-DECEASED and TP-LONG
+  - the patient switch
+  - one exception explained (BM-011)
+- BM-040 marked resolved (fixed in slice 02-01-01 but never struck through); no "fix in the new app" row is left open.
+- The medication parity spec's header comment now says what it checks (entries in the old order, with dosage).
+
+### Decisions
+- The results-table check now looks for the table's own header row, not only "| Section |": that string also appears in the "What was ported" table, so the old check passed before any results existed.
+
+### Tests
+- `check-doc.sh PATIENT_DASHBOARD_MIGRATION.md "## Parity evidence" "| Section | Fields compared | Fixtures | Result | Approved exceptions |"`: failed before, passes now.
+- `check-doc.sh DEMO-WALKTHROUGH.md "## Login" "## Patient switch" "## Exceptions"`: failed before (no file), passes now.
+- `check-bugs.sh`: PASS, 60 rows.
+
+### Open questions / follow-ups
+- Slice 05-01-01 (droplet deploy) waits on the user's go-ahead and the choice of data.
+
 ## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-06 — Fixes from the Opus parity review 4
 
 **Branch:** `dashboard-migration`

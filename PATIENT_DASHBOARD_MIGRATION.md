@@ -2,7 +2,7 @@
 
 ## Summary
 
-I am porting OpenEMR's patient dashboard (the identity header, the Allergies, Problem List, Medications, Prescriptions and Care Team cards, and an Encounter history section) from server-rendered PHP to a **React + TypeScript** single-page app, fed only by OpenEMR's FHIR R4 API. Login uses OAuth2/OpenID Connect through a small **Node backend-for-frontend (BFF)** that holds a confidential client, so tokens never reach the browser. I chose this pairing because two working spikes showed that a browser cannot call OpenEMR's FHIR API directly, and React gives typed, testable card components that map one-to-one onto the old Twig cards.
+I ported OpenEMR's patient dashboard (the identity header, the Allergies, Problem List, Medications, Prescriptions and Care Team cards, and an Encounter history section) from server-rendered PHP to a **React + TypeScript** single-page app. It reads OpenEMR's FHIR R4 API, plus OpenEMR's Standard REST API for the three lists FHIR reports wrongly (medications, allergies, problems). Login uses OAuth2/OpenID Connect through a small **Node backend-for-frontend (BFF)** that holds a confidential client, so tokens never reach the browser; a second, server-only client reads staff and facility names, which OpenEMR's API shows only to administrators. I chose this pairing because two working spikes showed that a browser cannot call OpenEMR's FHIR API directly, and React gives typed, testable card components that map one-to-one onto the old Twig cards. Every section passes a parity test against the running old dashboard (see Parity evidence).
 
 Supporting evidence, all in `clinical_copilot_week2/migration/`:
 - `API-SPIKE.md`: auth spikes and exact API behaviour
@@ -10,7 +10,8 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
 - `modules/*.md`: seven field-by-field audits
 - `BUGS-MITIGATIONS.md`: every catalogued problem (BM-001 onwards), its port action and mitigation, and the Gate 2 decisions
 - `MIGRATION-OPTIONS.md`: the routes I compared
-- `TEST-PATIENTS.md`: seven synthetic patients used for every comparison
+- `TEST-PATIENTS.md`: seven synthetic patients, plus the seeded edge cases in `fixtures/seed-parity-gaps.php`, used for every comparison
+- `DEV-LOG.md`: every slice, test-first, including the fixes from five independent parity reviews
 
 ## What was ported
 
@@ -54,7 +55,7 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
   - *Problem list (BM-017, BM-043, BM-051):* FHIR reports some active problems as resolved, drops a problem from the problem list once it is linked to a visit, and leaves out problems without `activity = 1`. The card is built from the standard API problem list instead, the old card's own source, so none of these apply.
   - *Medications and Prescriptions (BM-019, BM-020):* FHIR merges the medication list and prescriptions into one `MedicationRequest` feed with no reliable field saying which is which. The standard API medication list has the same ids, so a record is a list entry exactly when its id is on that list; the cards are split that way, not by intent. A list entry linked to a prescription appears on both cards, as on the old dashboard, without its list dosage.
   - *Allergy severity (BM-011):* eight severities collapse to FHIR's low or high risk, so "Moderate" becomes "Low risk". The high-risk highlight is kept.
-  - *Uncoded allergy names and markup (BM-009, BM-010):* an uncoded allergy's name is only in the FHIR narrative, which OpenEMR builds without HTML escaping. I read it as text, never as HTML, so a name like `Latex <b>x</b>` displays as "Latex x".
+  - *Allergy names and markup (BM-009, BM-010, BM-060):* FHIR puts an uncoded allergy's name only in its narrative, built without HTML escaping, and a coded allergy's name is the code's description. The card shows the title the clinician entered, from the standard API list, as text, never as HTML: `Latex <b>x</b>` displays literally, exactly as the old card shows it.
   - *Names (BM-028, BM-032, BM-048):* OpenEMR's API lets only administrators read Practitioner and Organization, so the BFF reads staff and facility names with its own server-only client (SMART backend services, `system/Practitioner.rs` and `system/Organization.rs` only) and returns the name alone. The Practitioner endpoint still only serves users with an NPI, so a provider without one, and a related person, show as "Name unavailable".
   - *Removed care-team members (BM-053):* the old card hides members marked inactive, which is what its Remove button sets. FHIR lists every member with no status and no other API exposes it, so a removed member looks current. The card says so in a note; teams marked entered-in-error are hidden and the badge follows the team status.
   - *Problems FHIR leaves out (BM-051):* FHIR's problem list only returns rows with `activity = 1`, which Fee Sheet problems lack. The card reads the standard API problem list instead, which is exactly what the old card reads (`user/medical_problem.rs`).
@@ -62,7 +63,7 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
   - *Allergy status (BM-016, BM-047):* FHIR calls a resolved allergy with no end date "active" and a still-current allergy with a future end date "inactive". Like the medication list, the card reads each allergy's end date and resolved flag from the Standard REST API (`user/allergy.rs`).
   - *Header status (BM-005):* `Patient.active` is always true, so status is derived from `deceasedDateTime` instead.
   - *Refills (BM-041):* FHIR always sends 0 refills, so the column says "Not available" rather than a wrong number.
-  - *Medication end dates (BM-044):* FHIR sends "completed" for any end date, past or future, and never the date itself. For the medication list only, the BFF reads each entry's end date and outcome from OpenEMR's Standard REST API, which needs three extra scopes (`api:oemr`, `user/patient.rs`, `user/medication.rs`). That API answers an empty list with a bodyless 404 (BM-046).
+  - *Medication end dates (BM-044):* FHIR sends "completed" for any end date, past or future, and never the date itself. The Medications card is built from OpenEMR's Standard REST API medication list, which carries the end date and outcome. Reading the three standard-API lists needs extra scopes (`api:oemr`, `user/patient.rs`, `user/medication.rs`, `user/allergy.rs`, `user/medical_problem.rs`). That API answers an empty medication list with a bodyless 404 (BM-046).
   - *The prescription dose detail and the encounter billing, insurance and forms columns* are not in FHIR and are not ported.
 - **The API has safety traps the client must guard against:**
   - an unsupported `_include` returns an empty Bundle instead of an error (BM-029)
@@ -87,16 +88,37 @@ Supporting evidence, all in `clinical_copilot_week2/migration/`:
 
 ## Parity evidence
 
-Parity is measured against the running old dashboard, not against my reading of its code:
+Parity was measured against the running old dashboard, not against my reading of its code:
 
-- **Fixtures:** seven synthetic patients (`TEST-PATIENTS.md`). They cover a typical chart, an empty chart, "no known allergies", ended history, a deceased patient, long lists (25 allergies, 60 problems, 60 medications, 30 encounters) and names with special characters.
-- **Field-level comparison:** each module audit records, for every field the user sees, the FHIR field it comes from, whether it matches, and the actual values observed for named fixtures in both systems. The old dashboard was read in a real browser through the dev stack's Selenium, and FHIR through the same OAuth client the app uses.
-- **Automated suites** (defined in `clinical_copilot_week2/migration/MIGRATION-SPEC.md`):
-  - one Playwright parity test per section, comparing each field on the old dashboard and the new app for the same fixture, with the approved exceptions from Gate 2 listed in the test
-  - unit tests for every FHIR-to-view mapper
-  - E2E tests for login and logout, rejected tokens, API failures shown as load errors, patient switching, and long lists
+- **Fixtures:** seven synthetic patients (`TEST-PATIENTS.md`) covering a typical chart, an empty chart, "no known allergies", ended history, a deceased patient, long lists (25 allergies, 60 problems, 60 medications, 30 encounters) and names with special characters. The reviews added seeded edge cases (`fixtures/seed-parity-gaps.php`), including:
+  - a problem linked to two visits, a Fee Sheet problem with no activity, and future-ended medications and allergies
+  - a prescription with refills, a resolved allergy with no end date, and a severe allergy
+  - two visits on one day, a care-team facility, a care team with an NPI provider, a middle name, and a non-admin physician
+- **Field-level comparison:** each module audit records, for every field the user sees, its source, whether it matches, and the values observed for named fixtures in both systems. The old dashboard was read in a real browser through the dev stack's Selenium.
+- **Reviews:** five independent reviews (Codex three times, Fable twice, Opus once) compared the new code with the old PHP. Each gap they found was fixed test-first or recorded as a user decision in `BUGS-MITIGATIONS.md`.
 
-The results table is added here when the build's final arc runs the full parity suite.
+### Results
+
+Full parity suite (`npm run test:parity`) on commit `94d82aa`, 2026-09-26, against the development-easy stack: **9 of 9 tests passed**, including the two self-tests of the old-dashboard reader.
+
+| Section | Fields compared | Fixtures | Result | Approved exceptions |
+|---|---|---|---|---|
+| Patient header | name (without middle names), MRN, DOB line with age or age at death | all seven | Pass | BM-052 (middle name shown), BM-040 (infant age text spaced) |
+| Allergies | which allergies, in order; name; reaction | TYPICAL, EMPTY, NKA, HISTORY, LONG, ESCAPING | Pass | BM-011 (risk level wording), BM-012 (empty text), BM-015 (no empty brackets) |
+| Medical Problems | which problems, in order | TYPICAL, EMPTY, HISTORY, LONG | Pass | BM-012 (empty text) |
+| Medications | which entries, in order; dosage | TYPICAL, EMPTY, HISTORY, LONG | Pass | BM-012 (empty text), BM-020 (linked entry has no dosage) |
+| Prescriptions | drug, quantity, date added, in order, nothing extra; refills | TYPICAL, EMPTY, HISTORY, LONG | Pass | BM-023 ("Added" label), BM-024 (empty text), BM-038 (Details not in FHIR), BM-041 (refills "Not available"), BM-044 (end-dated shown) |
+| Care Team | team name and status; member type, role, facility; since where FHIR has it; names that can be resolved, with Donna Lee pinned | TYPICAL, EMPTY, LONG | Pass | BM-028 (unresolvable names), BM-030 (empty text), BM-037 (since, status, note), BM-053 (removed members noted) |
+| Encounter history | date, reason, provider (named wherever FHIR sends one), first page and all visits | TYPICAL, HISTORY, LONG, EMPTY | Pass | BM-032 (provider without an NPI), BM-034 ("Show all"), BM-035 (empty text), BM-039 (billing, forms, insurance not ported) |
+
+Every parity test was also shown to fail when the rule it guards was broken on purpose (recorded per slice in `DEV-LOG.md`). Alongside it, on the same commit:
+- **Unit tests:** 245 of 245 pass, covering every mapper, hook, card and BFF route.
+- **End-to-end tests:** 26 of 26 pass, covering:
+  - login, logout, idle sign-out and ended sessions
+  - load failures shown as errors, and cards a user may not see left out
+  - patient switching with no stale data, and every card rejecting another patient's data
+  - the high-risk highlight, the read-only cards, and a non-admin physician
+- **Ledger:** every "fix in the new app" row in `BUGS-MITIGATIONS.md` is resolved.
 
 ## Not ported
 
