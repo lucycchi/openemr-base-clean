@@ -100,7 +100,7 @@ text.
 | Intake-extractor (worker) | gpt-4o-mini | Parses the PDF, asks the model for values page by page, anchors every value to its row, marks what it cannot anchor as unverified, reports rows it could not extract. Never writes prose. |
 | Evidence-retriever (worker) | Embeddings + rerank, no generation | Hybrid retrieval over the guideline corpus, top 5 chunks with citations. The PHP narrator may cite a chunk id; the Verifier checks the sentence's numbers against the passage (heading + text) exactly as it checks fact ids. |
 | Critic (extension, Phase 10) | gpt-4o-mini for applicability; rules for suggestions | Two halves. The sidecar `critic` node asks whether each guideline passage's stated population includes this patient and drops cards that don't apply. The rule half runs in the PHP Verifier: a sentence that suggests an action (advice words such as *consider* or *should*, or an instruction such as *Start*) is stripped unless it cites a guideline passage. Uncited claims are stripped by the Verifier's citation rules. |
-| Narrator + Verifier (Week 1, PHP) | gpt-4o-mini | The only physician-facing text. Cites fact ids (and, after Phase 6, chunk ids); the Verifier strips anything uncited or with a number not present verbatim in the cited source. |
+| Narrator + Verifier (Week 1, PHP) | gpt-4o-mini | The only physician-facing text. Cites fact ids (and, after Phase 6, chunk ids); the structured-output schema of each request allows only the ids that request offers, so the model cannot cite one that does not exist. The Verifier strips anything uncited or with a number not present verbatim in the cited source. |
 
 ```
 front desk uploads a lab PDF ─▶ PHP documents.php: CSRF, session patient, ACL patients/docs,

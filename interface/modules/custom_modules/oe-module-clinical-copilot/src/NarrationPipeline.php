@@ -116,7 +116,7 @@ final class NarrationPipeline
                 $this->prompt->briefingSystem(),
                 $this->prompt->briefingUser($assembled, $evidence),
                 'briefing',
-                $this->prompt->briefingSchema(),
+                $this->prompt->briefingSchema($facts, $evidence),
             );
         } catch (LlmException $e) {
             // Model down / timed out / rate-limited / refused. Do NOT blank the
@@ -172,7 +172,7 @@ final class NarrationPipeline
                 $this->prompt->followUpSystem(),
                 $this->prompt->followUpUser($assembled, $question, $transcript, $evidence),
                 'follow_up',
-                $this->prompt->followUpSchema(),
+                $this->prompt->followUpSchema($assembled->facts(), $evidence),
             );
         } catch (LlmException $e) {
             return new AnswerResult('error', [], 0, $e->statusLabel(), 0, 0);

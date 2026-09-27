@@ -33,6 +33,8 @@ final class FakeLanguageModel implements LanguageModel
     public string $lastSystem = '';
     public string $lastUser = '';
     public string $lastSchemaName = '';
+    /** @var array<string, mixed> */
+    public array $lastSchema = [];
 
     public function model(): string
     {
@@ -45,6 +47,7 @@ final class FakeLanguageModel implements LanguageModel
         $this->lastSystem = $system;
         $this->lastUser = $user;
         $this->lastSchemaName = $schemaName;
+        $this->lastSchema = $schema;
         if ($this->throw !== null) {
             throw $this->throw;
         }

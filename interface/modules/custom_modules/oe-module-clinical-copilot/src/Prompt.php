@@ -112,16 +112,62 @@ TXT;
         return implode("\n", $lines);
     }
 
-    /** @return array<string, mixed> The contracts/llm.briefing.output.schema.json file, as OpenAI accepts it. */
-    public function briefingSchema(): array
+    /**
+     * The contracts/llm.briefing.output.schema.json file, as OpenAI accepts it,
+     * with fact_ids narrowed to the ids this request offers (see citable()).
+     *
+     * @return array<string, mixed>
+     */
+    public function briefingSchema(?FactSet $facts = null, ?EvidenceSet $evidence = null): array
     {
-        return Contracts::forOpenAi('llm.briefing.output');
+        return self::citable(Contracts::forOpenAi('llm.briefing.output'), $facts, $evidence);
     }
 
-    /** @return array<string, mixed> The contracts/llm.followup.output.schema.json file, as OpenAI accepts it. */
-    public function followUpSchema(): array
+    /**
+     * The contracts/llm.followup.output.schema.json file, as OpenAI accepts it,
+     * with fact_ids narrowed to the ids this request offers (see citable()).
+     *
+     * @return array<string, mixed>
+     */
+    public function followUpSchema(?FactSet $facts = null, ?EvidenceSet $evidence = null): array
     {
-        return Contracts::forOpenAi('llm.followup.output');
+        return self::citable(Contracts::forOpenAi('llm.followup.output'), $facts, $evidence);
+    }
+
+    /**
+     * Makes the offered fact and passage ids the only values fact_ids may
+     * hold. Structured output is enforced by the provider, so the model
+     * cannot cite an id it was not given: a shortened id ("ec9ec2b" for
+     * "ec9ec2b8") used to cost a true sentence at the Verifier. The contract
+     * file stays open (it describes the shape for every chart); the
+     * narrowing is per request. With nothing offered the schema is left
+     * open, since an empty enum is not a valid schema.
+     *
+     * @param array<string, mixed> $schema
+     * @return array<string, mixed>
+     */
+    private static function citable(array $schema, ?FactSet $facts, ?EvidenceSet $evidence): array
+    {
+        $ids = [
+            ...array_map(static fn(Fact $f): string => $f->id, $facts?->all() ?? []),
+            ...array_map(static fn(EvidenceChunk $c): string => $c->chunkId, $evidence?->all() ?? []),
+        ];
+        if ($ids === []) {
+            return $schema;
+        }
+        $properties = $schema['properties'] ?? null;
+        $sentences = is_array($properties) ? ($properties['sentences'] ?? null) : null;
+        $item = is_array($sentences) ? ($sentences['items'] ?? null) : null;
+        $itemProperties = is_array($item) ? ($item['properties'] ?? null) : null;
+        if (!is_array($properties) || !is_array($sentences) || !is_array($item) || !is_array($itemProperties)) {
+            throw new \RuntimeException('LLM output contract has no sentences[].fact_ids');
+        }
+        $itemProperties['fact_ids'] = ['type' => 'array', 'items' => ['type' => 'string', 'enum' => array_values(array_unique($ids))]];
+        $item['properties'] = $itemProperties;
+        $sentences['items'] = $item;
+        $properties['sentences'] = $sentences;
+        $schema['properties'] = $properties;
+        return $schema;
     }
 
     /**
