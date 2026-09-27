@@ -251,7 +251,7 @@ sentences only.
 
 Every push runs `tests/evals/gate.sh` from the pre-push hook
 (`tests/evals/install-hooks.sh`): the sidecar's pytest, the module's
-isolated PHPUnit suite, `case-index.php --check`, then the 57 deterministic
+isolated PHPUnit suite, `case-index.php --check`, then the 60 deterministic
 golden cases through `gate.php`, which compares each case's rubric verdicts
 with the committed baseline and refuses the push on a threshold breach or on
 any case that went from pass to fail. `COPILOT_GATE_LIVE=1` adds the 16 live

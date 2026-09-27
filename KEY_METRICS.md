@@ -306,8 +306,10 @@ exercised, not decorative.
 output on each push; `results.json` for the last keyless run and
 `results-live.json` for the last full live run.
 
-**Baseline.** 73 cases (57 deterministic, 16 live), 8 rubrics. Last full
-live run, 2026-09-27 08:03 UTC (`results-live.json`): 73 of 73 pass. The
+**Baseline.** 76 cases (60 deterministic, 16 live), 8 rubrics; cases 74-76
+(the lab trend chart and the medication list) were added after the last full
+live run and are deterministic. Last full live run, 2026-09-27 08:03 UTC
+(`results-live.json`): 73 of 73 pass. The
 run before it (07:42) failed case 09 because the model cited one chart's
 fact id one character short; the output schema now allows only the ids the
 request offers, and the rerun after that fix passed. The live baseline the gate compares against

@@ -71,8 +71,12 @@ Say these before you are asked.
   (`tests/evals/ci-pipeline.sh`), as Gauntlet suggested. The runner is on the
   production droplet with the eval stack capped at 3 of 4 CPUs; a dedicated
   runner box would be the next step at scale.
-- **Not built:** a third document type and a lab trend chart. The PRD's
-  closing note favours two document types that work over five that do not.
+- **Built last, in a time box:** a third document type (an outside
+  medication list, reusing the intake form's row anchoring) and a lab trend
+  chart in the panel whose uploaded points open the PDF row. Both went in
+  with gate cases (74-76) and a revert rule if either was not green by
+  07:00 CT; neither needed it. Deliberately not built: automatic
+  discrepancy facts between an outside list and the chart's medications.
 
 ## Numbers to have ready
 

@@ -10,11 +10,11 @@ table is in [tests/evals/README.md](../tests/evals/README.md).
 
 | | |
 |---|---|
-| Cases | **73** JSON files in [tests/evals/cases/](../tests/evals/cases/): 57 deterministic (recorded model output, run on every push, no API key) and 16 live (real model calls, run before each submission) |
+| Cases | **76** JSON files in [tests/evals/cases/](../tests/evals/cases/): 60 deterministic (recorded model output, run on every push, no API key) and 16 live (real model calls, run before each submission) |
 | Data | Synthetic only: the 30-patient demo seed, generated lab PDFs and intake forms in [tests/evals/fixtures/docs/](../tests/evals/fixtures/docs/) with their `truth.json`, and throwaway patients the harness creates and deletes. No real patient appears anywhere. |
 | Rubrics | 8, each pass / fail / not applicable. No 1-10 scores. |
 | Judge | **Code, not a model.** Every verdict is computed by `evaluateRubrics()` in [run.php](../tests/evals/run.php) from what the run produced. |
-| Latest results | Full live run 2026-09-27 08:03 UTC: 73 of 73 pass (deterministic 57/57, live 16/16). The run before it failed case 09; see §4. The live baseline the gate compares against was set 2026-09-23. Kill matrix: see [EVAL_GATE.md § 7](../EVAL_GATE.md#7-kill-matrix). |
+| Latest results | Full live run 2026-09-27 08:03 UTC: 73 of 73 pass (deterministic 57/57, live 16/16); cases 74-76 were added after it and pass in the deterministic gate (60/60). The run before it failed case 09; see §4. The live baseline the gate compares against was set 2026-09-23. Kill matrix: see [EVAL_GATE.md § 7](../EVAL_GATE.md#7-kill-matrix). |
 
 ## 1. What the cases cover
 
@@ -25,7 +25,7 @@ exists to catch).
 
 | Area the PRD names | Modes | Cases |
 |---|---|---|
-| Extraction | `anchor`, `extract`, `malformed`, `absent`, `facts` | 16-22, 39-44, 47-52 |
+| Extraction | `anchor`, `extract`, `malformed`, `absent`, `facts` | 16-22, 39-44, 47-52, 75-76 |
 | Evidence retrieval | `retrieve`, `answer`, `triggers`, `brief_evidence` | 29-35, 53-57, 65 |
 | Citations | `briefing`, `followup`, `answer` | 01-15, 33, 35, 45-46, 66-67, 73 |
 | Refusals and safe failures | `followup`, `retrieve`, `answer`, `malformed`, `anchor` | 10, 13-14, 32, 34, 39-42, 49 |
@@ -34,10 +34,12 @@ exists to catch).
 | Critic applicability | `critic` | 60-64 |
 | Critic: action suggestions need a guideline | `answer` | 73 |
 | PHI in logs | `phi_logs` | 36-38, 68-72 |
+| Lab trend chart (extension X4) | `facts` | 74 |
+| Third document type: medication list (extension X3) | `anchor`, `facts` | 75-76 |
 
 | `guards` | Count | Meaning |
 |---|---|---|
-| invariant | 43 | A rule that must always hold: a claim cites a source, a value is found on the page, an identifier never leaves the server |
+| invariant | 46 | A rule that must always hold: a claim cites a source, a value is found on the page, an identifier never leaves the server |
 | boundary | 23 | Missing, empty, malformed or edge input: blank fields, no unit, no collection date, an encrypted PDF, a blank scan |
 | regression | 7 | Something that broke once during development and must not break again |
 
@@ -45,7 +47,7 @@ exists to catch).
 exact outcome the harness compares (status, answer type, which facts must
 surface, which handoffs the supervisor must log, whether a value must come
 back unverified), and `failure_mode` says in one sentence what goes wrong for
-the physician if the case fails. The README table lists all 73 with their
+the physician if the case fails. The README table lists all 76 with their
 failure mode: [Cases and the failure mode each guards](../tests/evals/README.md#cases-and-the-failure-mode-each-guards).
 
 A deterministic case looks like this

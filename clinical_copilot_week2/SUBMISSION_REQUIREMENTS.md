@@ -107,7 +107,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 
 | Part | Status | Evidence |
 |---|---|---|
-| 50 synthetic/demo cases | Done | 73 cases in [tests/evals/cases/](../tests/evals/cases/), 57 deterministic and 16 live. All synthetic fixtures and seed patients. |
+| 50 synthetic/demo cases | Done | 76 cases in [tests/evals/cases/](../tests/evals/cases/), 60 deterministic and 16 live. All synthetic fixtures and seed patients. |
 | Expected behavior per case | Done | Each case has `expect`, `failure_mode` and `guards`; the table in [tests/evals/README.md](../tests/evals/README.md#cases-and-the-failure-mode-each-guards) lists them. |
 | Boolean rubrics | Done | Eight pass/fail rubrics, including the five the PRD names; thresholds in `gate.php`. |
 | Judge configuration | Done (S5) | [EVAL_DATASET.md](EVAL_DATASET.md) §3: no LLM judge; the code check and pass rule behind each rubric; the models under test. |
@@ -200,7 +200,7 @@ submission too. The S8 brief doubles as preparation.
 | Which branch | Done (S3) | README "Branch:" line names `dashboard-migration`. |
 | Which env vars | Done (S3) | See row 1 above. |
 | Which service | Done | The README names the sidecar and the five-command flow brings it up. |
-| Counts current | Done (S3) | README says 73 cases (16 live); rechecked in the 2026-09-25 checkpoint. Re-check at S10. |
+| Counts current | Done (S3) | README says 76 cases (16 live) after cases 74-76 (2026-09-27). Re-check at S10. |
 
 ### H2. Week 1 debt documented and resolved
 
@@ -229,8 +229,14 @@ Click-to-source with document preview: built. Contextual retrieval
 improvements: built and documented in W2_ARCHITECTURE.md ("Contextual
 retrieval improvements": heading-aware chunking, chart-derived queries,
 population filters, relevance floor), not measured against a plainer
-retriever. Third document type and lab trend chart: not built and not planned
-before the final; say so in the interview rather than start them.
+retriever. Third document type and lab trend chart: built 2026-09-27 (design
+in [docs/designs/copilot-medication-list-and-lab-trends.md](../docs/designs/copilot-medication-list-and-lab-trends.md)).
+An outside medication list is the third type (cases 75 and 76), and the panel
+draws lab trend lines whose uploaded points open the PDF row (case 74).
+Go/no-go 03:45 CT: both green (deterministic gate 60/60, gate self-test
+refuses the injected regression, sidecar pytest 139, isolated PHPUnit,
+PHPStan). Nothing reverted. On the droplet only after the next `deploy.sh`,
+which must rebuild the sidecar image and applies the 0.1.6 upgrade.
 
 ---
 
