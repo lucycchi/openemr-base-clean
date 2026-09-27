@@ -3,6 +3,10 @@
     {
       "correlation_id": "abcdefgh-1",
       "code": "timeout"
+    },
+    {
+      "correlation_id": "abcdefgh-2",
+      "code": "overloaded"
     }
   ],
   "reject": [

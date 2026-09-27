@@ -297,7 +297,12 @@ final class DocumentController
             // and tell the user the file is safe. The code, not the message, is what travels.
             $this->logger->warning('copilot sidecar failed', ['code' => $e->errorCode, 'document_id' => $doc['document_id'], 'steps' => $this->steps->all()]);
             $this->tracer->record(new RequestTrace($this->correlationId, 'copilot.documents.extract', $user, $startedAtMs, (int) round((hrtime(true) - $started) / 1e6), ['http_status' => 502, 'sidecar_error' => $e->errorCode, 'document_id' => $doc['document_id']], null, 0, 0, 0, 'sidecar ' . $e->errorCode, $this->steps->all()));
-            return ['error' => 'The document service is unavailable; the file is stored and can be retried', 'reason' => $e->errorCode, 'document_id' => $doc['document_id'], 'status' => 'stored', 'http_status' => 502];
+            // overloaded: the sidecar refused the run because its extraction capacity was
+            // full, so nothing was attempted; the honest message is "busy, try again".
+            $message = $e->errorCode === 'overloaded'
+                ? 'The document service is busy; the file is stored. Try extracting it again in a minute'
+                : 'The document service is unavailable; the file is stored and can be retried';
+            return ['error' => $message, 'reason' => $e->errorCode, 'document_id' => $doc['document_id'], 'status' => 'stored', 'http_status' => 502];
         }
         $run = $outcome['run'];
         $extraction = $outcome['extraction'];

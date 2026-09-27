@@ -63,6 +63,7 @@ MODELS = {
     "run.request": schemas.RunRequest, "run.response": schemas.RunResponse, "run.error": schemas.RunError,
     "llm.lab-proposal.output": schemas.LabReportProposal, "llm.intake-proposal.output": schemas.IntakeFormProposal,
     "sidecar.health.response": schemas.SidecarHealth, "sidecar.ready.response": schemas.SidecarReady,
+    "sidecar.metrics.response": schemas.SidecarMetrics,
     "llm.critic.output": schemas.CriticVerdict,
 }
 

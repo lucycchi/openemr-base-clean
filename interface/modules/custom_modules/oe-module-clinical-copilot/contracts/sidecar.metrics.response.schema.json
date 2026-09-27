@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-emr.org/clinical-copilot/contracts/sidecar.metrics.response.schema.json",
+  "title": "sidecar GET /metrics response",
+  "description": "Extraction capacity since the sidecar process started (counters reset on restart; one process, so one set of numbers per container). runs counts extract-mode /run requests by admission and HTTP outcome; documents counts each document's final outcome separately, because a run answered 200 can carry a failed document. provider counts model calls, 429 throttling, retries and the causes of calls given up on. Counts, codes and milliseconds only: nothing read from a document. Reachable only on the docker network.",
+  "type": "object",
+  "$defs": {
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "counts_by_code": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z_]{1,40}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/count"
+      }
+    },
+    "timing": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "$ref": "#/$defs/count"
+        },
+        "p50": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "p95": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "count",
+        "p50",
+        "p95",
+        "max"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "since": {
+      "type": "string",
+      "minLength": 1
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "max_extractions": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_waiting": {
+          "$ref": "#/$defs/count"
+        },
+        "max_wait_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "deadline_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_provider_calls": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "provider_attempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "attempt_timeout_s": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "max_extractions",
+        "max_waiting",
+        "max_wait_s",
+        "deadline_s",
+        "max_provider_calls",
+        "provider_attempts",
+        "attempt_timeout_s"
+      ],
+      "additionalProperties": false
+    },
+    "now": {
+      "type": "object",
+      "properties": {
+        "active_extractions": {
+          "$ref": "#/$defs/count"
+        },
+        "waiting_extractions": {
+          "$ref": "#/$defs/count"
+        },
+        "provider_in_flight": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "required": [
+        "active_extractions",
+        "waiting_extractions",
+        "provider_in_flight"
+      ],
+      "additionalProperties": false
+    },
+    "runs": {
+      "type": "object",
+      "properties": {
+        "admitted": {
+          "$ref": "#/$defs/count"
+        },
+        "rejected_queue_full": {
+          "$ref": "#/$defs/count"
+        },
+        "rejected_queue_timeout": {
+          "$ref": "#/$defs/count"
+        },
+        "http_ok": {
+          "$ref": "#/$defs/count"
+        },
+        "http_error": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "required": [
+        "admitted",
+        "rejected_queue_full",
+        "rejected_queue_timeout",
+        "http_ok",
+        "http_error"
+      ],
+      "additionalProperties": false
+    },
+    "documents": {
+      "type": "object",
+      "properties": {
+        "extracted": {
+          "$ref": "#/$defs/count"
+        },
+        "failed": {
+          "$ref": "#/$defs/counts_by_code"
+        }
+      },
+      "required": [
+        "extracted",
+        "failed"
+      ],
+      "additionalProperties": false
+    },
+    "provider": {
+      "type": "object",
+      "properties": {
+        "calls": {
+          "$ref": "#/$defs/count"
+        },
+        "throttled": {
+          "$ref": "#/$defs/count"
+        },
+        "retries": {
+          "$ref": "#/$defs/count"
+        },
+        "gave_up": {
+          "$ref": "#/$defs/counts_by_code"
+        }
+      },
+      "required": [
+        "calls",
+        "throttled",
+        "retries",
+        "gave_up"
+      ],
+      "additionalProperties": false
+    },
+    "timings_ms": {
+      "type": "object",
+      "properties": {
+        "queue_wait_ms": {
+          "$ref": "#/$defs/timing"
+        },
+        "extract_active_ms": {
+          "$ref": "#/$defs/timing"
+        },
+        "document_ms": {
+          "$ref": "#/$defs/timing"
+        },
+        "provider_call_ms": {
+          "$ref": "#/$defs/timing"
+        },
+        "provider_slot_wait_ms": {
+          "$ref": "#/$defs/timing"
+        }
+      },
+      "required": [
+        "queue_wait_ms",
+        "extract_active_ms",
+        "document_ms",
+        "provider_call_ms",
+        "provider_slot_wait_ms"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "since",
+    "limits",
+    "now",
+    "runs",
+    "documents",
+    "provider",
+    "timings_ms"
+  ],
+  "additionalProperties": false
+}
