@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 export type FixtureKey =
-    'TP-TYPICAL' | 'TP-EMPTY' | 'TP-NKA' | 'TP-HISTORY' | 'TP-DECEASED' | 'TP-LONG' | 'TP-ESCAPING';
+    'TP-TYPICAL' | 'TP-EMPTY' | 'TP-NKA' | 'TP-HISTORY' | 'TP-DECEASED' | 'TP-LONG' | 'TP-ESCAPING' | 'TP-RXEDIT';
 
 interface FixturePatient {
     pid: number;

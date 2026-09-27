@@ -70,6 +70,12 @@
         "problems": 0,
         "medications": 0
       }
+    },
+    "TP-RXEDIT": {
+      "pid": 43,
+      "puuid": "a2d82909-cd4c-4a75-a7e3-d5dc4e2a728d",
+      "fhirId": "a2d82909-cd4c-4a75-a7e3-d5dc4e2a728d",
+      "created": {}
     }
   }
 }

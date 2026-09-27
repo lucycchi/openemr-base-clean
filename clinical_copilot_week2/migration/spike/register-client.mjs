@@ -48,7 +48,9 @@ const KINDS = {
     // and allergy lists' end dates and outcome, and for the problem list itself, which FHIR does not send correctly (BM-044, BM-047, BM-051;
     // user decisions 2026-09-26).
     scope: ['openid', 'fhirUser', 'offline_access', 'api:fhir', ...READ.map((r) => `user/${r}.rs`),
-      'api:oemr', 'user/patient.rs', 'user/medication.rs', 'user/allergy.rs', 'user/medical_problem.rs'],
+      'api:oemr', 'user/patient.rs', 'user/medication.rs', 'user/allergy.rs', 'user/medical_problem.rs',
+      // Prescriptions are added and discontinued from the dashboard (ARC-06); OpenEMR has no prescription update.
+      'user/prescription.crds'],
   },
   names: {
     type: 'private',
