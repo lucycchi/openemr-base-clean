@@ -5,11 +5,14 @@
  * contents. Out: a bordered Bootstrap card with a blue, bold title; clicking the title hides or shows the
  * contents, as the old card's title does.
  *
- * The old card also remembers whether it was collapsed in OpenEMR's user settings. This one keeps that
- * only while the page is open, because the port does not write to OpenEMR, and it always starts open.
+ * The old card remembers, per user, whether it was collapsed. This one does the same through the user's
+ * saved layout (hooks/useCardLayout.ts), which the dashboard server keeps because the API cannot reach
+ * OpenEMR's own user settings. Without a layout (for example in a unit test) it starts open and keeps
+ * the choice only while the page is open.
  */
-import { useId, useState } from 'react';
+import { useContext, useId, useState } from 'react';
 import type { ReactNode } from 'react';
+import { CardLayoutContext } from '../hooks/useCardLayout';
 
 export function CardFrame({
     card,
@@ -25,8 +28,17 @@ export function CardFrame({
     patientId: string;
     children: ReactNode;
 }) {
-    // Whether the card is open; it starts open, and setOpen flips it when the title is clicked.
-    const [open, setOpen] = useState(true);
+    // The user's saved layout, when App provides one; otherwise this card's own open state.
+    const layout = useContext(CardLayoutContext);
+    const [localOpen, setLocalOpen] = useState(true);
+    const open = layout === undefined ? localOpen : layout.isOpen(card);
+    const toggle = () => {
+        if (layout === undefined) {
+            setLocalOpen(!open);
+        } else {
+            layout.setOpen(card, !open);
+        }
+    };
     // A page-unique id so the title can say which box it opens and closes (for screen readers).
     const bodyId = useId();
     return (
@@ -45,7 +57,7 @@ export function CardFrame({
                         className="btn btn-link p-0 text-left font-weight-bolder"
                         aria-expanded={open}
                         aria-controls={bodyId}
-                        onClick={() => setOpen(!open)}
+                        onClick={toggle}
                     >
                         {title}
                         {/* A small arrow showing whether the card is open; screen readers skip it. */}

@@ -35,7 +35,7 @@ ssh "$DEPLOY_SSH" "mkdir -p $DEPLOY_DIR/src $DEPLOY_DIR/names-key && test -f $DE
 # that no longer exist here. The compose file is copied separately, next to the source folder.
 rsync -az --delete \
     --exclude node_modules --exclude dist --exclude test-results --exclude playwright-report \
-    --exclude .env --exclude '.env.*' --exclude certs --exclude tests --exclude deploy \
+    --exclude .env --exclude '.env.*' --exclude certs --exclude tests --exclude deploy --exclude data \
     ./ "$DEPLOY_SSH:$DEPLOY_DIR/src/"
 scp -q deploy/docker-compose.yml "$DEPLOY_SSH:$DEPLOY_DIR/docker-compose.yml"
 

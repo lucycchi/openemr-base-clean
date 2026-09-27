@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AllergiesCard } from '../../../web/src/cards/AllergiesCard';
 import { CardFrame } from '../../../web/src/cards/CardFrame';
+import { CardLayoutContext } from '../../../web/src/hooks/useCardLayout';
 import { CareTeamCard } from '../../../web/src/cards/CareTeamCard';
 import { EncounterHistoryCard } from '../../../web/src/cards/EncounterHistoryCard';
 import { MedicationsCard } from '../../../web/src/cards/MedicationsCard';
@@ -60,6 +61,34 @@ describe('CardFrame', () => {
             </CardFrame>,
         );
         expect(container.querySelector('[data-card="allergies"]')?.hasAttribute('data-patient-id')).toBe(false);
+    });
+
+    it("starts collapsed when the user's saved layout has the card collapsed", () => {
+        render(
+            <CardLayoutContext value={{ isOpen: (card) => card !== 'allergies', setOpen: vi.fn() }}>
+                <CardFrame card="allergies" title="Allergies" state="ready" patientId="p1">
+                    <p>body</p>
+                </CardFrame>
+            </CardLayoutContext>,
+        );
+        const toggle = screen.getByRole('button', { name: 'Allergies' });
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+        expect(
+            document.getElementById(toggle.getAttribute('aria-controls') ?? 'missing')?.classList.contains('show'),
+        ).toBe(false);
+    });
+
+    it("saves the user's choice through the layout when the title is clicked", () => {
+        const setOpen = vi.fn();
+        render(
+            <CardLayoutContext value={{ isOpen: () => true, setOpen }}>
+                <CardFrame card="medications" title="Medications" state="ready" patientId="p1">
+                    <p>body</p>
+                </CardFrame>
+            </CardLayoutContext>,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Medications' }));
+        expect(setOpen).toHaveBeenCalledWith('medications', false);
     });
 
     const loading = { status: 'loading' } as const;

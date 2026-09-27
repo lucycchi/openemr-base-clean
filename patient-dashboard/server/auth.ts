@@ -15,6 +15,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import { userIdFromToken } from './idToken';
 import type { OAuthClient } from './oauth';
 import { SessionLimitError, tokensFrom } from './session';
 import type { SessionStore } from './session';
@@ -29,6 +30,8 @@ export interface AuthDeps {
     now: () => number;
     /** True when the app is served over HTTPS; adds the Secure attribute to the session cookie. */
     secureCookie: boolean;
+    /** The dashboard's OpenEMR client id: the login's ID token must be addressed to it. */
+    clientId: string;
 }
 
 /**
@@ -41,7 +44,7 @@ function setSessionCookie(c: Context, id: string, secure: boolean): void {
 
 /** Login, callback, logout and session status. Tokens stay in the session store. */
 export function authRoutes(deps: AuthDeps): Hono {
-    const { store, oauth, now, secureCookie } = deps;
+    const { store, oauth, now, secureCookie, clientId } = deps;
     const routes = new Hono();
 
     /**
@@ -105,10 +108,16 @@ export function authRoutes(deps: AuthDeps): Hono {
             return c.text('Login could not be completed. Start again from the dashboard.', 400);
         }
         let tokens;
+        let userId;
         // If OpenEMR refuses the code or does not answer, log only the status number (never the tokens)
         // and answer 502 (OpenEMR did not answer properly).
         try {
-            tokens = tokensFrom(await oauth.exchangeCode(code, pending.codeVerifier), now());
+            const response = await oauth.exchangeCode(code, pending.codeVerifier);
+            tokens = tokensFrom(response, now());
+            // Who signed in, so their card layout can be remembered (cardSettings.ts). Not needed to log in.
+            // OpenEMR grants `openid` but sends no ID token, so its access token (a JWT naming the user
+            // the same way) stands in when there is none.
+            userId = userIdFromToken(response.id_token ?? response.access_token, clientId, now());
         } catch (error) {
             console.error('token exchange failed', { status: (error as { status?: number }).status });
             return c.text('Login failed at OpenEMR. Try again.', 502);
@@ -117,6 +126,11 @@ export function authRoutes(deps: AuthDeps): Hono {
         store.delete(session.id);
         const signedIn = store.create();
         signedIn.tokens = tokens;
+        if (userId !== undefined) {
+            signedIn.userId = userId;
+        } else {
+            console.warn('login did not name the user; card layout will not be remembered');
+        }
         setSessionCookie(c, signedIn.id, secureCookie);
         return c.redirect('/', 302);
     });

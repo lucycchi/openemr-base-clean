@@ -17,6 +17,8 @@ RUN npm run build
 # Fixed settings: production mode, listen on all addresses inside the container, on port 5180.
 ENV NODE_ENV=production BFF_HOST=0.0.0.0 BFF_PORT=5180
 # Run as the ordinary "node" user rather than the all-powerful root user.
+# The folder for each user's saved card layout (server/cardSettings.ts); deploy mounts a volume here.
+RUN mkdir -p /app/data && chown node:node /app/data
 USER node
 EXPOSE 5180
 # Every 30 seconds Docker asks the server's /healthz address; if it stops answering, the container is

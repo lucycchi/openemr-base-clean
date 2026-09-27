@@ -15,6 +15,8 @@ export interface TokenResponse {
     /** How many seconds the access token lasts. */
     expires_in: number;
     scope?: string;
+    /** The OpenID Connect ID token naming the user (sent because the dashboard asks for `openid`). */
+    id_token?: string;
 }
 
 /** The OpenEMR OAuth2 operations the BFF needs. Injected so tests never touch the network. */

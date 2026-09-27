@@ -10,6 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { serve } from '@hono/node-server';
 import { createApp } from './app';
+import { FileCardSettingsStore } from './cardSettings';
 import { loadAppConfig } from './appConfig';
 import { loadConfig } from './config';
 import { createOAuthClient } from './oauth';
@@ -51,7 +52,7 @@ const systemToken = createSystemTokenSource({
 const app = createApp({
     staticRoot: 'dist/web',
     appConfig,
-    auth: { store, oauth, now, secureCookie: config.secureCookie },
+    auth: { store, oauth, now, secureCookie: config.secureCookie, clientId: config.clientId },
     fhir: { store, oauth, now, fhirBase: `${config.oemrBase}/apis/default/fhir` },
     listDates: {
         store,
@@ -61,6 +62,12 @@ const app = createApp({
         fhirBase: `${config.oemrBase}/apis/default/fhir`,
     },
     displayNames: { store, oauth, now, fhirBase: `${config.oemrBase}/apis/default/fhir`, systemToken },
+    // Each user's collapsed cards, kept in a file so they survive restarts (a Docker volume on the droplet).
+    cardSettings: {
+        store,
+        now,
+        settings: FileCardSettingsStore.load(process.env.CARD_SETTINGS_FILE ?? 'data/card-settings.json'),
+    },
 });
 
 // Start listening on the configured address and port, and log one line once ready.

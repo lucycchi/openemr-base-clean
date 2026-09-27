@@ -19,11 +19,18 @@ services:
       BFF_HOST: 0.0.0.0
       BFF_PORT: '5180'
       NAMES_KEY_FILE: /run/names/names-client-key.pem
-    # Make the droplet's names-key folder visible inside the container, read-only (ro).
+      CARD_SETTINGS_FILE: /app/data/card-settings.json
+    # Make the droplet's names-key folder visible inside the container, read-only (ro), and keep each
+    # user's saved card layout in a named volume so it survives rebuilds and redeploys.
     volumes:
       - ./names-key:/run/names:ro
+      - card-settings:/app/data
     # Reachable only from the droplet itself (127.0.0.1), so the outside world must come in through Caddy.
     ports:
       - '127.0.0.1:5180:5180'
     # Memory cap, so the dashboard cannot starve OpenEMR on the shared droplet.
     mem_limit: 256m
+
+# Docker keeps this volume's contents between deploys; `docker compose down -v` would delete it.
+volumes:
+  card-settings:

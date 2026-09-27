@@ -25,6 +25,8 @@ import type { DisplayNamesDeps } from './displayNames';
 import { listDatesRoutes } from './listDates';
 import type { ListDatesDeps } from './listDates';
 import type { AppConfig } from './appConfig';
+import { cardSettingsRoutes } from './cardSettings';
+import type { CardSettingsDeps } from './cardSettings';
 
 /**
  * Everything createApp can be given. A "?" after a name means that part is optional: when it is left out,
@@ -43,6 +45,7 @@ export interface AppOptions {
     displayNames?: DisplayNamesDeps;
     /** Site settings for the SPA (hidden cards), served at /app-config. */
     appConfig?: AppConfig;
+    cardSettings?: CardSettingsDeps;
 }
 
 /**
@@ -75,6 +78,9 @@ export function createApp(options: AppOptions = {}): Hono {
     }
     if (options.listDates !== undefined) {
         app.route('/api/list-dates', listDatesRoutes(options.listDates));
+    }
+    if (options.cardSettings !== undefined) {
+        app.route('/api/card-settings', cardSettingsRoutes(options.cardSettings));
     }
 
     // Last of all, the page's own files. If no file matches the address, send index.html anyway, so a

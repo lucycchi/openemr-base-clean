@@ -32,6 +32,8 @@ export interface Session {
     lastSeenAt: number;
     pending?: PendingLogin;
     tokens?: Tokens;
+    /** The OpenEMR user's id from the login's ID token (idToken.ts), when OpenEMR sent one. */
+    userId?: string;
 }
 
 /** Refresh when the access token has less than this long left. */

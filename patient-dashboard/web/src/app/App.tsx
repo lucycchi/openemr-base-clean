@@ -27,6 +27,7 @@ import { useMedicationCards } from '../hooks/useMedicationCards';
 import { useProblemCard } from '../hooks/useProblemCard';
 import { useEncounters } from '../hooks/useEncounters';
 import { useIdleLogout } from '../hooks/useIdleLogout';
+import { CardLayoutContext, useCardLayout } from '../hooks/useCardLayout';
 import { usePatient } from '../hooks/usePatient';
 import { visibleCards } from './hiddenCards';
 import { parseSiteConfig } from './siteConfig';
@@ -232,6 +233,9 @@ export function App() {
 
     // Sign out after the site's idle timeout, as OpenEMR's tab frame does (Opus review 4).
     // Until the site settings arrive, 7200 seconds (two hours) is used.
+    // Which cards this user keeps collapsed, remembered between visits (hooks/useCardLayout.ts).
+    const cardLayout = useCardLayout(auth === 'signed-in');
+
     const idleTimeoutSeconds = config !== undefined && config !== 'error' ? config.idleTimeoutSeconds : 7200;
     useIdleLogout(auth === 'signed-in', idleTimeoutSeconds, () => void logOut('idle'));
 
@@ -297,9 +301,16 @@ export function App() {
                     )}
                     {/* `key={patientId}` makes React throw away the old patient's view and build a fresh one
                         when the patient changes, so nothing from the previous patient carries over. */}
-                    {patientId !== undefined && config !== undefined && config !== 'error' && (
-                        <PatientView key={patientId} client={client} patientId={patientId} config={config} />
-                    )}
+                    {/* The patient view waits for the saved card layout too, so a card the user keeps
+                        collapsed never flashes open first. CardLayoutContext hands the layout to every card. */}
+                    {patientId !== undefined &&
+                        config !== undefined &&
+                        config !== 'error' &&
+                        cardLayout !== 'loading' && (
+                            <CardLayoutContext value={cardLayout}>
+                                <PatientView key={patientId} client={client} patientId={patientId} config={config} />
+                            </CardLayoutContext>
+                        )}
                 </>
             )}
         </main>

@@ -53,3 +53,50 @@ test('a card title collapses the card and opens it again', async ({ page }) => {
     await card.getByRole('button', { name: 'Allergies' }).click();
     await expect(firstAllergy).toBeVisible();
 });
+
+// The old card saves its collapsed state per user (allergy_ps_expand in OpenEMR's user settings), so it
+// stays collapsed on the next visit and for every patient. The dashboard server keeps the same choice.
+test('a collapsed card stays collapsed after a reload, for another patient and after signing in again, until it is opened', async ({
+    page,
+}) => {
+    const toggle = page.locator('[data-card="medications"]').getByRole('button', { name: 'Medications' });
+    const firstMedication = page.locator('[data-card="medications"] [data-item="medication"]').first();
+    // Start from an open card, whatever an earlier failed run left behind.
+    if ((await toggle.getAttribute('aria-expanded')) === 'false') {
+        await toggle.click();
+    }
+    await expect(firstMedication).toBeVisible();
+
+    const saved = page.waitForResponse(
+        (res) => res.url().endsWith('/api/card-settings') && res.request().method() === 'PUT',
+    );
+    await toggle.click();
+    expect((await saved).status()).toBe(200);
+    await expect(firstMedication).toBeHidden();
+
+    await page.reload();
+    await expect(page.locator('[data-card="medications"]')).toHaveAttribute('data-state', 'ready');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(firstMedication).toBeHidden();
+
+    await page.goto(`/patient/${fixture('TP-TYPICAL').fhirId}`);
+    await expect(page.locator('[data-card="medications"]')).toHaveAttribute('data-state', 'ready');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    // A new visit: sign out and back in. The choice belongs to the user, not to the old session.
+    await page.getByRole('button', { name: 'Log out' }).click();
+    await logInThroughOpenEmr(page);
+    await page.goto(`/patient/${fixture('TP-TYPICAL').fhirId}`);
+    await expect(page.locator('[data-card="medications"]')).toHaveAttribute('data-state', 'ready');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    const reopened = page.waitForResponse(
+        (res) => res.url().endsWith('/api/card-settings') && res.request().method() === 'PUT',
+    );
+    await toggle.click();
+    await reopened;
+    await page.reload();
+    await expect(page.locator('[data-card="medications"]')).toHaveAttribute('data-state', 'ready');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(firstMedication).toBeVisible();
+});

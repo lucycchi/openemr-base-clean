@@ -7,3 +7,4 @@ tests
 .env.*
 certs
 deploy
+data
