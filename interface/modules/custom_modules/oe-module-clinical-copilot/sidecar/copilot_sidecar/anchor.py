@@ -454,17 +454,7 @@ def anchor_text(parsed: ParsedDocument, text: str, page_hint: int | None = None,
     tokens = [t for t in norm(text).split(" ") if t]
     if not tokens:
         return None, None, None
-    pages = [p for p in parsed.pages if page_hint is None or p.number == page_hint] or parsed.pages
-    hits: list[tuple[Page, Row, list[Word]]] = []
-    for page in pages:
-        for row in page.rows:
-            # Slide a window the width of the phrase along the row's words and
-            # accept the first position where every word matches (fuzzily).
-            ws = sorted(row.words, key=lambda w: w.x0)
-            for start in range(len(ws) - len(tokens) + 1):
-                if all(words_match(ws[start + i].text, tok) for i, tok in enumerate(tokens)):
-                    hits.append((page, row, ws[start : start + len(tokens)]))
-                    break
+    hits = _phrase_hits(parsed, tokens, page_hint)
     if not hits:
         # Dates: try every printed form (once; no recursion past this level).
         # A phrase that parses as a date is re-searched under each other
@@ -480,6 +470,78 @@ def anchor_text(parsed: ParsedDocument, text: str, page_hint: int | None = None,
         return None, None, None
     page, row, words = hits[0]
     return _bbox(page, words), _bbox(page, row.words), str(page.number)
+
+
+def _phrase_in_row(row: Row, tokens: list[str]) -> list[Word] | None:
+    """The row's words that spell the phrase, or None. Slides a window the
+    width of the phrase along the row's words and accepts the first position
+    where every word matches (fuzzily)."""
+    ws = sorted(row.words, key=lambda w: w.x0)
+    for start in range(len(ws) - len(tokens) + 1):
+        if all(words_match(ws[start + i].text, tok) for i, tok in enumerate(tokens)):
+            return ws[start : start + len(tokens)]
+    return None
+
+
+def _phrase_hits(parsed: ParsedDocument, tokens: list[str], page_hint: int | None) -> list[tuple[Page, Row, list[Word]]]:
+    """Every row holding the phrase, top of the earliest searched page first.
+    The hinted page is searched alone; a hint naming no page searches all."""
+    pages = [p for p in parsed.pages if page_hint is None or p.number == page_hint] or parsed.pages
+    hits: list[tuple[Page, Row, list[Word]]] = []
+    for page in pages:
+        for row in page.rows:
+            words = _phrase_in_row(row, tokens)
+            if words is not None:
+                hits.append((page, row, words))
+    return hits
+
+
+def _squash(text: str) -> str:
+    """A phrase with its spacing and the punctuation around each word
+    removed, for comparing details: OCR joins "81 mg" into "81mg" and keeps
+    the colon in "father:"."""
+    return "".join(re.sub(r"^\W+|\W+$", "", w) for w in norm(text).split(" "))
+
+
+def _detail_in_row(row: Row, detail: str) -> bool:
+    """True when a run of consecutive words in the row spells the detail,
+    ignoring spacing and edge punctuation. Whole words only, so "5 mg" is
+    not found inside "25 mg". A detail with a digit in it must match
+    exactly (after the OCR fold): one edit would let "10 mg" pass for
+    "18 mg". Other details allow one edit when longer than three
+    characters, as words_match does."""
+    target = _squash(detail)
+    if not target:
+        return True
+    ws = [_squash(w.text) for w in sorted(row.words, key=lambda w: w.x0)]
+    fuzzy = len(target) > 3 and not any(c.isdigit() for c in target)
+    for start in range(len(ws)):
+        run = ""
+        for w in ws[start:]:
+            run += w
+            if run == target or run.translate(OCR_FOLD) == target.translate(OCR_FOLD) or (fuzzy and levenshtein(run, target) <= 1):
+                return True
+            if len(run) > len(target) + 1:
+                break
+    return False
+
+
+def anchor_entry(parsed: ParsedDocument, text: str, details: list[str | None], page_hint: int | None) -> tuple[BBox | None, BBox | None, str | None]:
+    """Anchor one intake list entry: its main phrase (medication name,
+    allergy substance, family-history condition) and every detail the model
+    proposed with it (dose, frequency, reaction, relative) must all appear in
+    one row. The citation only points at the main phrase, so a detail the
+    page does not show would otherwise ride on a verified citation and read
+    as fact; instead the whole entry is left unverified and the clinician is
+    sent to the original. Of the rows holding the main phrase, the first one
+    that also holds every detail wins."""
+    tokens = [t for t in norm(text).split(" ") if t]
+    if not tokens:
+        return None, None, None
+    for page, row, words in _phrase_hits(parsed, tokens, page_hint):
+        if all(_detail_in_row(row, d) for d in details if d and d.strip()):
+            return _bbox(page, words), _bbox(page, row.words), str(page.number)
+    return None, None, None
 
 
 # ---- Build contract objects from proposals --------------------------------
@@ -579,9 +641,11 @@ def _cited(document_id: int, pointer: str, parsed: ParsedDocument, value: str | 
 def build_intake_form(document_id: int, parsed: ParsedDocument, proposal: IntakeFormProposal) -> tuple[IntakeForm | None, str | None]:
     """Builds the IntakeForm. Nothing is required, so this never returns a
     failure: a form with blank fields is a valid (mostly empty) extraction.
-    One phrase per entry is anchored: the medication name, the allergy
-    substance, the family-history condition. Dose, frequency, reaction and
-    relative are carried as proposed."""
+    Each entry's citation points at one phrase: the medication name, the
+    allergy substance, the family-history condition. It is anchored only
+    when the dose, frequency, reaction or relative proposed with it is
+    printed in that same row too (anchor_entry); otherwise the entry is kept
+    but unverified."""
     form_date = parse_date(proposal.form_date)
     fd_cit = None
     if form_date is not None:
@@ -593,17 +657,17 @@ def build_intake_form(document_id: int, parsed: ParsedDocument, proposal: Intake
     for i, m in enumerate(proposal.medications):
         if not m.name.strip():
             continue
-        b, rb, p = anchor_text(parsed, m.name, m.page)
+        b, rb, p = anchor_entry(parsed, m.name, [m.dose, m.frequency], m.page)
         meds.append(IntakeMedication(name=m.name.strip(), dose=m.dose, frequency=m.frequency, citation=_citation(document_id, f"/medications/{i}/name", m.name.strip(), b, rb, p)))
     for i, a in enumerate(proposal.allergies):
         if not a.substance.strip():
             continue
-        b, rb, p = anchor_text(parsed, a.substance, a.page)
+        b, rb, p = anchor_entry(parsed, a.substance, [a.reaction], a.page)
         allergies.append(IntakeAllergy(substance=a.substance.strip(), reaction=a.reaction, citation=_citation(document_id, f"/allergies/{i}/substance", a.substance.strip(), b, rb, p)))
     for i, f in enumerate(proposal.family_history):
         if not f.relative.strip() or not f.condition.strip():
             continue
-        b, rb, p = anchor_text(parsed, f.condition, f.page)
+        b, rb, p = anchor_entry(parsed, f.condition, [f.relative], f.page)
         fam.append(IntakeFamilyHistory(relative=f.relative.strip(), condition=f.condition.strip(), citation=_citation(document_id, f"/family_history/{i}/condition", f.condition.strip(), b, rb, p)))
     # Demographics carry no page hint from the model and are searched on
     # every page.

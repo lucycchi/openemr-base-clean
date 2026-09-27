@@ -245,3 +245,57 @@ def test_intake_form_anchors_every_field(fixtures: Path) -> None:
         prop2 = prop.model_copy(update={"medications": [IntakeMedicationProposal(name="warfarin", dose=None, frequency=None, page=1)]})
         form2, _ = anchor.build_intake_form(1, parsed, prop2)
         assert form2 is not None and not form2.medications[0].citation.anchored
+        # Every proposed detail was printed beside its entry, so the true
+        # details (not just the names) are what anchored above.
+        assert [(m.dose, m.frequency) for m in form.medications] == [(m["dose"], m["frequency"]) for m in truth["medications"]]
+
+
+# Pins the detail rule: the citation points at the medication name, the
+# allergy substance or the family-history condition, so a dose, frequency,
+# reaction or relative the form does not print beside it must leave the
+# entry unverified. A failure means an invented dose (or a reaction or
+# relative the patient never wrote) would reach the clinician on a verified
+# citation, read as what the patient reported.
+@pytest.mark.parametrize("name", ["intake-full", "intake-full-scan"])
+def test_intake_detail_not_on_the_form_leaves_the_entry_unverified(fixtures: Path, name: str) -> None:
+    from copilot_sidecar.schemas import IntakeAllergyProposal, IntakeFamilyHistoryProposal, IntakeFormProposal, IntakeMedicationProposal
+
+    generate_fixtures.intake_full(fixtures)
+    parsed = parse.parse_pdf((fixtures / f"{name}.pdf").read_bytes())
+
+    def form_with(med: IntakeMedicationProposal, allergy: IntakeAllergyProposal, fam: IntakeFamilyHistoryProposal):
+        prop = IntakeFormProposal(
+            form_date=None, name=None, dob=None, sex=None, phone=None, chief_concern=None,
+            medications=[med], allergies=[allergy], family_history=[fam],
+        )
+        form, reason = anchor.build_intake_form(1, parsed, prop)
+        assert form is not None, reason
+        return form
+
+    # The form prints "metformin 500 mg twice daily", "penicillin - rash", "father: heart attack at 55".
+    wrong = form_with(
+        IntakeMedicationProposal(name="metformin", dose="1000 mg", frequency="twice daily", page=1),
+        IntakeAllergyProposal(substance="penicillin", reaction="anaphylaxis", page=1),
+        IntakeFamilyHistoryProposal(relative="mother", condition="heart attack at 55", page=1),
+    )
+    assert not wrong.medications[0].citation.anchored and wrong.medications[0].citation.bbox is None
+    assert not wrong.allergies[0].citation.anchored
+    assert not wrong.family_history[0].citation.anchored
+    # The entry and its detail are kept for the clinician to check, not dropped.
+    assert (wrong.medications[0].name, wrong.medications[0].dose) == ("metformin", "1000 mg")
+
+    # A frequency printed on another medication's row does not count for this one.
+    borrowed = form_with(
+        IntakeMedicationProposal(name="metformin", dose="500 mg", frequency="at bedtime", page=1),
+        IntakeAllergyProposal(substance="penicillin", reaction=None, page=1),
+        IntakeFamilyHistoryProposal(relative="father", condition="heart attack at 55", page=1),
+    )
+    assert not borrowed.medications[0].citation.anchored
+    # Numbers get no OCR edit tolerance: 18 mg is not the printed 10 mg, and
+    # 1 mg is not found inside the printed 81 mg.
+    for med in [IntakeMedicationProposal(name="lisinopril", dose="18 mg", frequency=None, page=1), IntakeMedicationProposal(name="aspirin", dose="1 mg", frequency=None, page=1)]:
+        f = form_with(med, IntakeAllergyProposal(substance="penicillin", reaction=None, page=1), IntakeFamilyHistoryProposal(relative="father", condition="heart attack at 55", page=1))
+        assert not f.medications[0].citation.anchored, med.dose
+    # No detail proposed: the entry anchors on its main phrase alone, as before.
+    assert borrowed.allergies[0].citation.anchored
+    assert borrowed.family_history[0].citation.anchored

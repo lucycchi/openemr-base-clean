@@ -213,8 +213,9 @@ class Demographics(Strict):
 
 
 class IntakeMedication(Strict):
-    """One medication line. Only the name is anchored (its citation);
-    dose and frequency are kept as the model proposed them."""
+    """One medication line. The citation points at the name; it is
+    anchored only when the proposed dose and frequency are printed in the
+    same row as well."""
     name: str = Field(min_length=1)
     dose: str | None
     frequency: str | None
@@ -222,16 +223,16 @@ class IntakeMedication(Strict):
 
 
 class IntakeAllergy(Strict):
-    """One allergy line. The substance is anchored; the reaction is kept as
-    proposed."""
+    """One allergy line. The citation points at the substance; it is
+    anchored only when the proposed reaction is in the same row as well."""
     substance: str = Field(min_length=1)
     reaction: str | None
     citation: Citation
 
 
 class IntakeFamilyHistory(Strict):
-    """One family history line. The condition is anchored; the relative is
-    kept as proposed."""
+    """One family history line. The citation points at the condition; it
+    is anchored only when the proposed relative is in the same row as well."""
     relative: str = Field(min_length=1)
     condition: str = Field(min_length=1)
     citation: Citation
