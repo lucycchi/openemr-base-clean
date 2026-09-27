@@ -73,6 +73,10 @@ function parseTokenResponse(body: unknown): TokenResponse {
     if (typeof record.scope === 'string') {
         response.scope = record.scope;
     }
+    // The OpenID Connect ID token, which names the user (read in auth.ts through idToken.ts).
+    if (typeof record.id_token === 'string') {
+        response.id_token = record.id_token;
+    }
     return response;
 }
 

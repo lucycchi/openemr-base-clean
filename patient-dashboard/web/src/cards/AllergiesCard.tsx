@@ -45,20 +45,29 @@ export function AllergiesCard({ patientId, state }: { patientId: string; state: 
                         <li
                             key={allergy.id}
                             data-item="allergy"
-                            // High-risk allergies get a highlight label for the tests and a yellow, bold style.
+                            // High-risk allergies get a highlight label for the tests; the yellow, bold style goes
+                            // on the risk in brackets only, as the old card highlights only the severity.
                             data-highlight={allergy.high ? '' : undefined}
-                            className={
-                                allergy.high
-                                    ? 'list-group-item p-0 pl-1 bg-warning font-weight-bold px-1'
-                                    : 'list-group-item p-0 pl-1'
-                            }
+                            className="list-group-item p-0 pl-1"
                             // Hover text: name, reaction and risk, with runs of spaces squeezed to one.
                             title={`${allergy.name} Reaction: ${allergy.reaction} - ${allergy.risk}`
                                 .replace(/\s+/g, ' ')
                                 .trim()}
                         >
                             {/* The name, followed by the risk in brackets when there is one. */}
-                            {allergy.risk === '' ? allergy.name : `${allergy.name} (${allergy.risk})`}
+                            {allergy.name}
+                            {allergy.risk !== '' && (
+                                <>
+                                    {' ('}
+                                    <span
+                                        data-field="risk"
+                                        className={allergy.high ? 'bg-warning font-weight-bold px-1' : undefined}
+                                    >
+                                        {allergy.risk}
+                                    </span>
+                                    {')'}
+                                </>
+                            )}
                         </li>
                     ))}
                 </ul>

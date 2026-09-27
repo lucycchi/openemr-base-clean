@@ -6,6 +6,26 @@ import { AllergiesCard } from '../../../web/src/cards/AllergiesCard';
 afterEach(cleanup);
 
 describe('AllergiesCard', () => {
+    it('highlights only the risk in brackets, as the old card highlights only the severity', () => {
+        const { container } = render(
+            <AllergiesCard
+                patientId="p1"
+                state={{
+                    status: 'ready',
+                    data: [
+                        { id: 'a', name: 'Penicillin', reaction: '', risk: 'Low risk', high: false },
+                        { id: 'c', name: 'Shellfish', reaction: '', risk: 'High risk', high: true },
+                    ],
+                }}
+            />,
+        );
+        const [low, high] = Array.from(container.querySelectorAll('[data-item="allergy"]'));
+        expect(high?.classList.contains('bg-warning')).toBe(false);
+        expect(high?.querySelector('[data-field="risk"]')?.className).toBe('bg-warning font-weight-bold px-1');
+        expect(high?.textContent).toBe('Shellfish (High risk)');
+        expect(low?.querySelector('[data-field="risk"]')?.className ?? '').toBe('');
+    });
+
     it('shows each allergy with its risk, a reaction tooltip, and highlights high risk', () => {
         const { container } = render(
             <AllergiesCard

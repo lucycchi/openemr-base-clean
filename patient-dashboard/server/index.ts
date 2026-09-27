@@ -52,7 +52,14 @@ const systemToken = createSystemTokenSource({
 const app = createApp({
     staticRoot: 'dist/web',
     appConfig,
-    auth: { store, oauth, now, secureCookie: config.secureCookie, clientId: config.clientId },
+    auth: {
+        store,
+        oauth,
+        now,
+        secureCookie: config.secureCookie,
+        clientId: config.clientId,
+        issuer: `${config.oemrBase}/oauth2/default`,
+    },
     fhir: { store, oauth, now, fhirBase: `${config.oemrBase}/apis/default/fhir` },
     listDates: {
         store,

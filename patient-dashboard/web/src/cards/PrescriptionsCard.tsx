@@ -33,30 +33,33 @@ export function PrescriptionsCard({ patientId, state }: { patientId: string; sta
                 <p data-empty>No active prescriptions</p>
             ) : (
                 // A table: <thead> is the header row, <tbody> holds one <tr> row per prescription.
-                <table className="table table-sm">
-                    <thead>
-                        <tr>
-                            <th scope="col">Drug</th>
-                            <th scope="col">Details</th>
-                            <th scope="col">Qty</th>
-                            <th scope="col">Refills</th>
-                            <th scope="col">Added</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {state.data.map((prescription) => (
-                            <tr key={prescription.id} data-item="prescription">
-                                <td data-field="drug">{prescription.name}</td>
-                                <td data-field="details">{prescription.dosage}</td>
-                                <td data-field="quantity">{prescription.quantity}</td>
-                                <td data-field="refills" className="text-muted">
-                                    Not available
-                                </td>
-                                <td data-field="added">{prescription.added}</td>
+                // Striped, and scrolls sideways on a narrow screen, as the old table (general_fragment.html) does.
+                <div className="table-responsive">
+                    <table className="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th scope="col">Drug</th>
+                                <th scope="col">Details</th>
+                                <th scope="col">Qty</th>
+                                <th scope="col">Refills</th>
+                                <th scope="col">Added</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {state.data.map((prescription) => (
+                                <tr key={prescription.id} data-item="prescription">
+                                    <td data-field="drug">{prescription.name}</td>
+                                    <td data-field="details">{prescription.dosage}</td>
+                                    <td data-field="quantity">{prescription.quantity}</td>
+                                    <td data-field="refills" className="text-muted">
+                                        Not available
+                                    </td>
+                                    <td data-field="added">{prescription.added}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </CardFrame>
     );

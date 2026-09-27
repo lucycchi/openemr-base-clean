@@ -37,6 +37,13 @@ describe('PrescriptionsCard', () => {
         expect(screen.queryByText(/marked as an order appear under Prescriptions/)).toBeNull();
     });
 
+    it('draws a striped table that scrolls sideways on a narrow screen, as the old one does', () => {
+        const { container } = render(
+            <PrescriptionsCard patientId="p1" state={{ status: 'ready', data: [{ ...omeprazole, dosage: '' }] }} />,
+        );
+        expect(container.querySelector('.table-responsive > table.table.table-sm.table-striped')).not.toBeNull();
+    });
+
     it('column label is "Added" (BM-023)', () => {
         render(<PrescriptionsCard patientId="p1" state={{ status: 'ready', data: [omeprazole] }} />);
 

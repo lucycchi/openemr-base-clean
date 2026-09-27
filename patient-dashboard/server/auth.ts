@@ -15,7 +15,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import { userIdFromToken } from './idToken';
+import { userIdFromIdToken } from './idToken';
 import type { OAuthClient } from './oauth';
 import { SessionLimitError, tokensFrom } from './session';
 import type { SessionStore } from './session';
@@ -32,6 +32,8 @@ export interface AuthDeps {
     secureCookie: boolean;
     /** The dashboard's OpenEMR client id: the login's ID token must be addressed to it. */
     clientId: string;
+    /** OpenEMR's OAuth issuer (its address plus /oauth2/default): the ID token must come from it. */
+    issuer: string;
 }
 
 /**
@@ -44,7 +46,7 @@ function setSessionCookie(c: Context, id: string, secure: boolean): void {
 
 /** Login, callback, logout and session status. Tokens stay in the session store. */
 export function authRoutes(deps: AuthDeps): Hono {
-    const { store, oauth, now, secureCookie, clientId } = deps;
+    const { store, oauth, now, secureCookie, clientId, issuer } = deps;
     const routes = new Hono();
 
     /**
@@ -114,10 +116,9 @@ export function authRoutes(deps: AuthDeps): Hono {
         try {
             const response = await oauth.exchangeCode(code, pending.codeVerifier);
             tokens = tokensFrom(response, now());
-            // Who signed in, so their card layout can be remembered (cardSettings.ts). Not needed to log in.
-            // OpenEMR grants `openid` but sends no ID token, so its access token (a JWT naming the user
-            // the same way) stands in when there is none.
-            userId = userIdFromToken(response.id_token ?? response.access_token, clientId, now());
+            // Who signed in, from the OpenID Connect ID token, so their card layout can be remembered
+            // (cardSettings.ts). Not needed to log in.
+            userId = userIdFromIdToken(response.id_token, { clientId, issuer }, now());
         } catch (error) {
             console.error('token exchange failed', { status: (error as { status?: number }).status });
             return c.text('Login failed at OpenEMR. Try again.', 502);

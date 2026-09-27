@@ -6,10 +6,12 @@ import type { OAuthClient, TokenResponse } from '../../../server/oauth';
 const SECRET_TOKEN = 'secret-access-token-value';
 const CLIENT_ID = 'dashboard-client';
 
+const ISSUER = 'https://oemr.test/oauth2/default';
+
 /** An ID token as OpenEMR sends it: `sub` is the user, `aud` the client (IdTokenSMARTResponse.php). */
 function idToken(sub: string, aud = CLIENT_ID): string {
     const part = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
-    return `${part({ alg: 'RS256' })}.${part({ sub, aud, exp: 1_000_000 / 1000 + 3600 })}.sig`;
+    return `${part({ alg: 'RS256' })}.${part({ sub, aud, iss: ISSUER, exp: 1_000_000 / 1000 + 3600 })}.sig`;
 }
 
 function fakeOAuth(idTokenValue?: string, accessToken = SECRET_TOKEN): OAuthClient & { exchanged: string[] } {
@@ -39,7 +41,7 @@ function setup(secureCookie = false, maxSessions?: number, idTokenValue?: string
         ...(maxSessions === undefined ? {} : { maxSessions }),
     });
     const oauth = fakeOAuth(idTokenValue, accessToken);
-    const app = createApp({ auth: { store, oauth, now, secureCookie, clientId: CLIENT_ID } });
+    const app = createApp({ auth: { store, oauth, now, secureCookie, clientId: CLIENT_ID, issuer: ISSUER } });
     return { app, store, oauth };
 }
 
@@ -131,15 +133,17 @@ describe('BFF login flow', () => {
         expect(await me.json()).toEqual({ authenticated: true });
     });
 
-    it('without an ID token, the user is read from the access token, which OpenEMR issues as a JWT', async () => {
-        // OpenEMR 8.2 grants `openid` but its token answer carries no id_token; its access token names the user.
+    it('without an ID token the user is not known, and the login still works', async () => {
+        // An access token is meant for the API, not as proof of who signed in, so it is not read.
         const { app, store } = setup(false, undefined, undefined, idToken('user-uuid-2'));
         const login = await startLogin(app);
         const callback = await app.request(`/auth/callback?code=c&state=${login.state}`, {
             headers: { cookie: login.cookie },
         });
+        expect(callback.status).toBe(302);
         const sessionId = setCookieOf(callback).split('=')[1] ?? '';
-        expect(store.get(sessionId)?.userId).toBe('user-uuid-2');
+        expect(store.get(sessionId)?.tokens).toBeDefined();
+        expect(store.get(sessionId)?.userId).toBeUndefined();
     });
 
     it('an ID token for another client does not name the user, but the login still works', async () => {
