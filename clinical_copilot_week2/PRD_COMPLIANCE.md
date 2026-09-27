@@ -2,7 +2,7 @@
 
 Date: 2026-09-27. Commit audited: `3131484` on branch `dashboard-migration`.
 All Week 2 work, and the fixes made after this audit, are on
-`dashboard-migration`, which the README names as the branch to use.
+`dashboard-migration`, GitLab's default branch and the one the README names.
 Judged against the code and the committed files, not against what the
 documents say about themselves. Written for the project owner and for a
 Gauntlet grader. Evidence links are relative to this folder.
@@ -89,7 +89,7 @@ trend chart, contextual retrieval) as stretch in section 5.
 
 | # | Requirement | Status | Why | Evidence |
 |---|---|---|---|---|
-| U1 | GitLab repository: Week 1 fork with Week 2 changes, setup guide, deployed link, clear environment-variable documentation. | **Passing** | The setup guide ("The core flow in five commands"), the deployed link with health and ready links, the variable table and `.env.example` are all present and agree with the code. The README's "Branch:" line names `dashboard-migration`, where all Week 2 work lives, and tells a reader that GitLab opens on `pdf_reader`, an older snapshot, so they check out the right branch first. | [README.md:35](../README.md#L35), [README.md:58](../README.md#L58), [README.md:76](../README.md#L76), [.env.example](../.env.example) |
+| U1 | GitLab repository: Week 1 fork with Week 2 changes, setup guide, deployed link, clear environment-variable documentation. | **Passing** | The setup guide ("The core flow in five commands"), the deployed link with health and ready links, the variable table and `.env.example` are all present and agree with the code. The README's "Branch:" line names `dashboard-migration`, where all Week 2 work lives, and it is GitLab's default branch, so a plain clone lands on it. | [README.md:35](../README.md#L35), [README.md:58](../README.md#L58), [README.md:76](../README.md#L76), [.env.example](../.env.example) |
 | U2 | `./W2_ARCHITECTURE.md` explaining ingestion flow, worker graph, RAG design, eval gate, risks and trade-offs. | **Passing** | All six topics are there as named sections, with the stack spike, the ingestion table, the agent table and diagram, retrieval, the gate and the risk table. Two stale lines: the status line still says Phase 11 is "deploy pending", and the last paragraph says sections are "still to come" that already exist. | [W2_ARCHITECTURE.md:91](../W2_ARCHITECTURE.md#L91), [W2_ARCHITECTURE.md:128](../W2_ARCHITECTURE.md#L128), [W2_ARCHITECTURE.md:145](../W2_ARCHITECTURE.md#L145), [W2_ARCHITECTURE.md:250](../W2_ARCHITECTURE.md#L250), [W2_ARCHITECTURE.md:266](../W2_ARCHITECTURE.md#L266), [W2_ARCHITECTURE.md:457](../W2_ARCHITECTURE.md#L457) |
 | U3 | `./KEY_METRICS.md` listing metrics, justifying them, explaining how they prove success. | **Passing** | See H2. | [KEY_METRICS.md:1](../KEY_METRICS.md#L1) |
 | U4 | Pydantic/Zod schemas for `lab_pdf` and `intake_form` including source citation fields and validation tests. | **Passing** | See R2. | [schemas.py:153](../interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/copilot_sidecar/schemas.py#L153), [test_contracts.py:87](../interface/modules/custom_modules/oe-module-clinical-copilot/sidecar/tests/test_contracts.py#L87) |
@@ -132,7 +132,7 @@ Every Partial and Not passing row, most dangerous first, each with one fix.
 - **X5: contextual retrieval was built but neither claimed nor measured.** W2_ARCHITECTURE.md now has a "Contextual retrieval improvements" section naming the four improvements with their code and eval cases; it states that none is measured against a plainer retriever.
 - **X1: the critic checked applicability only, and the architecture table claimed more.** The Verifier now carries the critic's rule half: an action suggestion without a guideline citation is stripped (case 73, VerifierTest); the architecture table and section describe both halves. The golden set is now 73 cases.
 - **U11: the social post was a draft only.** Posted on LinkedIn on 2026-09-27 with the eval count corrected to 72: https://www.linkedin.com/feed/update/urn:li:activity:7509849090348867584/
-- **U1, C1: the README sent graders to a `pdf_reader` that lacked seven Week 2 commits.** The README now names `dashboard-migration`, where all Week 2 work lives, and says GitLab opens on the older `pdf_reader`.
+- **U1, C1: the README sent graders to a `pdf_reader` that lacked seven Week 2 commits.** `dashboard-migration`, where all Week 2 work lives, is now GitLab's default branch and the README names it; nothing on `pdf_reader` is missing from it.
 
 ## Watch items (not counted as gaps)
 

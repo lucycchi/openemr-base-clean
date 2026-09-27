@@ -68,7 +68,7 @@ All of these are committed.
 Needs **docker** and **git 2.31 or later**; nothing else on the host.
 
 ```bash
-git clone -b dashboard-migration <this repo> && cd <clone>   # the Week 2 branch
+git clone <this repo> && cd <clone>             # default branch: dashboard-migration
 cd docker/development-easy
 docker compose up --detach --wait               # first boot builds images and installs dependencies (~5 min with cached images, longer without)
 cd ../..

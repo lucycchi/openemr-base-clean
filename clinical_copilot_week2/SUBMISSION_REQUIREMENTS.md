@@ -55,7 +55,7 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 
 | Part | Status | Evidence |
 |---|---|---|
-| Week 1 fork with Week 2 changes | Done | `ssh://git@labs.gauntletai.com:22022/lucychi/openemr.git`. The Week 2 code is on `dashboard-migration`, which the README names; GitLab still opens on `pdf_reader`, an older snapshot. |
+| Week 1 fork with Week 2 changes | Done | `ssh://git@labs.gauntletai.com:22022/lucychi/openemr.git`. GitLab's default branch is `dashboard-migration` (since 2026-09-27), so graders land on the Week 2 code; the README names it too. |
 | Up to date on GitLab | Done (S1) | `dashboard-migration` is pushed through the gate to GitLab and GitHub with each change (first on 2026-09-23 as `pdf_reader` at `b6f4c60`, GATE: PASS, 54/54). |
 | Setup guide | Done | Root [README.md](../README.md) "The core flow in five commands" and "Running the App Locally"; [docker/vps/README.md](../docker/vps/README.md) for deployment. |
 | Deployed link | Done | Root README, "Deployed:" line, with /health and /ready links. |
