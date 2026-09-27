@@ -14,6 +14,7 @@ import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { SESSION_COOKIE } from './auth';
 import type { OAuthClient } from './oauth';
+import { lookupPid, PatientLookupError } from './patientLookup';
 import { ensureFreshToken } from './session';
 import type { SessionStore } from './session';
 
@@ -161,12 +162,10 @@ export function listDatesRoutes(deps: ListDatesDeps): Hono {
          * first look the patient up by uuid to get the pid, then read the list and check every row has that pid.
          */
         const medicationRows = async (): Promise<ListRowDates[]> => {
-            const found = await get(`patient/${patient}`);
-            const data = isRecord(found) ? found.data : undefined;
-            const pid = isRecord(data) && data.uuid === patient && Number.isInteger(data.pid) ? data.pid : undefined;
-            if (typeof pid !== 'number') {
-                throw new Unavailable('patient lookup did not match');
-            }
+            // The patient's number, shared with the prescription writes (patientLookup.ts).
+            const pid = await lookupPid(apiBase, accessToken, patient, fetchImpl).catch((error: unknown) => {
+                throw new Unavailable(error instanceof PatientLookupError ? error.message : 'patient lookup failed');
+            });
             // The patient was found above, so a bodyless 404 here can only mean an empty list.
             const rows = await get(`patient/${pid}/medication`, true);
             if (!Array.isArray(rows)) {
