@@ -1,0 +1,19 @@
+# 20260927T-real-v2-cap12-50vu-extract  2026-09-27T05:34:01.066Z  http://localhost:8300
+scenario=extract vus=50 duration=2m0s
+requests=781 throughput=5.19 req/s  http_failed=23.82%  copilot_errors=12.08%
+briefs=0 (cache hit null%)  asks=0 (guideline hit null%)  model_calls=131  summary_unavailable=5.34%  verification_fail=null%
+extractions=174  extracted=71.26%  fully_verified=94.66%  confidence_p50=1
+busy_answers=156  gave_up_busy=7.47%  (auto retries per extraction: 3)
+sentences kept=0 stripped=0
+
+endpoint          n      p50     p95     p99     max  (ms)
+all_http          781    1489   23016   28832   30376
+login              50    7955   11044   11407   11511
+chart_open        182    1974   10141   12329   13533
+brief               0    null    null    null    null
+brief_cache_hit  null    null    null    null    null
+brief_cold       null    null    null    null    null
+ask                 0    null    null    null    null
+upload            174     330    2040    2964    3054
+extract           174    5447   28386   29645   30376
+extract_e2e       174   22002   69494   79379   90931

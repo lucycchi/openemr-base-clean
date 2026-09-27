@@ -376,5 +376,21 @@ only (temporary compose override), stamp `20260927T-real-v2-cap16`.
   throttling); 12, where the adaptive limit settled, is the candidate for
   a further run. Sidecar memory peaked at 313 MiB at either setting.
 
+### Run 4c: both limits at 12 (interrupted)
+
+Stamp `20260927T-real-v2-cap12-INTERRUPTED`. Another session's eval gate
+copied its uncommitted sidecar code into the container and restarted it
+at 1 min 45 s into the 2-minute run, so the k6 totals in the result files
+(71.3 % extracted, 12.1 % Co-Pilot errors) are not comparable. The
+sidecar's `/metrics`, sampled every 5 s
+(`20260927T-real-v2-cap12-INTERRUPTED-sidecar-metrics.jsonl`), are clean
+up to the restart and cover the whole load period: 136 admitted, 121
+extracted, 7 failed (`model_error` after throttling), 42 throttled; the
+adaptive limit fell from 12 to 2 twice and recovered in ~20 s each time.
+
+Against the same counters at 8 (130 extracted, 0 failed, 0 throttled)
+and 16 (148, 11, 71): OpenAI throttles this account somewhere between 8
+and 12 calls in flight. **The default stays at 8.** Not repeated.
+
 Not measured here: the droplet (2 vCPU, 768 MiB sidecar limit), and mixed
 load where PHP's briefing calls share the quota with extraction.

@@ -1,0 +1,99 @@
+{
+  "label": "20260927T-real-v2-cap12-50vu-extract",
+  "base_url": "http://localhost:8300",
+  "scenario": "extract",
+  "vus": 50,
+  "duration": "2m0s",
+  "finished_at": "2026-09-27T05:34:01.066Z",
+  "requests_total": 781,
+  "throughput_rps": 5.19,
+  "http_failed_pct": 23.82,
+  "copilot_request_error_pct": 12.08,
+  "summary_unavailable_pct": 5.34,
+  "verification_fail_pct": null,
+  "brief_cache_hit_pct": null,
+  "briefs": 0,
+  "asks": 0,
+  "guideline_hit_pct": null,
+  "extractions": 174,
+  "extract_ok_pct": 71.26,
+  "extract_verified_pct": 94.66,
+  "extract_confidence_p50": 1,
+  "extract_busy_answers": 156,
+  "extract_gave_up_busy_pct": 7.47,
+  "model_calls": 131,
+  "sentences_kept": 0,
+  "sentences_stripped": 0,
+  "latency_ms": {
+    "all_http": {
+      "count": 781,
+      "p50": 1489,
+      "p95": 23016,
+      "p99": 28832,
+      "max": 30376
+    },
+    "login": {
+      "count": 50,
+      "p50": 7955,
+      "p95": 11044,
+      "p99": 11407,
+      "max": 11511
+    },
+    "chart_open": {
+      "count": 182,
+      "p50": 1974,
+      "p95": 10141,
+      "p99": 12329,
+      "max": 13533
+    },
+    "brief": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "brief_cache_hit": {
+      "count": null,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "brief_cold": {
+      "count": null,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "ask": {
+      "count": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "upload": {
+      "count": 174,
+      "p50": 330,
+      "p95": 2040,
+      "p99": 2964,
+      "max": 3054
+    },
+    "extract": {
+      "count": 174,
+      "p50": 5447,
+      "p95": 28386,
+      "p99": 29645,
+      "max": 30376
+    },
+    "extract_e2e": {
+      "count": 174,
+      "p50": 22002,
+      "p95": 69494,
+      "p99": 79379,
+      "max": 90931
+    }
+  }
+}
