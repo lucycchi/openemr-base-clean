@@ -55,8 +55,8 @@ to), **Not done**, **User** (only the user can do it: record, post, schedule).
 
 | Part | Status | Evidence |
 |---|---|---|
-| Week 1 fork with Week 2 changes | Done | `ssh://git@labs.gauntletai.com:22022/lucychi/openemr.git`. GitLab's default branch is `pdf_reader`, so graders land on the Week 2 code. |
-| Up to date on GitLab | Done (S1) | Pushed through the gate on 2026-09-23 21:00 CT (`gitlab/pdf_reader` at `b6f4c60`, GATE: PASS, 54/54). Later commits go out with the next push. |
+| Week 1 fork with Week 2 changes | Done | `ssh://git@labs.gauntletai.com:22022/lucychi/openemr.git`. The Week 2 code is on `dashboard-migration`, which the README names; GitLab still opens on `pdf_reader`, an older snapshot. |
+| Up to date on GitLab | Done (S1) | `dashboard-migration` is pushed through the gate to GitLab and GitHub with each change (first on 2026-09-23 as `pdf_reader` at `b6f4c60`, GATE: PASS, 54/54). |
 | Setup guide | Done | Root [README.md](../README.md) "The core flow in five commands" and "Running the App Locally"; [docker/vps/README.md](../docker/vps/README.md) for deployment. |
 | Deployed link | Done | Root README, "Deployed:" line, with /health and /ready links. |
 | Environment variables documented | Done (S3) | Fixed 2026-09-23. Before:  The README table is close, but [.env.example](../.env.example) is missing `OPENAI_MODEL`, `COPILOT_SIDECAR_URL`, `COPILOT_PREWARM_ENABLED`, `COPILOT_EVAL_ENDPOINTS` and the two price overrides; it lists `LANGFUSE_BASE_URL` where the README lists `LANGFUSE_HOST` (the code reads both, `LANGFUSE_HOST` first, `Config.php:51`); the deploy-only keys (`DIGITALOCEAN_*`, `GITLAB_*`) have no explanation. → **S3** |
@@ -197,7 +197,7 @@ submission too. The S8 brief doubles as preparation.
 | Part | Status | Evidence |
 |---|---|---|
 | Week 1 vs Week 2 separated | Done | Root README side-by-side table and separate doc folders. |
-| Which branch | Done (S3) | README "Branch:" line names `pdf_reader`. |
+| Which branch | Done (S3) | README "Branch:" line names `dashboard-migration`. |
 | Which env vars | Done (S3) | See row 1 above. |
 | Which service | Done | The README names the sidecar and the five-command flow brings it up. |
 | Counts current | Done (S3) | README says 73 cases (16 live); rechecked in the 2026-09-25 checkpoint. Re-check at S10. |

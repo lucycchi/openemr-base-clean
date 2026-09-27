@@ -12,7 +12,7 @@ set -euo pipefail
 DEPLOY_SSH=${DEPLOY_SSH:-do-openemr}
 DEPLOY_DOMAIN=${DEPLOY_DOMAIN:-146-190-139-37.sslip.io}
 DEPLOY_DIR=${DEPLOY_DIR:-'~/openemr'}
-DEPLOY_BRANCH=${DEPLOY_BRANCH:-pdf_reader}
+DEPLOY_BRANCH=${DEPLOY_BRANCH:-dashboard-migration}
 GITLAB_REMOTE=${GITLAB_REMOTE:-gitlab}
 MODULE_DIR=interface/modules/custom_modules/oe-module-clinical-copilot
 push=1

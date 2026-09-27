@@ -18,7 +18,7 @@ was built as one: the `eval-gate` job in [.gitlab-ci.yml](.gitlab-ci.yml) runs
 [tests/evals/ci-gate.sh](tests/evals/ci-gate.sh), which brings up a throwaway
 OpenEMR stack from the commit under test and runs the same gate against it, on
 a project runner on the DigitalOcean droplet (shell executor, tag
-`copilot-eval`). `pdf_reader` is protected and "Pipelines must succeed" is on.
+`copilot-eval`). "Pipelines must succeed" is on for the project, so a merge request cannot merge while its `eval-gate` job fails. The Week 2 code is on `dashboard-migration`; the 2026-09-24 evidence below was recorded on `pdf_reader`, its predecessor.
 
 One wrinkle on this GitLab instance: a student's personal account cannot create
 pipelines (a push creates none; `POST /pipeline` returns 403 even for the
@@ -68,7 +68,7 @@ All of these are committed.
 Needs **docker** and **git 2.31 or later**; nothing else on the host.
 
 ```bash
-git clone <this repo> && cd <clone>             # default branch: pdf_reader
+git clone -b dashboard-migration <this repo> && cd <clone>   # the Week 2 branch
 cd docker/development-easy
 docker compose up --detach --wait               # first boot builds images and installs dependencies (~5 min with cached images, longer without)
 cd ../..

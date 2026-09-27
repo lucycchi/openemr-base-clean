@@ -23,7 +23,7 @@
 # cannot (403), but a project access token's bot user can. Pipelines are started
 # with that token (GITLAB_CI_BOT_TOKEN in .env), e.g.
 #   curl -X POST -H "PRIVATE-TOKEN: $GITLAB_CI_BOT_TOKEN" \
-#     https://labs.gauntletai.com/api/v4/projects/1993/pipeline?ref=pdf_reader
+#     https://labs.gauntletai.com/api/v4/projects/1993/pipeline?ref=dashboard-migration
 #
 # Deploys are not a pipeline job: they run from a workstation with
 # docker/vps/deploy.sh (see docker/vps/README.md), which rebuilds the sidecar

@@ -24,7 +24,7 @@
 # then an ordinary unified diff (git apply skips the header).
 #
 # Usage (from the worktree created by
-#   openemr-cmd worktree add mutants -b --base <pdf_reader sha> --start):
+#   openemr-cmd worktree add mutants -b --base <dashboard-migration sha> --start):
 #   tests/evals/mutants/run.sh               run the matrix, record the run
 #   tests/evals/mutants/run.sh --only M13a   one patch, nothing recorded
 #   tests/evals/mutants/run.sh --check-stale report whether the last recorded

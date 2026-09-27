@@ -32,7 +32,7 @@ care physicians.
 | Docs | [clinical_copilot_week1/](clinical_copilot_week1/README.md) | [clinical_copilot_week2/](clinical_copilot_week2/README.md), starting with [W2_ARCHITECTURE.md](W2_ARCHITECTURE.md) |
 | Evals | 15 cases | 73 cases (16 live) behind a push-blocking gate ([tests/evals/](tests/evals/README.md), summary in [EVAL_DATASET.md](clinical_copilot_week2/EVAL_DATASET.md)) |
 
-**Branch:** `pdf_reader` (GitLab's default branch) holds Week 1 and Week 2; everything below assumes it.
+**Branch:** `dashboard-migration` holds Week 1, Week 2 and the patient dashboard port; everything below assumes it. GitLab opens on `pdf_reader`, an older snapshot, so check out `dashboard-migration` first (`git clone -b dashboard-migration <repo>`).
 
 **Deployed:** https://146-190-139-37.sslip.io (login `admin`; demo data). Health: [/health](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/health.php) · [/ready](https://146-190-139-37.sslip.io/interface/modules/custom_modules/oe-module-clinical-copilot/public/ready.php). Patients with an uploaded lab PDF to try the click-to-source highlight on: [clinical_copilot_week2/README.md](clinical_copilot_week2/README.md#seeing-click-to-source-on-the-deployed-instance)
 
