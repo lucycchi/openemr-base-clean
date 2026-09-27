@@ -36,7 +36,13 @@ const keepAll = (resources: MedicationRequest[]): MedicationRequest[] => resourc
  * A list's end dates and outcomes from the standard API (BM-044, BM-047), tagged by patient like every
  * card hook. The answer is a lookup table from each list row's id to its dates, or a load error.
  */
-export function useListDates(client: ApiClient, patientId: string, list: ListName): LoadState<Map<string, ListDates>> {
+export function useListDates(
+    client: ApiClient,
+    patientId: string,
+    list: ListName,
+    // Bumped after a save (ARC-06), to ask again; the previous answer stays on screen meanwhile.
+    revision = 0,
+): LoadState<Map<string, ListDates>> {
     const [loaded, setLoaded] = useState<LoadedDates | undefined>(undefined);
 
     // After the page draws, ask the BFF for the list; reruns when the patient or list changes, and the
@@ -57,7 +63,7 @@ export function useListDates(client: ApiClient, patientId: string, list: ListNam
         return () => {
             cancelled = true;
         };
-    }, [client, patientId, list]);
+    }, [client, patientId, list, revision]);
 
     // Only hand back a result labelled with the patient on screen now; anything else reads as loading.
     return loaded !== undefined && loaded.forPatientId === patientId ? loaded.state : { status: 'loading' };
@@ -67,10 +73,16 @@ export function useListDates(client: ApiClient, patientId: string, list: ListNam
  * Both medication cards from one MedicationRequest search plus the list end dates. Both need the end
  * dates, so both show a load error if those fail rather than guess.
  */
-export function useMedicationCards(client: ApiClient, patientId: string, now: string): MedicationCards {
+export function useMedicationCards(
+    client: ApiClient,
+    patientId: string,
+    now: string,
+    // Bumped after a prescription is saved (ARC-06), so both cards ask again.
+    revision = 0,
+): MedicationCards {
     // Start both requests at once.
-    const requests = useBundleCard(client, patientId, 'MedicationRequest', keepAll);
-    const dates = useListDates(client, patientId, 'medication');
+    const requests = useBundleCard(client, patientId, 'MedicationRequest', keepAll, '', revision);
+    const dates = useListDates(client, patientId, 'medication', revision);
 
     // `useMemo` recalculates the two cards only when one of the inputs listed at the end changes,
     // rather than on every redraw.

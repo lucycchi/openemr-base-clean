@@ -77,4 +77,17 @@ describe('useMedicationCards', () => {
 
         await waitFor(() => expect(result.current.medications.status).toBe('error'));
     });
+    it('asks again when the revision changes, keeping the old list on screen until the new one arrives', async () => {
+        const paths: string[] = [];
+        const client = fakeClient({ ok: true, value: typicalDates }, paths);
+        const { result, rerender } = renderHook(
+            ({ revision }) => useMedicationCards(client, TYPICAL, '2026-09-26 12:00:00', revision),
+            { initialProps: { revision: 0 } },
+        );
+        await waitFor(() => expect(result.current.prescriptions.status).toBe('ready'));
+        const before = paths.length;
+        rerender({ revision: 1 });
+        expect(result.current.prescriptions.status).toBe('ready');
+        await waitFor(() => expect(paths.length).toBeGreaterThan(before));
+    });
 });

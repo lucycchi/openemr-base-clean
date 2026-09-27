@@ -59,6 +59,15 @@ export interface ApiClient {
     getJson(path: string): Promise<Result<unknown>>;
 }
 
+/**
+ * The page's one way to change something: send JSON to one of the BFF's write routes (ARC-06). The answer
+ * is the HTTP status and the parsed body; it never throws. Status 0 means the request never reached the
+ * server; a body that is not JSON comes back as undefined. Kept apart from ApiClient, which only reads.
+ */
+export interface WriteClient {
+    sendJson(method: 'POST', path: string, body: unknown): Promise<{ status: number; body: unknown }>;
+}
+
 const FHIR_JSON = 'application/fhir+json';
 
 /** What happens by default when the session has ended: go to the login page. */
@@ -68,7 +77,7 @@ function defaultRelogin(): void {
 }
 
 /** The only code in the SPA that calls fetch. All FHIR reads go through the BFF's /api/fhir proxy. */
-export function createApiClient(options: ApiClientOptions = {}): ApiClient {
+export function createApiClient(options: ApiClientOptions = {}): ApiClient & WriteClient {
     // `??` means "use the value on the left, or the default on the right if none was given".
     // `(input, init) => fetch(...)` is a short way of writing a small function (an "arrow function").
     const fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init));
@@ -145,6 +154,30 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
 
         getJson(path: string): Promise<Result<unknown>> {
             return getJsonAt(`${bffPath}/${path}`, 'application/json');
+        },
+
+        async sendJson(method: 'POST', path: string, body: unknown): Promise<{ status: number; body: unknown }> {
+            let res: Response;
+            try {
+                // The browser adds an Origin header to this same-site POST; the BFF checks it (writeGuard.ts).
+                res = await fetchImpl(`${bffPath}/${path}`, {
+                    method,
+                    credentials: 'same-origin',
+                    headers: { 'content-type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify(body),
+                });
+            } catch {
+                // The request never reached the server (offline, server down).
+                return { status: 0, body: undefined };
+            }
+            if (res.status === 401) {
+                // The session has ended: send the user to log in again, as reads do.
+                onUnauthenticated();
+                return { status: 401, body: undefined };
+            }
+            // `.catch(() => undefined)`: a body that is not JSON (an error page) reads as no body.
+            const parsed = (await res.json().catch(() => undefined)) as unknown;
+            return { status: res.status, body: parsed };
         },
     };
 }

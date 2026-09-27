@@ -20,6 +20,7 @@ export function CardFrame({
     state,
     patientId,
     children,
+    actions,
 }: {
     /** The label the tests use to find the card, for example "allergies". */
     card: string;
@@ -27,6 +28,8 @@ export function CardFrame({
     state: 'loading' | 'error' | 'ready';
     patientId: string;
     children: ReactNode;
+    /** Buttons or links at the right of the title bar, where the old card has its pencil (ARC-06). */
+    actions?: ReactNode;
 }) {
     // The user's saved layout, when App provides one; otherwise this card's own open state.
     const layout = useContext(CardLayoutContext);
@@ -65,6 +68,7 @@ export function CardFrame({
                             {open ? '▾' : '▸'}
                         </span>
                     </button>
+                    {actions}
                 </h3>
                 {/* Bootstrap's `collapse` class hides the box unless `show` is also present. */}
                 <div id={bodyId} className={open ? 'card-text collapse show' : 'card-text collapse'}>

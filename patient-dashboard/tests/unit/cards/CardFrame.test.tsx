@@ -91,6 +91,22 @@ describe('CardFrame', () => {
         expect(setOpen).toHaveBeenCalledWith('medications', false);
     });
 
+    it('draws actions at the right of the title bar, as the old card draws its pencil', () => {
+        render(
+            <CardFrame
+                card="prescriptions"
+                title="Prescriptions"
+                state="ready"
+                patientId="p1"
+                actions={<button type="button">Add</button>}
+            >
+                <p>body</p>
+            </CardFrame>,
+        );
+        const heading = screen.getByRole('heading', { name: /Prescriptions/ });
+        expect(heading.lastElementChild?.textContent).toBe('Add');
+    });
+
     const loading = { status: 'loading' } as const;
     const cards: [string, string, ReactElement][] = [
         ['allergies', 'Allergies', <AllergiesCard key="a" patientId="p1" state={loading} />],

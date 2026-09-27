@@ -138,3 +138,46 @@ describe('assertBelongsTo', () => {
         expect(result).toEqual({ ok: false, error: { kind: 'wrong-patient', expected: 'p1', found: '(none)' } });
     });
 });
+
+// Writes go to the BFF's JSON routes (ARC-06). sendJson never throws: the caller gets a status to act on.
+describe('sendJson', () => {
+    it('posts JSON with the session cookie and hands back the status and body', async () => {
+        const seen: { url: string; init?: RequestInit }[] = [];
+        const client = createApiClient({
+            fetchImpl: async (input, init) => {
+                seen.push({ url: String(input), ...(init === undefined ? {} : { init }) });
+                return jsonResponse({ uuid: 'u' }, 201);
+            },
+        });
+        expect(await client.sendJson('POST', 'prescriptions?patient=p1', { drug: 'x' })).toEqual({
+            status: 201,
+            body: { uuid: 'u' },
+        });
+        expect(seen[0]?.url).toBe('/api/prescriptions?patient=p1');
+        expect(seen[0]?.init?.method).toBe('POST');
+        expect(seen[0]?.init?.credentials).toBe('same-origin');
+        expect(new Headers(seen[0]?.init?.headers).get('content-type')).toBe('application/json');
+        expect(seen[0]?.init?.body).toBe('{"drug":"x"}');
+    });
+
+    it('sends the user to log in again on 401, as reads do', async () => {
+        let relogins = 0;
+        const client = createApiClient({
+            fetchImpl: async () => jsonResponse({}, 401),
+            onUnauthenticated: () => relogins++,
+        });
+        expect((await client.sendJson('POST', 'prescriptions', {})).status).toBe(401);
+        expect(relogins).toBe(1);
+    });
+
+    it('reports status 0 when the request never reached the server, and no body when it is not JSON', async () => {
+        const offline = createApiClient({
+            fetchImpl: async () => {
+                throw new TypeError('offline');
+            },
+        });
+        expect(await offline.sendJson('POST', 'prescriptions', {})).toEqual({ status: 0, body: undefined });
+        const html = createApiClient({ fetchImpl: async () => new Response('<html>', { status: 502 }) });
+        expect(await html.sendJson('POST', 'prescriptions', {})).toEqual({ status: 502, body: undefined });
+    });
+});

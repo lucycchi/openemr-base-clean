@@ -38,6 +38,9 @@ export function useBundleCard<R extends FhirResource, V>(
     resourceType: R['resourceType'],
     map: (resources: R[]) => V,
     extraQuery = '',
+    // Bumped after a save (ARC-06): a new number asks again. The previous answer stays on screen meanwhile,
+    // because it is still labelled with the patient on screen.
+    revision = 0,
 ): LoadState<V> {
     // The latest finished result, remembered between redraws; undefined until the first answer arrives.
     const [loaded, setLoaded] = useState<Loaded<V> | undefined>(undefined);
@@ -67,7 +70,7 @@ export function useBundleCard<R extends FhirResource, V>(
         return () => {
             cancelled = true;
         };
-    }, [client, patientId, resourceType, map, extraQuery]);
+    }, [client, patientId, resourceType, map, extraQuery, revision]);
 
     // Only hand back a result labelled with the patient on screen now; anything else reads as loading.
     return loaded !== undefined && loaded.forPatientId === patientId ? loaded.state : { status: 'loading' };
