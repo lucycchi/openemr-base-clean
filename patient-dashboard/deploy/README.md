@@ -44,6 +44,12 @@ and `DEPLOYED_URL` for another site.
     }
     ```
 
+## Saved card layouts
+
+Each user's collapsed cards are kept in `/app/data/card-settings.json` inside the container, on the named
+volume `patient-dashboard_card-settings` (see `docker-compose.yml`). Redeploys keep it; only
+`docker compose down -v` or `docker volume rm` would delete it. It holds user ids and card names, no patient data.
+
 ## Demo data
 
 The synthetic test patients were seeded on the droplet with:

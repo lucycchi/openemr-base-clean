@@ -42,3 +42,20 @@ test('TP-DECEASED shows its death date on the droplet', async ({ page }) => {
     await expect(page.locator('[data-card="header"]')).toContainText('Deceased (2025-11-02)');
     await expect(page.locator('[data-card="header"]')).toContainText('Age at death: 93');
 });
+
+test('the droplet recognises the user and saves their card layout to its volume', async ({ page }) => {
+    await logInThroughOpenEmr(page, USER);
+    const read = await page.request.get('/api/card-settings');
+    expect(read.status()).toBe(200);
+    expect(read.headers()['content-type']).toContain('application/json');
+    const { collapsed } = (await read.json()) as { collapsed: string[] };
+    const wasCollapsed = collapsed.includes('encounter-history');
+
+    // Flip one card and flip it back, so the user's layout ends as it started.
+    for (const open of [wasCollapsed, !wasCollapsed]) {
+        const saved = await page.request.put('/api/card-settings', { data: { card: 'encounter-history', open } });
+        expect(saved.status()).toBe(200);
+    }
+    const after = (await (await page.request.get('/api/card-settings')).json()) as { collapsed: string[] };
+    expect(after.collapsed.includes('encounter-history')).toBe(wasCollapsed);
+});

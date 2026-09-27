@@ -14,7 +14,7 @@ Every requirement in the challenge is met:
 
 The first check found one gap: the page did not look like the old dashboard, and the header scrolled away. That is now fixed and deployed (see [Gap 1, closed](#gap-1-closed-the-look-and-the-persistent-header)).
 
-One thing remains for the hand-in. The grader is to be pointed at the `dashboard-migration` branch rather than `main`, but that branch has not been pushed to any remote yet, so it has to be pushed before the grader can see it (see [Hand-in](#hand-in-the-branch-must-be-pushed)).
+For the hand-in, the grader is to be pointed at the `dashboard-migration` branch rather than `main`. It is on GitLab and GitHub, and later commits need pushing too (see [Hand-in](#hand-in-the-branch-must-be-pushed)).
 
 ## Requirements
 
@@ -29,7 +29,7 @@ One thing remains for the hand-in. The grader is to be pointed at the `dashboard
 | 7 | Allergies, Problem List, Medications, Prescriptions and Care Team, each with live data from the FHIR API | Met, with a documented deviation | All five cards read live data on every patient open. Three cards also read OpenEMR's Standard REST API, because FHIR reports those lists wrongly: FHIR drops some problems, and it marks future-ended medications and allergies as finished. Specifically, the Problem List is built from the standard problem list, Medications from the standard medication list plus FHIR dosage, and Allergies from FHIR plus end dates from the standard list. The defence explains each case (BM-044, BM-047, BM-051), and the challenge's own introduction allows "REST and FHIR". Risk: a grader who reads "from the FHIR API" literally may mark this down. |
 | 8 | One additional section of your choice | Met | Encounter history, from FHIR `Encounter`. Parity test: `tests/parity/encounters.spec.ts`. |
 | 9 | A working reimplementation | Met | Deployed at https://dashboard.146-190-139-37.sslip.io, redeployed with the new look; 4 of 4 deployed smoke tests pass. |
-| 10 | "Feature parity with the original is the standard" | Met | 9 of 9 parity tests pass against the running old dashboard. Every difference is an approved exception in `BUGS-MITIGATIONS.md`. Each card now collapses from its title, as the old one does; the defence notes that the choice is not saved across visits. The edit buttons are left out on purpose, because the port is read-only, and the defence says so. |
+| 10 | "Feature parity with the original is the standard" | Met | 9 of 9 parity tests pass against the running old dashboard. Every difference is an approved exception in `BUGS-MITIGATIONS.md`. Each card collapses from its title and, as on the old dashboard, stays collapsed for that user on later visits and other patients (added in `e4f31a4`; the BFF keeps the choice because the API cannot reach OpenEMR's user settings). The edit buttons are left out on purpose, because the port is read-only, and the defence says so. |
 | 11 | Explain why you chose your framework | Met | `PATIENT_DASHBOARD_MIGRATION.md`, "Why this framework" (four reasons, including the CORS spike that required a server in front of the API) |
 | 12 | Explain what you gained by moving away from PHP | Met | "What moving off PHP gained" |
 | 13 | Explain what tradeoffs came with that choice | Met | "Tradeoffs and costs", plus "Parity evidence" and "Not ported" |
@@ -39,15 +39,15 @@ One thing remains for the hand-in. The grader is to be pointed at the `dashboard
 
 All were run on 2026-09-26.
 
-| Check | Command | Result at `e02f4ed` |
+| Check | Command | Result at `e4f31a4` |
 |---|---|---|
-| Unit tests | `npm test` | 254 of 254 pass (39 files) |
+| Unit tests | `npm test` | 280 of 280 pass (42 files) |
 | Lint | `npm run lint` | clean |
 | Types | `npm run typecheck` | clean |
 | Formatting | `npx prettier --check .` | clean |
-| End-to-end, against the development-easy stack | `npx playwright test --project=e2e` | 29 of 29 pass |
+| End-to-end, against the development-easy stack | `npx playwright test --project=e2e` | 30 of 30 pass |
 | Parity, against the running old dashboard | `npx playwright test --project=parity` | 9 of 9 pass |
-| Deployed smoke tests, after redeploying | `npx playwright test -c playwright.deployed.config.ts` | 4 of 4 pass |
+| Deployed smoke tests, after redeploying | `npx playwright test -c playwright.deployed.config.ts` | 5 of 5 pass |
 | Backend untouched | files changed by the dashboard commits on `main..dashboard-migration` | only `patient-dashboard/`, `clinical_copilot_week2/`, the defence and `.gitignore` |
 | Visual comparison | screenshots of TP-TYPICAL and TP-LONG in both dashboards at 1400×900, and the new one at phone width | matches the old card look and layout; the header stays in view |
 
@@ -57,12 +57,12 @@ One full end-to-end and parity run had a single parity failure. The dev OpenEMR 
 
 I checked every number and every claim that can be tested against the code and the runs above. Two were wrong in the first check and are corrected:
 - **Review count.** The reviews were listed as "Codex three times, Fable twice, Opus once", which adds up to six, but the text says five. The second Codex run hit the usage limit before it produced any findings (`DEV-LOG.md`, slice 03-05-04). The doc now says "Codex twice".
-- **Results.** The results table now names `e02f4ed`, with 254 unit tests and 29 end-to-end tests.
+- **Results.** The results table now names `e4f31a4`, with 280 unit tests, 30 end-to-end tests and 5 deployed smoke tests.
 
 The defence now also states:
 - that the page keeps the old look
 - what the layout tests cover
-- that collapsed cards are not remembered across visits
+- that collapsed cards are remembered per user by the dashboard's server, separately from OpenEMR's own setting
 
 ## Gap 1, closed: the look and the persistent header
 
@@ -84,7 +84,7 @@ Nine new unit tests cover the frame, and check that every card is drawn in it.
 
 ## Hand-in: the branch must be pushed
 
-The grader is to be pointed at the `dashboard-migration` branch rather than `main`. That branch exists only in this local repo. Neither `gitlab` (`lucychi/openemr`), `gitlab-group` nor `origin` (GitHub) has it, so it has to be pushed to the remote the grader reads before the link works.
+The grader is to be pointed at the `dashboard-migration` branch rather than `main`. It was pushed to GitLab (`lucychi/openemr`) and GitHub (`lucycchi/openemr-base-clean`) at `a23c88f`. Later commits need another push before the grader sees them.
 
 ## Not required by the challenge, but worth knowing
 

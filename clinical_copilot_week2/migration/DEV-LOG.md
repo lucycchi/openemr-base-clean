@@ -2,6 +2,36 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-27 — Follow-up / Slice 05-04-02 — Remember collapsed cards between visits
+
+**Branch:** `dashboard-migration`
+**Status:** committed (e4f31a4)
+
+### Worked on
+- The old card saves each user's collapsed cards in OpenEMR's user settings (`allergy_ps_expand` and the like, through `library/ajax/user_settings.php`). That endpoint needs an OpenEMR browser session and the API has no equivalent, so the BFF keeps the choice itself.
+- Test first, all watched failing:
+  - `tests/unit/server/idToken.test.ts`, `cardSettings.test.ts` and new cases in `auth.test.ts`
+  - `tests/unit/hooks/useCardLayout.test.tsx` and new cases in `CardFrame.test.tsx`
+  - `tests/e2e/layout.spec.ts`: a collapsed card stays collapsed after a reload, for another patient and after signing out and in
+  - a deployed smoke test: the droplet recognises the user and saves a layout to its volume
+- `server/idToken.ts` reads the user (`sub`) from the login token, checking that it is addressed to this client and has not expired.
+- `server/cardSettings.ts`:
+  - a per-user JSON file, written atomically, capped at 10,000 users; a damaged file stops the server from starting
+  - `GET` and `PUT /api/card-settings`, with 401 when signed out, 404 when the user is unknown, 400 for an unknown card and 415 for a body that is not JSON
+- `web/src/hooks/useCardLayout.ts` loads the layout and saves each toggle. `CardFrame` reads it through `CardLayoutContext`, and `App` waits for it so a collapsed card never flashes open.
+- Deploy: `/app/data` owned by `node` in the Dockerfile, a named volume `card-settings` in compose, and `data/` excluded from git, the Docker build and the upload.
+
+### Decisions
+- Kept on the dashboard server, not in the browser, so the choice follows the user to any browser, as OpenEMR's setting does.
+- OpenEMR grants `openid` but sent no `id_token` on the dev stack, so the user comes from the access token, which OpenEMR issues as a JWT with the same claims (BM-061). An ID token is preferred whenever one arrives.
+
+### Tests
+- Unit: 280 of 280. End-to-end: 30 of 30. Parity: 9 of 9.
+- Deployed: 5 of 5. The droplet recognised the user, and `/app/data/card-settings.json` exists on the volume, owned by `node` with mode 600.
+
+### BUGS-MITIGATIONS.md updates
+- BM-061 added: OpenEMR sends no ID token despite granting `openid`; worked around in the new app.
+
 ## 2026-09-26 — Follow-up / Slice 05-04-01 — Keep the old dashboard's look
 
 **Branch:** `dashboard-migration`
