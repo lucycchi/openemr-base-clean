@@ -4,7 +4,8 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const SPIKE_DIR = new URL('./', import.meta.url);
-const ENV_FILE = new URL('.env.local', SPIKE_DIR);
+// SPIKE_ENV_FILE picks another gitignored env file, for example .env.droplet for the droplet's clients.
+const ENV_FILE = new URL(process.env.SPIKE_ENV_FILE ?? '.env.local', SPIKE_DIR);
 
 export const OEMR_BASE = process.env.OEMR_BASE ?? 'https://localhost:9300';
 export const FHIR_BASE = `${OEMR_BASE}/apis/default/fhir`;

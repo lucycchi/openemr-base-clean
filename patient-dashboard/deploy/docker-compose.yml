@@ -1,0 +1,18 @@
+# The patient dashboard on the droplet, as its own compose project in ~/patient-dashboard.
+# It is kept apart from ~/openemr, whose compose file every OpenEMR deploy overwrites.
+# Caddy serves it at https://dashboard.146-190-139-37.sslip.io (see README.md).
+services:
+  dashboard:
+    build: ./src
+    restart: always
+    # OEMR_BASE, the two clients, PUBLIC_URL and the site settings; never committed.
+    env_file: .env
+    environment:
+      BFF_HOST: 0.0.0.0
+      BFF_PORT: '5180'
+      NAMES_KEY_FILE: /run/names/names-client-key.pem
+    volumes:
+      - ./names-key:/run/names:ro
+    ports:
+      - '127.0.0.1:5180:5180'
+    mem_limit: 256m

@@ -2,6 +2,62 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Project complete: patient dashboard migration
+
+**Arcs:** 5 of 5 complete.
+**Deployed:** https://dashboard.146-190-139-37.sslip.io, next to OpenEMR on the droplet, with login working.
+
+### Definition of Done
+- All five arcs complete.
+- Parity: the full suite is green with approved exceptions only (9 of 9 on 94d82aa), and the results table is in `PATIENT_DASHBOARD_MIGRATION.md`.
+- Deployed next to OpenEMR on the droplet with login working: 4 of 4 smoke tests against the droplet.
+- Every `fix in the new app` row in `BUGS-MITIGATIONS.md` is resolved.
+
+## 2026-09-26 — Arc 05 complete: Deploy, defence and demo
+
+**Slices:** 3 (05-01-01, 05-02-01, 05-03-01). **BM rows resolved:** none new; BM-040 marked.
+
+### Retrospective
+- What worked: keeping the dashboard in its own compose project on the droplet, so OpenEMR deploys cannot overwrite or orphan it, and seeding by name (`seed-demo.php`) instead of by dev ids. Running that seed on dev first proved it was idempotent: no row count changed.
+- What didn't: the droplet's `site_addr_oath` was a leftover `https://localhost:9300`, so OAuth had never matched the public address; nothing had used OAuth there before. The droplet's MariaDB is strict where dev's is lax, so a NOT NULL column that dev silently filled with '' refused NULL.
+- Carried forward: the droplet has its own OAuth clients and key (`spike/.env.droplet`, `certs/names-client-key.droplet.pem`, both gitignored); rotate them if the droplet is rebuilt.
+
+## 2026-09-26 — Arc 05 / Story 05-01 / Slice 05-01-01 — Container and droplet deploy
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- Test first:
+  - `tests/deployed/deployed.spec.ts` (health, login, TP-TYPICAL with Donna Lee named for a non-admin, TP-DECEASED)
+  - run by `playwright.deployed.config.ts` (no local server, no dev certificate)
+  - all failed before the deploy, with a TLS error because no site existed
+- `patient-dashboard/Dockerfile` (node:24-alpine, built web app plus BFF, run as `node`) and `.dockerignore`.
+- `deploy/docker-compose.yml`: a separate compose project, bound to 127.0.0.1:5180, 256 MB limit, names key mounted read-only.
+- `deploy/deploy.sh`: copies the source, builds on the droplet, starts it, waits for `/healthz`.
+- `deploy/README.md`: the one-time steps and the routine deploy.
+- On the droplet, with the user's go-ahead (option 1, deploy and seed):
+  - three clients registered (`register-client.mjs` gained `SPIKE_ENV_FILE`, `APP_REDIRECT` and `NAMES_KEY_FILE` overrides) and enabled
+  - `.env` and names key installed
+  - Caddy site added (backup kept) and reloaded
+  - `site_addr_oath` corrected from `https://localhost:9300` to `https://146-190-139-37.sslip.io`; OpenEMR's own readiness stayed 200 throughout
+- Seeding:
+  - `seed.mjs` and `seed-encounters.mjs` gained `FIXTURE_IDS_FILE` and `ENCOUNTER_IDS_FILE` overrides and seeded the droplet
+  - new `fixtures/seed-demo.php` replays the manual steps, the parity-gap data, Donna Lee's NPI, TP-DECEASED's death date and `tp-physician`, by name
+- `tests/support/login.ts` follows the configured app host instead of `localhost:9300` and port 5180.
+
+### Decisions
+- The dashboard has its own host (a Caddy site), not a path under OpenEMR's, so the SPA and BFF keep their root paths and the session cookie is scoped to the dashboard alone.
+- The image keeps dev dependencies, because `tsx` runs the TypeScript server, as `npm start` does. Its measured footprint is about 44 MB of memory on an 8 GB droplet.
+
+### Tests
+- Deployed: 4 / 4 passing against https://dashboard.146-190-139-37.sslip.io.
+- Local: unit 245 / 245, Playwright 35 / 35, lint, typecheck and Prettier clean.
+- Seed: `seed-demo.php` run twice on the droplet (the second run changes nothing) and once on dev (row counts unchanged).
+
+### Open questions / follow-ups
+- None.
+
 ## 2026-09-26 — Arc 05 / Stories 05-02 and 05-03 / Slices 05-02-01 and 05-03-01 — Parity results and demo walkthrough
 
 **Branch:** `dashboard-migration`

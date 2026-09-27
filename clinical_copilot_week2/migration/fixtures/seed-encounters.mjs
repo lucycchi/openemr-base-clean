@@ -4,13 +4,14 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { readEnv, fetchText, OEMR_BASE } from '../spike/lib.mjs';
 
-const OUT = new URL('encounter-ids.json', import.meta.url);
+// ENCOUNTER_IDS_FILE and FIXTURE_IDS_FILE keep another site's ids apart (for example *.droplet.json).
+const OUT = new URL(process.env.ENCOUNTER_IDS_FILE ?? 'encounter-ids.json', import.meta.url);
 if (existsSync(OUT)) {
   console.error('encounter-ids.json already exists; the encounters are already seeded.');
   process.exit(1);
 }
 const env = readEnv();
-const patients = JSON.parse(readFileSync(new URL('fixture-ids.json', import.meta.url), 'utf8')).patients;
+const patients = JSON.parse(readFileSync(new URL(process.env.FIXTURE_IDS_FILE ?? 'fixture-ids.json', import.meta.url), 'utf8')).patients;
 
 // Facility 3 "Great Clinic"; provider 6 Donna Lee (NPI set for this audit), provider 5 Fred Stone (no NPI).
 // pc_catid: 5 Office Visit, 9 Established Patient, 10 New Patient, 13 Preventive Care Services.

@@ -2,7 +2,7 @@
 
 ## Summary
 
-I ported OpenEMR's patient dashboard (the identity header, the Allergies, Problem List, Medications, Prescriptions and Care Team cards, and an Encounter history section) from server-rendered PHP to a **React + TypeScript** single-page app. It reads OpenEMR's FHIR R4 API, plus OpenEMR's Standard REST API for the three lists FHIR reports wrongly (medications, allergies, problems). Login uses OAuth2/OpenID Connect through a small **Node backend-for-frontend (BFF)** that holds a confidential client, so tokens never reach the browser; a second, server-only client reads staff and facility names, which OpenEMR's API shows only to administrators. I chose this pairing because two working spikes showed that a browser cannot call OpenEMR's FHIR API directly, and React gives typed, testable card components that map one-to-one onto the old Twig cards. Every section passes a parity test against the running old dashboard (see Parity evidence).
+I ported OpenEMR's patient dashboard (the identity header, the Allergies, Problem List, Medications, Prescriptions and Care Team cards, and an Encounter history section) from server-rendered PHP to a **React + TypeScript** single-page app. It reads OpenEMR's FHIR R4 API, plus OpenEMR's Standard REST API for the three lists FHIR reports wrongly (medications, allergies, problems). Login uses OAuth2/OpenID Connect through a small **Node backend-for-frontend (BFF)** that holds a confidential client, so tokens never reach the browser; a second, server-only client reads staff and facility names, which OpenEMR's API shows only to administrators. I chose this pairing because two working spikes showed that a browser cannot call OpenEMR's FHIR API directly, and React gives typed, testable card components that map one-to-one onto the old Twig cards. Every section passes a parity test against the running old dashboard (see Parity evidence). It is deployed next to OpenEMR on the droplet at https://dashboard.146-190-139-37.sslip.io.
 
 Supporting evidence, all in `clinical_copilot_week2/migration/`:
 - `API-SPIKE.md`: auth spikes and exact API behaviour
@@ -119,6 +119,7 @@ Every parity test was also shown to fail when the rule it guards was broken on p
   - patient switching with no stale data, and every card rejecting another patient's data
   - the high-risk highlight, the read-only cards, and a non-admin physician
 - **Ledger:** every "fix in the new app" row in `BUGS-MITIGATIONS.md` is resolved.
+- **Deployed:** 4 of 4 smoke tests pass against the droplet: health, login, TP-TYPICAL with every card and a named provider for a non-admin physician, and TP-DECEASED's status.
 
 ## Not ported
 

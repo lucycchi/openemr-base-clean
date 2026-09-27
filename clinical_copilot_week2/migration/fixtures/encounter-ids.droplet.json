@@ -1,0 +1,212 @@
+{
+  "TP-TYPICAL": [
+    {
+      "date": "2026-08-14",
+      "reason": "Diabetes review",
+      "encounter": 1777,
+      "uuid": null
+    },
+    {
+      "date": "2026-03-02",
+      "reason": "Blood pressure check",
+      "encounter": 1778,
+      "uuid": null
+    },
+    {
+      "date": "2025-11-20",
+      "reason": "Annual physical",
+      "encounter": 1779,
+      "uuid": null
+    }
+  ],
+  "TP-HISTORY": [
+    {
+      "date": "2024-10-26",
+      "reason": "Cough and fever",
+      "encounter": 1780,
+      "uuid": null
+    }
+  ],
+  "TP-LONG": [
+    {
+      "date": "2026-09-01",
+      "reason": "Long-list visit 01",
+      "encounter": 1781,
+      "uuid": null
+    },
+    {
+      "date": "2026-08-02",
+      "reason": "Long-list visit 02",
+      "encounter": 1782,
+      "uuid": null
+    },
+    {
+      "date": "2026-07-03",
+      "reason": "Long-list visit 03",
+      "encounter": 1783,
+      "uuid": null
+    },
+    {
+      "date": "2026-06-03",
+      "reason": "Long-list visit 04",
+      "encounter": 1784,
+      "uuid": null
+    },
+    {
+      "date": "2026-05-04",
+      "reason": "Long-list visit 05",
+      "encounter": 1785,
+      "uuid": null
+    },
+    {
+      "date": "2026-04-04",
+      "reason": "Long-list visit 06",
+      "encounter": 1786,
+      "uuid": null
+    },
+    {
+      "date": "2026-03-05",
+      "reason": "Long-list visit 07",
+      "encounter": 1787,
+      "uuid": null
+    },
+    {
+      "date": "2026-02-03",
+      "reason": "Long-list visit 08",
+      "encounter": 1788,
+      "uuid": null
+    },
+    {
+      "date": "2026-01-04",
+      "reason": "Long-list visit 09",
+      "encounter": 1789,
+      "uuid": null
+    },
+    {
+      "date": "2025-12-05",
+      "reason": "Long-list visit 10",
+      "encounter": 1790,
+      "uuid": null
+    },
+    {
+      "date": "2025-11-05",
+      "reason": "Long-list visit 11",
+      "encounter": 1791,
+      "uuid": null
+    },
+    {
+      "date": "2025-10-06",
+      "reason": "Long-list visit 12",
+      "encounter": 1792,
+      "uuid": null
+    },
+    {
+      "date": "2025-09-06",
+      "reason": "Long-list visit 13",
+      "encounter": 1793,
+      "uuid": null
+    },
+    {
+      "date": "2025-08-07",
+      "reason": "Long-list visit 14",
+      "encounter": 1794,
+      "uuid": null
+    },
+    {
+      "date": "2025-07-08",
+      "reason": "Long-list visit 15",
+      "encounter": 1795,
+      "uuid": null
+    },
+    {
+      "date": "2025-06-08",
+      "reason": "Long-list visit 16",
+      "encounter": 1796,
+      "uuid": null
+    },
+    {
+      "date": "2025-05-09",
+      "reason": "Long-list visit 17",
+      "encounter": 1797,
+      "uuid": null
+    },
+    {
+      "date": "2025-04-09",
+      "reason": "Long-list visit 18",
+      "encounter": 1798,
+      "uuid": null
+    },
+    {
+      "date": "2025-03-10",
+      "reason": "Long-list visit 19",
+      "encounter": 1799,
+      "uuid": null
+    },
+    {
+      "date": "2025-02-08",
+      "reason": "Long-list visit 20",
+      "encounter": 1800,
+      "uuid": null
+    },
+    {
+      "date": "2025-01-09",
+      "reason": "Long-list visit 21",
+      "encounter": 1801,
+      "uuid": null
+    },
+    {
+      "date": "2024-12-10",
+      "reason": "Long-list visit 22",
+      "encounter": 1802,
+      "uuid": null
+    },
+    {
+      "date": "2024-11-10",
+      "reason": "Long-list visit 23",
+      "encounter": 1803,
+      "uuid": null
+    },
+    {
+      "date": "2024-10-11",
+      "reason": "Long-list visit 24",
+      "encounter": 1804,
+      "uuid": null
+    },
+    {
+      "date": "2024-09-11",
+      "reason": "Long-list visit 25",
+      "encounter": 1805,
+      "uuid": null
+    },
+    {
+      "date": "2024-08-12",
+      "reason": "Long-list visit 26",
+      "encounter": 1806,
+      "uuid": null
+    },
+    {
+      "date": "2024-07-13",
+      "reason": "Long-list visit 27",
+      "encounter": 1807,
+      "uuid": null
+    },
+    {
+      "date": "2024-06-13",
+      "reason": "Long-list visit 28",
+      "encounter": 1808,
+      "uuid": null
+    },
+    {
+      "date": "2024-05-14",
+      "reason": "Long-list visit 29",
+      "encounter": 1809,
+      "uuid": null
+    },
+    {
+      "date": "2024-04-14",
+      "reason": "Long-list visit 30",
+      "encounter": 1810,
+      "uuid": null
+    }
+  ]
+}

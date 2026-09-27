@@ -2,10 +2,12 @@
 // and writes fixture-ids.json. Records the API cannot create are listed in
 // TEST-PATIENTS.md under "Manual steps". Dev stack only; no real patient data.
 // Usage: NODE_EXTRA_CA_CERTS=../spike/dev-cert.pem node seed.mjs [--fresh]
+// Droplet: OEMR_BASE=https://146-190-139-37.sslip.io SPIKE_ENV_FILE=.env.droplet FIXTURE_IDS_FILE=fixture-ids.droplet.json node seed.mjs
 import { existsSync, writeFileSync } from 'node:fs';
 import { readEnv, fetchText, OEMR_BASE, FHIR_BASE } from '../spike/lib.mjs';
 
-const OUT = new URL('fixture-ids.json', import.meta.url);
+// FIXTURE_IDS_FILE keeps another site's ids apart, for example fixture-ids.droplet.json.
+const OUT = new URL(process.env.FIXTURE_IDS_FILE ?? 'fixture-ids.json', import.meta.url);
 const PARTIAL = new URL('fixture-ids.partial.json', import.meta.url);
 if (existsSync(OUT) && !process.argv.includes('--fresh')) {
   console.error('fixture-ids.json already exists. Use --fresh to create a new, separately named set.');

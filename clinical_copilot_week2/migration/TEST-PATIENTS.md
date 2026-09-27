@@ -82,3 +82,16 @@ The Standard API can't create these records. It ignores `reaction` and `severity
 3. The Drug field is a select2 search over the drug list, and the dev database's list is empty, so no drug can be chosen.
 
 The prescriptions were therefore saved through that same form in the dev stack's Selenium browser (`tmp/seed_rx.php`, gitignored), which added the drug as an option and defined `restoreSession` before calling the form's own `submitfun()`. Everything else is OpenEMR's normal save path.
+
+## On the droplet
+
+Seeded 2026-09-26 for the deployed dashboard (ARC-05), with new ids: TP-TYPICAL pid 31, TP-EMPTY 32, TP-NKA 33, TP-HISTORY 34, TP-DECEASED 35, TP-LONG 36, TP-ESCAPING 37 (`fixtures/fixture-ids.droplet.json`, visits in `fixtures/encounter-ids.droplet.json`). The same records were created as on the dev stack:
+- `fixtures/seed.mjs` and `fixtures/seed-encounters.mjs` through the Standard REST API (seed client in the gitignored `spike/.env.droplet`)
+- `fixtures/seed-demo.php` for everything the API cannot do. It finds patients by name and records by title, so it does not depend on the dev ids. It covers:
+  - the manual steps above
+  - the parity-gap data
+  - Donna Lee's test NPI
+  - the `tp-physician` user
+
+  It is safe to re-run; on the dev stack it changes nothing.
+

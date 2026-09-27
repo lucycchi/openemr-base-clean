@@ -1,0 +1,75 @@
+{
+  "generatedAt": "2026-09-27T01:19:03.888Z",
+  "patients": {
+    "TP-TYPICAL": {
+      "pid": 31,
+      "puuid": "a2d7ac6c-094f-4105-928d-5218310ec92f",
+      "fhirId": "a2d7ac6c-094f-4105-928d-5218310ec92f",
+      "created": {
+        "allergies": 2,
+        "problems": 3,
+        "medications": 3
+      }
+    },
+    "TP-EMPTY": {
+      "pid": 32,
+      "puuid": "a2d7ac6e-24dd-4dab-8299-07b0bfc71e0a",
+      "fhirId": "a2d7ac6e-24dd-4dab-8299-07b0bfc71e0a",
+      "created": {
+        "allergies": 0,
+        "problems": 0,
+        "medications": 0
+      }
+    },
+    "TP-NKA": {
+      "pid": 33,
+      "puuid": "a2d7ac6e-7b26-4931-a927-261fb6ef1fdd",
+      "fhirId": "a2d7ac6e-7b26-4931-a927-261fb6ef1fdd",
+      "created": {
+        "allergies": 0,
+        "problems": 0,
+        "medications": 0
+      }
+    },
+    "TP-HISTORY": {
+      "pid": 34,
+      "puuid": "a2d7ac6e-de3b-4ef7-a596-665c69214a14",
+      "fhirId": "a2d7ac6e-de3b-4ef7-a596-665c69214a14",
+      "created": {
+        "allergies": 1,
+        "problems": 1,
+        "medications": 1
+      }
+    },
+    "TP-DECEASED": {
+      "pid": 35,
+      "puuid": "a2d7ac6f-cd29-47d6-9d7f-564e8d7bbd92",
+      "fhirId": "a2d7ac6f-cd29-47d6-9d7f-564e8d7bbd92",
+      "created": {
+        "allergies": 0,
+        "problems": 0,
+        "medications": 0
+      }
+    },
+    "TP-LONG": {
+      "pid": 36,
+      "puuid": "a2d7ac70-306e-4464-8a22-9d370b5a88ad",
+      "fhirId": "a2d7ac70-306e-4464-8a22-9d370b5a88ad",
+      "created": {
+        "allergies": 25,
+        "problems": 60,
+        "medications": 60
+      }
+    },
+    "TP-ESCAPING": {
+      "pid": 37,
+      "puuid": "a2d7ac88-f458-4c44-9d6c-8fe8f4b2a76c",
+      "fhirId": "a2d7ac88-f458-4c44-9d6c-8fe8f4b2a76c",
+      "created": {
+        "allergies": 1,
+        "problems": 0,
+        "medications": 0
+      }
+    }
+  }
+}

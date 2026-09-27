@@ -23,7 +23,7 @@ The playbook for building the new patient dashboard chosen at Gate 3 (`MIGRATION
 This file is the single source of truth for **how** the port is built. The **what** lives in companion documents:
 
 - `modules/*.md`: what each section shows, field by field, with its FHIR mapping. The per-card spec is here.
-- `BUGS-MITIGATIONS.md`: 35 catalogued problems, each with a port action, plus the **Gate 2 decisions** section. Every `fix in the new app` row is assigned to a slice in an arc file.
+- `BUGS-MITIGATIONS.md`: every catalogued problem (BM-001 onwards), each with a port action, plus the **Gate 2 decisions** section. Every `fix in the new app` row is assigned to a slice in an arc file.
 - `API-SPIKE.md`: exact API behaviour, including the error bodies that the error-state tests match.
 - `TEST-PATIENTS.md` with `fixtures/fixture-ids.json` and `fixtures/encounter-ids.json`: the fixtures every test uses.
 - `arcs/ARC-0N-*.md`: stories, slices and acceptance tests.
@@ -31,7 +31,7 @@ This file is the single source of truth for **how** the port is built. The **wha
 
 **In scope:**
 - the patient header (name, MRN, DOB and age, sex, and a status derived from the death date)
-- the Allergies, Problem List, Medications, Prescriptions and Care Team cards, and the Encounter history section, all read-only and fed by the FHIR R4 API
+- the Allergies, Problem List, Medications, Prescriptions and Care Team cards, and the Encounter history section, all read-only and fed by the FHIR R4 API (with the Standard REST API exceptions recorded in the Gate 2 decisions)
 - login through the BFF
 
 **Out of scope:**

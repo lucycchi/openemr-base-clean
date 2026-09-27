@@ -1,6 +1,6 @@
 # ARC-05 — Deploy, defence and demo
 
-**Status:** in-progress (05-02-01 and 05-03-01 done; 05-01-01, the droplet deploy, waits on the user)
+**Status:** complete
 **Estimate:** 6 h
 
 ## Goal
@@ -18,14 +18,14 @@ New features. Any parity failure found here is fixed in the owning arc's slice, 
 **Acceptance:** the droplet serves the dashboard over HTTPS, a clinician can log in through the droplet's OpenEMR, and TP-TYPICAL-equivalent data renders.
 
 #### Slice 05-01-01 — Container and droplet deploy
-- [ ] Tests first: smoke test against the deployed URL, watched failing
-- [ ] Implement:
+- [x] Tests first: smoke test against the deployed URL, watched failing
+- [x] Implement:
   - a Dockerfile (one Node image serving the SPA and the BFF)
   - a compose service next to OpenEMR
   - a confidential client registered and enabled on the droplet
   - secrets in the droplet's env, never committed
   - memory checked against the 3.9 GB budget
-- [ ] Gates green; DEV-LOG, arc file updated
+- [x] Gates green; DEV-LOG, arc file updated
 **Acceptance tests:**
 - `tests/e2e/deployed.spec.ts :: droplet login reaches the dashboard shell`
 - `tests/e2e/deployed.spec.ts :: /healthz returns 200`
@@ -55,5 +55,5 @@ New features. Any parity failure found here is fixed in the owning arc's slice, 
 **Touches:** `clinical_copilot_week2/migration/`
 
 ## Definition of Done for this arc
-- [ ] All slices ticked; the project Definition of Done in `MIGRATION-SPEC.md` is met
-- [ ] DEV-LOG has an arc-completion entry
+- [x] All slices ticked; the project Definition of Done in `MIGRATION-SPEC.md` is met
+- [x] DEV-LOG has an arc-completion entry

@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 // Dev stack defaults for the development-easy OpenEMR (https://localhost:9300).
@@ -16,13 +16,15 @@ export async function logInThroughOpenEmr(
     await page.goto('/');
     await page.getByRole('link', { name: 'Log in with OpenEMR' }).click();
 
-    await page.waitForURL(/localhost:9300\/oauth2\//);
+    await page.waitForURL(/\/oauth2\//);
     await page.locator('input[name="username"]:visible').fill(credentials.user);
     await page.locator('input[name="password"]:visible').fill(credentials.pass);
     await page.getByRole('button', { name: /OpenEMR Login/ }).click();
 
     await page.locator('#authorize-btn').click();
 
-    await page.waitForURL((url) => url.port === '5180');
+    // Back on the app's own host (the dev BFF on :5180, or the deployed dashboard).
+    const appHost = new URL(String(test.info().project.use.baseURL)).host;
+    await page.waitForURL((url) => url.host === appHost);
     await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible();
 }
