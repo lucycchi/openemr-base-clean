@@ -69,6 +69,14 @@ const app = createApp({
         fhirBase: `${config.oemrBase}/apis/default/fhir`,
     },
     displayNames: { store, oauth, now, fhirBase: `${config.oemrBase}/apis/default/fhir`, systemToken },
+    // Adding, changing and discontinuing prescriptions (ARC-06), with the signed-in user's own token.
+    prescriptionWrites: {
+        store,
+        oauth,
+        now,
+        publicUrl: config.publicUrl,
+        apiBase: `${config.oemrBase}/apis/default/api`,
+    },
     // Each user's collapsed cards, kept in a file so they survive restarts (a Docker volume on the droplet).
     cardSettings: {
         store,

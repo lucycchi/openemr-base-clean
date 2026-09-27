@@ -26,6 +26,8 @@ import { listDatesRoutes } from './listDates';
 import type { ListDatesDeps } from './listDates';
 import type { AppConfig } from './appConfig';
 import { cardSettingsRoutes } from './cardSettings';
+import { prescriptionWritesRoutes } from './prescriptionWrites';
+import type { PrescriptionWritesDeps } from './prescriptionWrites';
 import type { CardSettingsDeps } from './cardSettings';
 
 /**
@@ -46,6 +48,7 @@ export interface AppOptions {
     /** Site settings for the SPA (hidden cards), served at /app-config. */
     appConfig?: AppConfig;
     cardSettings?: CardSettingsDeps;
+    prescriptionWrites?: PrescriptionWritesDeps;
 }
 
 /**
@@ -81,6 +84,9 @@ export function createApp(options: AppOptions = {}): Hono {
     }
     if (options.cardSettings !== undefined) {
         app.route('/api/card-settings', cardSettingsRoutes(options.cardSettings));
+    }
+    if (options.prescriptionWrites !== undefined) {
+        app.route('/api/prescriptions', prescriptionWritesRoutes(options.prescriptionWrites));
     }
 
     // Last of all, the page's own files. If no file matches the address, send index.html anyway, so a
