@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-27T06:42:15+00:00",
+    "ran_at": "2026-09-27T08:43:35+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -259,6 +259,21 @@
             "schema_valid": "pass",
             "citation_present": "pass",
             "factually_consistent": "pass"
+        },
+        "74-facts-document-lab-joins-its-chart-trend": {
+            "schema_valid": "pass",
+            "anchor_correct": "pass"
+        },
+        "75-anchor-medication-list": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass",
+            "factually_consistent": "pass"
+        },
+        "76-facts-medication-list-items-become-cited-facts": {
+            "schema_valid": "pass",
+            "citation_present": "pass",
+            "anchor_correct": "pass"
         }
     },
     "rates": {
