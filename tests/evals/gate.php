@@ -178,14 +178,19 @@ exit($failed ? 1 : 0);
 function gateSubset(string $label, array $verdicts, string $baselinePath, bool $update, bool $anyFlipFails): bool
 {
     $rates = rates($verdicts);
-    if ($update || !file_exists($baselinePath)) {
+    if ($update) {
+        // A new baseline is still held to the thresholds, so a regression cannot be blessed into it.
         $baseline = ['ran_at' => gmdate('c'), 'cases' => $verdicts, 'rates' => $rates];
         file_put_contents($baselinePath, json_encode($baseline, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
         printf("%s: baseline written to %s (%d cases)\n", $label, basename($baselinePath), count($verdicts));
-        if (!$update) {
-            echo "  (no baseline existed; this run is now the baseline and passes by definition)\n";
-        }
-        return true;
+        return meetsThresholds($label, $rates);
+    }
+    if (!file_exists($baselinePath)) {
+        // Both baselines are committed, so a missing one was deleted: refuse rather than
+        // adopt this run, or deleting the file would switch the regression check off.
+        printf("%s gate: baseline %s is missing; restore it or run --update-baseline\n", $label, basename($baselinePath));
+        meetsThresholds($label, $rates);
+        return false;
     }
     $baseline = jsonFile($baselinePath);
     // Rebuild the baseline's case => rubric => verdict map from the decoded JSON, narrowing every level.
@@ -228,6 +233,27 @@ function gateSubset(string $label, array $verdicts, string $baselinePath, bool $
         $verdict = $belowThreshold ? 'BELOW' : ($regression ? 'REGRESSED' : 'ok');
         $ok = $ok && !$belowThreshold && !$regression;
         printf("  %-22s %8s %8s %7d%% %10s  %s\n", $name, fmt($now), fmt($base), $threshold, $verdict, implode(', ', $regressed));
+    }
+    return $ok;
+}
+
+/**
+ * Checks this run's pass rates against the thresholds alone, with no baseline
+ * to compare against. Prints a table and returns true when every rubric that
+ * ran meets its threshold.
+ *
+ * @param array<string, float> $rates
+ */
+function meetsThresholds(string $label, array $rates): bool
+{
+    printf("%s thresholds:\n", $label);
+    printf("  %-22s %8s %8s %10s\n", 'rubric', 'now', 'thresh', 'verdict');
+    $ok = true;
+    foreach (THRESHOLDS as $name => $threshold) {
+        $now = $rates[$name] ?? null;
+        $below = $now !== null && $now < $threshold;
+        $ok = $ok && !$below;
+        printf("  %-22s %8s %7d%% %10s\n", $name, fmt($now), $threshold, $now === null ? 'n/a' : ($below ? 'BELOW' : 'ok'));
     }
     return $ok;
 }
