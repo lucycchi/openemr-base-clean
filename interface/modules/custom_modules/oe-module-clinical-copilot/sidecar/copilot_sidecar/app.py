@@ -45,11 +45,12 @@ import json
 import logging
 import os
 import shutil
+import threading
 import time
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ValidationError
 from starlette.concurrency import run_in_threadpool
 
@@ -69,25 +70,41 @@ log = logging.getLogger("copilot.app")
 app = FastAPI(title="clinical-copilot-sidecar", docs_url=None, redoc_url=None)
 
 
-@app.middleware("http")
-async def correlate(request: Request, call_next):
+class Correlate:
     """Binds the caller's X-Correlation-Id before anything else runs, so even a
     request rejected as malformed logs under the caller's id; /run rebinds to
     the body's id (the contract's authority) once the body has parsed.
 
-    A middleware wraps every request: this code runs first, then `call_next`
-    hands the request to the matching endpoint and returns its response.
-    bind_correlation_id stores the id in a context variable, a value that
-    follows this one request through the code without being passed as an
-    argument, so every log line it produces carries the id.
+    A middleware wraps every request: this code runs first, then hands the
+    request to the matching endpoint. bind_correlation_id stores the id in a
+    context variable, a value that follows this one request through the
+    code without being passed as an argument, so every log line it produces
+    carries the id.
 
     With the test-only eval endpoints enabled, X-Eval-Keyless: 1 marks a
     request from a deterministic eval case: model_key() then answers "" for
     it, so it never calls Cohere or OpenAI (keys.py). A deployed sidecar has
-    no eval endpoints and ignores the header."""
-    bind_correlation_id(request.headers.get("x-correlation-id", ""))
-    bind_keyless(os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1" and request.headers.get("x-eval-keyless") == "1")
-    return await call_next(request)
+    no eval endpoints and ignores the header.
+
+    Written as a plain ASGI middleware (a callable taking scope, receive,
+    send) rather than with @app.middleware("http"): Starlette implements
+    that decorator by wrapping the request's `receive` channel, and once the
+    body has been read the wrapped channel never reports the client
+    disconnecting, which /run needs to see (capacity.cancelled). This form
+    passes `receive` through untouched."""
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] == "http":
+            headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
+            bind_correlation_id(headers.get("x-correlation-id", ""))
+            bind_keyless(os.environ.get("COPILOT_EVAL_ENDPOINTS") == "1" and headers.get("x-eval-keyless") == "1")
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(Correlate)
 
 # ---- Idempotency cache ----------------------------------------------------
 # PHP may send the same run twice (a timed-out HTTP call that is retried, a
@@ -205,9 +222,22 @@ async def metrics() -> dict:
 # one extraction's length, the soonest a slot is likely to have freed up.
 OVERLOADED_RETRY_AFTER_S = 15
 
+# How often a running extraction checks whether its client is still there, and
+# the status logged for a run whose client left (nginx's convention; the client
+# never reads it).
+DISCONNECT_POLL_S = 0.5
+CLIENT_CLOSED_REQUEST = 499
+
+
+async def _watch_disconnect(request: Request, cancel: threading.Event) -> None:
+    """Returns (and sets `cancel`) once the client has disconnected."""
+    while not await request.is_disconnected():
+        await asyncio.sleep(DISCONNECT_POLL_S)
+    cancel.set()
+
 
 @app.post("/run")
-async def run(request: Request) -> JSONResponse:
+async def run(request: Request) -> Response:
     """The main endpoint: validate, consult the idempotency cache, run the
     graph off the event loop, cache and return the response. Every failure
     path answers in the run.error shape with a fixed code."""
@@ -244,67 +274,98 @@ async def run(request: Request) -> JSONResponse:
     # Admission (extract mode only; see capacity.py). A run that finds every
     # extraction slot busy waits its turn on the event loop, holding no
     # thread; if the line is full or the wait runs out it is answered 503
-    # "overloaded" at once, and PHP tells the user the file is stored and can
-    # be extracted again. An admitted run gets a deadline, measured from its
-    # arrival, that every model call inside it respects.
+    # "overloaded" at once, and PHP tells the user the file is stored (the
+    # panel retries on its own, a bounded number of times). An admitted run
+    # gets a deadline, measured from its arrival, that every model call inside
+    # it respects.
+    #
+    # A watcher polls for the client going away (PHP timing out, a closed
+    # connection). A waiting run then leaves the line; a running one has its
+    # cancel flag set and stops at the next page or retry (capacity.cancelled).
     extracting = req.mode == "extract"
     gate = capacity.gate
+    cancel = threading.Event()
+    watcher: asyncio.Future[None] | None = None
     if extracting:
-        try:
-            waited = await gate.acquire(capacity.limits().max_wait_s)
-        except capacity.Overloaded as exc:
-            capacity.metrics.inc(f"runs_rejected_{exc.reason}")
-            capacity.metrics.inc("runs_http_error")
-            log.warning("run rejected", extra={"mode": req.mode, "code": "overloaded", "reason": exc.reason, "active": gate.active, "waiting": gate.waiting, "ms": int((time.monotonic() - started) * 1000)})
-            response = _error(req.correlation_id, "overloaded", 503)
-            response.headers["Retry-After"] = str(OVERLOADED_RETRY_AFTER_S)
-            return response
-        capacity.metrics.inc("runs_admitted")
-        capacity.metrics.observe("queue_wait_ms", waited * 1000)
-        log.info("run admitted", extra={"mode": req.mode, "queue_ms": int(waited * 1000), "active": gate.active, "waiting": gate.waiting})
-        capacity.bind_deadline(started + capacity.limits().deadline_s)
-
-    # The graph is synchronous (model calls, OCR, retrieval). Running it on
-    # the thread pool keeps the event loop free, so concurrent runs overlap
-    # instead of queueing behind each other: the 2026-09-23 load baseline
-    # showed one blocked loop turning ten concurrent 12 s extractions into
-    # 60 s timeouts and ten 2.7 s retrievals into a 19 s follow-up p50.
-    # Each invocation carries its own state; the compiled graph is shared
-    # read-only. Context variables (the correlation id, the deadline)
-    # propagate to the worker thread.
-    #
-    # In plain words: the event loop is the one thread that takes turns
-    # serving every request. A plain function call from an `async def`
-    # handler would hold that thread for the whole graph run (many
-    # seconds), and every other request would wait. run_in_threadpool
-    # hands the call to a separate worker thread and `await` lets the
-    # loop serve others until that thread is done.
-    #
-    # A thread cannot be stopped from outside. If this request is cancelled
-    # (the server shutting down, say), `shield` lets the thread's work run
-    # on, and the extraction slot is released only when that work really
-    # ends, so the limit counts threads that exist, not requests still open.
-    active_started = time.monotonic()
-    work = asyncio.ensure_future(run_in_threadpool(graph.run, req.mode, req.correlation_id, req.facts_hash, req.question, req.documents, None, req.queries, req.patient, req.facts))
+        capacity.bind_cancel(cancel)
+        watcher = asyncio.ensure_future(_watch_disconnect(request, cancel))
     try:
-        state = await asyncio.shield(work)
-    except Exception as exc:  # never leak a traceback; the code is the message
-        log.error("run failed", extra={"mode": req.mode, "code": "internal", "exception_class": type(exc).__name__, "ms": int((time.monotonic() - started) * 1000)})
         if extracting:
-            capacity.metrics.inc("runs_http_error")
-        return _error(req.correlation_id, "internal", 500)
-    finally:
-        if extracting:
-            def _done(_: object) -> None:
-                gate.release()
-                capacity.metrics.observe("extract_active_ms", (time.monotonic() - active_started) * 1000)
+            admission = asyncio.ensure_future(gate.acquire(capacity.limits().max_wait_s))
+            await asyncio.wait({admission, watcher}, return_when=asyncio.FIRST_COMPLETED)  # type: ignore[arg-type]
+            if not admission.done():
+                # The client left while waiting: leave the line (acquire gives
+                # back a slot handed over in the same instant) and answer no one.
+                admission.cancel()
+                try:
+                    await admission
+                except (asyncio.CancelledError, capacity.Overloaded):
+                    pass
+                capacity.metrics.inc("runs_abandoned_by_client")
+                log.info("run abandoned", extra={"mode": req.mode, "reason": "client_gone_while_waiting", "ms": int((time.monotonic() - started) * 1000)})
+                return Response(status_code=CLIENT_CLOSED_REQUEST)
+            try:
+                waited = admission.result()
+            except capacity.Overloaded as exc:
+                capacity.metrics.inc(f"runs_rejected_{exc.reason}")
+                capacity.metrics.inc("runs_http_error")
+                log.warning("run rejected", extra={"mode": req.mode, "code": "overloaded", "reason": exc.reason, "active": gate.active, "waiting": gate.waiting, "ms": int((time.monotonic() - started) * 1000)})
+                response = _error(req.correlation_id, "overloaded", 503)
+                response.headers["Retry-After"] = str(OVERLOADED_RETRY_AFTER_S)
+                return response
+            capacity.metrics.inc("runs_admitted")
+            capacity.metrics.observe("queue_wait_ms", waited * 1000)
+            log.info("run admitted", extra={"mode": req.mode, "queue_ms": int(waited * 1000), "active": gate.active, "waiting": gate.waiting})
+            capacity.bind_deadline(started + capacity.limits().deadline_s)
 
-            if work.done():
-                _done(work)
-            else:
-                work.add_done_callback(_done)
-    if extracting:
-        capacity.metrics.inc("runs_http_ok")
+        # The graph is synchronous (model calls, OCR, retrieval). Running it on
+        # the thread pool keeps the event loop free, so concurrent runs overlap
+        # instead of queueing behind each other: the 2026-09-23 load baseline
+        # showed one blocked loop turning ten concurrent 12 s extractions into
+        # 60 s timeouts and ten 2.7 s retrievals into a 19 s follow-up p50.
+        # Each invocation carries its own state; the compiled graph is shared
+        # read-only. Context variables (the correlation id, the deadline, the
+        # cancel flag) propagate to the worker thread.
+        #
+        # In plain words: the event loop is the one thread that takes turns
+        # serving every request. A plain function call from an `async def`
+        # handler would hold that thread for the whole graph run (many
+        # seconds), and every other request would wait. run_in_threadpool
+        # hands the call to a separate worker thread and `await` lets the
+        # loop serve others until that thread is done.
+        #
+        # A thread cannot be stopped from outside. If this request is cancelled
+        # (the server shutting down, say), `shield` lets the thread's work run
+        # on, and the extraction slot is released only when that work really
+        # ends, so the limit counts threads that exist, not requests still open.
+        active_started = time.monotonic()
+        work = asyncio.ensure_future(run_in_threadpool(graph.run, req.mode, req.correlation_id, req.facts_hash, req.question, req.documents, None, req.queries, req.patient, req.facts))
+        try:
+            state = await asyncio.shield(work)
+        except Exception as exc:  # never leak a traceback; the code is the message
+            log.error("run failed", extra={"mode": req.mode, "code": "internal", "exception_class": type(exc).__name__, "ms": int((time.monotonic() - started) * 1000)})
+            if extracting:
+                capacity.metrics.inc("runs_http_error")
+            return _error(req.correlation_id, "internal", 500)
+        finally:
+            if extracting:
+                def _done(_: object) -> None:
+                    gate.release()
+                    capacity.metrics.observe("extract_active_ms", (time.monotonic() - active_started) * 1000)
+
+                if work.done():
+                    _done(work)
+                else:
+                    work.add_done_callback(_done)
+        if cancel.is_set():
+            capacity.metrics.inc("runs_abandoned_by_client")
+            log.info("run abandoned", extra={"mode": req.mode, "reason": "client_gone_while_running", "ms": int((time.monotonic() - started) * 1000)})
+            return Response(status_code=CLIENT_CLOSED_REQUEST)
+        if extracting:
+            capacity.metrics.inc("runs_http_ok")
+    finally:
+        if watcher is not None:
+            watcher.cancel()
     # Build the contract response from the graph's final state. by_alias=True
     # writes handoffs with the key "from" (the Python attribute is from_);
     # json.loads turns the text back into plain data for JSONResponse and

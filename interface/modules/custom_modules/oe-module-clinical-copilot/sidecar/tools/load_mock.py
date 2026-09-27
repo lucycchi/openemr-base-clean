@@ -126,14 +126,15 @@ def pct(values: list[float], p: float) -> int | None:
     return int(s[min(len(s) - 1, int(round(p / 100 * (len(s) - 1))))])
 
 
-async def user(client: httpx.AsyncClient, body_for, stop_at: float, think: float, results: list[dict]) -> None:
+async def user(client: httpx.AsyncClient, body_for, stop_at: float, think: float, results: list[dict], client_timeout: float) -> None:
     """One simulated user: extract a document, wait `think` seconds, repeat
-    until the run ends. The 60 s client timeout is PHP's SidecarClient::TIMEOUT_S."""
+    until the run ends. The default 60 s client timeout is PHP's
+    SidecarClient::TIMEOUT_S; a shorter one simulates clients that give up."""
     while time.monotonic() < stop_at:
         started = time.monotonic()
         rec: dict = {}
         try:
-            r = await client.post("/run", json=body_for(), timeout=60.0)
+            r = await client.post("/run", json=body_for(), timeout=client_timeout)
             rec["http"] = r.status_code
             payload = r.json()
             if r.status_code == 200:
@@ -163,7 +164,7 @@ async def prober(client: httpx.AsyncClient, stop_at: float, samples: list[float]
         await asyncio.sleep(0.25)
 
 
-async def load(base_url: str, users: int, seconds: float, think: float, pdf: bytes) -> tuple[list[dict], list[float], dict | None]:
+async def load(base_url: str, users: int, seconds: float, think: float, pdf: bytes, client_timeout: float) -> tuple[list[dict], list[float], dict | None]:
     b64 = base64.b64encode(pdf).decode()
 
     def body_for() -> dict:
@@ -176,8 +177,11 @@ async def load(base_url: str, users: int, seconds: float, think: float, pdf: byt
     limits = httpx.Limits(max_connections=users + 10, max_keepalive_connections=users + 10)
     async with httpx.AsyncClient(base_url=base_url, limits=limits) as client:
         stop_at = time.monotonic() + seconds
-        await asyncio.gather(prober(client, stop_at, health), *(user(client, body_for, stop_at, think, results) for _ in range(users)))
+        await asyncio.gather(prober(client, stop_at, health), *(user(client, body_for, stop_at, think, results, client_timeout) for _ in range(users)))
         metrics = None
+        # Let work abandoned by timed-out clients finish or stop, so the
+        # provider's call count below includes what it cost.
+        await asyncio.sleep(max(0.0, min(15.0, 60.0 - client_timeout)))
         r = await client.get("/metrics")
         if r.status_code == 200:
             metrics = r.json()
@@ -197,7 +201,7 @@ def summarise(label: str, results: list[dict], health: list[float], provider: Pr
     n200 = http.get("200", 0)
     return {
         "label": label,
-        "workload": {"users": args.users, "seconds": args.seconds, "think_s": args.think, "provider_rate_per_s": args.rate, "provider_burst": args.burst, "provider_latency_s": args.latency, "document": args.pdf},
+        "workload": {"users": args.users, "seconds": args.seconds, "think_s": args.think, "client_timeout_s": args.client_timeout, "provider_rate_per_s": args.rate, "provider_burst": args.burst, "provider_latency_s": args.latency, "document": args.pdf},
         "requests": n,
         "http": dict(sorted(http.items())),
         "http_200_pct": round(100 * n200 / n, 2) if n else None,
@@ -228,6 +232,7 @@ def main() -> int:
     ap.add_argument("--latency", type=float, default=2.0, help="seconds per accepted provider call")
     ap.add_argument("--pdf", default="/fixtures/lab-layout1.pdf")
     ap.add_argument("--reply", default="/fixtures/lab-layout1.model.json", help="the proposal JSON the fake returns for every page")
+    ap.add_argument("--client-timeout", type=float, default=60.0, help="seconds a user waits before giving up (PHP: 60)")
     ap.add_argument("--out", default=None, help="write the JSON summary here too")
     ap.add_argument("--env", action="append", default=[], help="KEY=VALUE passed to the sidecar (repeatable)")
     args = ap.parse_args()
@@ -253,7 +258,7 @@ def main() -> int:
                         break
                 except httpx.HTTPError:
                     time.sleep(0.1)
-            results, health, metrics = asyncio.run(load("http://127.0.0.1:18080", args.users, args.seconds, args.think, Path(args.pdf).read_bytes()))
+            results, health, metrics = asyncio.run(load("http://127.0.0.1:18080", args.users, args.seconds, args.think, Path(args.pdf).read_bytes(), args.client_timeout))
         finally:
             proc.terminate()
             proc.wait(timeout=30)

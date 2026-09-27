@@ -47,9 +47,12 @@ def fresh_capacity(monkeypatch):
     capacity.reset(limits())
     sleeps: list[float] = []
     monkeypatch.setattr(capacity, "sleep", sleeps.append)
+    monkeypatch.setattr(capacity.ProviderSlots, "cooldown_scale", 0.0)
     capacity.bind_deadline(None)
+    capacity.bind_cancel(None)
     yield sleeps
     capacity.bind_deadline(None)
+    capacity.bind_cancel(None)
     capacity.reset()
 
 
@@ -175,7 +178,7 @@ def test_run_holds_the_limit_refuses_the_overflow_and_keeps_health_responsive(mo
     assert all(r.json()["code"] == "overloaded" and r.headers["retry-after"] == "15" for r in refused)
     assert seen["peak"] == 2
     assert health.status_code == 200 and health_s < 1.0
-    assert during["now"] == {"active_extractions": 2, "waiting_extractions": 1, "provider_in_flight": 0}
+    assert during["now"] == {"active_extractions": 2, "waiting_extractions": 1, "extraction_slots": 2, "provider_in_flight": 0, "provider_limit": 2}
     assert after["runs"]["admitted"] == 3 and after["runs"]["rejected_queue_full"] == 2
     assert after["runs"]["http_ok"] == 3 and after["runs"]["http_error"] == 2
     assert after["now"]["active_extractions"] == 0
@@ -249,7 +252,9 @@ def test_throttled_calls_are_retried_a_bounded_number_of_times_honouring_retry_a
     assert len(fake.calls) == 3  # provider_attempts
     assert len(fresh_capacity) == 2 and all(3.0 <= s <= 3.6 for s in fresh_capacity)
     m = capacity.metrics.snapshot()["provider"]
-    assert m == {"calls": 3, "throttled": 3, "retries": 2, "gave_up": {"throttled": 1}}
+    # Three 429s inside one second shrink the limit once, not three times.
+    assert m == {"calls": 3, "throttled": 3, "retries": 2, "limit_decreases": 1, "cooldowns": 3, "gave_up": {"throttled": 1}}
+    assert capacity.provider_slots.current == 1  # 2 halved
 
 
 def test_without_retry_after_the_backoff_is_jittered_and_capped(fresh_capacity) -> None:
@@ -366,3 +371,192 @@ def test_metrics_keys_are_codes_never_free_text() -> None:
     bad["documents"]["failed"] = {"Jane Doe": 1}
     with pytest.raises(ValidationError):
         SidecarMetrics.model_validate(bad)
+
+
+# ---- The adaptive provider limit ------------------------------------------------
+
+
+def test_the_provider_limit_halves_on_throttling_and_grows_back_on_success() -> None:
+    slots = capacity.ProviderSlots(8)
+    slots.throttled(None)
+    assert slots.current == 4
+    slots.throttled(None)  # within the same second: one signal, no second halving
+    assert slots.current == 4
+    slots._last_decrease -= capacity.ProviderSlots.DECREASE_EVERY_S
+    slots.throttled(None)
+    assert slots.current == 2
+    for _ in range(40):
+        slots.succeeded()
+    assert slots.current == 8  # back to the configured maximum, never above it
+    assert slots.limit == 8.0
+
+
+def test_a_429_pauses_every_caller_for_the_retry_after(monkeypatch) -> None:
+    monkeypatch.setattr(capacity.ProviderSlots, "cooldown_scale", 1.0)
+    slots = capacity.ProviderSlots(8)
+    slots.throttled(0.3)
+    started = time.monotonic()
+    with slots.hold(5.0) as got:
+        waited = time.monotonic() - started
+    assert got and 0.25 <= waited < 1.5
+
+
+def test_the_admission_gate_follows_the_provider_limit() -> None:
+    async def scenario() -> None:
+        limit = {"n": 1}
+        gate = ExtractionGate(slots=4, max_waiting=5, follow=lambda: limit["n"])
+        await gate.acquire(1.0)
+        second = asyncio.ensure_future(gate.acquire(5.0))
+        await asyncio.sleep(0)
+        assert (gate.slots, gate.active, gate.waiting) == (1, 1, 1)  # throttled: one slot open
+        limit["n"] = 3  # the provider recovered
+        third = asyncio.ensure_future(gate.acquire(5.0))  # a newcomer lets the line move first
+        await asyncio.sleep(0)
+        await second
+        await third
+        assert (gate.active, gate.waiting) == (3, 0)
+
+    asyncio.run(scenario())
+
+
+def test_a_throttled_extraction_shrinks_the_gate_for_the_next_arrivals() -> None:
+    capacity.reset(limits(max_extractions=8, max_provider_calls=8))
+    fake = FakeProvider([_rate_limited("1"), LAB])
+    llm.propose("lab_pdf", "text", client=fake)
+    assert capacity.provider_slots.current == 4 and capacity.gate.slots == 4
+    assert capacity.status()["now"]["provider_limit"] == 4
+
+
+# ---- The critic shares the provider slots ------------------------------------------
+
+
+def test_the_critic_waits_only_briefly_for_a_provider_slot(monkeypatch) -> None:
+    capacity.reset(limits(max_provider_calls=1))
+    monkeypatch.setattr(llm, "CRITIC_SLOT_WAIT_S", 0.1)
+    fake = FakeProvider([json.dumps({"applicable": True, "reason": "no restriction stated"})])
+    with capacity.provider_slots.hold(1.0):  # extraction holds the only slot
+        started = time.monotonic()
+        with pytest.raises(llm.ModelError) as err:
+            llm.applicable("passage", [], 50, "F", client=fake)
+    assert err.value.cause == "no_provider_slot" and fake.calls == [] and time.monotonic() - started < 1.0
+    ok, _, _ = llm.applicable("passage", [], 50, "F", client=fake)
+    assert ok is True and len(fake.calls) == 1
+
+
+def test_a_throttled_critic_call_shrinks_the_shared_limit() -> None:
+    capacity.reset(limits(max_provider_calls=8))
+    fake = FakeProvider([_rate_limited("2")])
+    with pytest.raises(llm.ModelError) as err:
+        llm.applicable("passage", [], 50, "F", client=fake)
+    assert err.value.cause == "throttled" and capacity.provider_slots.current == 4
+
+
+# ---- Cancellation when the client goes away ---------------------------------------------
+
+
+def test_a_cancelled_request_makes_no_further_call() -> None:
+    event = threading.Event()
+    event.set()
+    capacity.bind_cancel(event)
+    fake = FakeProvider([LAB])
+    with pytest.raises(llm.ModelError) as err:
+        llm.propose("lab_pdf", "text", client=fake)
+    assert (err.value.code, err.value.cause) == ("timeout", "cancelled") and fake.calls == []
+
+
+def test_the_extractor_stops_at_the_next_page_once_the_client_has_gone(monkeypatch) -> None:
+    event = threading.Event()
+
+    class LeavesAfterFirstPage(FakeProvider):
+        def create(self, **kwargs):
+            reply = super().create(**kwargs)
+            event.set()  # the client disconnects while page 1 is being read
+            return reply
+
+    fake = LeavesAfterFirstPage([LAB] * 3)
+    monkeypatch.setattr(llm, "OpenAI", lambda **kw: fake)
+    capacity.bind_cancel(event)
+    doc = SimpleNamespace(document_id=8, doc_type="lab_pdf", bytes_base64=base64.b64encode(_pdf(3)).decode())
+    extraction, _ = graph.real_extract(doc, "capacity-cancel")  # type: ignore[arg-type]
+    assert (extraction.status, extraction.failure_reason) == ("failed", "timeout")
+    assert len(fake.calls) == 1
+    assert capacity.metrics.snapshot()["provider"]["gave_up"] == {"cancelled": 1}
+
+
+async def _asgi_post(app, body: dict, disconnect_after: float) -> list[dict]:
+    """Calls the app the way uvicorn does, with a client that disconnects
+    `disconnect_after` seconds after sending its body."""
+    raw = json.dumps(body).encode()
+    sent = {"body": False}
+    leave_at = time.monotonic() + disconnect_after
+
+    async def receive() -> dict:
+        if not sent["body"]:
+            sent["body"] = True
+            return {"type": "http.request", "body": raw, "more_body": False}
+        while time.monotonic() < leave_at:
+            await asyncio.sleep(0.05)
+        return {"type": "http.disconnect"}
+
+    messages: list[dict] = []
+
+    async def send(message: dict) -> None:
+        messages.append(message)
+
+    scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "POST", "scheme": "http", "path": "/run",
+             "raw_path": b"/run", "query_string": b"", "root_path": "", "client": ("127.0.0.1", 5000), "server": ("sidecar", 80),
+             "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(raw)).encode())]}
+    await app(scope, receive, send)
+    return messages
+
+
+def test_a_running_extraction_is_cancelled_when_its_client_disconnects(monkeypatch) -> None:
+    from copilot_sidecar import app as app_module
+
+    seen = {"cancelled_after": None}
+
+    def long_run(mode, correlation_id, *args, **kwargs):
+        started = time.monotonic()
+        while time.monotonic() - started < 10:
+            if capacity.cancelled():  # what every page and retry checks
+                seen["cancelled_after"] = time.monotonic() - started
+                break
+            time.sleep(0.05)
+        return {"extractions": [], "chunks": [], "evidence": [], "handoffs": [], "usage": []}
+
+    monkeypatch.setattr(graph, "run", long_run)
+    messages = asyncio.run(_asgi_post(app_module.app, _body(500), disconnect_after=0.5))
+    assert seen["cancelled_after"] is not None and seen["cancelled_after"] < 2.5
+    assert messages[0]["status"] == 499
+    m = capacity.metrics.snapshot()
+    assert m["runs"]["abandoned_by_client"] == 1 and m["runs"]["http_ok"] == 0
+    assert capacity.gate.active == 0
+
+
+def test_a_waiting_extraction_leaves_the_line_when_its_client_disconnects(monkeypatch) -> None:
+    from copilot_sidecar import app as app_module
+
+    capacity.reset(limits(max_extractions=1, max_waiting=2, max_wait_s=10.0, max_provider_calls=1))
+    release = threading.Event()
+
+    def blocked_run(mode, correlation_id, *args, **kwargs):
+        release.wait(10)
+        return {"extractions": [], "chunks": [], "evidence": [], "handoffs": [], "usage": []}
+
+    monkeypatch.setattr(graph, "run", blocked_run)
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=app_module.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://sidecar") as client:
+            first = asyncio.ensure_future(client.post("/run", json=_body(600)))
+            await asyncio.sleep(0.2)
+            leaver = await _asgi_post(app_module.app, _body(601), disconnect_after=0.5)
+            waiting_after = capacity.gate.waiting
+            release.set()
+            return leaver, waiting_after, await first
+
+    leaver, waiting_after, first = asyncio.run(scenario())
+    assert leaver[0]["status"] == 499 and waiting_after == 0
+    assert first.status_code == 200
+    m = capacity.metrics.snapshot()["runs"]
+    assert m["abandoned_by_client"] == 1 and m["admitted"] == 1

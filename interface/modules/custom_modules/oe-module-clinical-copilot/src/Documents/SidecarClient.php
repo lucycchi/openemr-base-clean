@@ -153,7 +153,10 @@ final class SidecarClient
             // (encrypted, too_many_pages, ...). A body that cannot be parsed is "internal".
             $err = json_decode((string) $res->getBody(), true);
             $code = is_array($err) && is_string($err['code'] ?? null) ? $err['code'] : 'internal';
-            throw new SidecarException($code, $e);
+            // "overloaded" (503) comes with Retry-After in seconds; it travels on so
+            // the panel can wait that long and try again by itself.
+            $retryAfter = $res->getHeaderLine('Retry-After');
+            throw new SidecarException($code, $e, ctype_digit($retryAfter) ? min((int) $retryAfter, 300) : null);
         }
         $decoded = json_decode((string) $response->getBody(), true);
         if (!is_array($decoded)) {

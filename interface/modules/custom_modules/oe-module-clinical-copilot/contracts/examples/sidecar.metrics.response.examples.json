@@ -14,12 +14,15 @@
       "now": {
         "active_extractions": 8,
         "waiting_extractions": 3,
-        "provider_in_flight": 7
+        "extraction_slots": 4,
+        "provider_in_flight": 7,
+        "provider_limit": 4
       },
       "runs": {
         "admitted": 40,
         "rejected_queue_full": 5,
         "rejected_queue_timeout": 1,
+        "abandoned_by_client": 2,
         "http_ok": 32,
         "http_error": 6
       },
@@ -34,6 +37,8 @@
         "calls": 170,
         "throttled": 9,
         "retries": 8,
+        "limit_decreases": 3,
+        "cooldowns": 9,
         "gave_up": {
           "throttled": 1
         }
@@ -87,12 +92,15 @@
       "now": {
         "active_extractions": 8,
         "waiting_extractions": 3,
-        "provider_in_flight": 7
+        "extraction_slots": 4,
+        "provider_in_flight": 7,
+        "provider_limit": 4
       },
       "runs": {
         "admitted": 40,
         "rejected_queue_full": 5,
         "rejected_queue_timeout": 1,
+        "abandoned_by_client": 2,
         "http_ok": 32,
         "http_error": 6
       },
@@ -100,6 +108,8 @@
         "calls": 170,
         "throttled": 9,
         "retries": 8,
+        "limit_decreases": 3,
+        "cooldowns": 9,
         "gave_up": {
           "throttled": 1
         }
@@ -151,12 +161,15 @@
       "now": {
         "active_extractions": 8,
         "waiting_extractions": 3,
-        "provider_in_flight": 7
+        "extraction_slots": 4,
+        "provider_in_flight": 7,
+        "provider_limit": 4
       },
       "runs": {
         "admitted": 40,
         "rejected_queue_full": 5,
         "rejected_queue_timeout": 1,
+        "abandoned_by_client": 2,
         "http_ok": 32,
         "http_error": 6
       },
@@ -171,6 +184,8 @@
         "calls": 170,
         "throttled": 9,
         "retries": 8,
+        "limit_decreases": 3,
+        "cooldowns": 9,
         "gave_up": {
           "throttled": 1
         }
@@ -223,12 +238,15 @@
       "now": {
         "active_extractions": 8,
         "waiting_extractions": 3,
-        "provider_in_flight": 7
+        "extraction_slots": 4,
+        "provider_in_flight": 7,
+        "provider_limit": 4
       },
       "runs": {
         "admitted": 40,
         "rejected_queue_full": 5,
         "rejected_queue_timeout": 1,
+        "abandoned_by_client": 2,
         "http_ok": 32,
         "http_error": 6
       },
@@ -242,6 +260,8 @@
         "calls": 170,
         "throttled": 9,
         "retries": 8,
+        "limit_decreases": 3,
+        "cooldowns": 9,
         "gave_up": {
           "throttled": 1
         }
@@ -293,12 +313,15 @@
       "now": {
         "active_extractions": 8,
         "waiting_extractions": 3,
-        "provider_in_flight": 7
+        "extraction_slots": 4,
+        "provider_in_flight": 7,
+        "provider_limit": 4
       },
       "runs": {
         "admitted": -1,
         "rejected_queue_full": 5,
         "rejected_queue_timeout": 1,
+        "abandoned_by_client": 2,
         "http_ok": 32,
         "http_error": 6
       },
@@ -313,6 +336,8 @@
         "calls": 170,
         "throttled": 9,
         "retries": 8,
+        "limit_decreases": 3,
+        "cooldowns": 9,
         "gave_up": {
           "throttled": 1
         }
@@ -364,12 +389,15 @@
       "now": {
         "active_extractions": 8,
         "waiting_extractions": 3,
-        "provider_in_flight": 7
+        "extraction_slots": 4,
+        "provider_in_flight": 7,
+        "provider_limit": 4
       },
       "runs": {
         "admitted": 40,
         "rejected_queue_full": 5,
         "rejected_queue_timeout": 1,
+        "abandoned_by_client": 2,
         "http_ok": 32,
         "http_error": 6
       },
@@ -384,6 +412,84 @@
         "calls": 170,
         "throttled": "9",
         "retries": 8,
+        "limit_decreases": 3,
+        "cooldowns": 9,
+        "gave_up": {
+          "throttled": 1
+        }
+      },
+      "timings_ms": {
+        "queue_wait_ms": {
+          "count": 12,
+          "p50": 840,
+          "p95": 15100,
+          "max": 19880
+        },
+        "extract_active_ms": {
+          "count": 12,
+          "p50": 840,
+          "p95": 15100,
+          "max": 19880
+        },
+        "document_ms": {
+          "count": 12,
+          "p50": 840,
+          "p95": 15100,
+          "max": 19880
+        },
+        "provider_call_ms": {
+          "count": 12,
+          "p50": 840,
+          "p95": 15100,
+          "max": 19880
+        },
+        "provider_slot_wait_ms": {
+          "count": 12,
+          "p50": 840,
+          "p95": 15100,
+          "max": 19880
+        }
+      }
+    },
+    {
+      "since": "2026-09-26T18:00:00Z",
+      "limits": {
+        "max_extractions": 8,
+        "max_waiting": 16,
+        "max_wait_s": 20.0,
+        "deadline_s": 50.0,
+        "max_provider_calls": 8,
+        "provider_attempts": 3,
+        "attempt_timeout_s": 30.0
+      },
+      "now": {
+        "active_extractions": 8,
+        "waiting_extractions": 3,
+        "extraction_slots": 4,
+        "provider_in_flight": 7,
+        "provider_limit": 0
+      },
+      "runs": {
+        "admitted": 40,
+        "rejected_queue_full": 5,
+        "rejected_queue_timeout": 1,
+        "abandoned_by_client": 2,
+        "http_ok": 32,
+        "http_error": 6
+      },
+      "documents": {
+        "extracted": 30,
+        "failed": {
+          "model_error": 1,
+          "timeout": 1
+        }
+      },
+      "provider": {
+        "calls": 170,
+        "throttled": 9,
+        "retries": 8,
+        "limit_decreases": 3,
+        "cooldowns": 9,
         "gave_up": {
           "throttled": 1
         }

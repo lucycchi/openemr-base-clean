@@ -1,0 +1,117 @@
+{
+  "label": "v2-rate2",
+  "workload": {
+    "users": 50,
+    "seconds": 90,
+    "think_s": 1.0,
+    "client_timeout_s": 60.0,
+    "provider_rate_per_s": 2.0,
+    "provider_burst": 4,
+    "provider_latency_s": 2.0,
+    "document": "/fixtures/lab-layout1.pdf"
+  },
+  "requests": 2576,
+  "http": {
+    "200": 43,
+    "503": 2533
+  },
+  "http_200_pct": 1.67,
+  "documents": {
+    "error:overloaded": 2533,
+    "extracted": 43
+  },
+  "extracted_pct_of_requests": 1.67,
+  "extracted_pct_of_http_200": 100.0,
+  "extracted_per_min": 28.7,
+  "latency_ms": {
+    "http_200_p50": 25204,
+    "http_200_p95": 33168,
+    "extracted_p50": 25204,
+    "extracted_p95": 33168,
+    "rejected_503_p50": 4,
+    "rejected_503_p95": 79
+  },
+  "health_ms": {
+    "samples": 348,
+    "p50": 3,
+    "p95": 17,
+    "max": 259,
+    "over_1s": 0
+  },
+  "provider": {
+    "calls": 236,
+    "throttled_429": 21,
+    "peak_in_flight": 6
+  },
+  "sidecar_metrics": {
+    "since": "2026-09-27T02:56:16Z",
+    "limits": {
+      "max_extractions": 8,
+      "max_waiting": 16,
+      "max_wait_s": 20.0,
+      "deadline_s": 50.0,
+      "max_provider_calls": 8,
+      "provider_attempts": 3,
+      "attempt_timeout_s": 30.0
+    },
+    "now": {
+      "active_extractions": 0,
+      "waiting_extractions": 0,
+      "extraction_slots": 8,
+      "provider_in_flight": 0,
+      "provider_limit": 8
+    },
+    "runs": {
+      "admitted": 43,
+      "rejected_queue_full": 2474,
+      "rejected_queue_timeout": 59,
+      "abandoned_by_client": 0,
+      "http_ok": 43,
+      "http_error": 2533
+    },
+    "documents": {
+      "extracted": 43,
+      "failed": {}
+    },
+    "provider": {
+      "calls": 236,
+      "throttled": 21,
+      "retries": 21,
+      "limit_decreases": 17,
+      "cooldowns": 21,
+      "gave_up": {}
+    },
+    "timings_ms": {
+      "queue_wait_ms": {
+        "count": 43,
+        "p50": 12936,
+        "p95": 19403,
+        "max": 19974
+      },
+      "extract_active_ms": {
+        "count": 43,
+        "p50": 12383,
+        "p95": 20686,
+        "max": 20698
+      },
+      "document_ms": {
+        "count": 43,
+        "p50": 12320,
+        "p95": 20578,
+        "max": 20621
+      },
+      "provider_call_ms": {
+        "count": 215,
+        "p50": 2007,
+        "p95": 2040,
+        "max": 2195
+      },
+      "provider_slot_wait_ms": {
+        "count": 236,
+        "p50": 0,
+        "p95": 2006,
+        "max": 4017
+      }
+    }
+  }
+}

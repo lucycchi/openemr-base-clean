@@ -9,29 +9,38 @@ documents came back "failed: model_error" inside HTTP 200 responses.
 Nothing was broken per request; the process simply accepted more work than
 the provider would serve.
 
-Three controls, all per process:
+Four controls, all per process:
 
   ExtractionGate    at most MAX_EXTRACTIONS documents are worked on at
-                    once; up to MAX_WAITING more wait in a first-in,
+                    once (fewer while the provider is throttling, see
+                    below); up to MAX_WAITING more wait in a first-in,
                     first-out line for at most MAX_WAIT_S. Anyone beyond
                     that, or anyone who waits too long, is told "overloaded"
                     at once (HTTP 503 + Retry-After) instead of being
                     accepted and failed later. The waiting happens on the
                     event loop, so a waiting request holds no thread.
-  provider slots    at most MAX_PROVIDER_CALLS model calls in flight from
-                    this process, whatever mix of pages, documents and
-                    retries is asking. A call sleeping in backoff gives its
+  provider slots    model calls in flight from this process, whatever mix
+                    of pages, documents, retries and critic verdicts is
+                    asking, under a limit that adapts to the provider: a 429
+                    halves it and pauses new calls for the provider's
+                    Retry-After; successes grow it back towards
+                    MAX_PROVIDER_CALLS. A call sleeping in backoff gives its
                     slot back.
   deadline          an extraction request has DEADLINE_S from arrival
                     (below PHP's 60 s client timeout). Queue wait counts
                     against it; every model attempt is cut to what remains;
                     the extractor stops asking for pages once it is spent.
+  cancellation      when the client disconnects, the request leaves the
+                    line, or its running work stops at the next page or
+                    retry: nobody pays for an answer nobody will read.
 
 "Per process" matters: the sidecar runs as one uvicorn process (Dockerfile
 CMD, no --workers), so today these are also the limits for the whole
-deployment. Running N processes or N containers multiplies every number by
-N, and nothing here coordinates them; that would need a shared limiter
-(Redis, or the provider's own headers) and is not built.
+deployment. Running N processes or N containers multiplies the fixed
+numbers by N. The adaptive provider limit softens that, because each
+process shrinks its own limit when the provider starts refusing, whoever
+caused the refusals; a strict cap shared by all processes would still need
+a shared store (Redis, say) and is not built.
 
 Plain words for readers new to this: a semaphore is a counter of free
 slots; taking one when none is free means waiting. A deadline is a point on
@@ -52,7 +61,7 @@ from collections import deque
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Iterator
+from typing import Callable, Iterator
 
 
 def _env_int(name: str, default: int, minimum: int) -> int:
@@ -170,6 +179,7 @@ class Metrics:
                     "admitted": c.get("runs_admitted", 0),
                     "rejected_queue_full": c.get("runs_rejected_queue_full", 0),
                     "rejected_queue_timeout": c.get("runs_rejected_queue_timeout", 0),
+                    "abandoned_by_client": c.get("runs_abandoned_by_client", 0),
                     "http_ok": c.get("runs_http_ok", 0),
                     "http_error": c.get("runs_http_error", 0),
                 },
@@ -178,6 +188,8 @@ class Metrics:
                     "calls": c.get("provider_calls", 0),
                     "throttled": c.get("provider_throttled", 0),
                     "retries": c.get("provider_retries", 0),
+                    "limit_decreases": c.get("provider_limit_decreases", 0),
+                    "cooldowns": c.get("provider_cooldowns", 0),
                     "gave_up": dict(sorted(self.provider_gave_up.items())),
                 },
                 "timings_ms": {k: summary(k) for k in self.TIMINGS},
@@ -191,15 +203,26 @@ class ExtractionGate:
     """A bounded, first-in first-out admission line for extraction runs.
 
     Used only from the event loop thread (the /run handler), so plain
-    counters need no lock. A waiter is an asyncio future; release() hands
-    the freed slot straight to the oldest waiter by completing its future,
-    so a newcomer can never overtake the line."""
+    counters need no lock. A waiter is an asyncio future; a freed slot goes
+    to the oldest waiter by completing its future, so a newcomer can never
+    overtake the line.
 
-    def __init__(self, slots: int, max_waiting: int) -> None:
-        self.slots = slots
+    `follow` ties the number of slots to the adaptive provider limit: when
+    the provider throttles and the limit halves, fewer extractions are let
+    in, instead of admitting documents that could only queue for a model
+    call until their deadline ran out."""
+
+    def __init__(self, slots: int, max_waiting: int, follow: Callable[[], int] | None = None) -> None:
+        self.max_slots = slots
         self.max_waiting = max_waiting
+        self._follow = follow
         self.active = 0
         self._waiters: deque[asyncio.Future[None]] = deque()
+
+    @property
+    def slots(self) -> int:
+        """Slots open right now: the configured number, or fewer while the provider is throttling."""
+        return self.max_slots if self._follow is None else max(1, min(self.max_slots, self._follow()))
 
     @property
     def waiting(self) -> int:
@@ -208,6 +231,9 @@ class ExtractionGate:
     async def acquire(self, max_wait_s: float) -> float:
         """Takes a slot, waiting at most max_wait_s; returns the seconds
         waited. Raises Overloaded when the line is full or the wait ran out."""
+        # Slots may have opened since the last release (the provider limit
+        # grew); let the line move before judging the newcomer.
+        self.admit()
         if self.active < self.slots and not self._waiters:
             self.active += 1
             return 0.0
@@ -218,11 +244,11 @@ class ExtractionGate:
         self._waiters.append(fut)
         try:
             # asyncio.wait never cancels `fut`, so after it returns the future
-            # says truthfully whether release() handed us the slot.
+            # says truthfully whether a slot was handed over.
             await asyncio.wait({fut}, timeout=max_wait_s)
         except BaseException:
-            # The request itself was cancelled while waiting: give back a slot
-            # that was handed over in the same instant, or leave the line.
+            # The request itself was cancelled while waiting (the client left):
+            # give back a slot handed over in the same instant, or leave the line.
             self._leave(fut)
             raise
         if not fut.done():
@@ -241,13 +267,17 @@ class ExtractionGate:
             pass
 
     def release(self) -> None:
-        """Frees a slot: straight to the oldest live waiter, else back to the pool."""
-        while self._waiters:
+        """Frees a slot, then admits waiters, oldest first, while slots are open."""
+        self.active -= 1
+        self.admit()
+
+    def admit(self) -> None:
+        """Hands open slots to waiters. Also called when the provider limit grows."""
+        while self._waiters and self.active < self.slots:
             fut = self._waiters.popleft()
             if not fut.done():
+                self.active += 1
                 fut.set_result(None)
-                return
-        self.active -= 1
 
 
 # ---- Provider slots and the deadline (worker thread side) ---------------------
@@ -267,32 +297,121 @@ def remaining() -> float | None:
     return None if at is None else at - time.monotonic()
 
 
+# Set by the /run handler when the client disconnects (app.py); the worker
+# thread checks it at the same points as the deadline and stops paying for
+# pages nobody will receive.
+_cancel: ContextVar[threading.Event | None] = ContextVar("copilot_cancel", default=None)
+
+
+def bind_cancel(event: threading.Event | None) -> None:
+    _cancel.set(event)
+
+
+def cancelled() -> bool:
+    """True once the request's client has gone away."""
+    event = _cancel.get()
+    return event is not None and event.is_set()
+
+
+def pause(seconds: float) -> None:
+    """Waits between retries; returns early if the request is cancelled."""
+    event = _cancel.get()
+    if event is None:
+        sleep(seconds)
+    else:
+        event.wait(seconds)
+
+
 class ProviderSlots:
-    """A counting semaphore for model calls in flight, with an in-flight gauge."""
+    """Model calls in flight, under a limit that adapts to the provider.
+
+    The limit starts at COPILOT_MAX_PROVIDER_CALLS and follows the rule
+    TCP uses for network congestion, "additive increase, multiplicative
+    decrease" (AIMD):
+
+    * a 429 from the provider halves the limit (never below 1), at most once
+      per second, so a burst of 429s from calls that were already in flight
+      counts as one signal, not eight;
+    * every successful call raises it by 1/limit, so it climbs back by about
+      one slot per `limit` successes, never above the configured maximum.
+
+    A 429 also starts a cooldown: no new call is started, by anyone, until
+    the provider's Retry-After (or one second) has passed. Callers throttled
+    together then do not each discover the limit separately.
+
+    Why this helps with what the sidecar cannot see: PHP's own briefing
+    calls and any other process on the same API key draw from the same
+    quota. Their load is invisible here, but the 429s it causes are not, so
+    the limit shrinks to what is actually left. Each process adapts on its
+    own, which is how the limit copes with more than one process without a
+    shared store (a strict cap across processes would still need one)."""
+
+    DECREASE_EVERY_S = 1.0
+    # Multiplies every cooldown; tests of the retry loop set it to 0 so their
+    # instant sleeps are not held up by a real-time pause.
+    cooldown_scale = 1.0
 
     def __init__(self, slots: int) -> None:
-        self.slots = slots
-        self._sem = threading.BoundedSemaphore(slots)
-        self._lock = threading.Lock()
+        self.max_slots = slots
+        self.limit = float(slots)
         self.in_flight = 0
+        self.cooldown_until = 0.0
+        self._last_decrease = 0.0
+        self._cond = threading.Condition()
+
+    @property
+    def current(self) -> int:
+        return max(1, int(self.limit))
 
     @contextmanager
     def hold(self, wait_s: float) -> Iterator[bool]:
-        """Yields True with a slot held, or False when none freed up within wait_s."""
+        """Yields True with a slot held, or False when none opened within wait_s
+        (or the request was cancelled while waiting)."""
         started = time.monotonic()
-        got = self._sem.acquire(timeout=max(0.0, wait_s))
+        give_up_at = started + max(0.0, wait_s)
+        cancel = _cancel.get()
+        got = False
+        with self._cond:
+            while True:
+                now = time.monotonic()
+                cooling = self.cooldown_until - now
+                if cooling <= 0 and self.in_flight < self.current:
+                    self.in_flight += 1
+                    got = True
+                    break
+                left = give_up_at - now
+                if left <= 0 or (cancel is not None and cancel.is_set()):
+                    break
+                # Wake for a freed slot, the end of a cooldown, or every
+                # half second to notice a cancelled request.
+                self._cond.wait(timeout=min(left, cooling if cooling > 0 else left, 0.5))
         metrics.observe("provider_slot_wait_ms", (time.monotonic() - started) * 1000)
         if not got:
             yield False
             return
-        with self._lock:
-            self.in_flight += 1
         try:
             yield True
         finally:
-            with self._lock:
+            with self._cond:
                 self.in_flight -= 1
-            self._sem.release()
+                self._cond.notify_all()
+
+    def succeeded(self) -> None:
+        with self._cond:
+            self.limit = min(float(self.max_slots), self.limit + 1.0 / max(self.limit, 1.0))
+            self._cond.notify_all()
+
+    def throttled(self, retry_after: float | None) -> None:
+        now = time.monotonic()
+        with self._cond:
+            pause = (retry_after if retry_after is not None else 1.0) * self.cooldown_scale
+            self.cooldown_until = max(self.cooldown_until, now + pause)
+            if now - self._last_decrease >= self.DECREASE_EVERY_S:
+                self.limit = max(1.0, self.limit / 2)
+                self._last_decrease = now
+                metrics.inc("provider_limit_decreases")
+            metrics.inc("provider_cooldowns")
+            self._cond.notify_all()
 
 
 def backoff_delay(attempt: int, retry_after: float | None, rng=random.random) -> float:
@@ -314,8 +433,8 @@ sleep = time.sleep
 # ---- Process-wide instances ---------------------------------------------------
 
 _limits = Limits.from_env()
-gate = ExtractionGate(_limits.max_extractions, _limits.max_waiting)
 provider_slots = ProviderSlots(_limits.max_provider_calls)
+gate = ExtractionGate(_limits.max_extractions, _limits.max_waiting, follow=lambda: provider_slots.current)
 metrics = Metrics()
 
 
@@ -331,7 +450,10 @@ def status() -> dict:
             "deadline_s": _limits.deadline_s, "max_provider_calls": _limits.max_provider_calls, "provider_attempts": _limits.provider_attempts,
             "attempt_timeout_s": _limits.attempt_timeout_s,
         },
-        "now": {"active_extractions": gate.active, "waiting_extractions": gate.waiting, "provider_in_flight": provider_slots.in_flight},
+        "now": {
+            "active_extractions": gate.active, "waiting_extractions": gate.waiting, "extraction_slots": gate.slots,
+            "provider_in_flight": provider_slots.in_flight, "provider_limit": provider_slots.current,
+        },
     }
 
 
@@ -339,6 +461,6 @@ def reset(new: Limits | None = None) -> None:
     """Rebuilds every instance (tests only; nothing may be in flight)."""
     global _limits, gate, provider_slots, metrics
     _limits = new or Limits.from_env()
-    gate = ExtractionGate(_limits.max_extractions, _limits.max_waiting)
     provider_slots = ProviderSlots(_limits.max_provider_calls)
+    gate = ExtractionGate(_limits.max_extractions, _limits.max_waiting, follow=lambda: provider_slots.current)
     metrics = Metrics()

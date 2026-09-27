@@ -512,7 +512,9 @@ class MetricsLimits(Strict):
 class MetricsNow(Strict):
     active_extractions: Count
     waiting_extractions: Count
+    extraction_slots: int = Field(ge=1)  # open now: fewer than max_extractions while the provider throttles
     provider_in_flight: Count
+    provider_limit: int = Field(ge=1)  # the adaptive limit's current value
 
 
 class MetricsRuns(Strict):
@@ -520,6 +522,7 @@ class MetricsRuns(Strict):
     admitted: Count
     rejected_queue_full: Count
     rejected_queue_timeout: Count
+    abandoned_by_client: Count
     http_ok: Count
     http_error: Count
 
@@ -534,6 +537,8 @@ class MetricsProvider(Strict):
     calls: Count
     throttled: Count
     retries: Count
+    limit_decreases: Count
+    cooldowns: Count
     gave_up: CodeCounts
 
 

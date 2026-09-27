@@ -91,6 +91,28 @@ final class SidecarClientTest extends TestCase
     }
 
     /**
+     * Pins: the sidecar's "overloaded" answer (503 + Retry-After) becomes a
+     * SidecarException carrying both the code and the wait, which the
+     * document controller passes to the panel so it can retry by itself.
+     * An error without the header carries no wait.
+     */
+    public function testOverloadedCarriesTheRetryAfterAndOtherErrorsDoNot(): void
+    {
+        $overloaded = new Response(503, ['Content-Type' => 'application/json', 'Retry-After' => '15'], json_encode(['correlation_id' => self::CORRELATION_ID, 'code' => 'overloaded'], JSON_THROW_ON_ERROR));
+        $internal = new Response(500, ['Content-Type' => 'application/json'], json_encode(['correlation_id' => self::CORRELATION_ID, 'code' => 'internal'], JSON_THROW_ON_ERROR));
+        $client = new SidecarClient(new Client(['handler' => HandlerStack::create(new MockHandler([$overloaded, $internal]))]), new Config('sk-test', 'gpt-4o-mini', 'https://cloud.langfuse.com', '', ''));
+        $caught = [];
+        for ($i = 0; $i < 2; $i++) {
+            try {
+                $client->answer(self::CORRELATION_ID, str_repeat('0', 64), 'q');
+            } catch (SidecarException $e) {
+                $caught[] = [$e->errorCode, $e->retryAfterSeconds];
+            }
+        }
+        self::assertSame([['overloaded', 15], ['internal', null]], $caught);
+    }
+
+    /**
      * Pins: the extraction the contract validated is kept verbatim, so
      * copilot:attach --json can return the strict-schema JSON itself, not
      * only a summary of it. Uses the contract's own accepted example reply.
