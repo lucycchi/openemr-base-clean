@@ -95,11 +95,11 @@ Parity was measured against the running old dashboard, not against my reading of
   - a prescription with refills, a resolved allergy with no end date, and a severe allergy
   - two visits on one day, a care-team facility, a care team with an NPI provider, a middle name, and a non-admin physician
 - **Field-level comparison:** each module audit records, for every field the user sees, its source, whether it matches, and the values observed for named fixtures in both systems. The old dashboard was read in a real browser through the dev stack's Selenium.
-- **Reviews:** five independent reviews (Codex three times, Fable twice, Opus once) compared the new code with the old PHP. Each gap they found was fixed test-first or recorded as a user decision in `BUGS-MITIGATIONS.md`.
+- **Reviews:** five independent reviews (Codex twice, Fable twice, Opus once) compared the new code with the old PHP. Each gap they found was fixed test-first or recorded as a user decision in `BUGS-MITIGATIONS.md`.
 
 ### Results
 
-Full parity suite (`npm run test:parity`) on commit `94d82aa`, 2026-09-26, against the development-easy stack: **9 of 9 tests passed**, including the two self-tests of the old-dashboard reader.
+Full parity suite (`npm run test:parity`) on commit `336768d`, 2026-09-26, against the development-easy stack: **9 of 9 tests passed**, including the two self-tests of the old-dashboard reader.
 
 | Section | Fields compared | Fixtures | Result | Approved exceptions |
 |---|---|---|---|---|
