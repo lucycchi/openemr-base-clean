@@ -985,8 +985,9 @@ ones compared above.
 3. **The bottleneck is now our own cap, not the provider.** OpenAI never
    throttled, not once. Eight model calls at a time (about 4 per second)
    is below this account's real limit. So the adaptive limit, the shared
-   cooldown and the retries were never needed in this run; they are proven
-   by the mock tests, not by this one.
+   cooldown and the retries were never needed in this run. The tuning run
+   in section 12.4 then pushed OpenAI past its limit and showed them
+   working against the real provider.
 4. **The price is waiting.** At 50 users, a clinician's extraction took a
    median of 28 seconds and up to 70 seconds at p95, counting time in line
    and automatic retries. That is the trade: a wait with a clear message,
@@ -1000,14 +1001,57 @@ ones compared above.
    no busy answers. Not every part of that change can be attributed:
    provider speed differs from day to day.
 
-### 12.4 The next tuning step (not done)
+### 12.4 The tuning run: limits raised to 16
 
-Because the provider never pushed back, the ceiling can go up. For
-example, set `COPILOT_MAX_PROVIDER_CALLS=16` and
-`COPILOT_MAX_EXTRACTIONS=16`, and rerun the same command. The adaptive
-limit is the safety net if 16 turns out to be too many. On the droplet,
-check memory first: the sidecar's limit there is 768 MB, and this run
-peaked at 313 MB with 8 extractions.
+Because OpenAI never pushed back at 8, the same 50-user test was run again
+with both limits raised to 16 (`COPILOT_MAX_EXTRACTIONS=16`,
+`COPILOT_MAX_PROVIDER_CALLS=16`, set only for this run through a temporary
+compose override; the defaults were restored afterwards). Results:
+`tests/load/results/20260927T-real-v2-cap16-*`.
+
+| 50 users | Limits at 8 (defaults) | Limits at 16 |
+|---|---|---|
+| Extractions finished (k6) | 131 | 150 |
+| **Documents extracted** | 113 (86.3 %) | **132 (88.0 %)** |
+| **Documents failed inside an HTTP 200** | **0** | **11** (`model_error` after 3 throttled attempts) |
+| Still "busy" after 3 automatic retries | 18 (13.7 %) | 7 (4.7 %) |
+| Provider 429s / retries | 0 / 0 | **71 / 60** |
+| Adaptive limit during the run | stayed at 8 | fell as low as **2**, ended at 12 (13 decreases) |
+| Whole extraction, waits included, p50 / p95 | 28.5 s / 69.9 s | 21.8 s / 73.5 s |
+| One extract request p50 | 1.0 s | 11.9 s |
+| Sidecar memory peak | 313 MB | 313 MB |
+
+What it shows:
+
+1. **This account's real limit sits between 8 and 16 calls in flight.**
+   At 16 (about 9 calls per second at 1.8 s each), OpenAI started
+   answering 429.
+2. **The adaptive limit worked against the real provider.** 71 calls were
+   throttled. Each one paused new calls and cut the limit, which fell as
+   low as 2 and climbed back to 12 by the end. 60 retries recovered most
+   of the throttled calls, and 148 of 159 documents the sidecar admitted
+   were extracted. This is the first real-provider evidence for round two;
+   before this run it was proven only against the mock.
+3. **But it let a few documents fail again.** 11 documents failed after
+   three throttled attempts. They are counted in `/metrics`
+   (`documents.failed.model_error: 11`, `provider.gave_up.throttled: 11`)
+   and in k6's `summary_unavailable` (7.7 %), so they are visible, not
+   silent. They are still worse for the user than a "busy" answer, because
+   the model was paid and the document came back failed.
+4. **Throughput rose only 17 %** (132 against 113 documents) for that
+   cost. The limit spent the run at the provider's edge, cutting and
+   regrowing.
+
+**Decision: keep the defaults at 8.** For this account, 8 gives zero
+failed documents and zero throttling, and the "busy" answers it gives
+instead are honest and retried automatically. The adaptive limit is now
+proven as the safety net for when the quota is shared (PHP's calls, a
+busier day), rather than as a way to run above the account's limit. A
+value between, such as 12 (where the adaptive limit settled), may be the
+best balance; that is a further run, not done.
+
+Memory is not a concern at either setting on this evidence: the sidecar
+peaked at 313 MB both times, against the droplet's 768 MB limit.
 
 ---
 
@@ -1017,9 +1061,8 @@ peaked at 313 MB with 8 extractions.
   stack. The droplet has 2 CPUs instead of 8 and a 768 MB sidecar memory
   limit, so its numbers will differ. The command is
   `tests/load/run-baselines.sh` with `STATS=ssh`, after deploying.
-- **A real test where the provider does throttle**, to see the adaptive
-  limit work against OpenAI rather than the mock. The simplest way is to
-  raise the ceiling (section 12.4) until 429s appear.
+- **A run with the limits at 12**, between the zero-throttling 8 and the
+  throttled 16 (section 12.4).
 - **A mixed load test** (briefings, questions and extractions together),
   to see PHP's calls and extraction share the quota.
 - **A PHP controller test** for the "busy" message and `retry_after_s`.
@@ -1041,12 +1084,19 @@ peaked at 313 MB with 8 extractions.
    which could slow down before the first 429. Not used yet.
 3. **At a 50-user burst, 14 % of extractions still end "busy"** after three
    automatic retries, and the median wait is 28 seconds. Raising the
-   ceiling (section 12.4) should help. A true background queue would
-   remove the "busy" outcome altogether, at the cost of a bigger design.
-4. **Cancellation is checked between steps, not inside them.** A model call
+   ceiling to 16 cut "busy" to 5 %, but let 11 documents fail after
+   throttling (section 12.4), so the default stays at 8. A true background
+   queue would remove the "busy" outcome altogether, at the cost of a
+   bigger design.
+4. **When the provider throttles hard, a few documents can still fail.**
+   At the limit of 16, 11 of 159 admitted documents failed after three
+   throttled attempts. They were visible in `/metrics` and k6, not silent,
+   but they were failures. More attempts or a longer deadline would trade
+   them for longer waits.
+5. **Cancellation is checked between steps, not inside them.** A model call
    already in progress runs to its end (at most its time limit), and so
    does OCR of the current page.
-5. **The metrics reset on restart** and cover one process: a live view,
+6. **The metrics reset on restart** and cover one process: a live view,
    not a history (section 11.5).
 
 ---
@@ -1105,7 +1155,12 @@ Underneath that:
   about 281 to 0. The provider never throttled once. The remaining 14 %
   ended as an honest "busy", not a hidden failure. At 10 users, 100 %
   extracted and the median time fell from 13.1 to 10.7 seconds.
-- **Mock load tests** covered what the real run did not trigger. Against
+- **A second real run with the limits doubled to 16** made OpenAI push
+  back: 71 throttled calls. The adaptive limit cut itself as low as 2 and
+  recovered to 12, and retries saved most calls. Throughput rose 17 %, but
+  11 documents failed after three throttled attempts, so the default
+  stays at 8, where nothing failed.
+- **Mock load tests** covered what the real runs did not trigger. Against
   a strict provider, adaptive limiting took failures from 138 to 0
   without any tuning. When clients gave up early, model calls wasted per
   abandoned document fell from about 4.8 to 1.9.
@@ -1117,8 +1172,8 @@ Underneath that:
 **What limitation remains?**
 
 - At a 50-user burst, 14 % still end "busy" after three retries, and the
-  median wait is 28 seconds. The next step is to raise the ceiling, since
-  the provider never pushed back.
+  median wait is 28 seconds. Doubling the limits cut that to 5 %, but let
+  a few documents fail under throttling, so the default stayed at 8.
 - The limit reacts to 429s instead of reading the provider's
   "remaining quota" headers ahead of time.
 - There is no strict limit shared across several processes, though today
@@ -1153,7 +1208,7 @@ unless stated otherwise. "R1" is commit `5d7988c`, "R2" is `057832a`.
 | `public/assets/panel.js` | **R2:** bounded automatic retry on "busy" |
 | `tests/Tests/Isolated/Modules/ClinicalCopilot/SidecarClientTest.php` (repository root) | **R2:** `Retry-After` test |
 | `tests/load/copilot.js` (repository root) | **R2:** the extract scenario retries like the panel and reports busy answers |
-| `tests/load/results/20260926T-mock-*.json`, `20260927T-real-v2-*` (repository root) | Mock and real load-test results |
+| `tests/load/results/20260926T-mock-*.json`, `20260927T-real-v2-*`, `20260927T-real-v2-cap16-*` (repository root) | Mock and real load-test results |
 
 The settings, with their defaults:
 

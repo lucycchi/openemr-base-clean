@@ -350,5 +350,31 @@ p50 28.5 s / p95 69.9 s / max 84.0 s.
 - **The cost is waiting at 50 users:** a median of 28 s end to end, against
   a fast silent failure before.
 
+### Run 4b: the same 50-user run with both limits at 16
+
+`COPILOT_MAX_EXTRACTIONS=16 COPILOT_MAX_PROVIDER_CALLS=16`, set for this run
+only (temporary compose override), stamp `20260927T-real-v2-cap16`.
+
+| VUs | Requests | req/s | Extractions | Extracted | Fully verified | Confidence p50 | Upload p50/p95 (ms) | Extract p50/p95/p99/max (ms) | Chart open p50/p95 | HTTP errors | Co-Pilot errors |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 50 | 752 | 4.99 | 150 | 88 % | 92.31 % | 1 | 391 / 1579 | 11917 / 28270 / 29053 / 33889 | 2046 / 8994 | 20.08 % | 2.13 % |
+
+| VUs | Scenario | App CPU avg / peak (% of one core) | App memory avg / peak (MiB) | Sidecar CPU avg / peak | Sidecar memory avg / peak (MiB) | DB CPU avg / peak | DB memory avg / peak (MiB) | Host load1 peak |
+|---|---|---|---|---|---|---|---|---|
+| 50 | extract | 64.5 / 911.0 | 429 / 1906 | 14.7 / 84.7 | 195 / 313 | 96.8 / 298.1 | 671 / 689 | 12.84 |
+
+- **OpenAI pushed back at 16.** `/metrics`: 837 calls, 71 throttled, 60
+  retries, 13 limit decreases; the adaptive limit fell as low as 2 and
+  ended at 12. 148 of 159 admitted documents extracted; 11 failed as
+  `model_error` after three throttled attempts (k6
+  `summary_unavailable` 7.7 %; "fully verified" 92.3 % is 132 of the 143
+  200-responses, i.e. 100 % of those extracted).
+- **Against 8:** 132 extracted instead of 113 (+17 %), busy after retries
+  4.7 % instead of 13.7 %, end to end p50 21.8 s / p95 73.5 s instead of
+  28.5 s / 69.9 s, but 11 failed documents instead of 0.
+- **Decision: the default stays at 8** for this account (no failures, no
+  throttling); 12, where the adaptive limit settled, is the candidate for
+  a further run. Sidecar memory peaked at 313 MiB at either setting.
+
 Not measured here: the droplet (2 vCPU, 768 MiB sidecar limit), and mixed
 load where PHP's briefing calls share the quota with extraction.
