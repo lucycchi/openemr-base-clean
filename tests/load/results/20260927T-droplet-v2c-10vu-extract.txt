@@ -1,0 +1,19 @@
+# 20260927T-droplet-v2c-10vu-extract  2026-09-27T06:28:43.036Z  https://146-190-139-37.sslip.io
+scenario=extract vus=10 duration=2m0s
+requests=320 throughput=2.42 req/s  http_failed=0%  copilot_errors=0%
+briefs=0 (cache hit null%)  asks=0 (guideline hit null%)  model_calls=100  summary_unavailable=0%  verification_fail=null%
+extractions=100  extracted=100%  fully_verified=100%  confidence_p50=1
+busy_answers=0  gave_up_busy=0%  (auto retries per extraction: 3)
+sentences kept=0 stripped=0
+
+endpoint          n      p50     p95     p99     max  (ms)
+all_http          320    1232   10541   12773   17730
+login              10    2009    2077    2080    2081
+chart_open        100    1232    3218    3343    3486
+brief               0    null    null    null    null
+brief_cache_hit  null    null    null    null    null
+brief_cold       null    null    null    null    null
+ask                 0    null    null    null    null
+upload            100     185     317     394     432
+extract           100    9592   12019   16735   17730
+extract_e2e       100    9593   12019   16735   17730
