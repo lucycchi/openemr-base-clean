@@ -59,4 +59,15 @@ describe('mapHeader', () => {
         expect(mapHeader(recorded('TP-TYPICAL'), us).dobLine).toBe('DOB: 03/14/1958 Age: 68');
         expect(mapHeader(recorded('TP-DECEASED'), { ...OPTIONS, dateFormat: 2 }).status).toBe('Deceased (02/11/2025)');
     });
+
+    it('only a real death date on or before today is "Deceased", as is_patient_deceased (patient.inc.php:1643-1654)', () => {
+        const base = recorded('TP-TYPICAL');
+        const future = mapHeader({ ...base, deceasedDateTime: '2030-01-01T00:00:00+00:00' }, OPTIONS);
+        const zero = mapHeader({ ...base, deceasedDateTime: '0000-00-00T00:00:00+00:00' }, OPTIONS);
+
+        for (const view of [future, zero]) {
+            expect(view.status).toBe('Active');
+            expect(view.dobLine).toBe('DOB: 1958-03-14 Age: 68');
+        }
+    });
 });

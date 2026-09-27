@@ -61,7 +61,8 @@ export function mapAllergies(
     };
     return resources.filter(isShown).map((allergy) => ({
         id: allergy.id ?? '',
-        name: allergyName(allergy),
+        // The old card shows lists.title; FHIR's coding display is the code's description (Opus review 4).
+        name: listDates.get(allergy.id ?? '')?.title?.trim() || allergyName(allergy),
         reaction: reactionText(allergy),
         risk: RISK_LABELS[allergy.criticality ?? ''] ?? '',
         high: allergy.criticality === 'high',

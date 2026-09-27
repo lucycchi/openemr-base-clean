@@ -16,6 +16,7 @@ const medicationRows = [
         uuid: 'a2d6832a-bf83-4fd5-a6da-ee15b8d4283a',
         pid: 36,
         title: 'Lisinopril 10 mg',
+        begdate: '2022-01-30 00:00:00',
         enddate: '2027-06-30 00:00:00',
         outcome: 0,
         activity: 1,
@@ -66,6 +67,8 @@ describe('list dates from the standard API (BM-044, BM-047)', () => {
                     uuid: 'a2d6832a-bf83-4fd5-a6da-ee15b8d4283a',
                     enddate: '2027-06-30 00:00:00',
                     outcome: 0,
+                    title: 'Lisinopril 10 mg',
+                    begdate: '2022-01-30 00:00:00',
                 },
             ],
         });
@@ -168,6 +171,7 @@ describe('list dates from the standard API (BM-044, BM-047)', () => {
                             uuid: 'a2d68325-cf44-4bb9-96c7-afad3ab1129d',
                             puuid: TYPICAL,
                             title: 'Penicillin',
+                            begdate: null,
                             enddate: null,
                             outcome: 0,
                             comments: 'not for the dashboard',
@@ -184,7 +188,15 @@ describe('list dates from the standard API (BM-044, BM-047)', () => {
         expect(await res.json()).toEqual({
             patient: TYPICAL,
             list: 'allergy',
-            entries: [{ uuid: 'a2d68325-cf44-4bb9-96c7-afad3ab1129d', enddate: null, outcome: 0 }],
+            entries: [
+                {
+                    uuid: 'a2d68325-cf44-4bb9-96c7-afad3ab1129d',
+                    enddate: null,
+                    outcome: 0,
+                    title: 'Penicillin',
+                    begdate: null,
+                },
+            ],
         });
         expect(calls.map((call) => call.url)).toEqual([`${API_BASE}/patient/${TYPICAL}/allergy`]);
     });

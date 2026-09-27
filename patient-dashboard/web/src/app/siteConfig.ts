@@ -9,6 +9,7 @@ export interface SiteConfig {
     ageDisplay: AgeSettings;
     encounterPageSize: number;
     dateDisplayFormat: DateDisplayFormat;
+    idleTimeoutSeconds: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -53,5 +54,9 @@ export function parseSiteConfig(value: unknown): SiteConfig | undefined {
     if (dateDisplayFormat !== 0 && dateDisplayFormat !== 1 && dateDisplayFormat !== 2) {
         return undefined;
     }
-    return { hiddenCards, ageDisplay, encounterPageSize, dateDisplayFormat };
+    const { idleTimeoutSeconds } = value;
+    if (typeof idleTimeoutSeconds !== 'number' || !Number.isInteger(idleTimeoutSeconds) || idleTimeoutSeconds <= 0) {
+        return undefined;
+    }
+    return { hiddenCards, ageDisplay, encounterPageSize, dateDisplayFormat, idleTimeoutSeconds };
 }

@@ -24,18 +24,33 @@ export interface Session {
 /** Refresh when the access token has less than this long left. */
 export const REFRESH_WINDOW_MS = 60_000;
 
+/** A login that never completes is dropped after this long, whatever the idle timeout (Opus review 4). */
+export const PENDING_TTL_MS = 10 * 60_000;
+
+/** Thrown when the store is full even after removing expired sessions. */
+export class SessionLimitError extends Error {}
+
 /** In-memory sessions keyed by a random id. Tokens never leave this store. */
 export class SessionStore {
     private readonly sessions = new Map<string, Session>();
     private readonly ttlMs: number;
+    private readonly maxSessions: number;
     private readonly now: () => number;
 
-    constructor(options: { ttlMs: number; now: () => number }) {
+    constructor(options: { ttlMs: number; now: () => number; maxSessions?: number }) {
         this.ttlMs = options.ttlMs;
+        this.maxSessions = options.maxSessions ?? 10_000;
         this.now = options.now;
     }
 
+    /** A new session; throws SessionLimitError rather than grow without bound (unauthenticated callers can create them). */
     create(): Session {
+        if (this.sessions.size >= this.maxSessions) {
+            this.sweep();
+        }
+        if (this.sessions.size >= this.maxSessions) {
+            throw new SessionLimitError('session store is full');
+        }
         const session: Session = { id: randomBytes(24).toString('base64url'), lastSeenAt: this.now() };
         this.sessions.set(session.id, session);
         return session;
@@ -76,7 +91,8 @@ export class SessionStore {
     }
 
     private isExpired(session: Session): boolean {
-        return this.now() - session.lastSeenAt > this.ttlMs;
+        const limit = session.tokens === undefined ? Math.min(PENDING_TTL_MS, this.ttlMs) : this.ttlMs;
+        return this.now() - session.lastSeenAt > limit;
     }
 }
 

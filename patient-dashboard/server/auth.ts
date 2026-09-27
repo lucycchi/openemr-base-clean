@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { OAuthClient } from './oauth';
-import { tokensFrom } from './session';
+import { SessionLimitError, tokensFrom } from './session';
 import type { SessionStore } from './session';
 
 export const SESSION_COOKIE = 'pd_sid';
@@ -26,12 +26,25 @@ export function authRoutes(deps: AuthDeps): Hono {
     const routes = new Hono();
 
     routes.get('/login', (c) => {
-        // A fresh session for every login attempt, so an id set before login is never reused after it.
+        // Already signed in: go back to the dashboard rather than drop the session, so a cross-site link
+        // to /auth/login cannot sign the user out.
         const previous = getCookie(c, SESSION_COOKIE);
+        if (store.get(previous)?.tokens !== undefined) {
+            return c.redirect('/', 302);
+        }
+        // A fresh session for every login attempt.
         if (previous !== undefined) {
             store.delete(previous);
         }
-        const session = store.create();
+        let session;
+        try {
+            session = store.create();
+        } catch (error) {
+            if (error instanceof SessionLimitError) {
+                return c.text('The dashboard is busy. Try again in a few minutes.', 503);
+            }
+            throw error;
+        }
         const codeVerifier = randomBytes(32).toString('base64url');
         const state = randomBytes(16).toString('base64url');
         session.pending = { state, codeVerifier };
@@ -56,12 +69,18 @@ export function authRoutes(deps: AuthDeps): Hono {
         ) {
             return c.text('Login could not be completed. Start again from the dashboard.', 400);
         }
+        let tokens;
         try {
-            session.tokens = tokensFrom(await oauth.exchangeCode(code, pending.codeVerifier), now());
+            tokens = tokensFrom(await oauth.exchangeCode(code, pending.codeVerifier), now());
         } catch (error) {
             console.error('token exchange failed', { status: (error as { status?: number }).status });
             return c.text('Login failed at OpenEMR. Try again.', 502);
         }
+        // A new session id at login, so an id planted before login is useless after it (Opus review 4).
+        store.delete(session.id);
+        const signedIn = store.create();
+        signedIn.tokens = tokens;
+        setSessionCookie(c, signedIn.id, secureCookie);
         return c.redirect('/', 302);
     });
 

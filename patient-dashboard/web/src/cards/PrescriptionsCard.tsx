@@ -51,10 +51,6 @@ export function PrescriptionsCard({ patientId, state }: { patientId: string; sta
                     </tbody>
                 </table>
             )}
-            <p className="small text-muted">
-                OpenEMR's FHIR API cannot tell list entries from prescriptions. Medication-list entries marked as an
-                order appear under Prescriptions.
-            </p>
         </section>
     );
 }

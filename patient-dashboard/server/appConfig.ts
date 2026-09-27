@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { isCardKey } from '../web/src/app/hiddenCards';
+import { idleTimeoutSecondsFrom } from './config';
 import type { CardKey } from '../web/src/app/hiddenCards';
 import type { AgeSettings } from '../web/src/mappers/age';
 import type { DateDisplayFormat } from '../web/src/mappers/dates';
@@ -12,6 +13,8 @@ export interface AppConfig {
     encounterPageSize: number;
     /** Mirrors OpenEMR's date_display_format global: 0 = Y-m-d (default), 1 = m/d/Y, 2 = d/m/Y. */
     dateDisplayFormat: DateDisplayFormat;
+    /** Mirrors OpenEMR's timeout global: the page signs out after this many idle seconds. */
+    idleTimeoutSeconds: number;
 }
 
 function ageSettingsFrom(env: NodeJS.ProcessEnv): AgeSettings {
@@ -83,5 +86,11 @@ export function loadAppConfig(path: string, env: NodeJS.ProcessEnv = process.env
     if (prescriptionsDisabled(env) && !hiddenCards.includes('card_prescriptions')) {
         hiddenCards.push('card_prescriptions');
     }
-    return { hiddenCards, ageDisplay, encounterPageSize, dateDisplayFormat };
+    return {
+        hiddenCards,
+        ageDisplay,
+        encounterPageSize,
+        dateDisplayFormat,
+        idleTimeoutSeconds: idleTimeoutSecondsFrom(env),
+    };
 }

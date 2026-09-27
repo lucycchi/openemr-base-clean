@@ -104,4 +104,10 @@ describe('EncounterHistoryCard', () => {
 
         expect(container.querySelector('[data-field="date"]')?.textContent).toBe('14/08/2026');
     });
+
+    it("notes that OpenEMR's API does not hide reasons the way the Visit History page does (BM-033, user decision)", () => {
+        render(<EncounterHistoryCard patientId="p1" pageSize={20} state={{ status: 'ready', data: long() }} />);
+
+        expect(screen.getByText(/does not apply the visit sensitivity/)).toBeTruthy();
+    });
 });

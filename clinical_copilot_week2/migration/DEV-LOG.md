@@ -2,6 +2,54 @@
 
 Newest entry first. One entry per slice, using the template in `MIGRATION-SPEC.md`.
 
+## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-06 — Fixes from the Opus parity review 4
+
+**Branch:** `dashboard-migration`
+**Status:** ready-for-commit
+
+### Worked on
+- A fresh Opus 5.5 agent reviewed read-only: 4 P1 and 9 P2 findings. The P1s were checked against the OpenEMR source before any fix.
+- Medications and Prescriptions (user decision, replacing the split on intent):
+  - Medications is the Standard REST API medication list with the old rule, begdate order and dosage from the FHIR request with the same id.
+  - Prescriptions is every FHIR request that is not a list entry, whatever its intent.
+  - This fixes list entries vanishing when Prescriptions is hidden, and non-"order" prescriptions landing on the wrong card or on none.
+  - Medication and prescription parity are now exact; the caveat notes are gone.
+- Idle sign-out (BM-056):
+  - `IDLE_TIMEOUT_SECONDS` (default 7200, mirroring `timeout`) sets the BFF session lifetime and the page's `useIdleLogout`
+  - the page rechecks `/auth/me` every minute and on returning to the tab
+  - `SESSION_TTL_MINUTES` is replaced
+- A 403 leaves the card out, as the old page leaves out cards a user may not see; this also covers BM-055's permission gate.
+- Header (BM-059): Deceased only for a real date on or before today.
+- Related persons: a failed read other than a 404 says "Name couldn't be loaded".
+- Allergies (BM-060): the name is the stored title from the standard list, which also removes the BM-009 exception from parity ("Latex <b>x</b>" is shown literally, as on the old card).
+- Session hardening:
+  - login attempts that never complete expire after 10 minutes
+  - the store is capped (503 when full)
+  - the session id is rotated at the callback
+  - `/auth/login` while signed in goes back to the dashboard instead of dropping the session
+  - the names cache is capped (oldest first)
+- Visit reasons (BM-033, user decision): the Encounter history card notes that OpenEMR's API does not apply the sensitivity restrictions; the defence advises sites.
+- Care-team parity: a TP-LONG team with Donna Lee (NPI) whose name must resolve, a fixed expectation independent of the names route.
+
+### Decisions
+- Ruling: a list entry linked to a prescription (Amlodipine) appears on both cards, as on the old dashboard, but without its list dosage, which FHIR does not carry and the standard list does not include (BM-020). Cost if wrong: one dosage text missing for linked entries.
+- Recorded, not fixed: BM-057 (Care Team needs patients/med) and BM-058 (end dates compared with the browser's clock).
+
+### Tests
+- Unit: 245 / 245 passing
+- Playwright: 35 / 35 passing (new: ended session, forbidden card)
+- Lint, typecheck and Prettier: clean
+- Proven red:
+  - medication parity with the intent rule restored (Atorvastatin missing)
+  - care-team parity with the names route blanked
+  - every new unit test and E2E before its fix
+
+### BUGS-MITIGATIONS.md updates
+- Added BM-056 to BM-060 (056, 059 and 060 resolved; 057 and 058 out of scope). BM-033 raised to High with the user's mitigation. BM-009, BM-019, BM-020, BM-036 and BM-042 annotated. Gate 2 amended.
+
+### Open questions / follow-ups
+- ARC-05 deploy: set `IDLE_TIMEOUT_SECONDS` to the site's `timeout` value.
+
 ## 2026-09-26 — Arc 03 / Story 03-05 / Slice 03-05-05 — Fixes from the Codex parity review 3
 
 **Branch:** `dashboard-migration`

@@ -23,13 +23,21 @@ function required(env: NodeJS.ProcessEnv, name: string): string {
     return value.trim();
 }
 
+/**
+ * OpenEMR's timeout global (default 7200 s): the session and the page both sign out after this long
+ * without activity, as the old tab frame does (interface/main/tabs/main.php).
+ */
+export function idleTimeoutSecondsFrom(env: NodeJS.ProcessEnv): number {
+    const raw = env.IDLE_TIMEOUT_SECONDS ?? '7200';
+    if (!/^[1-9]\d*$/.test(raw)) {
+        throw new Error(`IDLE_TIMEOUT_SECONDS must be a whole number of seconds above 0, got "${raw}"`);
+    }
+    return Number(raw);
+}
+
 /** Parses the BFF's environment once at start-up; fails fast on anything missing. */
 export function loadConfig(env: NodeJS.ProcessEnv): BffConfig {
     const publicUrl = required(env, 'PUBLIC_URL').replace(/\/+$/, '');
-    const ttlMinutes = Number(env.SESSION_TTL_MINUTES ?? 480);
-    if (!Number.isFinite(ttlMinutes) || ttlMinutes <= 0) {
-        throw new Error('SESSION_TTL_MINUTES must be a positive number');
-    }
     return {
         oemrBase: required(env, 'OEMR_BASE').replace(/\/+$/, ''),
         clientId: required(env, 'OEMR_CLIENT_ID'),
@@ -38,7 +46,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): BffConfig {
         publicUrl,
         redirectUri: `${publicUrl}/auth/callback`,
         secureCookie: publicUrl.startsWith('https://'),
-        sessionTtlMs: ttlMinutes * 60_000,
+        sessionTtlMs: idleTimeoutSecondsFrom(env) * 1000,
         port: Number(env.BFF_PORT ?? 5180),
         host: env.BFF_HOST ?? '127.0.0.1',
         namesClientId: required(env, 'NAMES_CLIENT_ID'),

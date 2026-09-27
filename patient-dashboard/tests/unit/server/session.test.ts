@@ -139,4 +139,17 @@ describe('session tokens', () => {
         expect(store.size()).toBe(1);
         expect(store.get(live.id)).toBeDefined();
     });
+
+    it('a login attempt that never completes expires after ten minutes, whatever the idle timeout', () => {
+        let clock = 10_000_000;
+        const store = new SessionStore({ ttlMs: 7_200_000, now: () => clock });
+        const abandoned = store.create();
+        const signedIn = store.create();
+        signedIn.tokens = { accessToken: 'a', expiresAt: clock + 3_600_000 };
+
+        clock += 11 * 60_000;
+
+        expect(store.get(abandoned.id)).toBeUndefined();
+        expect(store.get(signedIn.id)).toBeDefined();
+    });
 });

@@ -26,7 +26,14 @@ const upstream: Upstream = {
     },
 };
 
-function setup(options: { loggedIn?: boolean; systemToken?: () => Promise<string>; clock?: { now: number } } = {}) {
+function setup(
+    options: {
+        loggedIn?: boolean;
+        systemToken?: () => Promise<string>;
+        clock?: { now: number };
+        cacheMax?: number;
+    } = {},
+) {
     const clock = options.clock ?? { now: 5_000_000 };
     const now = () => clock.now;
     const store = new SessionStore({ ttlMs: 3_600_000, now });
@@ -50,6 +57,7 @@ function setup(options: { loggedIn?: boolean; systemToken?: () => Promise<string
             fhirBase: FHIR_BASE,
             systemToken: { getToken: options.systemToken ?? (async () => 'system-token') },
             fetchImpl,
+            ...(options.cacheMax === undefined ? {} : { cacheMax: options.cacheMax }),
         },
     });
     const session = store.create();
@@ -152,5 +160,21 @@ describe('display names (server-only lookup, Fable review F1)', () => {
 
         expect(await first.json()).toEqual({ names: {}, failed: [broken] });
         expect(calls).toHaveLength(2);
+    });
+
+    it('the cache is capped, evicting the oldest name, so it cannot grow without bound (Opus review 4)', async () => {
+        const { app, calls, cookie } = setup({ cacheMax: 1 });
+        const ask = (ref: string) => app.request(`/api/display-names?${query(ref)}`, { headers: { cookie } });
+
+        await ask(DONNA);
+        await ask(CLINIC); // evicts Donna
+        await ask(CLINIC); // cached
+        await ask(DONNA); // read again
+
+        expect(calls.map((call) => call.url)).toEqual([
+            `${FHIR_BASE}/${DONNA}`,
+            `${FHIR_BASE}/${CLINIC}`,
+            `${FHIR_BASE}/${DONNA}`,
+        ]);
     });
 });

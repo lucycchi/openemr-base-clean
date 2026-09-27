@@ -46,7 +46,16 @@ function medicalRecordNumber(patient: Patient): string {
 }
 
 export function mapHeader(patient: Patient, options: HeaderOptions): HeaderView {
-    const deathDate = patient.deceasedDateTime?.slice(0, 10);
+    // Deceased only for a real date on or before today, as is_patient_deceased (patient.inc.php:1643-1654):
+    // a zero date or a future date leaves the patient active.
+    const recorded = patient.deceasedDateTime?.slice(0, 10);
+    const deathDate =
+        recorded !== undefined &&
+        /^\d{4}-\d{2}-\d{2}$/.test(recorded) &&
+        !recorded.startsWith('0000') &&
+        recorded <= options.asOf
+            ? recorded
+            : undefined;
     const birthDate = patient.birthDate;
 
     const shown = (date: string) => formatShortDate(date, options.dateFormat ?? 0);

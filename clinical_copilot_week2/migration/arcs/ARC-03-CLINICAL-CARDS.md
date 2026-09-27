@@ -187,6 +187,28 @@ Edit controls (none are ported) and the encounter section (ARC-04).
 **Resolves:** BM-054, BM-055; annotates BM-044, BM-047, BM-051
 **Touches:** `server/`, `web/src/`, `tests/`, `fixtures/seed-parity-gaps.php`
 
+#### Slice 03-05-06 — Fixes from the Opus parity review 4
+- [x] Tests first, watched failing:
+  - the new medication split tests
+  - the idle sign-out hook
+  - the ended-session and forbidden-card E2Es
+  - the deceased, related-person, allergy-title, session-hardening and names-cache tests
+  - the visit-reason note
+  - care-team parity against a real resolved name
+- [x] Implement:
+  - Medications and Prescriptions split by list membership (BM-019, user decision)
+  - idle sign-out and session recheck (BM-056)
+  - forbidden cards left out
+  - deceased rule (BM-059)
+  - related-person outages say so
+  - allergy names from the stored title (BM-060)
+  - session hardening: pending-login expiry, store cap, id rotation, no sign-out from /auth/login, names cache cap
+  - visit-reason note (BM-033, user decision)
+  - exact medication and prescription parity
+- [x] Gates green; DEV-LOG, arc file and BM rows updated
+**Resolves:** BM-056, BM-059, BM-060; supersedes BM-019, BM-036; records BM-057, BM-058; BM-033 raised to High
+**Touches:** `server/`, `web/src/`, `tests/`, `fixtures/seed-parity-gaps.php`
+
 ## Definition of Done for this arc
 - [x] All slices ticked; every BM row listed above struck through
 - [x] DEV-LOG has an arc-completion entry

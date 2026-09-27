@@ -19,6 +19,8 @@
  *    header all given names (BM-052).
  *  - Metformin on TP-TYPICAL's medication list (lists 1241) gets dosage text, so the dosage parity
  *    check has something to compare on the Medications card (Codex review 3).
+ *  - TP-LONG gets a care team, "LongLists team", with Donna Lee (who has an NPI) as a member since
+ *    2025-01-15, so care-team parity must show a real resolved name (Opus review 4).
  *  - A non-admin dev user, tp-physician (password tp-physician-pass, dev stack only), in OpenEMR's
  *    default Physicians group, so tests can see what a clinician sees: the API lets only
  *    administrators read Practitioner and Organization (Fable review F1).
@@ -47,6 +49,7 @@ require_once '/var/www/localhost/htdocs/openemr/interface/globals.php';
 
 use OpenEMR\Common\Acl\AclExtended;
 use OpenEMR\Common\Database\QueryUtils;
+use OpenEMR\Common\Uuid\UuidRegistry;
 use OpenEMR\Services\EncounterService;
 use OpenEMR\Services\PatientIssuesService;
 
@@ -162,3 +165,18 @@ if ((int) $metforminDosage === 0) {
     QueryUtils::sqlInsert("INSERT INTO lists_medication (list_id, drug_dosage_instructions) VALUES (1241, '1 tablet twice daily')");
 }
 echo "Metformin (lists 1241): dosage 1 tablet twice daily\n";
+
+$longTeam = QueryUtils::fetchSingleValue("SELECT id FROM care_teams WHERE pid = 41 AND team_name = 'LongLists team'", 'id');
+if ($longTeam === null) {
+    $longTeam = QueryUtils::sqlInsert(
+        "INSERT INTO care_teams (uuid, pid, status, team_name, date_created, created_by, updated_by)"
+        . " VALUES (?, 41, 'active', 'LongLists team', NOW(), 1, 1)",
+        [UuidRegistry::getRegistryForTable('care_teams')->createUuid()],
+    );
+    QueryUtils::sqlInsert(
+        "INSERT INTO care_team_member (care_team_id, user_id, role, provider_since, status, date_created, created_by, updated_by)"
+        . " VALUES (?, 6, 'physician', '2025-01-15', 'active', NOW(), 1, 1)",
+        [$longTeam],
+    );
+}
+echo "TP-LONG: care team with Donna Lee\n";

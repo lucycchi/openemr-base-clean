@@ -24,4 +24,12 @@ describe('BFF configuration', () => {
     it('fails fast without the names client, rather than silently showing "Name unavailable" to everyone', () => {
         expect(() => loadConfig({ ...base, NAMES_CLIENT_ID: '' })).toThrow(/NAMES_CLIENT_ID/);
     });
+
+    it("the session idles out after IDLE_TIMEOUT_SECONDS, default 7200, mirroring OpenEMR's timeout global", () => {
+        expect(loadConfig(base).sessionTtlMs).toBe(7_200_000);
+        expect(loadConfig({ ...base, IDLE_TIMEOUT_SECONDS: '900' }).sessionTtlMs).toBe(900_000);
+        for (const bad of ['0', '-5', '1.5', 'soon']) {
+            expect(() => loadConfig({ ...base, IDLE_TIMEOUT_SECONDS: bad }), bad).toThrow(/IDLE_TIMEOUT_SECONDS/);
+        }
+    });
 });

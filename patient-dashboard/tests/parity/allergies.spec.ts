@@ -7,7 +7,6 @@ import { openOldSession, readOldCard, showOldPatient } from '../support/oldDashb
 
 // Compared (modules/allergies.md, section 2): which allergies are shown, in order, and each reaction.
 // Approved exceptions, applied below:
-//   BM-009  narrative markup is read as text, so "Latex <b>x</b>" shows as "Latex x"
 //   BM-011  severity words become FHIR risk levels, so the bracketed text is not compared
 //   BM-012  both empty states ("Nothing Recorded", "No Known Allergies") become "No allergies recorded"
 //   BM-015  no empty "()" when there is no risk level
@@ -20,11 +19,6 @@ interface Row {
 }
 
 const reactionOf = (tooltip: string | null) => /Reaction: (.*?) -/.exec(tooltip ?? '')?.[1]?.trim() ?? '';
-const withoutMarkup = (text: string) =>
-    text
-        .replace(/<[^>]*>/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
 
 test('allergies match the old dashboard for every fixture, with the approved exceptions', async ({ page, browser }) => {
     test.setTimeout(180_000);
@@ -38,7 +32,12 @@ test('allergies match the old dashboard for every fixture, with the approved exc
         const oldRows: Row[] = old.items
             .filter((item) => !OLD_EMPTY.includes(item))
             .map((item, index) => ({
-                name: withoutMarkup(item.replace(/ \([^)]*\)$/, '')),
+                // The stored title, shown as text on both cards; markup-like characters are displayed, never
+                // rendered (the list title supersedes BM-009's narrative text, Opus review 4).
+                name: item
+                    .replace(/ \([^)]*\)$/, '')
+                    .replace(/\s+/g, ' ')
+                    .trim(),
                 reaction: reactionOf(old.tooltips[index] ?? null),
             }));
 

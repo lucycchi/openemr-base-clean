@@ -103,3 +103,7 @@ Observed on the old page (2026-09-26, `encounter_page_size` = 20, clinical view)
 - Provider names are read through the BFF's server-only client (BM-048); a default Clinician cannot search Encounter at all (encounters auth_a, BM-049).
 - FHIR sorts by eid descending, so same-day visits keep the API order, which matches the old page's id descending. TP-HISTORY now has two visits on 2024-10-26.
 - Dates use the site format (`DATE_DISPLAY_FORMAT`), as the old page's oeFormatShortDate does.
+
+## 9. Update after the Opus parity review 4 (2026-09-26)
+
+BM-033 is confirmed: FHIR Encounter applies no sensitivity check, and OpenEMR's default Accounting group can search visits with no sensitivity permission. By user decision the card carries a note, and sites should not grant `encounters auth_a` to groups that must not see reasons.

@@ -118,4 +118,21 @@ describe('mapAllergies', () => {
     it('an allergy with no name anywhere is "Unnamed allergy"', () => {
         expect(mapAllergies([allergy({ id: 'x' })])[0]?.name).toBe('Unnamed allergy');
     });
+
+    it("the name is the title the clinician entered, as the old card shows it, not the code's description (Opus review 4)", () => {
+        const coded = allergy({
+            id: 'coded',
+            code: {
+                coding: [
+                    { system: 'http://www.nlm.nih.gov/research/umls/rxnorm', code: '7980', display: 'Penicillin G' },
+                ],
+            },
+        });
+        const dates = new Map([
+            ['coded', { enddate: null, outcome: 0, title: 'Penicillin (childhood rash)', begdate: null }],
+        ]);
+
+        expect(mapAllergies([coded], dates, '2026-09-26 12:00:00')[0]?.name).toBe('Penicillin (childhood rash)');
+        expect(mapAllergies([coded])[0]?.name).toBe('Penicillin G');
+    });
 });

@@ -92,3 +92,7 @@ Observed on the old dashboard (2026-09-26, body text read from the DOM):
 - BM-025: the eRx "Current Medications" block in demographics.php can never render, because `$display_current_medications_below` is only set in stats.php (`demographics.php:1186-1210`).
 - BM-038: the Details column (size, unit, dose) isn't in FHIR for these prescriptions.
 - BM-019 and BM-020 (shared): list rows and prescriptions can't be separated in FHIR.
+
+## 8. Update after the Opus parity review 4 (2026-09-26)
+
+The card shows every FHIR MedicationRequest that is not a Standard REST API medication-list entry, whatever its intent (the prescription form and CCDA import can store Plan or Original Order), so it matches the old card's `active > 0` rule exactly; parity now compares the rows with nothing extra allowed.

@@ -9,13 +9,31 @@ describe('parseListDates', () => {
             {
                 patient: 'p1',
                 list: 'medication',
-                entries: [{ uuid: LISINOPRIL, enddate: '2027-06-30 00:00:00', outcome: 0 }],
+                entries: [
+                    {
+                        uuid: LISINOPRIL,
+                        enddate: '2027-06-30 00:00:00',
+                        outcome: 0,
+                        title: 'Lisinopril 10 mg',
+                        begdate: '2022-01-30 00:00:00',
+                    },
+                ],
             },
             'p1',
             'medication',
         );
 
-        expect(result.ok && [...result.value]).toEqual([[LISINOPRIL, { enddate: '2027-06-30 00:00:00', outcome: 0 }]]);
+        expect(result.ok && [...result.value]).toEqual([
+            [
+                LISINOPRIL,
+                {
+                    enddate: '2027-06-30 00:00:00',
+                    outcome: 0,
+                    title: 'Lisinopril 10 mg',
+                    begdate: '2022-01-30 00:00:00',
+                },
+            ],
+        ]);
     });
 
     it('an answer for another patient is a wrong-patient error (BM-004)', () => {

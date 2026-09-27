@@ -31,8 +31,20 @@ const longDates = {
     patient: LONG,
     list: 'allergy',
     entries: [
-        { uuid: 'a2d6832d-6331-4119-9115-66945ff551c9', enddate: null, outcome: 1 },
-        { uuid: 'a2d6832d-b5b6-45bc-8b07-99b2fa01e454', enddate: '2027-12-31 00:00:00', outcome: 0 },
+        {
+            uuid: 'a2d6832d-6331-4119-9115-66945ff551c9',
+            title: 'Long-list allergen 02',
+            begdate: null,
+            enddate: null,
+            outcome: 1,
+        },
+        {
+            uuid: 'a2d6832d-b5b6-45bc-8b07-99b2fa01e454',
+            title: 'Long-list allergen 03',
+            begdate: null,
+            enddate: '2027-12-31 00:00:00',
+            outcome: 0,
+        },
     ],
 };
 

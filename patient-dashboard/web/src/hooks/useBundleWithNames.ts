@@ -10,10 +10,14 @@ interface Loaded<V> {
     state: LoadState<V>;
 }
 
-/** A related person is read with the user's own token, and must belong to the patient. */
+/** A related person is read with the user's own token, and must belong to the patient. A read that fails other than with a 404 reads "Name couldn't be loaded". */
 async function readRelatedPerson(client: ApiClient, patientId: string, reference: string): Promise<string | undefined> {
     const result = await client.getResource<RelatedPerson>(reference);
-    if (!result.ok || `${result.value.resourceType}/${result.value.id ?? ''}` !== reference) {
+    if (!result.ok) {
+        // A 404 means OpenEMR has no readable record ("Name unavailable"); anything else is an outage.
+        return result.error.kind === 'http' && result.error.status === 404 ? undefined : NAME_NOT_LOADED;
+    }
+    if (`${result.value.resourceType}/${result.value.id ?? ''}` !== reference) {
         return undefined;
     }
     if (result.value.resourceType !== 'RelatedPerson' || result.value.patient.reference !== `Patient/${patientId}`) {

@@ -23,6 +23,8 @@ export interface DisplayNamesDeps {
     fhirBase: string;
     systemToken: SystemTokenSource;
     fetchImpl?: typeof fetch;
+    /** Most names kept at once; the oldest is dropped first (default 1000). */
+    cacheMax?: number;
 }
 
 function isNamed(value: unknown, type: string, id: string): value is Practitioner | Organization {
@@ -44,6 +46,18 @@ export function displayNamesRoutes(deps: DisplayNamesDeps): Hono {
     const fetchImpl = deps.fetchImpl ?? fetch;
     const routes = new Hono();
     const cache = new Map<string, { name: string | undefined; expiresAt: number }>();
+    const cacheMax = deps.cacheMax ?? 1000;
+    const remember = (ref: string, name: string | undefined): void => {
+        cache.delete(ref);
+        cache.set(ref, { name, expiresAt: now() + CACHE_MS });
+        while (cache.size > cacheMax) {
+            const oldest = cache.keys().next().value;
+            if (oldest === undefined) {
+                break;
+            }
+            cache.delete(oldest);
+        }
+    };
 
     routes.get('/', async (c) => {
         const refs = c.req.queries('ref') ?? [];
@@ -101,7 +115,7 @@ export function displayNamesRoutes(deps: DisplayNamesDeps): Hono {
                 });
                 if (res.status === 404) {
                     // A user without an NPI (BM-028): the card shows "Name unavailable".
-                    cache.set(ref, { name: undefined, expiresAt: now() + CACHE_MS });
+                    remember(ref, undefined);
                     continue;
                 }
                 if (!res.ok) {
@@ -111,7 +125,7 @@ export function displayNamesRoutes(deps: DisplayNamesDeps): Hono {
                 const resource = (await res.json()) as unknown;
                 const name = isNamed(resource, type, id) ? displayName(resource) : NAME_UNAVAILABLE;
                 const known = name === NAME_UNAVAILABLE ? undefined : name;
-                cache.set(ref, { name: known, expiresAt: now() + CACHE_MS });
+                remember(ref, known);
                 if (known !== undefined) {
                     names[ref] = known;
                 }

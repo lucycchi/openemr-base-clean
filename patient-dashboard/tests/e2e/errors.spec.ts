@@ -170,3 +170,17 @@ test('no clinical card is shown until the patient header has loaded', async ({ p
     await page.waitForTimeout(1500); // give every other card time to load, were it going to
     await expect(page.locator('[data-card]:not([data-card="header"])')).toHaveCount(0);
 });
+
+// The old page does not render a card the user may not see (demographics.php:1095-1098, aclCheckIssue);
+// a 403 from OpenEMR hides the card rather than showing a load error (Opus review 4).
+test('a card the user is not permitted to see is left out, as on the old page', async ({ page }) => {
+    await logInThroughOpenEmr(page);
+    await page.route('**/api/fhir/AllergyIntolerance**', (route) =>
+        route.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"forbidden"}' }),
+    );
+
+    await page.goto(`/patient/${fixture('TP-TYPICAL').fhirId}`);
+
+    await expect(page.locator('[data-card="problems"]')).toHaveAttribute('data-state', 'ready');
+    await expect(page.locator('[data-card="allergies"]')).toHaveCount(0);
+});

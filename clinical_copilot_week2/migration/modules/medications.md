@@ -85,3 +85,6 @@ VERDICT: no reliable FHIR field. Options for Gate 2:
 
 FHIR MedicationRequest does not carry the end date: an active entry with any end date, past or future, is sent as status `completed` (BM-044). By user decision the Medications card now reads each list entry's `enddate` and `outcome` from the Standard REST API (`GET /api/patient/:pid/medication`, after `GET /api/patient/:puuid` for the pid) through the BFF route `/api/medication-end-dates`, and applies the old `filterActiveIssues` rule exactly. The list-row uuid equals the FHIR MedicationRequest id, so the two are matched by id. An empty list comes back as a bodyless HTTP 404 (BM-046).
 
+## 9. Update after the Opus parity review 4 (2026-09-26)
+
+By user decision the split on intent (BM-019) is replaced by list membership: the Medications card is the Standard REST API medication list (`GET /api/patient/:pid/medication`, the old card's own source) with the old `filterActiveIssues` rule and begdate order, and dosage from the FHIR MedicationRequest with the same id. A FHIR MedicationRequest whose id is not on that list is a prescription, whatever its intent. A list entry linked to a prescription appears on both cards, as on the old dashboard, without its list dosage (BM-020). Hiding the Prescriptions card no longer hides any list entry.

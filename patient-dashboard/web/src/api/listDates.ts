@@ -8,7 +8,7 @@ export interface ListDates {
     enddate: string | null;
     /** 1 means resolved. */
     outcome: number;
-    /** Problems only (the card is built from the list, BM-051). */
+    /** The title the clinician entered, which the old cards show, and the start date. */
     title?: string;
     begdate?: string | null;
 }
@@ -41,10 +41,6 @@ export function parseListDates(body: unknown, patientId: string, list: ListName)
         const { enddate, title, begdate } = entry;
         if (enddate !== null && typeof enddate !== 'string') {
             return invalid;
-        }
-        if (list !== 'medical_problem') {
-            dates.set(entry.uuid, { enddate, outcome: entry.outcome });
-            continue;
         }
         if (typeof title !== 'string' || (begdate !== null && typeof begdate !== 'string')) {
             return invalid;

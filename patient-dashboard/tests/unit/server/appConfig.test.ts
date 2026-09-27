@@ -25,6 +25,7 @@ describe('app configuration', () => {
             ageDisplay: { format: 0, limitYears: 3 },
             encounterPageSize: 20,
             dateDisplayFormat: 0,
+            idleTimeoutSeconds: 7200,
         });
     });
 
@@ -38,6 +39,7 @@ describe('app configuration', () => {
             ageDisplay: { format: 0, limitYears: 3 },
             encounterPageSize: 20,
             dateDisplayFormat: 0,
+            idleTimeoutSeconds: 7200,
         });
     });
 
@@ -84,6 +86,12 @@ describe('app configuration', () => {
         expect(loadAppConfig(join(tmpdir(), 'none.json'), { DISABLE_PRESCRIPTIONS: '0' }).hiddenCards).toEqual([]);
         expect(() => loadAppConfig(join(tmpdir(), 'none.json'), { DISABLE_PRESCRIPTIONS: 'yes' })).toThrow(
             /DISABLE_PRESCRIPTIONS/,
+        );
+    });
+
+    it('serves the idle timeout, so the page can sign itself out as OpenEMR does', () => {
+        expect(loadAppConfig(join(tmpdir(), 'none.json'), { IDLE_TIMEOUT_SECONDS: '900' }).idleTimeoutSeconds).toBe(
+            900,
         );
     });
 });

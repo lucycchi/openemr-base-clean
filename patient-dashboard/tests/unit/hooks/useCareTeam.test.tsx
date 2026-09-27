@@ -185,4 +185,23 @@ describe('useCareTeam', () => {
             "Name couldn't be loaded",
         );
     });
+
+    it('a related person OpenEMR fails to return reads "Name couldn\'t be loaded"; only a 404 is "Name unavailable"', async () => {
+        const outage = fakeClient(
+            { ok: true, value: [team('p1')] },
+            {
+                'RelatedPerson/r1': { ok: false, error: { kind: 'http', status: 503 } },
+            },
+        );
+        const missing = fakeClient({ ok: true, value: [team('p1')] }, {});
+        const down = renderHook(() => useCareTeam(outage, 'p1'));
+        const absent = renderHook(() => useCareTeam(missing, 'p1'));
+
+        await waitFor(() => expect(down.result.current.status).toBe('ready'));
+        await waitFor(() => expect(absent.result.current.status).toBe('ready'));
+        const related = (state: typeof down.result.current) =>
+            state.status === 'ready' ? state.data[0]?.members[1]?.name : undefined;
+        expect(related(down.result.current)).toBe("Name couldn't be loaded");
+        expect(related(absent.result.current)).toBe('Name unavailable');
+    });
 });

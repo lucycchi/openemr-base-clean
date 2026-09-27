@@ -33,7 +33,8 @@ describe('PrescriptionsCard', () => {
             'Not available',
             '2026-09-26 11:58:32',
         ]);
-        expect(screen.getByText(/marked as an order appear under Prescriptions/)).toBeTruthy();
+        // The cards are now split by list membership, not intent, so the old caveat is gone (BM-019).
+        expect(screen.queryByText(/marked as an order appear under Prescriptions/)).toBeNull();
     });
 
     it('column label is "Added" (BM-023)', () => {

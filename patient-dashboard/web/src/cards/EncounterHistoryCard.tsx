@@ -80,6 +80,10 @@ export function EncounterHistoryCard({
                             </button>
                         </p>
                     )}
+                    <p className="small text-muted">
+                        OpenEMR's API does not apply the visit sensitivity restrictions the Visit History page uses, so
+                        reasons it would show as "(No access)" appear here.
+                    </p>
                 </>
             )}
         </section>

@@ -6,6 +6,7 @@ const valid = {
     ageDisplay: { format: 0, limitYears: 3 },
     encounterPageSize: 20,
     dateDisplayFormat: 0,
+    idleTimeoutSeconds: 7200,
 };
 
 describe('parseSiteConfig', () => {
@@ -25,6 +26,8 @@ describe('parseSiteConfig', () => {
             { ...valid, encounterPageSize: -1 },
             { ...valid, encounterPageSize: 2.5 },
             { ...valid, dateDisplayFormat: 3 },
+            { ...valid, idleTimeoutSeconds: 0 },
+            { ...valid, idleTimeoutSeconds: '7200' },
             { hiddenCards: [], ageDisplay: { format: 0, limitYears: 3 }, encounterPageSize: 20 },
             { hiddenCards: [], ageDisplay: { format: 0, limitYears: 3 } },
         ];

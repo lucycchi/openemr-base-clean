@@ -27,7 +27,7 @@ export interface ListRowDates {
     enddate: string | null;
     /** 1 means resolved; the old cards hide those. */
     outcome: number;
-    /** Problems only: the card is built from this list, so it needs the title and start date (BM-051). */
+    /** Every list: the title the clinician entered (the old cards show it) and the start date, for ordering. */
     title?: string;
     begdate?: string | null;
 }
@@ -73,8 +73,8 @@ class Forbidden extends Error {}
  * wrong: MedicationRequest calls every end-dated entry "completed" (BM-044), AllergyIntolerance calls a
  * resolved allergy with no end date "active" (BM-047), and the problem list leaves out any problem
  * without activity = 1 (BM-051). For these lists only, this reads OpenEMR's Standard REST API (user
- * decisions 2026-09-26) and returns uuid, end date and outcome per row, plus title and start date
- * for problems, nothing else. It fails with 502 unless every row is the patient's.
+ * decisions 2026-09-26) and returns uuid, end date, outcome, title and start date per row, nothing
+ * else. It fails with 502 unless every row is the patient's.
  */
 export function listDatesRoutes(deps: ListDatesDeps): Hono {
     const { store, oauth, now, apiBase, fhirBase } = deps;
@@ -129,7 +129,7 @@ export function listDatesRoutes(deps: ListDatesDeps): Hono {
             if (!Array.isArray(rows)) {
                 throw new Unavailable('medication list is not a list');
             }
-            return rows.map((row) => parseRow(row, (r) => r.pid === pid) ?? throwUnavailable());
+            return rows.map((row) => parseRow(row, (r) => r.pid === pid, true) ?? throwUnavailable());
         };
 
         /** The allergy and problem lists: wrapped in data, keyed by patient uuid. */
@@ -170,7 +170,7 @@ export function listDatesRoutes(deps: ListDatesDeps): Hono {
                 list === 'medication'
                     ? await medicationRows()
                     : list === 'allergy'
-                      ? await wrappedRows('allergy', false)
+                      ? await wrappedRows('allergy', true)
                       : await problemRows();
             return c.json({ patient, list: list as ListName, entries }, 200, { 'cache-control': 'no-store' });
         } catch (error) {

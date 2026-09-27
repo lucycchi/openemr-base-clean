@@ -28,10 +28,7 @@ function toView(request: MedicationRequest): MedicationView {
             request.medicationCodeableConcept?.text?.trim() ||
             realCodingDisplay(request.medicationCodeableConcept?.coding) ||
             'Unnamed medication',
-        dosage: (request.dosageInstruction ?? [])
-            .map((instruction) => instruction.text?.trim() ?? '')
-            .filter((text) => text !== '')
-            .join('; '),
+        dosage: dosageText(request),
         quantity: quantity === undefined ? '' : String(quantity),
         // OpenEMR sends the stored local time with an offset; keep its date and time as written.
         added: (request.authoredOn ?? '').slice(0, 19).replace('T', ' '),
@@ -41,57 +38,56 @@ function toView(request: MedicationRequest): MedicationView {
 /**
  * OpenEMR sends status "completed" for any active prescription with an end date, past or future, and
  * does not send the end date itself (BM-044). The old Prescriptions card ignores the end date and
- * lists every active prescription, so completed orders are shown too; stopped ones are not.
+ * lists every active prescription, so completed prescriptions are shown too; stopped ones are not.
  */
-function isCurrentOrder(request: MedicationRequest): boolean {
+function isCurrentPrescription(request: MedicationRequest): boolean {
     return request.status === 'active' || request.status === 'completed';
 }
 
-/**
- * The old medication card's rule (filterActiveIssues, demographics.php:1111-1113): hide an entry
- * marked resolved or whose end date has passed. FHIR cannot apply it, because it sends "completed"
- * for past and future end dates alike (BM-044), so the list row from the standard API decides
- * (isCurrentListRow compares the stored end date and time with now). Without a list row, only
- * FHIR-active entries are shown.
- */
-function isOnMedicationList(
-    request: MedicationRequest,
-    listDates: ReadonlyMap<string, ListDates>,
-    now: string,
-): boolean {
-    const row = listDates.get(request.id ?? '');
-    return row === undefined ? request.status === 'active' : isCurrentListRow(row, now);
+function dosageText(request: MedicationRequest | undefined): string {
+    return (request?.dosageInstruction ?? [])
+        .map((instruction) => instruction.text?.trim() ?? '')
+        .filter((text) => text !== '')
+        .join('; ');
 }
 
 /**
- * FHIR merges the medication list and prescriptions into one MedicationRequest feed with no field
- * that reliably says which is which (BM-019). Per the Gate 2 decision, intent "order" goes to
- * Prescriptions and everything else to Medications. Medications follow the old list rule using the
- * standard API's list dates (see isOnMedicationList); Prescriptions show active and completed
- * orders (see isCurrentOrder). Medications keep the API order (the old begdate order is not in
- * FHIR; BM-036); prescriptions are newest first. `now` is the local date and time, "YYYY-MM-DD HH:MM:SS".
+ * Splits the dashboard's medications as the old cards did (user decision 2026-09-26, replacing the
+ * split on intent; BM-019). `listRows` is the Standard REST API medication list, keyed by uuid: it is
+ * the old Medications card's own source, and each uuid is the id FHIR gives the same list entry.
+ * - Medications: every list entry the old rule keeps (isCurrentListRow), whatever its intent, oldest
+ *   start date first with a missing start first, as ORDER BY begdate (BM-036). Dosage comes from the
+ *   FHIR request for the same entry; a list entry linked to a prescription has none in FHIR (BM-020).
+ * - Prescriptions: every FHIR request that is not a list entry, whatever its intent, active or
+ *   completed, newest first.
+ * `now` is the local date and time, "YYYY-MM-DD HH:MM:SS".
  */
 export function splitMedications(
     resources: readonly MedicationRequest[],
-    listDates: ReadonlyMap<string, ListDates> = new Map(),
-    now = '',
+    listRows: ReadonlyMap<string, ListDates>,
+    now: string,
 ): MedicationSplit {
-    return {
-        medications: resources
-            .filter((request) => request.intent !== 'order' && isOnMedicationList(request, listDates, now))
-            .map(toView),
-        prescriptions: resources
-            .filter(
-                (request) =>
-                    request.intent === 'order' &&
-                    // A list row marked Order (BM-019) keeps the list rule; a prescription keeps the Rx rule.
-                    (listDates.has(request.id ?? '')
-                        ? isOnMedicationList(request, listDates, now)
-                        : isCurrentOrder(request)),
-            )
-            .map(toView)
-            .map((view, index) => ({ view, index }))
-            .sort((a, b) => (a.view.added === b.view.added ? a.index - b.index : a.view.added < b.view.added ? 1 : -1))
-            .map(({ view }) => view),
-    };
+    const byId = new Map(resources.map((request) => [request.id ?? '', request]));
+    const medications = [...listRows]
+        .filter(([, row]) => isCurrentListRow(row, now))
+        .map(([id, row], index) => ({ id, row, index }))
+        .sort((a, b) => {
+            const startA = a.row.begdate ?? '';
+            const startB = b.row.begdate ?? '';
+            return startA === startB ? a.index - b.index : startA < startB ? -1 : 1;
+        })
+        .map(({ id, row }) => ({
+            id,
+            name: row.title?.trim() || 'Unnamed medication',
+            dosage: dosageText(byId.get(id)),
+            quantity: '',
+            added: '',
+        }));
+    const prescriptions = resources
+        .filter((request) => !listRows.has(request.id ?? '') && isCurrentPrescription(request))
+        .map(toView)
+        .map((view, index) => ({ view, index }))
+        .sort((a, b) => (a.view.added === b.view.added ? a.index - b.index : a.view.added < b.view.added ? 1 : -1))
+        .map(({ view }) => view);
+    return { medications, prescriptions };
 }

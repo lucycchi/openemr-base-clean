@@ -1,7 +1,7 @@
 import type { LoadState } from '../hooks/loadState';
 import type { MedicationView } from '../mappers/medications';
 
-/** The medication list. Entries FHIR marks as orders are shown under Prescriptions instead (BM-019). */
+/** The medication list: every current entry on the old card, from the Standard REST API list (BM-019). */
 export function MedicationsCard({ patientId, state }: { patientId: string; state: LoadState<MedicationView[]> }) {
     if (state.status !== 'ready') {
         return (
@@ -35,10 +35,6 @@ export function MedicationsCard({ patientId, state }: { patientId: string; state
                     ))}
                 </ul>
             )}
-            <p className="small text-muted">
-                OpenEMR's FHIR API cannot tell list entries from prescriptions. Entries marked as an order appear under
-                Prescriptions.
-            </p>
         </section>
     );
 }

@@ -11,7 +11,10 @@ import { openOldSession, readOldCareTeam, showOldPatient } from '../support/oldD
 //   BM-028  a member FHIR cannot resolve is shown as "Name unavailable" (the old card shows the name)
 //   BM-030  no team shows "No care team recorded" (old: a header row and no message)
 //   BM-037  since is shown only when FHIR has a period; member status, note and the Remove column are left out
-const FIXTURES: FixtureKey[] = ['TP-TYPICAL', 'TP-EMPTY'];
+// TP-LONG's team has Donna Lee, who has an NPI, so her name must resolve: a fixed expectation that does
+// not depend on the names route under test (Opus review 4).
+const FIXTURES: FixtureKey[] = ['TP-TYPICAL', 'TP-EMPTY', 'TP-LONG'];
+const MUST_NAME: Partial<Record<FixtureKey, string[]>> = { 'TP-LONG': ['Lee, Donna'] };
 
 test('care team matches the old dashboard for every fixture, with the approved exceptions', async ({
     page,
@@ -69,6 +72,10 @@ test('care team matches the old dashboard for every fixture, with the approved e
         const resolvable = new Set(
             refs.map((ref, index) => (named[ref] !== undefined ? index : -1)).filter((i) => i >= 0),
         );
+        expect(
+            (MUST_NAME[key] ?? []).filter((name) => !members.some((member) => member.name === name)),
+            `${key} names that must resolve`,
+        ).toEqual([]);
         members.forEach((member, index) => {
             const was = old.members[index];
             const allowed = resolvable.has(index) ? [was?.member] : [was?.member, 'Name unavailable'];

@@ -19,9 +19,13 @@ function fakeOAuth(): OAuthClient & { exchanged: string[] } {
     };
 }
 
-function setup(secureCookie = false) {
+function setup(secureCookie = false, maxSessions?: number) {
     const now = () => 1_000_000;
-    const store = new SessionStore({ ttlMs: 60 * 60 * 1000, now });
+    const store = new SessionStore({
+        ttlMs: 60 * 60 * 1000,
+        now,
+        ...(maxSessions === undefined ? {} : { maxSessions }),
+    });
     const oauth = fakeOAuth();
     const app = createApp({ auth: { store, oauth, now, secureCookie } });
     return { app, store, oauth };
@@ -34,6 +38,9 @@ async function startLogin(app: ReturnType<typeof createApp>) {
     const cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
     return { res, state, cookie };
 }
+
+/** The session cookie a response sets, as "pd_sid=<id>". */
+const setCookieOf = (res: Response) => (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
 
 describe('BFF login flow', () => {
     it('login redirects to OpenEMR with a PKCE S256 challenge and sets an HttpOnly session cookie', async () => {
@@ -83,7 +90,7 @@ describe('BFF login flow', () => {
         const callback = await app.request(`/auth/callback?code=c&state=${login.state}`, {
             headers: { cookie: login.cookie },
         });
-        const me = await app.request('/auth/me', { headers: { cookie: login.cookie } });
+        const me = await app.request('/auth/me', { headers: { cookie: setCookieOf(callback) } });
 
         const exposed = [
             await callback.text(),
@@ -96,21 +103,24 @@ describe('BFF login flow', () => {
         expect(exposed).not.toContain('secret-refresh');
         expect(await me.json()).toEqual({ authenticated: true });
 
-        const sessionId = login.cookie.split('=')[1] ?? '';
+        const sessionId = setCookieOf(callback).split('=')[1] ?? '';
         expect(store.get(sessionId)?.tokens?.accessToken).toBe(SECRET_TOKEN);
     });
 
     it('logout is POST only and ends the session', async () => {
         const { app } = setup();
         const login = await startLogin(app);
-        await app.request(`/auth/callback?code=c&state=${login.state}`, { headers: { cookie: login.cookie } });
+        const callback = await app.request(`/auth/callback?code=c&state=${login.state}`, {
+            headers: { cookie: login.cookie },
+        });
+        const cookie = setCookieOf(callback);
 
-        const viaGet = await app.request('/auth/logout', { headers: { cookie: login.cookie } });
+        const viaGet = await app.request('/auth/logout', { headers: { cookie } });
         expect(viaGet.status).toBe(404);
 
-        const viaPost = await app.request('/auth/logout', { method: 'POST', headers: { cookie: login.cookie } });
+        const viaPost = await app.request('/auth/logout', { method: 'POST', headers: { cookie } });
         expect(viaPost.status).toBe(204);
-        const me = await app.request('/auth/me', { headers: { cookie: login.cookie } });
+        const me = await app.request('/auth/me', { headers: { cookie } });
         expect(await me.json()).toEqual({ authenticated: false });
     });
 
@@ -118,5 +128,45 @@ describe('BFF login flow', () => {
         const { app } = setup(true);
         const { res } = await startLogin(app);
         expect(res.headers.get('set-cookie') ?? '').toMatch(/Secure/);
+    });
+
+    it('the session id changes at login, so an id planted before login is useless after it (Opus review 4)', async () => {
+        const { app } = setup();
+        const login = await startLogin(app);
+        const callback = await app.request(`/auth/callback?code=c&state=${login.state}`, {
+            headers: { cookie: login.cookie },
+        });
+
+        expect(setCookieOf(callback)).not.toBe(login.cookie);
+        expect(setCookieOf(callback)).toMatch(/^pd_sid=/);
+        const before = await app.request('/auth/me', { headers: { cookie: login.cookie } });
+        const after = await app.request('/auth/me', { headers: { cookie: setCookieOf(callback) } });
+        expect(await before.json()).toEqual({ authenticated: false });
+        expect(await after.json()).toEqual({ authenticated: true });
+    });
+
+    it('opening /auth/login while signed in keeps the session, so a cross-site link cannot sign the user out', async () => {
+        const { app } = setup();
+        const login = await startLogin(app);
+        const callback = await app.request(`/auth/callback?code=c&state=${login.state}`, {
+            headers: { cookie: login.cookie },
+        });
+        const cookie = setCookieOf(callback);
+
+        const again = await app.request('/auth/login', { headers: { cookie } });
+
+        expect(again.status).toBe(302);
+        expect(again.headers.get('location')).toBe('/');
+        expect(await (await app.request('/auth/me', { headers: { cookie } })).json()).toEqual({ authenticated: true });
+    });
+
+    it('when the session store is full, a new login is refused rather than using unbounded memory', async () => {
+        const { app } = setup(false, 2);
+        await startLogin(app);
+        await startLogin(app);
+
+        const third = await app.request('/auth/login');
+
+        expect(third.status).toBe(503);
     });
 });
