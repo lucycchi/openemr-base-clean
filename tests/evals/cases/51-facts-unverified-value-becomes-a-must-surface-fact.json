@@ -5,6 +5,7 @@
   "mode": "facts",
   "doc_type": "lab_pdf",
   "fixture": "lab-layout1.pdf",
+  "patient_name": "Test Zeta",
   "proposal": {
     "patient_name_on_report": "Test Zeta",
     "collection_date": "2026-09-15",

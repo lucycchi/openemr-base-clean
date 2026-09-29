@@ -768,10 +768,14 @@ function runFactsCase(array $case): array
     $extraction = sidecarPost('/eval/anchor', ['fixture' => str($case, 'fixture'), 'doc_type' => str($case, 'doc_type'), 'document_id' => 1, 'proposal' => $proposal], deterministic($case));
 
     // 2. A throwaway patient with no encounters, one above the highest existing pid, so the
-    //    seed patients are never touched and "no prior visit" is guaranteed.
+    //    seed patients are never touched and "no prior visit" is guaranteed. The case's
+    //    optional "patient_name" ("First Last") names it; a lab report printed for another
+    //    name is quarantined, so a case that needs its values in the chart names the
+    //    patient the fixture was printed for.
     $maxPid = intOf(QueryUtils::fetchSingleValue("SELECT MAX(pid) AS m FROM patient_data", 'm'));
     $pid = $maxPid + 1;
-    QueryUtils::sqlInsert("INSERT INTO patient_data (pid, fname, lname, DOB, sex) VALUES (?, 'Eval', 'NoVisit', '1980-05-05', 'Male')", [$pid]);
+    [$fname, $lname] = array_pad(explode(' ', is_string($case['patient_name'] ?? null) ? $case['patient_name'] : 'Eval NoVisit', 2), 2, '');
+    QueryUtils::sqlInsert("INSERT INTO patient_data (pid, fname, lname, DOB, sex) VALUES (?, ?, ?, '1980-05-05', 'Male')", [$pid, $fname, $lname]);
     $documentId = null;
     $schemaErrors = [];
     $anchorErrors = [];

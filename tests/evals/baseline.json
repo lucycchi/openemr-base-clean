@@ -1,5 +1,5 @@
 {
-    "ran_at": "2026-09-27T08:43:35+00:00",
+    "ran_at": "2026-09-29T17:40:24+00:00",
     "cases": {
         "01-uncited-sentence": {
             "schema_valid": "pass",
@@ -273,6 +273,10 @@
         "76-facts-medication-list-items-become-cited-facts": {
             "schema_valid": "pass",
             "citation_present": "pass",
+            "anchor_correct": "pass"
+        },
+        "77-facts-wrong-patient-lab-report-is-quarantined": {
+            "schema_valid": "pass",
             "anchor_correct": "pass"
         }
     },

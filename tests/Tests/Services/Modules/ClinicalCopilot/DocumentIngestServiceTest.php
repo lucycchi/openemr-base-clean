@@ -105,16 +105,23 @@ class DocumentIngestServiceTest extends TestCase
         return new Citation('document', (string) $documentId, '1', $path, $value, $anchored, $box, $box);
     }
 
+    /** The patient's own name as a report would print it, so a report can match the chart. */
+    private static function chartName(int $pid): string
+    {
+        $row = QueryUtils::querySingleRow("SELECT fname, lname FROM patient_data WHERE pid = ?", [$pid]);
+        return is_array($row) ? trim(Row::str($row, 'fname') . ' ' . Row::str($row, 'lname')) : '';
+    }
+
     /**
      * A two-result lab report as the sidecar would return it: an abnormal
      * glucose (always anchored) and a potassium whose anchoring the test
-     * chooses. The name "Test Zeta" matches no seed patient, so a mismatch
-     * flag is expected as well.
+     * chooses. The printed name is the chart's own unless a test passes
+     * another; "Test Zeta" matches no seed patient.
      */
-    private function labExtraction(int $documentId, bool $secondAnchored = true): ExtractionResult
+    private function labExtraction(int $documentId, bool $secondAnchored = true, ?string $nameOnReport = null): ExtractionResult
     {
         $lab = new LabReportExtraction(
-            'Test Zeta',
+            $nameOnReport ?? self::chartName($this->pid),
             new \DateTimeImmutable($this->collected),
             $this->citation($documentId, '/collection_date', $this->collected, true),
             null,
@@ -163,8 +170,7 @@ class DocumentIngestServiceTest extends TestCase
         self::assertNotEmpty($results[0]['uuid'], 'FHIR needs a uuid on the result');
 
         $facts = QueryUtils::fetchRecords("SELECT field_path, anchored, procedure_result_id FROM copilot_document_fact WHERE document_id = ? ORDER BY field_path", [$documentId]);
-        // 'Test Zeta' on the report is not the seed patient: a patient_mismatch flag is recorded beside the results.
-        self::assertSame(['/collection_date', '/patient_name_on_report', '/results/0/value', '/results/1/value'], array_column($facts, 'field_path'));
+        self::assertSame(['/collection_date', '/results/0/value', '/results/1/value'], array_column($facts, 'field_path'));
 
         // The Week 1 chart source now sees the results with their document citations.
         $labs = array_values(array_filter((new OpenEmrChartSource())->labs(new PatientId($this->pid)), static fn($l) => $l->citation !== null && $l->citation->sourceId === (string) $documentId));
@@ -193,6 +199,35 @@ class DocumentIngestServiceTest extends TestCase
         self::assertSame(1, self::sqlCount(QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM procedure_result WHERE document_id = ?", 'n', [$documentId])));
         $unverified = (new OpenEmrChartSource())->unverifiedExtractions(new PatientId($this->pid));
         self::assertNotEmpty(array_filter($unverified, static fn($u) => $u->documentId === $documentId && $u->analyte === 'Potassium'));
+    }
+
+    /**
+     * Pins (AgentForge AF-2026-0415): a report printed for another patient is
+     * quarantined before anything is written. No order, report or result
+     * rows, no value or date provenance (an unanchored value would otherwise
+     * surface as an unverified fact on the wrong chart), only the fixed
+     * mismatch sentence. A failure puts another person's lab values on this
+     * chart as final results.
+     */
+    public function testReportForAnotherPatientIsQuarantinedBeforeAnyRowIsWritten(): void
+    {
+        $documentId = $this->store('wrong-' . bin2hex(random_bytes(4)));
+        $out = (new DocumentIngestService())->persist(new PatientId($this->pid), $this->labExtraction($documentId, false, 'Test Zeta'), 'test-corr');
+        self::assertSame(DocumentStatus::Extracted, $out['status']);
+        self::assertSame(['results_persisted' => 0, 'unverified' => 0, 'unextracted' => 0], array_diff_key($out, ['status' => true]));
+
+        self::assertSame(0, self::sqlCount(QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM procedure_result WHERE document_id = ?", 'n', [$documentId])));
+        self::assertSame(0, self::sqlCount(QueryUtils::fetchSingleValue("SELECT COUNT(*) AS n FROM procedure_order WHERE clinical_hx = ?", 'n', ['Uploaded lab report; documents.id ' . $documentId])));
+        $facts = QueryUtils::fetchRecords("SELECT field_path, kind, value FROM copilot_document_fact WHERE document_id = ?", [$documentId]);
+        self::assertSame(['/patient_name_on_report'], array_column($facts, 'field_path'));
+        self::assertSame('patient_mismatch', $facts[0]['kind']);
+        self::assertStringNotContainsString('Zeta', Row::str($facts[0], 'value'));
+
+        $pid = new PatientId($this->pid);
+        $source = new OpenEmrChartSource();
+        self::assertSame([], array_values(array_filter($source->labs($pid), static fn($l) => $l->citation !== null && $l->citation->sourceId === (string) $documentId)));
+        self::assertSame([], array_values(array_filter($source->unverifiedExtractions($pid), static fn($u) => $u->documentId === $documentId)));
+        self::assertNotEmpty(array_filter($source->intakeRecords($pid), static fn($r) => $r->documentId === $documentId && $r->kind === 'patient_mismatch'));
     }
 
     /**
@@ -288,8 +323,8 @@ class DocumentIngestServiceTest extends TestCase
             $stored = (new DocumentStore())->store(new PatientId($tempPid), DocType::LabPdf, 'novisit.pdf', $this->pdf('novisit-' . bin2hex(random_bytes(4))), 'admin', 1);
             $this->documentIds[] = $stored['document_id'];
             $documentId = $stored['document_id'];
-            // One anchored abnormal glucose, one unanchored potassium; the report names "Test Zeta", not Temp NoVisit.
-            (new DocumentIngestService())->persist(new PatientId($tempPid), $this->labExtraction($documentId, false), 'test-corr');
+            // One anchored abnormal glucose, one unanchored potassium, printed for this patient.
+            (new DocumentIngestService())->persist(new PatientId($tempPid), $this->labExtraction($documentId, false, 'Temp NoVisit'), 'test-corr');
 
             $assembled = (new \OpenEMR\Modules\ClinicalCopilot\FactAssembler(new OpenEmrChartSource(), new \OpenEMR\Modules\ClinicalCopilot\AclAuthorization('admin'), \OpenEMR\BC\ServiceContainer::getClock()))
                 ->assemble(new PatientId($tempPid), null);
@@ -304,7 +339,6 @@ class DocumentIngestServiceTest extends TestCase
             self::assertSame((string) $documentId, $labCitation->sourceId);
             self::assertTrue($labCitation->anchored);
             self::assertArrayHasKey('extraction_unverified', $byCategory, 'the unanchored potassium must surface as unverified');
-            self::assertArrayHasKey('document_mismatch', $byCategory, 'the report name does not match the chart');
             self::assertTrue($byCategory['extraction_unverified'][0]->category->mustSurface());
         } finally {
             QueryUtils::sqlStatementThrowException("DELETE FROM copilot_briefing_cache WHERE pid = ?", [$tempPid]);

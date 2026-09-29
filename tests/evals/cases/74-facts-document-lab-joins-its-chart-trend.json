@@ -5,6 +5,7 @@
   "mode": "facts",
   "doc_type": "lab_pdf",
   "fixture": "lab-layout1.pdf",
+  "patient_name": "Test Zeta",
   "model_output": "lab-layout1.model.json",
   "chart_labs": [
     { "loinc": "2089-1", "name": "LDL Cholesterol", "value": "162", "unit": "mg/dl", "date": "2025-09-10" },

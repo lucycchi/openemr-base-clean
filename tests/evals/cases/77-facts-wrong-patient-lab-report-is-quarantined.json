@@ -1,0 +1,26 @@
+{
+  "id": "77-facts-wrong-patient-lab-report-is-quarantined",
+  "guards": "regression",
+  "failure_mode": "Regression found 2026-09-29 by AgentForge (AF-2026-0415): a lab report printed for another patient (Test Zeta) was persisted as final lab results on the open chart and only then flagged with a patient_mismatch warning, so another person's values surfaced as must-surface lab facts. The name check now runs before any row is written: the same recorded extraction persisted for Eval NoVisit must yield the document_mismatch fact and no lab or unverified-extraction fact. Reverting the fix brings back lab_abnormal and fails anchor_correct.",
+  "mode": "facts",
+  "doc_type": "lab_pdf",
+  "fixture": "lab-layout1.pdf",
+  "model_output": "lab-layout1.model.json",
+  "rubrics": {
+    "schema_valid": true,
+    "anchor_correct": true
+  },
+  "expect": {
+    "status": "extracted",
+    "has_prior_visit": false,
+    "categories": {
+      "document_mismatch": 1
+    },
+    "absent": [
+      "lab_abnormal",
+      "lab_critical",
+      "lab_normal",
+      "extraction_unverified"
+    ]
+  }
+}

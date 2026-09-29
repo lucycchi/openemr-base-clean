@@ -27,6 +27,8 @@ use OpenEMR\Modules\ClinicalCopilot\Row;
  *
  *   ExtractionResult -> failed?  -> mark copilot_document failed, stop
  *                    -> done before? -> stop (no second set of rows)
+ *                    -> lab report printed for another patient? -> BEGIN:
+ *                              one fixed mismatch fact, no values -> COMMIT
  *                    -> BEGIN: lab tables or intake rows + provenance rows
  *                              + copilot_document status -> COMMIT
  *                              (any error -> ROLLBACK, nothing half-written)
@@ -120,6 +122,19 @@ final class DocumentIngestService
      */
     private function persistLab(PatientId $pid, int $documentId, LabReportExtraction $lab): array
     {
+        // Wrong patient's report? Checked before anything is written: a report whose printed
+        // name disagrees with the open chart is quarantined. Only a fixed sentence is stored
+        // (no name from the paper, no value from the report), so none of its results can
+        // become lab rows, provenance facts or unverified facts on this chart. The PDF stays
+        // in the Documents tab for the clinician to file against the right patient.
+        if ($lab->patientNameOnReport !== null && $this->demographicsMismatches($pid, ['name' => $lab->patientNameOnReport]) !== []) {
+            QueryUtils::sqlInsert(
+                "INSERT INTO copilot_document_fact (document_id, field_path, kind, value, anchored, page) VALUES (?, '/patient_name_on_report', 'patient_mismatch', 'patient name on the report does not match the chart; its results were not added', 1, 1)",
+                [$documentId]
+            );
+            return ['results_persisted' => 0, 'unverified' => 0, 'unextracted' => 0];
+        }
+
         // Dates are stored at midnight: the report prints a day, not a time.
         // A missing report date falls back to the collection date rather than "today".
         $collected = $lab->collectionDate->format('Y-m-d 00:00:00');
@@ -199,14 +214,6 @@ final class DocumentIngestService
         $this->fact($documentId, '/collection_date', 'collection_date', null, $lab->collectionDate->format('Y-m-d'), null, null, null, null, false, $lab->collectionDateCitation, null);
         if ($lab->reportedDate !== null && $lab->reportedDateCitation !== null) {
             $this->fact($documentId, '/reported_date', 'reported_date', null, $lab->reportedDate->format('Y-m-d'), null, null, null, null, false, $lab->reportedDateCitation, null);
-        }
-        // Wrong patient's report? The name is compared and thrown away; only a fixed sentence
-        // is stored, so no name from the paper ever lands in a table.
-        if ($lab->patientNameOnReport !== null && $this->demographicsMismatches($pid, ['name' => $lab->patientNameOnReport]) !== []) {
-            QueryUtils::sqlInsert(
-                "INSERT INTO copilot_document_fact (document_id, field_path, kind, value, anchored, page) VALUES (?, '/patient_name_on_report', 'patient_mismatch', 'patient name on the report does not match the chart', 1, 1)",
-                [$documentId]
-            );
         }
         // Rows the model skipped: stored with their page and row box so the panel can point at them.
         foreach ($lab->unextracted as $i => $u) {
