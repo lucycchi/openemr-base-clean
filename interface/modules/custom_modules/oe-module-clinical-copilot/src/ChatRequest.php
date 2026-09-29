@@ -32,11 +32,14 @@ final readonly class ChatRequest
 {
     private const KNOWN_KEYS = ['csrf_token_form', 'action', 'question', 'facts_hash', 'transcript', 'rating', 'comment', 'cache_key', 'briefing_correlation_id'];
     private const QUESTION_MAX = 500;   // chars; longer questions are truncated, not rejected
-    private const TURN_TEXT_MAX = 1000; // chars per prior chat turn
+    public const TURN_TEXT_MAX = 1000;  // chars per prior chat turn; also the cap on a sealed assistant turn
     private const TURNS_KEPT = 10;      // only the most recent N turns are sent to the model
+    private const TOKEN_MAX = 16000;    // chars; a sealed turn token (see ConversationTurns)
 
     /**
-     * @param list<array{role: string, text: string}> $transcript
+     * @param list<array{role: string, text: string, turn_token?: string}> $transcript
+     *        Client-held turns. Assistant turns are unauthenticated here; ConversationTurns
+     *        replaces them with their sealed server text or drops them before the model sees them.
      */
     private function __construct(
         public string $csrfToken,
@@ -118,7 +121,9 @@ final readonly class ChatRequest
      * Decodes the prior chat turns the panel sends as a JSON string. Malformed
      * JSON or malformed turns are dropped silently (an empty transcript is a
      * valid state); role is restricted to user/assistant and text is bounded.
-     * @return list<array{role: string, text: string}>
+     * An assistant turn keeps its turn_token, when it has a well-sized one, so
+     * the controller can authenticate it.
+     * @return list<array{role: string, text: string, turn_token?: string}>
      */
     private static function parseTranscript(string $raw): array
     {
@@ -135,7 +140,12 @@ final readonly class ChatRequest
             $role = $turn['role'] ?? '';
             $text = $turn['text'] ?? '';
             if (is_string($role) && is_string($text) && in_array($role, ['user', 'assistant'], true) && $text !== '') {
-                $turns[] = ['role' => $role, 'text' => mb_substr($text, 0, self::TURN_TEXT_MAX)];
+                $parsed = ['role' => $role, 'text' => mb_substr($text, 0, self::TURN_TEXT_MAX)];
+                $token = $turn['turn_token'] ?? null;
+                if ($role === 'assistant' && is_string($token) && $token !== '' && strlen($token) <= self::TOKEN_MAX) {
+                    $parsed['turn_token'] = $token;
+                }
+                $turns[] = $parsed;
             }
         }
         return array_slice($turns, -self::TURNS_KEPT);

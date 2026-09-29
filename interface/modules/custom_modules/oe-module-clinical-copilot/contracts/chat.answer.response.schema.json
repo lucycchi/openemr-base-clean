@@ -92,6 +92,12 @@
           ],
           "additionalProperties": false
         },
+        "turn_token": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16000,
+          "description": "Present when the answer kept at least one sentence. The answer's text sealed by the server (OpenEMR authenticated encryption), bound to the session patient and this facts_hash. The panel sends it back as turn_token on the assistant turn; the server uses the sealed text and drops assistant turns without a valid token (AgentForge AF-2026-3214)."
+        },
         "guidelines": {
           "type": "array",
           "description": "Week 2: guideline passages cited by the kept sentences (by chunk id, alongside fact ids). Rendered by the panel in a separate 'From guidelines' block, never mixed with the patient's facts. Empty when the question needed no guideline or the sidecar was unavailable.",

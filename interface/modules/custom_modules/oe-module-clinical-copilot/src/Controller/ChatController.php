@@ -38,6 +38,7 @@ use OpenEMR\Modules\ClinicalCopilot\BriefingService;
 use OpenEMR\Modules\ClinicalCopilot\ChatAction;
 use OpenEMR\Modules\ClinicalCopilot\ChatRequest;
 use OpenEMR\Modules\ClinicalCopilot\Config;
+use OpenEMR\Modules\ClinicalCopilot\ConversationTurns;
 use OpenEMR\Modules\ClinicalCopilot\CorrelationId;
 use OpenEMR\Modules\ClinicalCopilot\DbBriefingRatings;
 use OpenEMR\Modules\ClinicalCopilot\DbPrewarmReceipts;
@@ -113,6 +114,7 @@ final class ChatController
     private array $sidecarUsage = [];
     private readonly PrewarmReceipts $receipts;
     private readonly BriefingRatings $ratings;
+    private readonly ConversationTurns $turns;
     private ?WarmOutcome $warm = null;
     /** Whether this open's guideline cards came from the cache: a warm hit covers the summary only, so this is logged beside it. */
     private bool $warmCardsCached = false;
@@ -126,6 +128,7 @@ final class ChatController
         private readonly ?BriefingPipelineFactory $pipelines = null,
         private readonly ?SidecarClient $sidecar = null,
         ?BriefingRatings $ratings = null,
+        ?ConversationTurns $turns = null,
     ) {
         $this->correlationId = CorrelationId::generate();
         $this->logger = new CorrelatedLogger($logger ?? ServiceContainer::getLogger(), $this->correlationId);
@@ -133,6 +136,7 @@ final class ChatController
         $this->config = $config ?? Config::fromEnvironment();
         $this->receipts = $receipts ?? new DbPrewarmReceipts($this->config->openAiModel);
         $this->ratings = $ratings ?? new DbBriefingRatings();
+        $this->turns = $turns ?? new ConversationTurns(ServiceContainer::getCrypto());
         $this->steps = new StepRecorder();
         $this->tracer = $tracer ?? ($this->config->hasLangfuse()
             ? new LangfuseTracer(new Client(), $this->config->langfuseHost, $this->config->langfusePublicKey, $this->config->langfuseSecretKey)
@@ -509,13 +513,22 @@ final class ChatController
         }
         $t = hrtime(true);
         $pipeline = $this->pipeline($config, $assembled, $pid);
-        $answer = $pipeline->answer($assembled, (string) $chat->question, $chat->transcript, $pid, $evidence);
+        // Prior assistant turns reach the model only as the server wrote them (AF-2026-3214).
+        $factsHash = $assembled->facts()->hash();
+        $transcript = $this->turns->authenticate($pid, $factsHash, $chat->transcript);
+        $answer = $pipeline->answer($assembled, (string) $chat->question, $transcript, $pid, $evidence);
         $this->llmMs = (int) round((hrtime(true) - $t) / 1e6);
         $this->llmCalled = true;
         $this->llmAttempts = $pipeline->llmAttempts();
         // The answer stage joins the graph's hops, so the log shows when the answer was ready.
         $this->handoffs = [...$handoffs, ...AnswerRoute::forAnswer($answer, $this->llmMs, $this->llmAttempts)];
-        return PanelPayload::answer($assembled, $answer, $this->correlationId);
+        $payload = PanelPayload::answer($assembled, $answer, $this->correlationId);
+        // The panel echoes this token with the assistant turn; only what the server sealed comes back.
+        $spoken = PanelPayload::answerText($payload);
+        if ($spoken !== '' && is_array($payload['answer'] ?? null)) {
+            $payload['answer']['turn_token'] = $this->turns->seal($pid, $factsHash, mb_substr($spoken, 0, ChatRequest::TURN_TEXT_MAX));
+        }
+        return $payload;
     }
 
     /**

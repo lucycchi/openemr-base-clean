@@ -893,9 +893,13 @@
                 }
                 addTurn('assistant', node);
                 // Record both turns so the next question carries the full conversation.
-                // The assistant turn is stored as plain text (textContent), chips and all.
+                // The assistant turn keeps the server's turn_token: the server reads its own
+                // sealed text from it and ignores this display text, so a turn the server
+                // never wrote cannot enter the conversation.
                 state.transcript.push({ role: 'user', text: question });
-                state.transcript.push({ role: 'assistant', text: node.textContent });
+                const turn = { role: 'assistant', text: node.textContent };
+                if (typeof a.turn_token === 'string') turn.turn_token = a.turn_token;
+                state.transcript.push(turn);
             })
             .catch(() => addTurn('assistant', 'The Co-Pilot could not be reached.'))
             .finally(() => enableAsk(true));

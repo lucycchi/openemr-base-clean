@@ -74,6 +74,26 @@ final class PanelPayload
     }
 
     /**
+     * What an answer payload said, as plain text: its kept sentences joined by
+     * spaces. This is the text sealed into the answer's turn_token, so a later
+     * question carries the server's own words back, not the panel's rendering.
+     *
+     * @param array<string, mixed> $payload a response built by answer()
+     */
+    public static function answerText(array $payload): string
+    {
+        $answer = $payload['answer'] ?? null;
+        $sentences = is_array($answer) && is_array($answer['sentences'] ?? null) ? $answer['sentences'] : [];
+        $texts = [];
+        foreach ($sentences as $sentence) {
+            if (is_array($sentence) && is_string($sentence['text'] ?? null) && $sentence['text'] !== '') {
+                $texts[] = $sentence['text'];
+            }
+        }
+        return implode(' ', $texts);
+    }
+
+    /**
      * Response to action=rate once the rating is stored
      * (contracts/chat.rate.response.schema.json). Echoes the rating so the
      * panel can show what was recorded; never the comment.

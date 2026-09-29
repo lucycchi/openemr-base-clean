@@ -33,7 +33,7 @@
     },
     "transcript": {
       "type": "string",
-      "description": "ask only. JSON-encoded array of {role: user|assistant, text} turns held by the browser; the server keeps the last 10, truncates each text to 1000 characters, and ignores malformed input.",
+      "description": "ask only. JSON-encoded array of {role: user|assistant, text, turn_token?} turns held by the browser; the server keeps the last 10, truncates each text to 1000 characters, and ignores malformed input. An assistant turn counts only with the turn_token its answer carried: the server replaces its text with the sealed server text, and drops assistant turns whose token is missing, altered, or minted for another patient or chart version.",
       "contentMediaType": "application/json"
     },
     "rating": {
